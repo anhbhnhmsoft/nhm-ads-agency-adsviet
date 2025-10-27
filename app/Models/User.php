@@ -3,13 +3,15 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Core\GenerateId\GenerateIdSnowflake;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes, GenerateIdSnowflake;
 
     /**
      * The attributes that are mass assignable.
@@ -18,8 +20,14 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
-        'email',
+        'username',
+        'phone',
         'password',
+        'role',
+        'disabled',
+        'telegram_id',
+        'whatsapp_id',
+        'referral_code',
     ];
 
     /**
@@ -29,8 +37,6 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
-        'two_factor_secret',
-        'remember_token',
     ];
 
     /**
@@ -41,8 +47,60 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'role' => 'integer',
+            'disabled' => 'boolean',
+            'created_at' => 'datetime',
         ];
+    }
+
+    // Relationships
+    public function wallet()
+    {
+        return $this->hasOne(UserWallet::class);
+    }
+
+    public function referrals()
+    {
+        return $this->hasMany(UserReferral::class, 'referrer_id');
+    }
+
+    public function referredBy()
+    {
+        return $this->hasOne(UserReferral::class, 'referred_id');
+    }
+
+    public function otps()
+    {
+        return $this->hasMany(UserOtp::class);
+    }
+
+    public function devices()
+    {
+        return $this->hasMany(UserDevice::class);
+    }
+
+    public function serviceUsers()
+    {
+        return $this->hasMany(ServiceUser::class);
+    }
+
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
+    public function assignedTickets()
+    {
+        return $this->hasMany(Ticket::class, 'assigned_to');
+    }
+
+    public function ticketConversations()
+    {
+        return $this->hasMany(TicketConversation::class);
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
     }
 }
