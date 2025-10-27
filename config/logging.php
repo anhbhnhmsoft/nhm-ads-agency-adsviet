@@ -51,6 +51,20 @@ return [
     */
 
     'channels' => [
+        'action' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/actions/action.log'),
+            'level' => 'debug',
+            'replace_placeholders' => true,
+            'days' => 1 // mỗi 1 ngày sẽ tạo 1 file log mới
+        ],
+        'error' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/errors/error.log'),
+            'level' => 'debug',
+            'replace_placeholders' => true,
+            'days' => 1 // mỗi 1 ngày sẽ tạo 1 file log mới
+        ],
 
         'stack' => [
             'driver' => 'stack',

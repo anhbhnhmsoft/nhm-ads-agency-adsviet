@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Common\Constants\User\UserRole;
+use App\Common\Helper;
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,15 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::firstOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => 'password',
-                'email_verified_at' => now(),
-            ]
-        );
+        User::query()->create([
+            'name' => 'Admin User',
+            'username' => 'admin@admin.com',
+            'password' => Hash::make('Test12345678@'),
+            'role' => UserRole::ADMIN->value,
+            'disabled' => false,
+            'referral_code' => Helper::generateReferCodeUser(UserRole::ADMIN),
+        ]);
     }
 }

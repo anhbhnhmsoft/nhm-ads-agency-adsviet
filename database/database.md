@@ -6,7 +6,7 @@
     - id (int, primary key, auto-increment)
     - name (varchar, not null) -- tên hiển thị
     - username (varchar, unique, not null) -- tên đăng nhập (có thể là email hoặc số điện thoại)
-    - phone (varchar, unique, not null)
+    - phone (varchar, unique, nullable) -- số điện thoại
     - password (varchar, not null)
     - role (smallint, not null) -- vai trò (trong enum UserRole)
     - disabled (boolean, not null, default false) -- trạng thái
@@ -59,6 +59,9 @@
     - device_type (varchar, not null) -- loại thiết bị (ví dụ: iOS, Android, Web)
     - active (boolean, not null, default true) -- trạng thái hoạt động của thiết bị
     - last_active_at (datetime, not null) -- thời gian hoạt động cuối cùng
+    - softDeletes
+    - timestamps
+
 
 # bảng user_wallets
     # note
@@ -88,6 +91,7 @@
     - status (smallint, not null) -- trạng thái giao dịch (trong enum WalletTransactionStatus)
     - reference_id (varchar, nullable) -- mã tham chiếu bên ngoài (nếu có) 
     - description (varchar, nullable) -- mô tả giao dịch
+    - softDeletes
     - timestamps
 
 # bảng user_wallet_transaction_logs
@@ -101,6 +105,8 @@
     - new_status (smallint, not null) -- trạng thái sau khi thay đổi
     - changed_at (datetime, not null) -- thời gian thay đổi trạng thái
     - description (varchar, nullable) -- mô tả thay đổi trạng thái
+    - softDeletes
+    - timestamps
 
 # platform_settings
     # note
@@ -119,9 +125,12 @@
     # note
     - lưu trữ các gói dịch vụ của hệ thống
     - Mỗi gói dịch vụ sẽ có các tính năng khác nhau
+    # quan hệ
+    - n-1 với bảng platform_settings qua platform_setting_id
     # cấu trúc
     - id (int, primary key, auto-increment)
     - name (varchar, not null) -- tên gói dịch vụ
+    - platform_setting_id (int, foreign key to platform_settings.id, not null) -- cài đặt nền tảng liên kết
     - platform (smallint, not null) -- nền tảng (trong enum Platform)
     - features (text, not null) -- các tính năng của gói dịch vụ (json format)
     - open_fee (decimal(18, 8), not null) -- giá mở tài khoản
@@ -178,6 +187,7 @@
     - status (smallint, not null) -- trạng thái giao dịch (trong enum ServiceUserTransactionStatus)
     - reference_id (varchar, nullable) -- mã tham chiếu bên ngoài (nếu có) 
     - description (varchar, nullable) -- mô tả giao dịch
+    - softDeletes
     - timestamps
 
 # bảng campaigns
@@ -243,7 +253,8 @@
     - clicks (int, not null, default 0) -- số lần nhấp
     - conversions (int, not null, default 0) -- số lần chuyển đổi
     - cost (decimal(18, 8), not null, default 0) -- chi phí đã sử dụng
-
+    - softDeletes
+    - timestamps
 
 # bảng tickets
     # note
@@ -276,6 +287,7 @@
     - attachment (varchar, nullable) -- đường dẫn tệp đính kèm (nếu có)
     - reply_side (smallint, not null) -- bên trả lời (trong enum TicketReplySide)
     - timestamps
+    - softDeletes
 
 
 # bảng notifications
