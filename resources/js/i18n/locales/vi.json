@@ -1,0 +1,8 @@
+{
+    "auth": {
+        "login": {
+            "title": "Truy cập hệ thống",
+            "description": "Đăng nhập để truy cập hệ thống quản lý quảng cáo"
+        }
+    }
+}
