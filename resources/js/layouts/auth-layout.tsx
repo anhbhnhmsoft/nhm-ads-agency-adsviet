@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ReactNode } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
 import { useTranslation } from 'react-i18next';

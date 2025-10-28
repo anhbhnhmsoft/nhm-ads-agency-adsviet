@@ -13,6 +13,7 @@
     - telegram_id (varchar, unique, nullable) -- id telegram
     - whatsapp_id (varchar, unique, nullable) -- id whatsapp
     - referral_code (varchar, unique, not null) -- mã giới thiệu
+    - rememberToken
     - softDeletes
     - timestamps
 
@@ -55,8 +56,8 @@
     # cấu trúc
     - id (int, primary key, auto-increment)
     - user_id (int, foreign key to users.id, not null)
-    - device_id (varchar, not null) -- mã thiết bị
-    - device_type (varchar, not null) -- loại thiết bị (ví dụ: iOS, Android, Web)
+    - device_id (varchar, not null, unique) -- mã thiết bị
+    - device_type (smallint, not null) -- loại thiết bị (ví dụ: iOS, Android, Web)
     - active (boolean, not null, default true) -- trạng thái hoạt động của thiết bị
     - last_active_at (datetime, not null) -- thời gian hoạt động cuối cùng
     - softDeletes
