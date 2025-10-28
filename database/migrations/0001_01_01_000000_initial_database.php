@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('telegram_id')->unique()->nullable()->comment('ID Telegram');
             $table->string('whatsapp_id')->unique()->nullable()->comment('ID WhatsApp');
             $table->string('referral_code')->unique()->comment('Mã giới thiệu');
+            $table->rememberToken();
             $table->softDeletes();
             $table->timestamps();
         });
@@ -57,8 +58,8 @@ return new class extends Migration
         Schema::create('user_devices', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->string('device_id')->comment('Mã thiết bị');
-            $table->string('device_type')->comment('Loại thiết bị (ví dụ: iOS, Android, Web)');
+            $table->string('device_id')->unique()->comment('Mã thiết bị');
+            $table->smallInteger('device_type')->comment('Loại thiết bị (ví dụ: iOS, Android, Web)');
             $table->boolean('active')->default(true)->comment('Trạng thái hoạt động của thiết bị');
             $table->dateTime('last_active_at')->comment('Thời gian hoạt động cuối cùng');
             $table->softDeletes();

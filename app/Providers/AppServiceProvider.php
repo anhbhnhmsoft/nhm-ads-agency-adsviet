@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Common\Constants\User\GatePermission;
 use App\Common\Constants\User\UserRole;
 use App\Models\User;
+use App\Repositories\UserDeviceRepository;
+use App\Repositories\UserOtpRepository;
 use App\Repositories\UserRepository;
 use App\Service\AuthService;
 use Illuminate\Support\Facades\Gate;
@@ -19,8 +21,6 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->registerRepository();
         $this->registerApplicationService();
-
-
     }
 
     /**
@@ -33,12 +33,14 @@ class AppServiceProvider extends ServiceProvider
 
     private function registerRepository(): void
     {
-        $this->app->singleton(UserRepository::class);
+        $this->app->bind(UserRepository::class);
+        $this->app->bind(UserOtpRepository::class);
+        $this->app->bind(UserDeviceRepository::class);
     }
 
     private function registerApplicationService(): void
     {
-        $this->app->singleton(AuthService::class);
+        $this->app->bind(AuthService::class);
     }
 
     private function definedGate(): void

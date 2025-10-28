@@ -1,8 +1,24 @@
 {
+    "common": {
+        "username": "Tên đăng nhập",
+        "password": "Mật khẩu",
+        "processing": "Đang xử lý...",
+        "or": "Hoặc"
+    },
     "auth": {
+        "components": {
+            "customer": "Khách hàng",
+            "admin": "Quản trị viên",
+            "customer_desc": "Truy cập ví, dịch vụ, giao dịch",
+            "admin_desc": "Quản lý khách hàng, duyệt giao dịch"
+        },
         "login": {
+            "login": "Đăng nhập",
             "title": "Truy cập hệ thống",
-            "description": "Đăng nhập để truy cập hệ thống quản lý quảng cáo"
+            "login_with": "Đăng nhập bằng {{provider}}",
+            "description": "Đăng nhập để truy cập hệ thống quản lý quảng cáo",
+            "signup_prompt": "Chưa có tài khoản? ",
+            "signup_link": "Đăng ký"
         }
     }
 }

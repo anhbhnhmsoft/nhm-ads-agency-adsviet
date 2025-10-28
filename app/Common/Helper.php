@@ -24,4 +24,9 @@ class Helper
     {
         return strtoupper(substr(Str::uuid()->toString(), 0, 8));
     }
+
+    public static function getWebDeviceId(): string
+    {
+        return sha1(request()->userAgent() . request()->ip());
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Core;
 
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 abstract class Controller
 {
@@ -20,5 +21,10 @@ abstract class Controller
             'sort_by' => $sortBy,
             'direction' => $direction,
         ]);
+    }
+
+    protected function rendering(string $view, array $data = []): \Inertia\Response
+    {
+        return Inertia::render($view, $data);
     }
 }
