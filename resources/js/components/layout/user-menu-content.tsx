@@ -6,12 +6,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/layout/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
-import { type User } from '@/lib/types';
+import { type IUser } from '@/lib/types';
 import { Link, router } from '@inertiajs/react';
 import { LogOut, Settings } from 'lucide-react';
 
 interface UserMenuContentProps {
-    user: User;
+    user: IUser;
 }
 
 export function UserMenuContent({ user }: UserMenuContentProps) {

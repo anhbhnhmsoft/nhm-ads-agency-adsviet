@@ -9,6 +9,17 @@ return [
             'role.in' => 'Vai trò không hợp lệ.',
             'device.required' => 'Vui lòng chọn thiết bị.',
             'device.in' => 'Thiết bị không hợp lệ.',
+            'telegram_hash_invalid' => 'Telegram không hợp lệ.',
+            'choose_social_first' => 'Vui lòng chọn phương thức đăng nhập trước đó.',
+        ],
+    ],
+    'register' => [
+        'validation' => [
+            'role_required' => 'Vui lòng chọn vai trò.',
+            'role_in' => 'Vai trò không hợp lệ.',
+            'refer_code_required' => 'Vui lòng nhập mã giới thiệu.',
+            'refer_code_string' => 'Mã giới thiệu phải là một chuỗi ký tự.',
+            'refer_code_invalid' => 'Mã giới thiệu không hợp lệ.',
         ],
     ],
 

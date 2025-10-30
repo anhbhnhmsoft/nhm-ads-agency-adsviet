@@ -7,6 +7,7 @@ use App\Common\Constants\User\UserRole;
 use App\Models\User;
 use App\Repositories\UserDeviceRepository;
 use App\Repositories\UserOtpRepository;
+use App\Repositories\UserReferralRepository;
 use App\Repositories\UserRepository;
 use App\Service\AuthService;
 use Illuminate\Support\Facades\Gate;
@@ -36,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserRepository::class);
         $this->app->bind(UserOtpRepository::class);
         $this->app->bind(UserDeviceRepository::class);
+        $this->app->bind(UserReferralRepository::class);
     }
 
     private function registerApplicationService(): void

@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Core\GenerateId\GenerateIdSnowflake;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * @method static \Illuminate\Database\Eloquent\Builder|static isActive() //  Get active users
+ */
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, SoftDeletes, GenerateIdSnowflake;
@@ -51,6 +53,11 @@ class User extends Authenticatable
             'disabled' => 'boolean',
             'created_at' => 'datetime',
         ];
+    }
+
+    public function scopeIsActive($query)
+    {
+        return $query->where('disabled', false);
     }
 
     // Relationships

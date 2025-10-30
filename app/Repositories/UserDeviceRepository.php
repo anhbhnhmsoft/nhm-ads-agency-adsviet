@@ -26,7 +26,6 @@ class UserDeviceRepository extends BaseRepository
                 ],
                 [
                     'last_active_at' => now(),
-                    'active' => true
                 ]
             );
         }

@@ -1,16 +1,22 @@
 {
     "common": {
+        "name": "Họ tên",
         "username": "Tên đăng nhập",
         "password": "Mật khẩu",
         "processing": "Đang xử lý...",
-        "or": "Hoặc"
+        "or": "Hoặc",
+        "login": "Đăng nhập",
+        "register": "Đăng ký",
+        "refer_code": "Mã giới thiệu"
     },
     "auth": {
         "components": {
             "customer": "Khách hàng",
             "admin": "Quản trị viên",
             "customer_desc": "Truy cập ví, dịch vụ, giao dịch",
-            "admin_desc": "Quản lý khách hàng, duyệt giao dịch"
+            "admin_desc": "Quản lý khách hàng, duyệt giao dịch",
+            "agency": "Agency",
+            "agency_desc": "Quản lý quảng cáo, khách hàng"
         },
         "login": {
             "login": "Đăng nhập",
@@ -19,6 +25,11 @@
             "description": "Đăng nhập để truy cập hệ thống quản lý quảng cáo",
             "signup_prompt": "Chưa có tài khoản? ",
             "signup_link": "Đăng ký"
+        },
+        "register_new_user": {
+            "title": "Đăng ký tài khoản mới",
+            "description": "Chào mừng bạn đến với hệ thống quản lý quảng cáo, hãy nhập thông tin đăng ký để tạo tài khoản mới.",
+            "role": "Vai trò"
         }
     }
 }

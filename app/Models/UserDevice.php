@@ -15,13 +15,11 @@ class UserDevice extends Model
         'user_id',
         'device_id',
         'device_type',
-        'active',
         'last_active_at',
     ];
 
     protected $casts = [
         'user_id' => 'integer',
-        'active' => 'boolean',
         'last_active_at' => 'datetime',
     ];
 
