@@ -2,6 +2,11 @@
 
 
 return [
+    'name' => [
+        'required' => 'Họ tên là bắt buộc.',
+        'string' => 'Họ tên phải là một chuỗi ký tự.',
+        'max' => 'Họ tên không được vượt quá :max ký tự.',
+    ],
     'username' => [
         'required' => 'Tên đăng nhập là bắt buộc.',
         'string' => 'Tên đăng nhập phải là một chuỗi ký tự.',

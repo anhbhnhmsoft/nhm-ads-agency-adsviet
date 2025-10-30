@@ -4,6 +4,5 @@ namespace App\Core\Cache;
 
 enum CacheKey: string
 {
-    case USER_PERMISSIONS = 'user.permissions';
-    case FILE_STORAGE     = 'file.storage';
+    case CACHE_TELEGRAM_ID = 'CACHE_TELEGRAM_ID';
 }

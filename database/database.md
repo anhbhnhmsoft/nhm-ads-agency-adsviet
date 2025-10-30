@@ -58,7 +58,6 @@
     - user_id (int, foreign key to users.id, not null)
     - device_id (varchar, not null, unique) -- mã thiết bị
     - device_type (smallint, not null) -- loại thiết bị (ví dụ: iOS, Android, Web)
-    - active (boolean, not null, default true) -- trạng thái hoạt động của thiết bị
     - last_active_at (datetime, not null) -- thời gian hoạt động cuối cùng
     - softDeletes
     - timestamps
