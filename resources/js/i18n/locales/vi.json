@@ -7,7 +7,10 @@
         "or": "Hoặc",
         "login": "Đăng nhập",
         "register": "Đăng ký",
-        "refer_code": "Mã giới thiệu"
+        "refer_code": "Mã giới thiệu",
+        "telegram": "Telegram",
+        "whatsapp": "WhatsApp",
+        "help": "Hỗ trợ"
     },
     "auth": {
         "components": {
@@ -25,6 +28,19 @@
             "description": "Đăng nhập để truy cập hệ thống quản lý quảng cáo",
             "signup_prompt": "Chưa có tài khoản? ",
             "signup_link": "Đăng ký"
+        },
+        "register": {
+            "choose_social_first": "Chọn phương thức xác thực để tiếp tục",
+            "telegram_help": "Sau khi xác thực Telegram, bạn sẽ được chuyển sang bước tiếp theo.",
+            "number_whatsapp": "Số WhatsApp",
+            "import_number_whatsapp": "Nhập số WhatsApp",
+            "send_otp": "Gửi mã xác nhận",
+            "sending": "Đang gửi…",
+            "enter_otp": "Nhập mã OTP nhận qua WhatsApp",
+            "verify_otp": "Xác nhận OTP",
+            "verifying": "Đang kiểm tra…",
+            "phone_required": "Vui lòng nhập số điện thoại!",
+            "otp_required": "Vui lòng nhập mã OTP!"
         },
         "register_new_user": {
             "title": "Đăng ký tài khoản mới",

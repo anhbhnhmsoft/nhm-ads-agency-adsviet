@@ -5,7 +5,6 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 
-
 Route::middleware(['guest:web'])->group(function () {
     Route::get('/login', [AuthController::class, 'loginScreen'])->name('login');
     Route::get('/register', [AuthController::class, 'registerScreen'])->name('register');
@@ -28,5 +27,12 @@ Route::middleware(['auth:web'])->group(function () {
     Route::get('/', function () {
         return Inertia::render('dashboard/index',[]);
     })->name('dashboard');
+});
+
+Route::middleware('web')->group(function () {
+    Route::post('auth/send-otp-whatsapp', [AuthController::class, 'sendWhatsappOtp'])
+        ->name('auth.send_otp_whatsapp');
+    Route::post('auth/verify-otp-whatsapp', [AuthController::class, 'verifyWhatsappOtp'])
+        ->name('auth.verify_otp_whatsapp');
 });
 

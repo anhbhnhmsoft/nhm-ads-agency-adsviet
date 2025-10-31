@@ -27,4 +27,5 @@ export type RegisterNewUserRequest = {
     password: string;
     refer_code:string;
     type: 'telegram' | 'whatsapp';
+    phone?: string;
 }
