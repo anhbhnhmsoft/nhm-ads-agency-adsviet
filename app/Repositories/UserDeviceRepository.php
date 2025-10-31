@@ -20,11 +20,11 @@ class UserDeviceRepository extends BaseRepository
         if (!empty($idDeviceWeb)){
             $this->query()->updateOrCreate(
                 [
-                    'user_id' => $userId,
                     'device_id' => $idDeviceWeb,
                     'device_type' => DeviceType::WEB->value
                 ],
                 [
+                    'user_id' => $userId,
                     'last_active_at' => now(),
                 ]
             );

@@ -1,40 +1,17 @@
-import { InertiaLinkProps } from '@inertiajs/react';
-import { LucideIcon } from 'lucide-react';
-
-
-export interface BreadcrumbItem {
-    title: string;
-    href: string;
-}
-export interface NavItem {
-    title: string;
-    href: NonNullable<InertiaLinkProps['href']>;
-    icon?: LucideIcon | null;
-    isActive?: boolean;
-}
+import { IUser } from '@/lib/types/type';
 
 export interface ISharedData {
     name: string;
-    auth: {
-        user: IUser;
-    };
+    auth: IUser | null;
     flash: {
         success: string | null;
         error: string | null;
         warning: string | null;
         info: string | null;
     };
+    logo_path: string;
     current_route: string;
     sidebarOpen: boolean;
-}
-
-export interface IUser {
-    id: number;
-    username: string;
-    email: string;
-    created_at: string;
-    updated_at: string;
-    deleted_at: string;
 }
 
 // ------------------------------------------------------------

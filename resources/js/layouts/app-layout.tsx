@@ -1,4 +1,3 @@
-import { type BreadcrumbItem } from '@/lib/types';
 import { type ReactNode, useEffect } from 'react';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppContent } from '@/components/app-content';
@@ -8,15 +7,15 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { usePage } from '@inertiajs/react';
 import { toast } from 'sonner';
 import LoadingGlobal from '@/components/loading-global';
+import { IBreadcrumbItem } from '@/lib/types/type';
 
 interface AppLayoutProps {
     children: ReactNode;
-    breadcrumbs?: BreadcrumbItem[];
+    breadcrumbs?: IBreadcrumbItem[];
 }
 
 export default ({ children, breadcrumbs}: AppLayoutProps) => {
-    const { flash } = usePage().props;
-
+    const { flash, logo_path } = usePage().props;
     useEffect(() => {
         if (flash?.success) {
             toast.success(flash.success, { duration: 3000 });
@@ -38,7 +37,7 @@ export default ({ children, breadcrumbs}: AppLayoutProps) => {
                 <AppSidebar />
                 <AppContent variant="sidebar" className="overflow-x-hidden">
                     <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                    {children}
+                    <main className="flex flex-1 flex-col gap-4 p-4">{children}</main>
                 </AppContent>
             </AppShell>
             <LoadingGlobal />

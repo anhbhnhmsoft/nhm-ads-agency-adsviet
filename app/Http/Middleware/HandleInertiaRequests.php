@@ -39,9 +39,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
-            'auth' => [
-                'user' => $request->user(),
-            ],
+            'auth' => $request->user(),
             'current_route' => fn () => request()->path(),
             'flash' => [
                 'success' => fn() => $request->session()->get('success'),
@@ -49,6 +47,7 @@ class HandleInertiaRequests extends Middleware
                 'warning' => fn() => $request->session()->get('warning'),
                 'info' => fn() => $request->session()->get('info')
             ],
+            'logo_path' => fn () => asset('images/logo-trans.png'),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

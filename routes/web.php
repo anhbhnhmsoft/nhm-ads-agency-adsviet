@@ -1,8 +1,9 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 
 Route::middleware(['guest:web'])->group(function () {
@@ -24,9 +25,13 @@ Route::middleware(['guest:web'])->group(function () {
 
 
 Route::middleware(['auth:web'])->group(function () {
-    Route::get('/', function () {
-        return Inertia::render('dashboard/index',[]);
-    })->name('dashboard');
+    Route::redirect('/', '/dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::prefix('user')->group(function () {
+       Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');
+       Route::get('/create-employee', [UserController::class, 'createEmployeeScreen'])->name('user_create_employee');
+    });
 });
 
 Route::middleware('web')->group(function () {
