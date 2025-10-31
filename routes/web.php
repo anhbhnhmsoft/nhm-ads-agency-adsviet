@@ -6,7 +6,6 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 
-
 Route::middleware(['guest:web'])->group(function () {
     Route::get('/login', [AuthController::class, 'loginScreen'])->name('login');
     Route::get('/register', [AuthController::class, 'registerScreen'])->name('register');
@@ -33,5 +32,12 @@ Route::middleware(['auth:web'])->group(function () {
        Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');
        Route::get('/create-employee', [UserController::class, 'createEmployeeScreen'])->name('user_create_employee');
     });
+});
+
+Route::middleware('web')->group(function () {
+    Route::post('auth/send-otp-whatsapp', [AuthController::class, 'sendWhatsappOtp'])
+        ->name('auth.send_otp_whatsapp');
+    Route::post('auth/verify-otp-whatsapp', [AuthController::class, 'verifyWhatsappOtp'])
+        ->name('auth.verify_otp_whatsapp');
 });
 

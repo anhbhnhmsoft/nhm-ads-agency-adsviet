@@ -45,6 +45,7 @@ const TelegramButton: FC<Props> = ({ bot_username }) => {
         script.async = true;
         script.setAttribute('data-telegram-login', bot_username);
         script.setAttribute('data-size', 'large');
+        script.setAttribute('data-lang', 'en');
         script.setAttribute('data-userpic', 'false');
         script.setAttribute('data-request-access', 'write');
         script.setAttribute('data-radius', '8');

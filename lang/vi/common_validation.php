@@ -17,4 +17,13 @@ return [
         'min' => 'Mật khẩu phải có ít nhất :min ký tự.',
         'regex' => 'Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số.',
     ],
+    'otp' => [
+        'required' => 'Mã OTP là bắt buộc',
+        'digits' => 'Mã OTP phải gồm :digits chữ số.'
+    ],
+    'phone' => [
+        'required' => 'Số điện thoại là bắt buộc.',
+        'string' => 'Số điện thoại phải là một chuỗi ký tự.',
+        'max' => 'Số điện thoại không được quá :max số',
+    ]
 ];
