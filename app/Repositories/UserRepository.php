@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Common\Constants\User\UserRole;
 use App\Core\BaseRepository;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserRepository extends BaseRepository
 {
@@ -12,6 +13,33 @@ class UserRepository extends BaseRepository
     {
         return new User();
     }
+
+    public function filterQuery(array $filters): Builder
+    {
+        $query = $this->query();
+        if (!empty($filters['keyword'])) {
+            $query->where('name', 'like', "%{$filters['keyword']}%")
+                ->orWhere('username', 'like', "%{$filters['keyword']}%")
+                ->orWhere('id', (int)$filters['keyword']);
+        }
+        if (!empty($filters['roles'])) {
+            $query->whereIn('role', $filters['roles']);
+        }
+        return $query;
+    }
+
+    public function sortQuery(Builder $query, string $column, string $direction = 'desc'): Builder
+    {
+        if (!in_array($direction, ['asc', 'desc'])) {
+            $direction = 'desc';
+        }
+        if (empty($column)) {
+            $column = 'created_at';
+        }
+        $query->orderBy($column, $direction);
+        return $query;
+    }
+
 
     /**
      * Check username in admin system

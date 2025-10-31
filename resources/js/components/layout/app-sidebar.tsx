@@ -6,17 +6,6 @@ import {
     SidebarFooter,
     SidebarHeader,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
-import { type NavItem } from '@/lib/types';
-import { LayoutGrid } from 'lucide-react';
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
 
 export function AppSidebar() {
     return (
@@ -26,7 +15,7 @@ export function AppSidebar() {
 
             {/*Menu sidebar*/}
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain  />
             </SidebarContent>
 
             {/*Footer sidebar*/}

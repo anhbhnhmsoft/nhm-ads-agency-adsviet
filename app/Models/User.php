@@ -49,6 +49,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'id' => 'string',
             'role' => 'integer',
             'disabled' => 'boolean',
             'created_at' => 'datetime',

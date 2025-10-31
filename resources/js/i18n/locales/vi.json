@@ -7,7 +7,40 @@
         "or": "Hoặc",
         "login": "Đăng nhập",
         "register": "Đăng ký",
-        "refer_code": "Mã giới thiệu"
+        "refer_code": "Mã giới thiệu",
+        "id": "ID",
+        "role": "Vai trò",
+        "phone": "Số điện thoại",
+        "email": "Email",
+        "created_at": "Ngày tạo",
+        "updated_at": "Ngày cập nhật",
+        "status": "Trạng thái",
+        "action": "Hành động",
+        "active": "Kích hoạt",
+        "account_active": "Cho phép đăng nhập",
+        "disabled": "Vô hiệu hóa",
+        "pagination": "Hiển thị {{start}} đến {{end}} trong {{total}} bản ghi.",
+        "per_page": "Số hàng mỗi trang",
+        "referral_code": "Mã giới thiệu",
+        "current_page_to": "{{current_page}} / {{total_page}}",
+        "keyword": "Từ khóa",
+        "search": "Tìm kiếm",
+        "add": "Thêm"
+    },
+    "enum": {
+        "user_role": {
+            "admin": "Quản trị viên",
+            "manager": "Quản lý",
+            "employee": "Nhân viên",
+            "agency": "Agency",
+            "customer": "Khách hàng"
+        }
+    },
+    "menu": {
+        "dashboard": "Trang chủ",
+        "user": "Người dùng",
+        "user_list_employee": "Danh sách nhân viên",
+        "user_create_employee": "Tạo nhân viên"
     },
     "auth": {
         "components": {
@@ -30,6 +63,11 @@
             "title": "Đăng ký tài khoản mới",
             "description": "Chào mừng bạn đến với hệ thống quản lý quảng cáo, hãy nhập thông tin đăng ký để tạo tài khoản mới.",
             "role": "Vai trò"
+        }
+    },
+    "user": {
+        "list_employee": {
+
         }
     }
 }

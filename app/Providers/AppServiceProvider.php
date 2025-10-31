@@ -10,6 +10,7 @@ use App\Repositories\UserOtpRepository;
 use App\Repositories\UserReferralRepository;
 use App\Repositories\UserRepository;
 use App\Service\AuthService;
+use App\Service\UserService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -43,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
     private function registerApplicationService(): void
     {
         $this->app->bind(AuthService::class);
+        $this->app->bind(UserService::class);
     }
 
     private function definedGate(): void
