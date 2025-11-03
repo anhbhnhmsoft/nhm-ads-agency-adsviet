@@ -6,6 +6,7 @@ use App\Common\Constants\User\UserRole;
 use App\Core\BaseRepository;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class UserRepository extends BaseRepository
 {
@@ -18,12 +19,24 @@ class UserRepository extends BaseRepository
     {
         $query = $this->query();
         if (!empty($filters['keyword'])) {
-            $query->where('name', 'like', "%{$filters['keyword']}%")
-                ->orWhere('username', 'like', "%{$filters['keyword']}%")
-                ->orWhere('id', (int)$filters['keyword']);
+            $keyword = trim($filters['keyword']);
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', "%{$keyword}%")
+                    ->orWhere('username', 'like', "%{$keyword}%")
+                    ->orWhere('phone', 'like', "%{$keyword}%")
+                    ->orWhere('referral_code', 'like', "%{$keyword}%")
+                    ->orWhere('id', 'like', "%{$keyword}%");
+            });
         }
         if (!empty($filters['roles'])) {
             $query->whereIn('role', $filters['roles']);
+        }
+        // Nếu có manager_id trả về từ service thì lấy employe của manager đó
+        if (!empty($filters['manager_id'])) {
+            $query->whereHas('referredBy', function ($q) use ($filters) {
+                $q->where('referrer_id', $filters['manager_id'])
+                    ->whereNull('deleted_at');
+            });
         }
         return $query;
     }
@@ -107,5 +120,57 @@ class UserRepository extends BaseRepository
                 UserRole::MANAGER->value,
             ])
             ->first();
+    }
+
+    public function queryEmployees(): Builder
+    {
+        return $this->model()
+            ->whereIn('role', [UserRole::EMPLOYEE->value, UserRole::MANAGER->value]);
+    }
+
+    public function listEmployees(array $filters = [])
+    {
+        $query = $this->queryEmployees();
+        if (!empty($filters['username'])) {
+            $query->where('username', 'like', '%' . $filters['username'] . '%');
+        }
+        if (isset($filters['role'])) {
+            $query->where('role', (int)$filters['role']);
+        }
+        if (isset($filters['disabled'])) {
+            $query->where('disabled', $filters['disabled']);
+        }
+        return $query->orderByDesc('id')
+        ->get(['id','name','username','role','disabled','referral_code']);
+    }
+
+    public function findEmployeeById(string $id): ?User
+    {
+        return $this->queryEmployees()
+        ->find($id);
+    }
+
+    public function toggleDisableById(string $id, bool $disabled): bool
+    {
+        return (bool) $this->model()
+        ->where('id', $id)
+        ->update(['disabled' => $disabled]);
+    }
+
+    public function getManagers(): Collection
+    {
+        return $this->model()
+            ->where('role', UserRole::MANAGER->value)
+            ->where('disabled', false)
+            ->orderBy('name')
+            ->get(['id', 'name', 'username']);
+    }
+
+    public function getEmployees(): Collection
+    {
+        return $this->model()
+            ->where('role', UserRole::EMPLOYEE->value)
+            ->orderBy('name')
+            ->get(['id', 'name', 'username']);
     }
 }

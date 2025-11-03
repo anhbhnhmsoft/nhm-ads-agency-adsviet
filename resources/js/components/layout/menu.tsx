@@ -50,6 +50,7 @@ const useMenu = () => {
                     _UserRole.MANAGER,
                 ]),
             },
+            
         ];
     }, [checkRole, t, isActive]);
 

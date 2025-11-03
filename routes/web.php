@@ -18,9 +18,7 @@ Route::middleware(['guest:web'])->group(function () {
             ->name('auth_register_new_user_screen');
         Route::post('/register-new-user', [AuthController::class, 'handleRegisterNewUser'])
             ->name('auth_register_new_user');
-
     });
-
 });
 
 
@@ -29,15 +27,16 @@ Route::middleware(['auth:web'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::prefix('user')->group(function () {
-       Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');
-       Route::get('/create-employee', [UserController::class, 'createEmployeeScreen'])->name('user_create_employee');
+        Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');
+        Route::get('/create-employee', [UserController::class, 'createEmployeeScreen'])->name('user_create_employee');
+        Route::get('/employee/{id}/edit', [UserController::class, 'editEmployeeScreen'])->name('user_employee_edit');
+        Route::post('/employee', [UserController::class, 'store'])->name('user_employee_store');
+        Route::put('/employee/{id}', [UserController::class, 'update'])->name('user_employee_update');
+        Route::delete('/employee/{id}', [UserController::class, 'destroy'])->name('user_employee_destroy');
+        Route::post('/employee/{id}/toggle-disable', [UserController::class, 'toggleDisable'])->name('user_employee_toggle_disable');
+        
+        Route::get('/manager/{managerId}/employees', [UserController::class, 'getEmployeesByManager'])->name('user_get_employees_by_manager');
+        Route::post('/employee/assign', [UserController::class, 'assignEmployee'])->name('user_assign_employee');
+        Route::post('/employee/unassign', [UserController::class, 'unassignEmployee'])->name('user_unassign_employee');
     });
 });
-
-Route::middleware('web')->group(function () {
-    Route::post('auth/send-otp-whatsapp', [AuthController::class, 'sendWhatsappOtp'])
-        ->name('auth.send_otp_whatsapp');
-    Route::post('auth/verify-otp-whatsapp', [AuthController::class, 'verifyWhatsappOtp'])
-        ->name('auth.verify_otp_whatsapp');
-});
-

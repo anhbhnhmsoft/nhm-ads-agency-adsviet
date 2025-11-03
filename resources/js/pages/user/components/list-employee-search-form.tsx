@@ -47,7 +47,7 @@ const ListEmployeeSearchForm = () => {
                         )}
                     />
                     <ControlPermission
-                        roles={[_UserRole.ADMIN, _UserRole.MANAGER]}
+                        roles={[_UserRole.ADMIN]}
                         render={() => (
                             <Button variant={"outline"} className={'cursor-pointer'} onClick={() => {
                                 router.visit(user_create_employee().url)

@@ -6,6 +6,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { ThemeProvider } from '@/components/theme-provider';
 import { usePage } from '@inertiajs/react';
 import { toast } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
 import LoadingGlobal from '@/components/loading-global';
 import { IBreadcrumbItem } from '@/lib/types/type';
 
@@ -40,6 +41,7 @@ export default ({ children, breadcrumbs}: AppLayoutProps) => {
                     <main className="flex flex-1 flex-col gap-4 p-4">{children}</main>
                 </AppContent>
             </AppShell>
+            <Toaster expand visibleToasts={3} position="top-right" />
             <LoadingGlobal />
         </ThemeProvider>
     );
