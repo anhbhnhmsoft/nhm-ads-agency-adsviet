@@ -8,14 +8,13 @@ import {
     SidebarMenuSubButton,
     SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Fragment } from 'react';
 import { ChevronRight } from 'lucide-react';
 import useMenu from '@/components/layout/menu';
 
 export function NavMain() {
-    const {auth} = usePage().props;
     const menu = useMenu();
     return (
         <SidebarGroup className="px-2 py-0">
