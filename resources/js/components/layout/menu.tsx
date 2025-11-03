@@ -2,9 +2,9 @@ import useCheckRole from '@/hooks/use-check-role';
 import { _UserRole } from '@/lib/types/constants';
 import { IMenu } from '@/lib/types/type';
 import { resolveUrl } from '@/lib/utils';
-import { dashboard, user_list_employee } from '@/routes';
+import { dashboard, user_list, user_list_employee } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
-import { LayoutDashboard, Users } from 'lucide-react';
+import { LayoutDashboard, Users, BookUser } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -14,7 +14,7 @@ const useMenu = () => {
     const { t } = useTranslation();
 
     const isActive = useCallback(
-        (href:  NonNullable<InertiaLinkProps["href"]>) => {
+        (href: NonNullable<InertiaLinkProps['href']>) => {
             return url.startsWith(resolveUrl(href));
         },
         [url],
@@ -45,9 +45,19 @@ const useMenu = () => {
                 icon: <Users />,
                 is_menu: true,
                 active: isActive(user_list_employee()),
+                can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER]),
+            },
+            {
+                title: t('menu.user_list_customer'),
+                url: user_list().url,
+                icon: <BookUser/>,
+                is_menu: true,
+                active: isActive(user_list()),
                 can_show: checkRole([
                     _UserRole.ADMIN,
                     _UserRole.MANAGER,
+                    _UserRole.EMPLOYEE,
+                    _UserRole.AGENCY,
                 ]),
             },
             

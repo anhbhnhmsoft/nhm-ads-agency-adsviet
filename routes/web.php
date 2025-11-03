@@ -25,6 +25,7 @@ Route::middleware(['guest:web'])->group(function () {
 Route::middleware(['auth:web'])->group(function () {
     Route::redirect('/', '/dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::prefix('user')->group(function () {
         Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');
@@ -38,5 +39,9 @@ Route::middleware(['auth:web'])->group(function () {
         Route::get('/manager/{managerId}/employees', [UserController::class, 'getEmployeesByManager'])->name('user_get_employees_by_manager');
         Route::post('/employee/assign', [UserController::class, 'assignEmployee'])->name('user_assign_employee');
         Route::post('/employee/unassign', [UserController::class, 'unassignEmployee'])->name('user_unassign_employee');
+    });
+
+    Route::prefix('/customer')->group(function (){
+        Route::get('/list', [UserController::class, 'listCustomer'])->name('user_list');
     });
 });

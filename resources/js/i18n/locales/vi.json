@@ -29,6 +29,10 @@
         "back": "Quay lại",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
+        "logout": "Đăng xuất",
+        "social_authentication": "Xác thực xã hội",
+        "using_telegram": "Sử dụng Telegram",
+        "using_whatsapp": "Sử dụng WhatsApp",
         "help": "Hỗ trợ",
         "save": "Lưu"
     },
@@ -45,7 +49,8 @@
         "dashboard": "Trang chủ",
         "user": "Người dùng",
         "user_list_employee": "Danh sách nhân viên",
-        "user_create_employee": "Tạo nhân viên"
+        "user_create_employee": "Tạo nhân viên",
+        "user_list_customer": "Khách hàng"
     },
     "auth": {
         "components": {

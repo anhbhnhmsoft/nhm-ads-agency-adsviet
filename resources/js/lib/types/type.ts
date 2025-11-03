@@ -8,6 +8,7 @@ export interface IBreadcrumbItem {
 
 export interface IUser {
     id: number;
+    name: string;
     username: string;
     phone: string | null;
     disabled: boolean;
