@@ -4,6 +4,14 @@ import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LaravelPaginator } from '@/lib/types/type';
 import { DataTablePagination } from '@/components/table/pagination';
+import { cn } from '@/lib/utils';
+declare module '@tanstack/react-table' {
+    // @ts-ignore - Extending existing interface
+    interface ColumnMeta {
+        headerClassName?: string;
+        cellClassName?: string;
+    }
+}
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
@@ -26,7 +34,14 @@ export function DataTable<TData, TValue>({ columns, paginator }: DataTableProps<
                            <TableRow key={headerGroup.id}>
                                {headerGroup.headers.map((header) => {
                                    return (
-                                       <TableHead key={header.id}>
+                                       <TableHead 
+                                           key={header.id}
+                                           className={cn(
+                                               header.isPlaceholder 
+                                                   ? '' 
+                                                   : header.column.columnDef.meta?.headerClassName
+                                           )}
+                                       >
                                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                                        </TableHead>
                                    );
@@ -39,7 +54,12 @@ export function DataTable<TData, TValue>({ columns, paginator }: DataTableProps<
                            table.getRowModel().rows.map((row) => (
                                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                                    {row.getVisibleCells().map((cell) => (
-                                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                                       <TableCell 
+                                           key={cell.id}
+                                           className={cn(cell.column.columnDef.meta?.cellClassName)}
+                                       >
+                                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                       </TableCell>
                                    ))}
                                </TableRow>
                            ))

@@ -1,5 +1,5 @@
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { SharedData } from '@/lib/types';
+import { ISharedData } from '@/lib/types';
 import { usePage } from '@inertiajs/react';
 
 interface AppShellProps {
@@ -8,7 +8,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, variant = 'header' }: AppShellProps) {
-    const isOpen = usePage<SharedData>().props.sidebarOpen;
+    const isOpen = usePage<ISharedData>().props.sidebarOpen;
 
     if (variant === 'header') {
         return (

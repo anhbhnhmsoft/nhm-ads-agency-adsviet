@@ -3,6 +3,7 @@ import { _UserRole } from '@/lib/types/constants';
 
 export type EmployeeListItem = {
     id: number;
+    name: string;
     username: string;
     phone: string | null;
     disabled: boolean;
@@ -11,7 +12,6 @@ export type EmployeeListItem = {
 }
 
 export type EmployeeListPagination = LaravelPaginator<EmployeeListItem>;
-
 
 export type EmployeeListQuery = BaseSearchRequest<{
     keyword?: string;
@@ -33,3 +33,35 @@ export type CustomerListItem = {
     referral_code: string;
 }
 export type CustomerListPagination = LaravelPaginator<CustomerListItem>;
+
+export type Employee = {
+    id: number;
+    name: string;
+    username: string;
+    phone: string | null;
+    role: number;
+    disabled: boolean;
+}
+
+export type EmployeeFormData = {
+    id?: number;
+    name: string;
+    username: string;
+    password?: string;
+    phone?: string | null;
+    role: number;
+    disabled: boolean;
+}
+
+export type Manager = {
+    id: number;
+    name: string;
+    username: string;
+}
+
+export type EmployeeForAssignment = {
+    id: number;
+    name: string;
+    username: string;
+    assigned: boolean;
+}

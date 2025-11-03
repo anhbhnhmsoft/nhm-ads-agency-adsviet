@@ -26,13 +26,15 @@
         "keyword": "Từ khóa",
         "search": "Tìm kiếm",
         "add": "Thêm",
+        "back": "Quay lại",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
-        "help": "Hỗ trợ",
         "logout": "Đăng xuất",
         "social_authentication": "Xác thực xã hội",
         "using_telegram": "Sử dụng Telegram",
-        "using_whatsapp": "Sử dụng WhatsApp"
+        "using_whatsapp": "Sử dụng WhatsApp",
+        "help": "Hỗ trợ",
+        "save": "Lưu"
     },
     "enum": {
         "user_role": {
@@ -89,6 +91,20 @@
     "user": {
         "list_employee": {
 
-        }
+        },
+        "edit_employee": "Chỉnh sửa nhân viên",
+        "confirm_delete": "Bạn có chắc chắn muốn xóa nhân viên này?",
+        "assign_employee": "Gán nhân viên",
+        "employee_list": "Danh sách nhân viên",
+        "select_manager": "Chọn quản lý",
+        "select_manager_placeholder": "Chọn quản lý...",
+        "no_employees": "Không có nhân viên nào",
+        "assign": "Gán nhân viên",
+        "unassign": "Hủy gán",
+        "assign_employee_success": "Gán nhân viên thành công",
+        "unassign_employee_success": "Hủy gán nhân viên thành công",
+        "role_edit_disabled": "Manager không được phép chỉnh sửa vai trò",
+        "search_employee_placeholder": "Tìm kiếm theo tên hoặc username...",
+        "no_employees_found": "Không tìm thấy nhân viên nào"
     }
 }
