@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Common\Constants\User\UserRole;
 use App\Common\Helper;
+use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
 use App\Models\User;
@@ -92,7 +93,14 @@ class AuthService
         return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
     }
 
-
+    public function handleLogout(): ServiceReturn
+    {
+        Auth::logout();
+        Caching::flushCacheSession();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+        return ServiceReturn::success();
+    }
     /**
      * Verify login with telegram
      * @param array $authData

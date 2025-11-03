@@ -27,10 +27,15 @@ Route::middleware(['guest:web'])->group(function () {
 Route::middleware(['auth:web'])->group(function () {
     Route::redirect('/', '/dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::prefix('user')->group(function () {
        Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');
        Route::get('/create-employee', [UserController::class, 'createEmployeeScreen'])->name('user_create_employee');
+    });
+
+    Route::prefix('/customer')->group(function (){
+        Route::get('/list', [UserController::class, 'listCustomer'])->name('user_list');
     });
 });
 
