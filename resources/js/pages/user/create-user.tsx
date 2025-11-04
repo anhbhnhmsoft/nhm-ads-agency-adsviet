@@ -3,35 +3,33 @@ import AppLayout from '@/layouts/app-layout';
 import { useTranslation } from 'react-i18next';
 import { _UserRole } from '@/lib/types/constants';
 import { usePage } from '@inertiajs/react';
-import { user_list_employee } from '@/routes';
+import { user_update, user_list } from '@/routes';
 import { Employee } from '@/pages/user/types/type';
 import useCheckRole from '@/hooks/use-check-role';
 import { useEntityForm } from '@/pages/user/hooks/use-entity-form';
 import UserForm from '@/pages/user/components/UserForm';
-import { user_employee_store, user_employee_update } from '@/routes';
 
 type Props = {
-  employee?: Employee;
+  user?: Employee;
 };
 
-const CreateEmployee = ({ employee }: Props) => {
+const CreateUser = ({ user }: Props) => {
   const { t } = useTranslation();
   const { props } = usePage();
   const checkRole = useCheckRole(props.auth as any);
   const isAdmin = checkRole([_UserRole.ADMIN]);
   const isManager = checkRole([_UserRole.MANAGER]);
-  const isEdit = !!employee?.id;
+  const isEdit = !!user?.id;
   const { form, handleSubmitForm } = useEntityForm({
-    initial: employee,
-    defaultRole: _UserRole.EMPLOYEE,
-    storeUrl: user_employee_store().url,
-    updateUrl: employee?.id ? user_employee_update({ id: employee.id }).url : undefined,
+    initial: user,
+    defaultRole: _UserRole.CUSTOMER,
+    updateUrl: user?.id ? user_update({ id: user.id }).url : undefined,
   });
   const { data, setData, processing, errors } = form;
 
   const roleOptions = [
-    { value: _UserRole.MANAGER, label: t('enum.user_role.manager') },
-    { value: _UserRole.EMPLOYEE, label: t('enum.user_role.employee') },
+    { value: _UserRole.CUSTOMER, label: t('enum.user_role.customer') },
+    { value: _UserRole.AGENCY, label: t('enum.user_role.agency') },
   ];
 
   return (
@@ -42,16 +40,16 @@ const CreateEmployee = ({ employee }: Props) => {
       setData={setData}
       isEdit={isEdit}
       roleOptions={roleOptions}
-      canEditRole={!(isEdit && isManager && !isAdmin)}
+      canEditRole={isAdmin}
       onSubmit={handleSubmitForm}
-      backHref={user_list_employee().url}
-      title={isEdit ? t('user.edit_employee') : t('menu.user_create_employee')}
+      backHref={user_list().url}
+      title={isEdit ? t('user.edit_customer', { defaultValue: 'Chỉnh sửa khách hàng' }) : t('user.create_customer', { defaultValue: 'Tạo khách hàng' })}
     />
   );
 };
 
-CreateEmployee.layout = (page: ReactNode) => (
-  <AppLayout breadcrumbs={[{ title: 'menu.user_list_employee' }]} children={page} />
+CreateUser.layout = (page: ReactNode) => (
+  <AppLayout breadcrumbs={[{ title: 'menu.user_list_customer' }]} children={page} />
 );
 
-export default CreateEmployee;
+export default CreateUser;

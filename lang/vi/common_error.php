@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'account_disabled' => 'Tài khoản của bạn đã bị vô hiệu hóa',
     'server_error' => 'Đã xảy ra lỗi trên máy chủ, vui lòng liên hệ quản trị viên để được hỗ trợ.',
     'request_error' => 'Không nhận được phản hồi từ máy chủ, vui lòng liên hệ quản trị viên để được hỗ trợ.',
     'program_error' => 'Đã xảy ra lỗi trên chương trình, vui lòng liên hệ quản trị viên để được hỗ trợ.',

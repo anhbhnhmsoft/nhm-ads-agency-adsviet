@@ -12,9 +12,8 @@ import ListEmployeeSearchForm from '@/pages/user/components/list-employee-search
 import { Separator } from '@/components/ui/separator';
 import { user_list_employee, user_employee_toggle_disable, user_employee_edit, user_employee_destroy } from '@/routes';
 import { router } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
-import { Pencil, Trash2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useActionCell } from '@/pages/user/hooks/use-action-cell';
 import AssignEmployee from '@/pages/user/components/assign-employee';
 import useCheckRole from '@/hooks/use-check-role';
 
@@ -27,7 +26,30 @@ const ListEmployee = ({paginator, managers = []}: Props) => {
     const { props } = usePage();
     const checkRole = useCheckRole(props.auth as any);
     const isAdmin = checkRole([_UserRole.ADMIN]);
-    const isManager = checkRole([_UserRole.MANAGER]);
+    const actionCell = useActionCell<EmployeeListItem>({
+        canDelete: isAdmin,
+        getToggleText: (disabled) => (disabled ? t('common.active') : t('common.disabled')),
+        onToggle: (employee) => {
+            const disabled = !!employee.disabled;
+            router.post(
+                user_employee_toggle_disable({ id: employee.id }).url,
+                { disabled: !disabled },
+                { preserveScroll: true }
+            );
+        },
+        onEdit: (employee) => {
+            router.visit(user_employee_edit({ id: employee.id }).url);
+        },
+        onDelete: (employee) => {
+            if (confirm(t('user.confirm_delete'))) {
+                router.delete(
+                    user_employee_destroy({ id: employee.id }).url,
+                    { preserveScroll: true }
+                );
+            }
+        },
+    });
+
     const columns: ColumnDef<EmployeeListItem>[] = useMemo(() => [
         {
             accessorKey: 'id',
@@ -81,62 +103,7 @@ const ListEmployee = ({paginator, managers = []}: Props) => {
         {
             id: 'action',
             header: t('common.action'),
-            cell: (cell) => {
-                const employee = cell.row.original;
-                const disabled = employee.disabled;
-                const handleToggle = () => {
-                    router.post(
-                        user_employee_toggle_disable({ id: employee.id }).url,
-                        { disabled: !disabled },
-                        {
-                            preserveScroll: true,
-                        }
-                    );
-                };
-                const handleEdit = () => {
-                    router.visit(user_employee_edit({ id: employee.id }).url);
-                };
-                const handleDelete = () => {
-                    if (confirm(t('user.confirm_delete', { defaultValue: 'Bạn có chắc chắn muốn xóa nhân viên này?' }))) {
-                        router.delete(
-                            user_employee_destroy({ id: employee.id }).url,
-                            {
-                                preserveScroll: true,
-                            }
-                        );
-                    }
-                };
-                return (
-                    <div className="flex items-center justify-center gap-2">
-                        <Button
-                            type="button"
-                            variant={disabled ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={handleToggle}
-                        >
-                            {disabled ? t('common.active') : t('common.disabled')}
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleEdit}
-                        >
-                            <Pencil className="size-4" />
-                        </Button>
-                        {isAdmin && (
-                            <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                onClick={handleDelete}
-                            >
-                                <Trash2 className="size-4" />
-                            </Button>
-                        )}
-                    </div>
-                );
-            },
+            cell: (cell) => actionCell(cell.row.original),
             meta: {
                 headerClassName: 'text-center',
                 cellClassName: 'text-center',
@@ -149,9 +116,9 @@ const ListEmployee = ({paginator, managers = []}: Props) => {
             <Separator className={'my-4'} />
             <Tabs defaultValue="list" className="w-full">
                 <TabsList>
-                    <TabsTrigger value="list">{t('user.employee_list', { defaultValue: 'Danh sách nhân viên' })}</TabsTrigger>
+                    <TabsTrigger value="list">{t('user.employee_list')}</TabsTrigger>
                     {isAdmin && (
-                        <TabsTrigger value="assign">{t('user.assign_employee', { defaultValue: 'Gán nhân viên' })}</TabsTrigger>
+                        <TabsTrigger value="assign">{t('user.assign_employee')}</TabsTrigger>
                     )}
                 </TabsList>
                 <TabsContent value="list" className="mt-4">
