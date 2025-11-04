@@ -13,9 +13,6 @@ use App\Http\Resources\ListEmployeeResource;
 use App\Service\UserService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-
-
 class UserController extends Controller
 {
 
@@ -46,7 +43,6 @@ class UserController extends Controller
     public function listEmployee(Request $request)
     {
         $params = $this->extractQueryPagination($request);
-        $currentUser = Auth::user();
         $result = $this->userService->getListEmployeePagination(
             queryListDTO: new QueryListDTO(
                 perPage: $params->get('per_page'),
@@ -55,7 +51,6 @@ class UserController extends Controller
                 sortBy: $params->get('sort_by'),
                 sortDirection: $params->get('direction'),
             ),
-            currentUser: $currentUser
         );
         $paginator = $result->getData();
 
@@ -102,6 +97,18 @@ class UserController extends Controller
         return redirect()->back()->withInput();
     }
 
+    public function updateUser(string $id, UserUpdateRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+        $result = $this->userService->updateUser($id, $validated);
+        if ($result->isSuccess()) {
+            FlashMessage::success(__('common_success.update_success'));
+            return redirect()->route('user_list');
+        }
+        FlashMessage::error($result->getMessage());
+        return redirect()->back()->withInput();
+    }
+
     public function destroy(string $id): RedirectResponse
     {
         $result = $this->userService->deleteEmployee($id);
@@ -111,6 +118,17 @@ class UserController extends Controller
             FlashMessage::error($result->getMessage());
         }
         return redirect()->route('user_list_employee');
+    }
+
+    public function destroyUser(string $id): RedirectResponse
+    {
+        $result = $this->userService->deleteUser($id);
+        if ($result->isSuccess()) {
+            FlashMessage::success(__('common_success.delete_success'));
+        } else {
+            FlashMessage::error($result->getMessage());
+        }
+        return redirect()->route('user_list');
     }
 
     public function toggleDisable(string $id, ToggleDisableRequest $request): RedirectResponse
@@ -125,6 +143,18 @@ class UserController extends Controller
         return redirect()->route('user_list_employee');
     }
 
+    public function userToggleDisable(string $id, ToggleDisableRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+        $result = $this->userService->userToggleDisable($id, (bool)$validated['disabled']);
+        if ($result->isSuccess()) {
+            FlashMessage::success(__('common_success.update_success'));
+        } else {
+            FlashMessage::error($result->getMessage());
+        }
+        return redirect()->route('user_list');
+    }
+
     public function editEmployeeScreen(string $id)
     {
         $result = $this->userService->findEmployee($id);
@@ -134,6 +164,18 @@ class UserController extends Controller
         }
         return $this->rendering('user/create-employee', [
             'employee' => $result->getData(),
+        ]);
+    }
+
+    public function editUserScreen(string $id)
+    {
+        $result = $this->userService->findUser($id);
+        if ($result->isError()) {
+            FlashMessage::error($result->getMessage());
+            return redirect()->route('user_list');
+        }
+        return $this->rendering('user/create-user', [
+            'user' => $result->getData(),
         ]);
     }
 

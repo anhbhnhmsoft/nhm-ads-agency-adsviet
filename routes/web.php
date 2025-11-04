@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
 
@@ -22,7 +23,7 @@ Route::middleware(['guest:web'])->group(function () {
 });
 
 
-Route::middleware(['auth:web'])->group(function () {
+Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::redirect('/', '/dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -43,5 +44,9 @@ Route::middleware(['auth:web'])->group(function () {
 
     Route::prefix('/customer')->group(function (){
         Route::get('/list', [UserController::class, 'listCustomer'])->name('user_list');
+        Route::get('/{id}/edit', [UserController::class, 'editUserScreen'])->name('user_edit');
+        Route::put('/{id}', [UserController::class, 'updateUser'])->name('user_update');
+        Route::post('/{id}/toggle-disable', [UserController::class, 'userToggleDisable'])->name('user_toggle_disable');
+        Route::delete('/{id}', [UserController::class, 'destroyUser'])->name('user_destroy');
     });
 });

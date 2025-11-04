@@ -31,6 +31,23 @@ class UserRepository extends BaseRepository
         if (!empty($filters['roles'])) {
             $query->whereIn('role', $filters['roles']);
         }
+
+        // Chỉ lấy những user có bản ghi liên kết (user_referrals) mà referrer_id thuộc danh sách cho phép
+        if (!empty($filters['referrer_ids']) && is_array($filters['referrer_ids'])) {
+            $referrerIds = array_filter($filters['referrer_ids']);
+            if (!empty($referrerIds)) {
+                $query->whereHas('referredBy', function ($q) use ($referrerIds) {
+                    $q->whereIn('referrer_id', $referrerIds)
+                        ->whereNull('deleted_at');
+                });
+            }
+        }
+
+        // Agency không thấy chính mình
+        if (!empty($filters['exclude_user_id'])) {
+            $query->where('id', '!=', $filters['exclude_user_id']);
+        }
+        
         // Nếu có manager_id trả về từ service thì lấy employe của manager đó
         if (!empty($filters['manager_id'])) {
             $query->whereHas('referredBy', function ($q) use ($filters) {
@@ -128,6 +145,12 @@ class UserRepository extends BaseRepository
             ->whereIn('role', [UserRole::EMPLOYEE->value, UserRole::MANAGER->value]);
     }
 
+    public function queryUser(): Builder
+    {
+        return $this->model()
+            ->whereIn('role', [UserRole::CUSTOMER->value, UserRole::AGENCY->value]);
+    }
+
     public function listEmployees(array $filters = [])
     {
         $query = $this->queryEmployees();
@@ -147,6 +170,12 @@ class UserRepository extends BaseRepository
     public function findEmployeeById(string $id): ?User
     {
         return $this->queryEmployees()
+        ->find($id);
+    }
+
+    public function findUserById(string $id): ?User
+    {
+        return $this->queryUser()
         ->find($id);
     }
 

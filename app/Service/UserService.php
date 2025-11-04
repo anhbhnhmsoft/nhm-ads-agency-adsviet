@@ -12,6 +12,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Common\Helper;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
@@ -29,8 +30,9 @@ class UserService
      * @param QueryListDTO $queryListDTO
      * @return ServiceReturn
      */
-    public function getListEmployeePagination(QueryListDTO $queryListDTO, ?User $currentUser = null): ServiceReturn
+    public function getListEmployeePagination(QueryListDTO $queryListDTO): ServiceReturn
     {
+        $currentUser = Auth::user();
         try {
             $filter = $queryListDTO->filter ?? [];
             $filter['roles'] = [
@@ -73,6 +75,28 @@ class UserService
                 UserRole::CUSTOMER->value,
                 UserRole::AGENCY->value,
             ];
+
+            // Phân quyền hiển thị danh sách khách hàng theo vai trò người dùng hiện tại
+            $currentUser = Auth::user();
+            if ($currentUser) {
+                switch ($currentUser->role) {
+                    case UserRole::MANAGER->value:
+                        // Manager: xem khách hàng do mình quản lý + khách hàng do nhân viên của mình quản lý
+                        $employeeIds = $this->userReferralRepository
+                            ->getAssignedEmployeeIds((int)$currentUser->id);
+                        $filter['referrer_ids'] = array_values(array_unique(array_merge([$currentUser->id], $employeeIds)));
+                        break;
+                    case UserRole::EMPLOYEE->value:
+                        // Employee: chỉ xem khách hàng do chính mình quản lý
+                        $filter['referrer_ids'] = [$currentUser->id];
+                        break;
+                    case UserRole::AGENCY->value:
+                        // Agency: chỉ xem khách hàng do mình quản lý, và không hiển thị bản thân
+                        $filter['referrer_ids'] = [$currentUser->id];
+                        $filter['exclude_user_id'] = $currentUser->id;
+                        break;
+                }
+            }
             $query = $this->userRepository->filterQuery($filter);
             $query = $this->userRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
@@ -142,6 +166,31 @@ class UserService
         }
     }
 
+    public function updateUser(string $id, array $data): ServiceReturn
+    {
+        $user = $this->userRepository->findUserById($id);
+        if (!$user) {
+            return ServiceReturn::error(message: __('common_error.data_not_found'));
+        }
+        try {
+            $payload = [
+                'name' => $data['name'] ?? $user->name,
+                'username' => $data['username'] ?? $user->username,
+                'phone' => $data['phone'] ?? $user->phone,
+                'role' => isset($data['role']) ? (int)$data['role'] : $user->role,
+                'disabled' => isset($data['disabled']) ? (bool)$data['disabled'] : $user->disabled,
+            ];
+            if (!empty($data['password'])) {
+                $payload['password'] = Hash::make($data['password']);
+            }
+            $user->update($payload);
+            return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            Logging::error(message: 'Lỗi khi cập nhật người dùng UserService@updateUser: ' . $e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     public function deleteEmployee(string $id): ServiceReturn
     {
         $user = $this->userRepository->findEmployeeById($id);
@@ -153,6 +202,21 @@ class UserService
             return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error(message: 'Lỗi khi xóa nhân viên UserService@deleteEmployee: ' . $e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    public function deleteUser(string $id): ServiceReturn
+    {
+        $user = $this->userRepository->findUserById($id);
+        if (!$user) {
+            return ServiceReturn::error(message: __('common_error.data_not_found'));
+        }
+        try {
+            $user->delete();
+            return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            Logging::error(message: 'Lỗi khi xóa người dùng UserService@deleteUser: ' . $e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -172,9 +236,40 @@ class UserService
         }
     }
 
+    public function userToggleDisable(string $id, bool $disabled): ServiceReturn
+    {
+        $user = $this->userRepository->findUserById($id);
+        if (!$user) {
+            return ServiceReturn::error(message: __('common_error.data_not_found'));
+        }
+        try {
+            $user->update(['disabled' => $disabled]);
+            return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            Logging::error(message: 'Lỗi khi đổi trạng thái người dùng UserService@UserToggleDisable: ' . $e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     public function findEmployee(string $id): ServiceReturn
     {
         $user = $this->userRepository->findEmployeeById($id);
+        if (!$user) {
+            return ServiceReturn::error(message: __('common_error.data_not_found'));
+        }
+        return ServiceReturn::success(data: [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'phone' => $user->phone,
+            'role' => $user->role,
+            'disabled' => $user->disabled,
+        ]);
+    }
+
+    public function findUser(string $id): ServiceReturn
+    {
+        $user = $this->userRepository->findUserById($id);
         if (!$user) {
             return ServiceReturn::error(message: __('common_error.data_not_found'));
         }
