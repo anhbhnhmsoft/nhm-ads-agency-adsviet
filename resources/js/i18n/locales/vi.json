@@ -36,7 +36,8 @@
         "help": "Hỗ trợ",
         "save": "Lưu",
         "password_placeholder": "Nhập mật khẩu mới (nếu muốn đổi)",
-        "password_optional": "(Để trống nếu không đổi)"
+        "password_optional": "(Để trống nếu không đổi)",
+        "foundation": "Nền tảng"
     },
     "enum": {
         "user_role": {
@@ -45,15 +46,26 @@
             "employee": "Nhân viên",
             "agency": "Agency",
             "customer": "Khách hàng"
-        }
+      },
+      "platform_type": {
+        "google": "Google Ads",
+        "meta": "Meta Ads"
+      }
     },
     "menu": {
         "dashboard": "Trang chủ",
         "user": "Người dùng",
         "user_list_employee": "Danh sách nhân viên",
-        "user_create_employee": "Tạo nhân viên",
-        "user_list_customer": "Khách hàng"
+      "user_create_employee": "Tạo nhân viên",
+      "user_list_customer": "Khách hàng",
+      "config": "Cấu hình",
+      "platform_settings": "Cấu hình nền tảng"
     },
+  "platform": {
+    "settings": "Cấu hình nền tảng",
+    "app_or_client_id": "App ID / Client ID",
+    "bm_or_login_id": "Business Manager ID / Login Customer ID"
+  },
     "auth": {
         "components": {
             "customer": "Khách hàng",
