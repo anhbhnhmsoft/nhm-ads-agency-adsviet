@@ -1,5 +1,5 @@
 import { JSX } from 'react';
-import { _UserRole } from '@/lib/types/constants';
+import { _UserRole, _PlatformType } from '@/lib/types/constants';
 
 export interface IBreadcrumbItem {
     title: string;
@@ -58,3 +58,12 @@ export type LaravelPaginator<T> = {
         total: number;
     }
 }
+
+export type PlatformSetting = {
+    id: number;
+    platform: _PlatformType;
+    config: Record<string, any>;
+    disabled: boolean;
+}
+
+export type PlatformSettingListPagination = LaravelPaginator<PlatformSetting>;

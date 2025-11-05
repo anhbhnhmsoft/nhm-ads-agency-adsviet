@@ -6,11 +6,13 @@ use App\Common\Constants\User\GatePermission;
 use App\Common\Constants\User\UserRole;
 use App\Models\User;
 use App\Repositories\UserDeviceRepository;
+use App\Repositories\PlatformSettingRepository;
 use App\Repositories\UserOtpRepository;
 use App\Repositories\UserReferralRepository;
 use App\Repositories\UserRepository;
 use App\Service\AuthService;
 use App\Service\UserService;
+use App\Service\PlatformSettingService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -39,12 +41,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserOtpRepository::class);
         $this->app->bind(UserDeviceRepository::class);
         $this->app->bind(UserReferralRepository::class);
+        $this->app->bind(PlatformSettingRepository::class);
     }
 
     private function registerApplicationService(): void
     {
         $this->app->bind(AuthService::class);
         $this->app->bind(UserService::class);
+        $this->app->bind(PlatformSettingService::class);
     }
 
     private function definedGate(): void

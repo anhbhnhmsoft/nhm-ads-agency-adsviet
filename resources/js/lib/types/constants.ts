@@ -13,3 +13,13 @@ export const userRolesLabel = {
     [_UserRole.AGENCY]: 'enum.user_role.agency',
     [_UserRole.CUSTOMER]: 'enum.user_role.customer',
 }
+
+export enum _PlatformType {
+    GOOGLE = 1,
+    META = 2,
+}
+
+export const platformTypeLabel = {
+    [_PlatformType.GOOGLE]: 'enum.platform_type.google',
+    [_PlatformType.META]: 'enum.platform_type.meta',
+}
