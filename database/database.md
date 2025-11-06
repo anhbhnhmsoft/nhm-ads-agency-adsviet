@@ -17,6 +17,11 @@
     - softDeletes
     - timestamps
 
+# bảng personal_access_tokens
+    # note
+    - lưu trữ thông tin token truy cập của người dùng
+    - là bảng có sẵn trong Laravel Sanctum
+
 # bảng user_referrals
     # note
     - lưu trữ thông tin giới thiệu người dùng
@@ -56,8 +61,11 @@
     # cấu trúc
     - id (int, primary key, auto-increment)
     - user_id (int, foreign key to users.id, not null)
-    - device_id (varchar, not null, unique) -- mã thiết bị
+    - device_id (varchar, not null, index) -- mã thiết bị
+    - device_name (varchar, nullable) -- tên thiết bị
     - device_type (smallint, not null) -- loại thiết bị (ví dụ: iOS, Android, Web)
+    - ip (varchar, nullable) -- địa chỉ IP
+    - notification_token (varchar, nullable) -- token thông báo
     - last_active_at (datetime, not null) -- thời gian hoạt động cuối cùng
     - softDeletes
     - timestamps

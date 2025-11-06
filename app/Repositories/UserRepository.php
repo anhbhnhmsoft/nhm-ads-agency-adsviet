@@ -47,7 +47,7 @@ class UserRepository extends BaseRepository
         if (!empty($filters['exclude_user_id'])) {
             $query->where('id', '!=', $filters['exclude_user_id']);
         }
-        
+
         // Nếu có manager_id trả về từ service thì lấy employe của manager đó
         if (!empty($filters['manager_id'])) {
             $query->whereHas('referredBy', function ($q) use ($filters) {
@@ -110,13 +110,29 @@ class UserRepository extends BaseRepository
     /**
      * Get user by telegram id
      * @param string $telegramId
+     * @param bool $isActive
      * @return User|null
      */
-    public function getUserByTelegramId(string $telegramId): ?User
+    public function getUserByTelegramId(string $telegramId, bool $isActive = true, bool $adminSystem = false): ?User
     {
-        return $this->model()
-            ->isActive()
-            ->where('telegram_id', $telegramId)
+        if ($isActive) {
+            $query = $this->model()->isActive();
+        }else{
+            $query = $this->model()->query();
+        }
+        if ($adminSystem) {
+            $query->whereIn('role', [
+                UserRole::ADMIN->value,
+                UserRole::MANAGER->value,
+                UserRole::EMPLOYEE->value,
+            ]);
+        }else{
+            $query->whereIn('role', [
+                UserRole::AGENCY->value,
+                UserRole::CUSTOMER->value,
+            ]);
+        }
+        return $query->where('telegram_id', $telegramId)
             ->first();
     }
 

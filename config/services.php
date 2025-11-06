@@ -35,7 +35,10 @@ return [
         ],
     ],
     'telegram' => [
+        'bot_id' => env('TELEGRAM_BOT_ID'),
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'bot_username' => env('TELEGRAM_BOT_USERNAME'),
+        'url_telegram_auth' => env('TELEGRAM_URL_TELEGRAM_AUTH'),
     ],
+    'mobile_deep_link' => env('EXPO_DEEP_LINK'),
 ];
