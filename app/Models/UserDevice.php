@@ -15,11 +15,14 @@ class UserDevice extends Model
         'user_id',
         'device_id',
         'device_type',
+        'device_name',
+        'ip',
+        'notification_token',
         'last_active_at',
     ];
 
     protected $casts = [
-        'user_id' => 'integer',
+        'user_id' => 'string',
         'last_active_at' => 'datetime',
     ];
 

@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Common\Constants\DeviceType;
 use App\Common\Constants\User\UserRole;
 use App\Common\Helper;
 use App\Core\Cache\Caching;
@@ -32,9 +33,10 @@ class AuthService
     /**
      * Handle login with username
      * @param array $data
+     * @param bool $isMobile
      * @return ServiceReturn
      */
-    public function handleLoginUsername(array $data): ServiceReturn
+    public function handleLoginUsername(array $data, bool $isMobile = false): ServiceReturn
     {
         // Kiểm tra giới hạn đăng nhập
         $key = 'login.attempts.' . request()->ip();
@@ -46,14 +48,23 @@ class AuthService
         }
         RateLimiter::hit($key, $decayMinutes * 60);
 
-        // Kiểm tra username tồn tại trong hệ thống phù hợp với role
+
         try {
-            if ($data['role'] == 'admin') {
-                // Kiểm tra username trong hệ thống admin
-                if (!$this->userRepository->checkUsernameAdminSystem($data['username'])) {
-                    return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+            // Kiểm tra username tồn tại trong hệ thống phù hợp với role
+            if (!$isMobile) {
+                if ($data['role'] == 'admin') {
+                    // Kiểm tra username trong hệ thống admin
+                    if (!$this->userRepository->checkUsernameAdminSystem($data['username'])) {
+                        return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+                    }
+                } else {
+                    // Kiểm tra username trong hệ thống khách hàng
+                    if (!$this->userRepository->checkUsernameCustomerSystem($data['username'])) {
+                        return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+                    }
                 }
-            } else {
+            }else{
+                // mobile chỉ dùng cho khách hàng
                 // Kiểm tra username trong hệ thống khách hàng
                 if (!$this->userRepository->checkUsernameCustomerSystem($data['username'])) {
                     return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
@@ -67,30 +78,66 @@ class AuthService
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
 
-        // Thực hiện đăng nhập
-        if (Auth::guard('web')->attempt([
-            'username' => $data['username'],
-            'password' => $data['password'],
-            'disabled' => false,
-        ], true)) {
-            try {
-                // Lưu thông tin thiết bị đăng nhập website
-                if ($data['device'] == "web") {
-                    $this->userDeviceRepository->syncActiveUserWeb(Auth::id());
+        try {
+            // --- LOGIN API (Sanctum) ---
+            if ($isMobile) {
+                $user = $this->userRepository->query()
+                    ->where('username', $data['username'])
+                    ->where('disabled', false)
+                    ->first();
+
+                if (!$user || !Hash::check($data['password'], $user->password)) {
+                    return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
                 }
-                // mobile xử lý sau
-            } catch (\Exception $exception) {
-                Logging::error(
-                    message: 'Lỗi khi xử lý sau đăng nhập AuthService@handleLoginUsername: ' . $exception->getMessage(),
-                    exception: $exception
+
+                // Đồng bộ thiết bị đăng nhập
+                $this->userDeviceRepository->syncActiveUserMobile(
+                    userId: $user->id,
+                    deviceId: $data['device_id'],
+                    deviceName: $data['device_name'] ?? null,
+                    deviceType: $data['platform'] === 'ios' ? DeviceType::IOS : DeviceType::ANDROID,
                 );
-                Auth::logout();
-                return ServiceReturn::error(message: __('common_error.server_error'));
+
+                // Tạo token Sanctum
+                $token = $user->createToken('api-token')->plainTextToken;
+
+                return ServiceReturn::success(data: [
+                    'token' => $token,
+                    'user' => $user,
+                ]);
             }
-            request()->session()->regenerate();
-            return ServiceReturn::success();
+
+            // --- LOGIN WEB (Session) ---
+            if (Auth::guard('web')->attempt([
+                'username' => $data['username'],
+                'password' => $data['password'],
+                'disabled' => false,
+            ], $data['remember_me'] ?? false)) {
+
+                $this->userDeviceRepository->syncActiveUserWeb(Auth::id());
+
+                request()->session()->regenerate();
+
+                return ServiceReturn::success();
+            }
+
+            return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
         }
-        return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+        catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi khi xử lý sau đăng nhập AuthService@handleLoginUsername: ' . $exception->getMessage(),
+                exception: $exception
+            );
+
+            // Logout / Revoke token nếu lỗi
+            if ($isMobile && isset($user)) {
+                $user->currentAccessToken()?->delete();
+            } else {
+                Auth::guard('web')->logout();
+            }
+
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
     }
 
     public function handleLogout(): ServiceReturn
@@ -135,7 +182,6 @@ class AuthService
         return ServiceReturn::success();
     }
 
-
     /**
      * Quick login with telegram id
      * @param string $telegramId
@@ -144,11 +190,16 @@ class AuthService
     public function handleQuickLoginTelegram(string $telegramId): ServiceReturn
     {
         try {
-            $user = $this->userRepository->getUserByTelegramId($telegramId);
+            // Web cho phép đăng nhập với admin system
+            $user = $this->userRepository->getUserByTelegramId($telegramId, false, true);
             if (!$user) {
                 return ServiceReturn::success(data: [
                     'need_register' => true
                 ]);
+            }
+            // Kiểm tra user có bị khóa hay không
+            if ($user->disabled) {
+                return ServiceReturn::error(message: __('auth.login.validation.user_disabled'));
             }
 
             // Thực hiện đăng nhập
@@ -169,11 +220,61 @@ class AuthService
         }
     }
 
-    public function handleRegisterNewUser(array $data): ServiceReturn
+    /**
+     * @param array $authData
+     * @return ServiceReturn
+     */
+    public function handleAuthTelegram(array $authData): ServiceReturn
+    {
+        try {
+            // Kiểm tra user có tồn tại trong hệ thống hay không
+            // Kiểm tra user có phải là role AGENCY hoặc CUSTOMER hay không
+            $user = $this->userRepository->getUserByTelegramId($authData['id'], false, false);
+            if (!$user) {
+                return ServiceReturn::success(data: [
+                    'need_register' => true
+                ]);
+            }
+            // Kiểm tra user có bị khóa hay không
+            if ($user->disabled) {
+                return ServiceReturn::error(message: __('auth.login.validation.user_disabled'));
+            }
+            // Đồng bộ thiết bị đăng nhập
+            $this->userDeviceRepository->syncActiveUserMobile(
+                userId: $user->id,
+                deviceId: $authData['device_id'],
+                deviceName: $authData['device_name'] ?? null,
+                deviceType: $authData['platform'] === 'ios' ? DeviceType::IOS : DeviceType::ANDROID,
+            );
+            // Tạo token Sanctum
+            $token = $user->createToken('api-token')->plainTextToken;
+
+            return ServiceReturn::success(data: [
+                'need_register' => false,
+                'token' => $token,
+                'user' => $user,
+            ]);
+
+        } catch (QueryException $exception) {
+            Logging::error(
+                message: 'Lỗi kiểm tra telegram id AuthService@handleAuthTelegram: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            Auth::logout();
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Xử lý đăng ký mới khi user chưa có trong hệ thống
+     * @param array $data
+     * @param bool $isMobile
+     * @return ServiceReturn
+     */
+    public function handleRegisterNewUser(array $data, bool $isMobile = false): ServiceReturn
     {
         DB::beginTransaction();
         try {
-
             // Kiểm tra refer code có tồn tại trong hệ thống hay không
             $userRefer = $this->userRepository->getUserToRegisterByReferCode($data['refer_code']);
             if (!$userRefer) {
@@ -195,7 +296,6 @@ class AuthService
             if ($data['type'] == 'telegram') {
                 $register['telegram_id'] = $data['telegram_id'];
             }
-            // Tạo mới user
             $user = $this->userRepository->create($register);
 
             // Tạo mới user referral
@@ -203,20 +303,42 @@ class AuthService
                 'referrer_id' => $user->id,
                 'referred_id' => $userRefer->id,
             ]);
+            if ($isMobile) {
+                // Đồng bộ thiết bị đăng nhập
+                $this->userDeviceRepository->syncActiveUserMobile(
+                    userId: $user->id,
+                    deviceId: $data['device_id'],
+                    deviceName: $data['device_name'] ?? null,
+                    deviceType: $data['platform'] === 'ios' ? DeviceType::IOS : DeviceType::ANDROID,
+                );
 
-            // Đăng nhập luôn
-            Auth::guard('web')->login($user, true);
-            $this->userDeviceRepository->syncActiveUserWeb($user->id);
-            request()->session()->regenerate();
-            DB::commit();
-            return ServiceReturn::success();
+                // Tạo token Sanctum
+                $token = $user->createToken('api-token')->plainTextToken;
+                DB::commit();
+                return ServiceReturn::success(data: [
+                    'token' => $token,
+                    'user' => $user,
+                ]);
+            }else{
+                // Đăng nhập luôn
+                Auth::guard('web')->login($user, true);
+                $this->userDeviceRepository->syncActiveUserWeb($user->id);
+                DB::commit();
+                request()->session()->regenerate();
+                return ServiceReturn::success();
+            }
         }catch (\Exception $exception) {
             Logging::error(
                 message: 'Lỗi khi đăng ký AuthService@handleRegisterNewUser: ' . $exception->getMessage(),
                 exception: $exception
             );
             DB::rollBack();
-            Auth::logout();
+            // Logout / Revoke token nếu lỗi
+            if ($isMobile && isset($user)) {
+                $user->currentAccessToken()?->delete();
+            } else {
+                Auth::guard('web')->logout();
+            }
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }

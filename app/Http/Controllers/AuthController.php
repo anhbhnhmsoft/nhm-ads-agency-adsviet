@@ -88,7 +88,7 @@ class AuthController extends Controller
         // Kiểm tra người dùng có cần đăng ký hay không
         $status = $result->getData()['need_register'];
         if ($status) {
-            // set cache để đăng ký tài khoản mới
+            // set session để đăng ký tài khoản mới
             Session::put('register_social',[
                 'type' => 'telegram',
                 'data' => $telegramData,

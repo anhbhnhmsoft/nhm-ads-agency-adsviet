@@ -21,13 +21,27 @@ class UserDeviceRepository extends BaseRepository
             $this->query()->updateOrCreate(
                 [
                     'device_id' => $idDeviceWeb,
-                    'device_type' => DeviceType::WEB->value
                 ],
                 [
                     'user_id' => $userId,
+                    'device_type' => DeviceType::WEB->value,
                     'last_active_at' => now(),
                 ]
             );
         }
+    }
+    public function syncActiveUserMobile($userId, $deviceId, $deviceName, DeviceType $deviceType): void
+    {
+        $this->query()->updateOrCreate(
+            [
+                'device_id' => $deviceId,
+            ],
+            [
+                'user_id' => $userId,
+                'device_type' => $deviceType,
+                'device_name' => $deviceName,
+                'last_active_at' => now(),
+            ]
+        );
     }
 }

@@ -12,10 +12,10 @@ final class RestResponse
         ], $status);
     }
 
-    public static function validation(array $errors, string $message = 'Validation Error', int $status = 422)
+    public static function validation(array $errors, string $message = 'common_error.validation_failed', int $status = 422)
     {
         return response()->json([
-            'message' => $message,
+            'message' => __($message),
             'errors'  => $errors,
         ], $status);
     }

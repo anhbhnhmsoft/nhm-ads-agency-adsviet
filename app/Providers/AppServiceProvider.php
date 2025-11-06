@@ -11,6 +11,7 @@ use App\Repositories\UserOtpRepository;
 use App\Repositories\UserReferralRepository;
 use App\Repositories\UserRepository;
 use App\Service\AuthService;
+use App\Service\TelegramService;
 use App\Service\UserService;
 use App\Service\PlatformSettingService;
 use Illuminate\Support\Facades\Gate;
@@ -48,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(AuthService::class);
         $this->app->bind(UserService::class);
+        $this->app->bind(TelegramService::class);
         $this->app->bind(PlatformSettingService::class);
     }
 
