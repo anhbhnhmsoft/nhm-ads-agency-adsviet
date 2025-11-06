@@ -7,5 +7,9 @@ return [
         'EMPLOYEE' => 'Nhân viên',
         'AGENCY' => 'Đại lý',
         'CUSTOMER' => 'Khách hàng',
+    ],
+    'PlatformType' => [
+        'GOOGLE' => 'Google Ads',
+        'META' => 'Meta Ads',
     ]
 ];

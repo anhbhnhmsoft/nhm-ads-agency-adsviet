@@ -4,7 +4,7 @@ import { IMenu } from '@/lib/types/type';
 import { resolveUrl } from '@/lib/utils';
 import { dashboard, user_list, user_list_employee } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
-import { LayoutDashboard, Users, BookUser } from 'lucide-react';
+import { LayoutDashboard, Users, BookUser, Settings } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -59,6 +59,19 @@ const useMenu = () => {
                     _UserRole.EMPLOYEE,
                     _UserRole.AGENCY,
                 ]),
+            },
+            {
+                title: t('menu.config'),
+                is_menu: false,
+                can_show: checkRole([_UserRole.ADMIN]),
+            },
+            {
+                title: t('menu.platform_settings'),
+                url: '/platform-settings',
+                icon: <Settings />,
+                is_menu: true,
+                active: isActive('/platform-settings'),
+                can_show: checkRole([_UserRole.ADMIN]),
             },
             
         ];
