@@ -23,3 +23,13 @@ export const platformTypeLabel = {
     [_PlatformType.GOOGLE]: 'enum.platform_type.google',
     [_PlatformType.META]: 'enum.platform_type.meta',
 }
+
+export enum _WalletStatus {
+    ACTIVE = 1,
+    LOCKED = 2,
+}
+
+export const walletStatusLabel: Record<_WalletStatus, string> = {
+    [_WalletStatus.ACTIVE]: 'wallet.active',
+    [_WalletStatus.LOCKED]: 'wallet.locked',
+}

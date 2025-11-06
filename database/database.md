@@ -82,7 +82,7 @@
     - id (int, primary key, auto-increment)
     - user_id (int, foreign key to users.id, not null)
     - balance (decimal(18, 8), not null, default 0) -- số dư ví
-    - password (varchar, not null) -- mật khẩu ví
+    - password (varchar, null) -- mật khẩu ví
     - status (smallint, not null, default 0) -- trạng thái ví (trong enum WalletStatus)
     - softDeletes
     - timestamps

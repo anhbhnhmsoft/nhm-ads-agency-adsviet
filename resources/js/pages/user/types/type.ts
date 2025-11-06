@@ -31,6 +31,8 @@ export type CustomerListItem = {
     using_telegram: boolean;
     using_whatsapp: boolean;
     referral_code: string;
+    wallet_balance?: number;
+    wallet_status?: number;
 }
 export type CustomerListPagination = LaravelPaginator<CustomerListItem>;
 
@@ -64,4 +66,11 @@ export type EmployeeForAssignment = {
     name: string;
     username: string;
     assigned: boolean;
+}
+
+export interface WalletData {
+    id: number;
+    user_id: number;
+    balance: number;
+    status: number;
 }

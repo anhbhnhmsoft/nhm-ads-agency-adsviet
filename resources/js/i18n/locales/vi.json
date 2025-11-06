@@ -57,7 +57,7 @@
         "user": "Người dùng",
         "user_list_employee": "Danh sách nhân viên",
       "user_create_employee": "Tạo nhân viên",
-      "user_list_customer": "Khách hàng",
+      "user_list_customer": "Danh sách khách hàng",
       "config": "Cấu hình",
       "platform_settings": "Cấu hình nền tảng"
     },
@@ -124,5 +124,21 @@
         "customer_info": "Thông tin khách hàng",
         "edit_customer": "Chỉnh sửa khách hàng",
         "create_customer": "Tạo khách hàng"
+    },
+    "wallet": {
+        "active": "Đang hoạt động",
+        "locked": "Đã khóa",
+        "balance": "Số dư",
+        "status": "Trạng thái",
+        "top_up": "Nạp tiền",
+        "withdraw": "Rút tiền",
+        "lock": "Khóa ví",
+        "unlock": "Mở khóa ví",
+        "reset_password": "Đặt lại mật khẩu",
+        "password": "Mật khẩu ví",
+        "new_password": "Mật khẩu mới",
+        "amount": "Số tiền",
+        "loading": "Đang tải thông tin ví...",
+        "error": "Không thể lấy thông tin ví"
     }
 }

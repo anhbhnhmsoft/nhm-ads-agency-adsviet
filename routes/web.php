@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PlatformSettingController;
+use App\Http\Controllers\WalletController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -56,5 +57,14 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/', [PlatformSettingController::class, 'store'])->name('platform_settings_store');
         Route::put('/{id}', [PlatformSettingController::class, 'update'])->name('platform_settings_update');
         Route::post('/{id}/toggle', [PlatformSettingController::class, 'toggle'])->name('platform_settings_toggle');
+    });
+
+    Route::prefix('/wallets')->group(function(){
+        Route::post('/{userId}/create', [WalletController::class, 'create'])->name('wallet_create');
+        Route::post('/{userId}/top-up', [WalletController::class, 'topUp'])->name('wallet_top_up');
+        Route::post('/{userId}/withdraw', [WalletController::class, 'withdraw'])->name('wallet_withdraw');
+        Route::post('/{userId}/lock', [WalletController::class, 'lock'])->name('wallet_lock');
+        Route::post('/{userId}/unlock', [WalletController::class, 'unlock'])->name('wallet_unlock');
+        Route::post('/{userId}/reset-password', [WalletController::class, 'resetPassword'])->name('wallet_reset_password');
     });
 });

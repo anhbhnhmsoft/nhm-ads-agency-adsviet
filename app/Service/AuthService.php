@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Repositories\UserDeviceRepository;
 use App\Repositories\UserOtpRepository;
 use App\Repositories\UserReferralRepository;
+use App\Service\WalletService;
 use App\Repositories\UserRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +27,7 @@ class AuthService
         protected UserOtpRepository    $userOtpRepository,
         protected UserDeviceRepository $userDeviceRepository,
         protected UserReferralRepository $userReferralRepository,
+        protected WalletService $walletService,
     )
     {
     }
@@ -285,6 +287,7 @@ class AuthService
              * Tạo mới user
              * @var User $user
              */
+            
             $register = [
                 'name' => $data['name'],
                 'username' => $data['username'],
@@ -321,6 +324,7 @@ class AuthService
                 ]);
             }else{
                 // Đăng nhập luôn
+            /** @var \App\Models\User $user */
                 Auth::guard('web')->login($user, true);
                 $this->userDeviceRepository->syncActiveUserWeb($user->id);
                 DB::commit();

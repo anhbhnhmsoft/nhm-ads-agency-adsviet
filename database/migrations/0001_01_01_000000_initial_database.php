@@ -71,7 +71,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->decimal('balance', 18, 8)->default(0)->comment('Số dư ví');
-            $table->string('password')->comment('Mật khẩu ví');
+            $table->string('password')->nullable()->comment('Mật khẩu ví');
             $table->smallInteger('status')->default(0)->comment('Trạng thái ví (trong enum WalletStatus)');
             $table->softDeletes();
             $table->timestamps();
