@@ -15,7 +15,8 @@ return [
     ],
     'password' => [
         'required' => 'Mật khẩu là bắt buộc.',
-        'string' => 'Mật khẩu không hợp lệ.',
+        'min' => 'Mật khẩu phải có ít nhất :min ký tự.',
+        'regex' => 'Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số.',
     ],
     'phone' => [
         'string' => 'Số điện thoại không hợp lệ.',
