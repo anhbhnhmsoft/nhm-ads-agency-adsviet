@@ -12,7 +12,6 @@ use App\Models\User;
 use App\Repositories\UserDeviceRepository;
 use App\Repositories\UserOtpRepository;
 use App\Repositories\UserReferralRepository;
-use App\Service\WalletService;
 use App\Repositories\UserRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +26,6 @@ class AuthService
         protected UserOtpRepository    $userOtpRepository,
         protected UserDeviceRepository $userDeviceRepository,
         protected UserReferralRepository $userReferralRepository,
-        protected WalletService $walletService,
     )
     {
     }

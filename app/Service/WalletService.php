@@ -4,7 +4,6 @@ namespace App\Service;
 
 use App\Core\Logging;
 use App\Core\ServiceReturn;
-use App\Models\UserWallet;
 use App\Models\User;
 use App\Repositories\WalletRepository;
 use App\Repositories\UserReferralRepository;
