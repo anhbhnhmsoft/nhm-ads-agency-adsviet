@@ -11,18 +11,34 @@ use App\Http\Requests\User\UserUpdateRequest;
 use App\Http\Resources\ListCustomerResource;
 use App\Http\Resources\ListEmployeeResource;
 use App\Service\UserService;
+use App\Service\WalletService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 class UserController extends Controller
 {
 
-    public function __construct(protected UserService $userService)
-    {
+    public function __construct(
+        protected UserService $userService,
+        protected WalletService $walletService,
+    ) {
 
     }
 
     public function listCustomer(Request $request)
     {
+        $data = [];
+        
+        // Xử lý wallet nếu có wallet_user_id trong query
+        if ($request->has('wallet_user_id')) {
+            $userId = $request->string('wallet_user_id')->toString();
+            $walletResult = $this->walletService->getWalletForUser($userId);
+            if ($walletResult->isSuccess()) {
+                $data['wallet'] = $walletResult->getData();
+            } else {
+                $data['walletError'] = $walletResult->getMessage();
+            }
+        }
+        
         $params = $this->extractQueryPagination($request);
         $result = $this->userService->getListCustomerPagination(new QueryListDTO(
             perPage: $params->get('per_page'),
@@ -32,11 +48,12 @@ class UserController extends Controller
             sortDirection: $params->get('direction'),
         ));
         $paginator = $result->getData();
+        
+        $data['paginator'] = fn () => ListCustomerResource::collection($paginator);
+
         return $this->rendering(
             view: 'user/list-customer',
-            data: [
-                'paginator' => fn () => ListCustomerResource::collection($paginator),
-            ]
+            data: $data,
         );
     }
 

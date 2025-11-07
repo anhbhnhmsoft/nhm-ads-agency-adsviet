@@ -24,6 +24,8 @@ class ListCustomerResource extends JsonResource
             'using_telegram' => !empty($this->telegram_id),
             'using_whatsapp' => !empty($this->whatsapp_id),
             'referral_code' => $this->referral_code,
+            'wallet_status' => optional($this->wallet)->status,
+            'wallet_balance' => optional($this->wallet)->balance,
         ];
     }
 }

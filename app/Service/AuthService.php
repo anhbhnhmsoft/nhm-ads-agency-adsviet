@@ -293,6 +293,7 @@ class AuthService
              * Tạo mới user
              * @var User $user
              */
+            
             $register = [
                 'name' => $data['name'],
                 'username' => $data['username'],
@@ -329,6 +330,7 @@ class AuthService
                 ]);
             }else{
                 // Đăng nhập luôn
+            /** @var \App\Models\User $user */
                 Auth::guard('web')->login($user, true);
                 $this->userDeviceRepository->syncActiveUserWeb($user->id);
                 DB::commit();

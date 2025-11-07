@@ -9,11 +9,15 @@ use App\Repositories\UserDeviceRepository;
 use App\Repositories\PlatformSettingRepository;
 use App\Repositories\UserOtpRepository;
 use App\Repositories\UserReferralRepository;
+use App\Repositories\WalletRepository;
+use App\Repositories\NotificationRepository;
 use App\Repositories\UserRepository;
 use App\Service\AuthService;
 use App\Service\TelegramService;
 use App\Service\UserService;
 use App\Service\PlatformSettingService;
+use App\Service\WalletService;
+use App\Service\NotificationService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -43,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserDeviceRepository::class);
         $this->app->bind(UserReferralRepository::class);
         $this->app->bind(PlatformSettingRepository::class);
+        $this->app->bind(WalletRepository::class);
+        $this->app->bind(NotificationRepository::class);
     }
 
     private function registerApplicationService(): void
@@ -51,6 +57,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserService::class);
         $this->app->bind(TelegramService::class);
         $this->app->bind(PlatformSettingService::class);
+        $this->app->bind(WalletService::class);
+        $this->app->bind(NotificationService::class);
     }
 
     private function definedGate(): void
