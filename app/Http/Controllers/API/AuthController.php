@@ -6,8 +6,10 @@ use App\Common\Constants\User\UserRole;
 use App\Core\Controller;
 use App\Core\RestResponse;
 use App\Http\Resources\AuthResource;
+use App\Models\User;
 use App\Rules\PasswordRule;
 use App\Service\AuthService;
+use App\Service\TelegramService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,7 +17,7 @@ use Illuminate\Validation\Rule;
 class AuthController extends Controller
 {
 
-    public function __construct(protected AuthService $authService)
+    public function __construct(protected AuthService $authService, protected TelegramService $telegramService)
     {
     }
 
@@ -28,8 +30,9 @@ class AuthController extends Controller
             'device_id' => ['required', 'string', 'max:255'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ], [
-            'email.required' => __('auth.validation.email_required'),
-            'email.email' => __('auth.validation.email_email'),
+            'username.required' => __('common_validation.username.required'),
+            'username.string' => __('common_validation.username.string'),
+            'username.max' => __('common_validation.username.max', ['max' => 255]),
             'password.required' => __('auth.validation.password_required'),
             'password.min' => __('auth.validation.password_min'),
             'platform.required' => __('auth.login.validation.device_required'),
@@ -75,7 +78,6 @@ class AuthController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-
     public function handleTelegramLogin(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -155,7 +157,12 @@ class AuthController extends Controller
         }
     }
 
-    public function register(Request $request)
+    /**
+     * Đăng ký tài khoản mới (thông qua Telegram)
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function register(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->all(),
             [
@@ -241,6 +248,110 @@ class AuthController extends Controller
                 'user' => new AuthResource($serviceData['user']),
             ],
             message: __('auth.login.success')
+        );
+    }
+
+    /**
+     * Lấy thông tin profile của user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getProfile(): \Illuminate\Http\JsonResponse
+    {
+        $result = $this->authService->handleGetProfile();
+        if ($result->isError()) {
+            return RestResponse::error(
+                message: $result->getMessage(),
+                status: 403
+            );
+        }
+        $serviceData = $result->getData();
+        return RestResponse::success(
+            data: [
+                'user' => new AuthResource($serviceData['user']),
+            ],
+        );
+    }
+
+    /**
+     * Quên mật khẩu, gửi OTP qua Telegram
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function forgotPassword(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'username' => ['required', 'string', 'max:255'],
+        ], [
+            'username.required' => __('common_validation.username.required'),
+            'username.string' => __('common_validation.username.string'),
+            'username.max' => __('common_validation.username.max', ['max' => 255]),
+        ]);
+        if ($validator->fails()) {
+            return RestResponse::validation(
+                errors: $validator->errors()->toArray()
+            );
+        }
+        $form = $validator->getData();
+        $resultUser = $this->authService->findCustomerAgencyHasTelegram($form['username']);
+        if ($resultUser->isError()) {
+            return RestResponse::error(
+                message: $resultUser->getMessage(),
+                status: 403
+            );
+        }
+        /**
+         * @var User $user
+         */
+        $user = $resultUser->getData();
+        $resultOtp = $this->telegramService->handleSendOTP($user->telegram_id);
+        if ($resultOtp->isError()) {
+            return RestResponse::error(
+                message: $resultOtp->getMessage(),
+                status: 403
+            );
+        }
+        $dataOtp = $resultOtp->getData();
+        return RestResponse::success(
+            data: $dataOtp,
+            message: __('auth.forgot_password.success'),
+        );
+    }
+
+    /**
+     * Xác thực OTP để thay đổi mật khẩu
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyForgotPassword(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'username' => ['required', 'string', 'max:255'],
+            'code' => ['required', 'string', 'min:6', 'max:6'],
+            'password' => [new PasswordRule()],
+        ], [
+            'username.required' => __('common_validation.username.required'),
+            'username.string' => __('common_validation.username.string'),
+            'username.max' => __('common_validation.username.max', ['max' => 255]),
+            'code.required' => __('auth.verify_forgot_password.validation.otp_invalid'),
+            'code.string' => __('auth.verify_forgot_password.validation.otp_invalid'),
+            'code.min' => __('auth.verify_forgot_password.validation.otp_invalid'),
+            'code.max' => __('auth.verify_forgot_password.validation.otp_invalid'),
+        ]);
+        if ($validator->fails()) {
+            return RestResponse::validation(
+                errors: $validator->errors()->toArray()
+            );
+        }
+        $form = $validator->getData();
+        $result = $this->authService->handleVerifyForgotPassword($form);
+        if ($result->isError()) {
+            return RestResponse::error(
+                message: $result->getMessage(),
+                status: 403
+            );
+        }
+        return RestResponse::success(
+            message: __('auth.verify_forgot_password.success'),
         );
     }
 }

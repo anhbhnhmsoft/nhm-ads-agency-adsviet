@@ -30,7 +30,7 @@ class Caching
     public static function setCache(CacheKey $key, $value, string $uniqueKey = null, int $expire = 60): bool
     {
         $cacheKey = $key->value . ($uniqueKey ? '_' . $uniqueKey : '');
-        return Cache::put($cacheKey, $value, $expire);
+        return Cache::put($cacheKey, $value, now()->addMinutes($expire));
     }
 
     public static function clearCache(CacheKey $key, string $uniqueKey = null): bool

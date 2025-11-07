@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Common\Constants\DeviceType;
 use App\Common\Constants\User\UserRole;
 use App\Common\Helper;
+use App\Core\Cache\CacheKey;
 use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
@@ -81,6 +82,9 @@ class AuthService
         try {
             // --- LOGIN API (Sanctum) ---
             if ($isMobile) {
+                /**
+                 * @var User|null $user
+                 */
                 $user = $this->userRepository->query()
                     ->where('username', $data['username'])
                     ->where('disabled', false)
@@ -99,7 +103,10 @@ class AuthService
                 );
 
                 // Tạo token Sanctum
-                $token = $user->createToken('api-token')->plainTextToken;
+                $token = $user->createToken(
+                    name:'api-token',
+                    expiresAt: $data['remember_me'] ? now()->addDays(30) : null
+                )->plainTextToken;
 
                 return ServiceReturn::success(data: [
                     'token' => $token,
@@ -148,6 +155,7 @@ class AuthService
         request()->session()->regenerateToken();
         return ServiceReturn::success();
     }
+
     /**
      * Verify login with telegram
      * @param array $authData
@@ -343,4 +351,82 @@ class AuthService
         }
     }
 
+    /**
+     * Lấy thông tin profile của user
+     * @return ServiceReturn
+     */
+    public function handleGetProfile(): ServiceReturn
+    {
+        $user = auth()->user();
+        return ServiceReturn::success(data: [
+            'user' => $user,
+        ]);
+    }
+
+    /**
+     * Tìm user agency hoặc customer có telegram id
+     * @param string $username
+     * @return ServiceReturn
+     */
+    public function findCustomerAgencyHasTelegram(string $username): ServiceReturn
+    {
+        try {
+            $user = $this->userRepository->filterQuery([
+                'username' => $username,
+                'has_telegram' => true,
+                'roles' => [UserRole::AGENCY->value, UserRole::CUSTOMER->value],
+                'is_active' => true,
+            ])->first();
+            if (!$user) {
+                return ServiceReturn::error(message: __('auth.forgot_password.validation.user_exists'));
+            }
+            return ServiceReturn::success(data: $user);
+        }catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi khi tìm user agency hoặc customer có telegram id AuthService@findCustomerAgencyHasTelegram: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
+     * Xác nhận reset password
+     * @param array $data
+     * @return ServiceReturn
+     */
+    public function handleVerifyForgotPassword(array $data): ServiceReturn
+    {
+        try {
+            $user = $this->findCustomerAgencyHasTelegram($data['username']);
+            if ($user->isError()) {
+                return ServiceReturn::error(message: $user->getMessage());
+            }
+            /**
+             * @var User $user
+             */
+            $user = $user->getData();
+
+            // Kiểm tra OTP
+            $cacheOtp = Caching::getCache(
+                key: CacheKey::CACHE_TELEGRAM_OTP,
+                uniqueKey: $user->telegram_id,
+            );
+            if (!$cacheOtp || $cacheOtp != $data['code']) {
+                return ServiceReturn::error(message: __('auth.verify_forgot_password.validation.otp_invalid'));
+            }
+            // Cập nhật password
+            $this->userRepository->query()
+                ->where('id', $user->id)
+                ->update(['password' => Hash::make($data['password'])]);
+            Caching::clearCache(key: CacheKey::CACHE_TELEGRAM_OTP, uniqueKey: $user->telegram_id);
+            return ServiceReturn::success();
+        }catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi khi xác nhận reset password AuthService@handleVerifyForgotPassword: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
 }

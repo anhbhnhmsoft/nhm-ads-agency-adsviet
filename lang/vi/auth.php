@@ -28,5 +28,21 @@ return [
             'refer_code_invalid' => 'Mã giới thiệu không hợp lệ.',
         ],
     ],
+    'forgot_password' => [
+        'success' => 'Mật khẩu mới đã được gửi đến Telegram của bạn.',
+        'otp' => "OTP Quên mật khẩu \n\nChào bạn 👋 \nMã OTP đổi mật khẩu là: :otp \n\nMã OTP này sẽ hết hạn sau :expire_min phút. \n\nNếu không phải bạn, vui lòng bỏ qua tin nhắn này.",
+        'validation' => [
+            'user_exists' => 'Tài khoản không tồn tại.',
+        ],
+        'error' => [
+            'error_send_otp' => 'Lỗi khi gửi OTP. Vui lòng thử lại sau.',
+        ]
+    ],
+    'verify_forgot_password' => [
+        'success' => 'Mật khẩu đã được thay đổi thành công.',
+        'validation' => [
+            'otp_invalid' => 'OTP không hợp lệ.',
+        ],
+    ],
 
 ];

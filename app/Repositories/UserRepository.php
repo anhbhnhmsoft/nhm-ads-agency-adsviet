@@ -32,6 +32,17 @@ class UserRepository extends BaseRepository
             $query->whereIn('role', $filters['roles']);
         }
 
+        if (!empty($filters['username'])) {
+            $query->where('username', $filters['username']);
+        }
+        if ($filters['has_telegram'] === true) {
+            $query->where('telegram_id', '!=', null);
+        }
+
+        if ($filters['is_active'] === true) {
+            $query->where('disabled', false);
+        }
+
         // Chỉ lấy những user có bản ghi liên kết (user_referrals) mà referrer_id thuộc danh sách cho phép
         if (!empty($filters['referrer_ids']) && is_array($filters['referrer_ids'])) {
             $referrerIds = array_filter($filters['referrer_ids']);
