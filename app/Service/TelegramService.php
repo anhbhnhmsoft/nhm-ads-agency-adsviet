@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Common\Constants\CommonConstant;
 use App\Core\Cache\CacheKey;
 use App\Core\Cache\Caching;
 use App\Core\Logging;
@@ -14,33 +15,14 @@ class TelegramService
     {
     }
 
-    public function handleSendOTP(string $telegramId): ServiceReturn
+    public function handleSendOTP(string $telegramId, int $otp, int $expireTime): ServiceReturn
     {
-        $cacheOtp = Caching::getCache(
-            key: CacheKey::CACHE_TELEGRAM_OTP,
-            uniqueKey: $telegramId,
-        );
-        if ($cacheOtp) {
-           Caching::clearCache(key: CacheKey::CACHE_TELEGRAM_OTP, uniqueKey: $telegramId);
-        }
-        // sinh otp
-        $otp = rand(100000, 999999);
-        // Thời gian hết hạn OTP (tính theo phút)
-        $expireMin = 30;
-        Caching::setCache(
-            key: CacheKey::CACHE_TELEGRAM_OTP,
-            value: $otp,
-            uniqueKey: $telegramId,
-            expire: $expireMin,
-        );
         try {
             $this->bot->sendMessage([
                 'chat_id' => $telegramId,
-                'text' => __('auth.forgot_password.otp', ['otp' => $otp, 'expire_min' => $expireMin]),
+                'text' => __('auth.forgot_password.otp', ['otp' => $otp, 'expire_time' => $expireTime]),
             ]);
-            return ServiceReturn::success(data:[
-                'expire_min' => $expireMin,
-            ]);
+            return ServiceReturn::success();
         } catch (\Exception $exception) {
             Logging::error(
                 message: 'Error TelegramService@handleSendOTP: ' . $exception->getMessage(),

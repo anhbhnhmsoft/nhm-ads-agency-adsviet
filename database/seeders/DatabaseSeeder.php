@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
     {
         $admin = User::query()->create([
             'name' => 'Admin User',
-            'username' => 'admin@admin.com',
+            'username' => 'admin@admin.vn',
             'password' => Hash::make('Test12345678@'),
             'role' => UserRole::ADMIN->value,
             'disabled' => false,

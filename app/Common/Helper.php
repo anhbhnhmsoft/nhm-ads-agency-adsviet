@@ -29,4 +29,9 @@ class Helper
     {
         return sha1(request()->userAgent() . request()->ip());
     }
+
+    public static function generateTokenRandom(): string
+    {
+        return Str::random(60);
+    }
 }

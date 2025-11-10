@@ -15,6 +15,11 @@ class UserRepository extends BaseRepository
         return new User();
     }
 
+    /**
+     * Lọc query dựa trên các tiêu chí tìm kiếm
+     * @param array $filters
+     * @return Builder
+     */
     public function filterQuery(array $filters): Builder
     {
         $query = $this->query();
@@ -35,11 +40,11 @@ class UserRepository extends BaseRepository
         if (!empty($filters['username'])) {
             $query->where('username', $filters['username']);
         }
-        if ($filters['has_telegram'] === true) {
+        if (isset($filters['has_telegram']) && $filters['has_telegram'] === true) {
             $query->where('telegram_id', '!=', null);
         }
 
-        if ($filters['is_active'] === true) {
+        if (isset($filters['is_active']) && $filters['is_active'] === true) {
             $query->where('disabled', false);
         }
 
@@ -69,6 +74,13 @@ class UserRepository extends BaseRepository
         return $query;
     }
 
+    /**
+     * Sắp xếp query dựa trên cột và hướng
+     * @param Builder $query
+     * @param string $column
+     * @param string $direction
+     * @return Builder
+     */
     public function sortQuery(Builder $query, string $column, string $direction = 'desc'): Builder
     {
         if (!in_array($direction, ['asc', 'desc'])) {
@@ -81,69 +93,29 @@ class UserRepository extends BaseRepository
         return $query;
     }
 
-
     /**
-     * Check username in admin system
+     * Lấy user theo username
      * @param string $username
-     * @return bool
+     * @return User|null
      */
-    public function checkUsernameAdminSystem(string $username): bool
+    public function getUserByUsername(string $username): ?User
     {
         return $this->model()
             ->isActive()
             ->where('username', $username)
-            ->whereIn('role', [
-                UserRole::ADMIN->value,
-                UserRole::MANAGER->value,
-                UserRole::EMPLOYEE->value,
-            ])
-            ->exists();
-    }
-
-    /**
-     * Check username in customer system
-     * @param string $username
-     * @return bool
-     */
-    public function checkUsernameCustomerSystem(string $username): bool
-    {
-        return $this->model()
-            ->isActive()
-            ->where('username', $username)
-            ->whereIn('role', [
-                UserRole::AGENCY->value,
-                UserRole::CUSTOMER->value,
-            ])
-            ->exists();
+            ->first();
     }
 
 
     /**
      * Get user by telegram id
      * @param string $telegramId
-     * @param bool $isActive
      * @return User|null
      */
-    public function getUserByTelegramId(string $telegramId, bool $isActive = true, bool $adminSystem = false): ?User
+    public function getUserByTelegramId(string $telegramId): ?User
     {
-        if ($isActive) {
-            $query = $this->model()->isActive();
-        }else{
-            $query = $this->model()->query();
-        }
-        if ($adminSystem) {
-            $query->whereIn('role', [
-                UserRole::ADMIN->value,
-                UserRole::MANAGER->value,
-                UserRole::EMPLOYEE->value,
-            ]);
-        }else{
-            $query->whereIn('role', [
-                UserRole::AGENCY->value,
-                UserRole::CUSTOMER->value,
-            ]);
-        }
-        return $query->where('telegram_id', $telegramId)
+        return $this->query()
+            ->where('telegram_id', $telegramId)
             ->first();
     }
 

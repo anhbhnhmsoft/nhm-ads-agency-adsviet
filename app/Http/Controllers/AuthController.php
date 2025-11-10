@@ -155,13 +155,7 @@ class AuthController extends Controller
             if ($userId) {
                 $walletResult = $this->walletService->createForUser($userId);
                 if ($walletResult->isError()) {
-                    Logging::error('Failed to create wallet for user after registration', [
-                        'user_id' => $userId,
-                        'error' => $walletResult->getMessage(),
-                    ]);
-                    FlashMessage::warning(__('auth.register.warning.wallet_creation_failed', [
-                        'default' => 'Đăng ký thành công nhưng không thể tạo ví. Vui lòng liên hệ admin.'
-                    ]));
+                    FlashMessage::warning(__('auth.register.warning.wallet_creation_failed'));
                 }
             }
             FlashMessage::success(__('common_success.register_success'));
