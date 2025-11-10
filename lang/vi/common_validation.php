@@ -22,12 +22,30 @@ return [
         'string' => 'Số điện thoại không hợp lệ.',
         'max' => 'Số điện thoại không được vượt quá :max ký tự.',
     ],
+    'email' => [
+        'required' => 'Email là bắt buộc.',
+        'string' => 'Email phải là một chuỗi ký tự.',
+        'email' => 'Email không hợp lệ.',
+        'max' => 'Email không được vượt quá :max ký tự.',
+        'unique' => 'Email đã tồn tại, vui lòng chọn email khác.',
+    ],
     'role' => [
         'required' => 'Vui lòng chọn vai trò.',
-        'integer' => 'Vai trò không hợp lệ.',
+        'invalid' => 'Vai trò không hợp lệ.',
+    ],
+    'refer_code' => [
+        'required' => 'Mã giới thiệu là bắt buộc.',
+        'invalid' => 'Mã giới thiệu không hợp lệ.',
     ],
     'disabled' => [
         'required' => 'Trạng thái là bắt buộc.',
         'boolean' => 'Trạng thái không hợp lệ.',
     ],
+    'otp_invalid' => 'Mã OTP không hợp lệ.',
+    'user_id' => [
+        'required' => 'Người dùng là bắt buộc.',
+        'string' => 'Người dùng phải là một chuỗi ký tự.',
+        'exists' => 'Người dùng không tồn tại.',
+    ],
+    'token_invalid' => 'Token không hợp lệ.',
 ];

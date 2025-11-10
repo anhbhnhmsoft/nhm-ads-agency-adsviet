@@ -6,6 +6,8 @@
     - id (int, primary key, auto-increment)
     - name (varchar, not null) -- tên hiển thị
     - username (varchar, unique, not null) -- tên đăng nhập (có thể là email hoặc số điện thoại)
+    - email (varchar, unique, nullable) -- email người dùng nếu người dùng ko đăng ký qua telegram thì phải cần xác thực email
+    - email_verified_at (timestamp, nullable) -- thời gian xác thực email
     - phone (varchar, unique, nullable) -- số điện thoại
     - password (varchar, not null)
     - role (smallint, not null) -- vai trò (trong enum UserRole)

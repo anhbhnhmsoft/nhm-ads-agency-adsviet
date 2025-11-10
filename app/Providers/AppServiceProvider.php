@@ -13,6 +13,7 @@ use App\Repositories\WalletRepository;
 use App\Repositories\NotificationRepository;
 use App\Repositories\UserRepository;
 use App\Service\AuthService;
+use App\Service\MailService;
 use App\Service\TelegramService;
 use App\Service\UserService;
 use App\Service\PlatformSettingService;
@@ -20,6 +21,7 @@ use App\Service\WalletService;
 use App\Service\NotificationService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -40,6 +42,14 @@ class AppServiceProvider extends ServiceProvider
         $this->definedGate();
     }
 
+    /**
+     * ------ Đăng ký service ------
+     */
+
+    /**
+     * Đăng ký repository
+     * @return void
+     */
     private function registerRepository(): void
     {
         $this->app->bind(UserRepository::class);
@@ -51,6 +61,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(NotificationRepository::class);
     }
 
+    /**
+     * Đăng ký service
+     * @return void
+     */
     private function registerApplicationService(): void
     {
         $this->app->bind(AuthService::class);
@@ -59,8 +73,17 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PlatformSettingService::class);
         $this->app->bind(WalletService::class);
         $this->app->bind(NotificationService::class);
+        $this->app->bind(MailService::class);
     }
 
+     /**
+     * ------ Boot service ------
+     */
+
+    /**
+     * Định nghĩa gate
+     * @return void
+     */
     private function definedGate(): void
     {
         Gate::define(GatePermission::IS_ADMIN_SYSTEM, function (User $user) {

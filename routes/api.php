@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CommonController;
+use App\Http\Controllers\API\ServiceController;
 use App\Http\Middleware\VerifyTelegramIp;
 use Illuminate\Support\Facades\Route;
 
@@ -12,20 +13,27 @@ Route::prefix('common')->group(function () {
     });
 });
 
-Route::prefix('auth')->group(function () {
-    Route::post('login', [AuthController::class, 'LoginUsername'])
-        ->name('api.auth.login');
-    Route::get('telegram-callback', [AuthController::class, 'handleTelegramCallback'])
-        ->name('api.auth.telegram.callback');
-    Route::post('telegram-login', [AuthController::class, 'handleTelegramLogin']);
+Route::prefix('auth')->middleware('throttle:5,1')->group(function () {
+    Route::post('login', [AuthController::class, 'login']);
+
     Route::post('register', [AuthController::class, 'register']);
+    Route::post('verify-register', [AuthController::class, 'verifyRegister']);
+
+    Route::get('telegram-callback', [AuthController::class, 'telegramCallback'])->name('api.auth.telegram.callback');
+    Route::post('telegram-login', [AuthController::class, 'telegramLogin']);
+    Route::post('telegram-register', [AuthController::class, 'registerTelegram']);
+
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('verify-forgot-password', [AuthController::class, 'verifyForgotPassword']);
 });
 
+Route::prefix('service')->group(function () {
+    Route::get('test', [ServiceController::class, 'test']);
+});
+
+
 
 Route::middleware('auth:sanctum')->group(function () {
-
     Route::prefix('auth')->group(function () {
         Route::get('profile', [AuthController::class, 'getProfile']);
     });

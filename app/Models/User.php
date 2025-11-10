@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Core\GenerateId\GenerateIdSnowflake;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -12,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 /**
  * @method static \Illuminate\Database\Eloquent\Builder|static isActive() //  Get active users
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable, SoftDeletes, GenerateIdSnowflake, HasApiTokens;
 
@@ -24,6 +25,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'username',
+        'email',
         'phone',
         'password',
         'role',
@@ -31,6 +33,7 @@ class User extends Authenticatable
         'telegram_id',
         'whatsapp_id',
         'referral_code',
+        'email_verified_at',
     ];
 
     /**
@@ -54,6 +57,9 @@ class User extends Authenticatable
             'role' => 'integer',
             'disabled' => 'boolean',
             'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+            'deleted_at' => 'datetime',
+            'email_verified_at' => 'datetime',
         ];
     }
 

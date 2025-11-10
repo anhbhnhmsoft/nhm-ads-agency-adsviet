@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Common\Constants\CommonConstant;
 use App\Common\Constants\DeviceType;
 use App\Common\Constants\User\UserRole;
 use App\Common\Helper;
@@ -9,6 +10,7 @@ use App\Core\Cache\CacheKey;
 use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
+use App\Mail\VerifyEmailRegister;
 use App\Models\User;
 use App\Repositories\UserDeviceRepository;
 use App\Repositories\UserOtpRepository;
@@ -18,14 +20,15 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class AuthService
 {
     public function __construct(
-        protected UserRepository       $userRepository,
-        protected UserOtpRepository    $userOtpRepository,
-        protected UserDeviceRepository $userDeviceRepository,
+        protected UserRepository         $userRepository,
+        protected UserOtpRepository      $userOtpRepository,
+        protected UserDeviceRepository   $userDeviceRepository,
         protected UserReferralRepository $userReferralRepository,
     )
     {
@@ -33,121 +36,197 @@ class AuthService
 
     /**
      * Handle login with username
-     * @param array $data
-     * @param bool $isMobile
+     * @param array{
+     *      username: string,
+     *      password: string,
+     *      role?: 'admin'|'customer',
+     *      remember_me?: bool
+     * } $data
+     * @param bool $forApi
      * @return ServiceReturn
      */
-    public function handleLoginUsername(array $data, bool $isMobile = false): ServiceReturn
+    public function handleLogin(array $data, bool $forApi = false): ServiceReturn
     {
-        // Kiểm tra giới hạn đăng nhập
-        $key = 'login.attempts.' . request()->ip();
-        $maxAttempts = 5; // số lần đăng nhập thất bại trong 1 khoảng thời gian
-        $decayMinutes = 1; // số phút
-        if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
-            $seconds = RateLimiter::availableIn($key);
-            return ServiceReturn::error(message: __('auth.login.validation.rate_limit', ['seconds' => $seconds]));
-        }
-        RateLimiter::hit($key, $decayMinutes * 60);
-
-
         try {
+            $user = $this->userRepository->getUserByUsername($data['username']);
+            // kiểm tra password và user có tồn tại không
+            if (!$user || !Hash::check($data['password'], $user->password)) {
+                return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+            }
+            // Nếu customer không có telegram hoặc whatsapp id thì phải kiểm tra xem đã xác thực email chưa
+            if (
+                (!empty($user->telegram_id) || !empty($user->whatsapp_id))
+                && empty($user->email_verified_at)
+            ) {
+                return ServiceReturn::error(message: __('auth.login.validation.email_not_verified'));
+            }
+
             // Kiểm tra username tồn tại trong hệ thống phù hợp với role
-            if (!$isMobile) {
-                if ($data['role'] == 'admin') {
-                    // Kiểm tra username trong hệ thống admin
-                    if (!$this->userRepository->checkUsernameAdminSystem($data['username'])) {
-                        return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
-                    }
-                } else {
-                    // Kiểm tra username trong hệ thống khách hàng
-                    if (!$this->userRepository->checkUsernameCustomerSystem($data['username'])) {
-                        return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
-                    }
-                }
-            }else{
-                // mobile chỉ dùng cho khách hàng
+            if ($forApi || $data['role'] !== 'admin') {
+                // api chỉ dùng cho khách hàng
                 // Kiểm tra username trong hệ thống khách hàng
-                if (!$this->userRepository->checkUsernameCustomerSystem($data['username'])) {
+                if (!in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
+                    return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+                }
+            } else {
+                // Kiểm tra username trong hệ thống admin
+                if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::EMPLOYEE->value, UserRole::MANAGER->value])) {
                     return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
                 }
             }
-        } catch (QueryException $exception) {
-            Logging::error(
-                message: 'Lỗi kiểm tra username AuthService@handleLoginUsername: ' . $exception->getMessage(),
-                exception: $exception
-            );
-            return ServiceReturn::error(message: __('common_error.server_error'));
-        }
+            Logging::api('test');
 
-        try {
-            // --- LOGIN API (Sanctum) ---
-            if ($isMobile) {
-                /**
-                 * @var User|null $user
-                 */
-                $user = $this->userRepository->query()
-                    ->where('username', $data['username'])
-                    ->where('disabled', false)
-                    ->first();
-
-                if (!$user || !Hash::check($data['password'], $user->password)) {
-                    return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
-                }
-
-                // Đồng bộ thiết bị đăng nhập
-                $this->userDeviceRepository->syncActiveUserMobile(
-                    userId: $user->id,
-                    deviceId: $data['device_id'],
-                    deviceName: $data['device_name'] ?? null,
-                    deviceType: $data['platform'] === 'ios' ? DeviceType::IOS : DeviceType::ANDROID,
-                );
-
+            // Khởi tạo xác thực
+            if ($forApi) {
                 // Tạo token Sanctum
                 $token = $user->createToken(
-                    name:'api-token',
+                    name: 'api-token',
                     expiresAt: $data['remember_me'] ? now()->addDays(30) : null
                 )->plainTextToken;
-
                 return ServiceReturn::success(data: [
                     'token' => $token,
                     'user' => $user,
                 ]);
-            }
-
-            // --- LOGIN WEB (Session) ---
-            if (Auth::guard('web')->attempt([
-                'username' => $data['username'],
-                'password' => $data['password'],
-                'disabled' => false,
-            ], $data['remember_me'] ?? false)) {
-
-                $this->userDeviceRepository->syncActiveUserWeb(Auth::id());
-
+            } else {
+                Auth::guard('web')->login($user);
+                // Làm mới session để ngăn chặn tấn công fixation session
                 request()->session()->regenerate();
-
-                return ServiceReturn::success();
+                return ServiceReturn::success(data: [
+                    'user' => $user,
+                ]);
             }
 
-            return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+
         }
         catch (\Exception $exception) {
             Logging::error(
-                message: 'Lỗi khi xử lý sau đăng nhập AuthService@handleLoginUsername: ' . $exception->getMessage(),
+                message: 'Lỗi AuthService@handleLogin: ' . $exception->getMessage(),
                 exception: $exception
             );
-
             // Logout / Revoke token nếu lỗi
-            if ($isMobile && isset($user)) {
-                $user->currentAccessToken()?->delete();
-            } else {
-                Auth::guard('web')->logout();
+            if (isset($user)) {
+                if ($forApi) {
+                    $user->currentAccessToken()?->delete();
+                } else {
+                    Auth::guard('web')->logout();
+                }
             }
-
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 
-    public function handleLogout(): ServiceReturn
+    /**
+     * Xử lý đăng ký user
+     * @param array{
+     *      name: string,
+     *      username: string,
+     *      email: string,
+     *      password: string,
+     *      role: UserRole::CUSTOMER|UserRole::AGENCY,
+     *      refer_code: string,
+     * } $data
+     * @return ServiceReturn
+     */
+    public function handleRegister(array $data): ServiceReturn
+    {
+        DB::beginTransaction();
+        try {
+            // Kiểm tra refer code có tồn tại trong hệ thống hay không
+            $userRefer = $this->userRepository->getUserToRegisterByReferCode($data['refer_code']);
+            if (!$userRefer) {
+                return ServiceReturn::error(message: __('common_validation.refer_code.invalid'));
+            }
+            /**
+             * Tạo mới user
+             * @var User $user
+             */
+            $register = [
+                'name' => $data['name'],
+                'username' => $data['username'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'role' => $data['role'],
+                'disabled' => false,
+                'referral_code' => Helper::generateReferCodeUser(UserRole::from($data['role'])),
+            ];
+            $user = $this->userRepository->create($register);
+            // Tạo mới user referral
+            $this->userReferralRepository->create([
+                'referrer_id' => $user->id,
+                'referred_id' => $userRefer->id,
+            ]);
+            /**
+             * Gửi mail và xác thực OTP
+             */
+            // sinh otp
+            $otp = rand(100000, 999999);
+            // Thời gian hết hạn OTP (tính theo phút)
+            $expireMin = CommonConstant::OTP_EXPIRE_MIN;
+            Caching::setCache(
+                key: CacheKey::CACHE_EMAIL_REGISTER,
+                value: $otp,
+                uniqueKey: $user->id,
+                expire: $expireMin,
+            );
+            DB::commit();
+            return ServiceReturn::success(data: [
+                'expire_time' => $expireMin,
+                'otp' => $otp,
+                'user' => $user,
+            ]);
+        }
+        catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi khi đăng ký AuthService@handleRegister: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            DB::rollBack();
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Xử lý xác thực đăng ký
+     * @param array{
+     *      user_id: string,
+     *      code: string,
+     * } $data
+     * @return ServiceReturn
+     */
+    public function handleVerifyRegister(array $data): ServiceReturn
+    {
+        $otp = Caching::getCache(
+            key: CacheKey::CACHE_EMAIL_REGISTER,
+            uniqueKey: $data['user_id'],
+        );
+        if (!$otp || $otp != $data['code']) {
+            return ServiceReturn::error(message: __('common_validation.otp_invalid'));
+        }
+        try {
+            $user = $this->userRepository->query()->find($data['user_id']);
+            if (!$user) {
+                return ServiceReturn::error(message: __('common_validation.user_not_found'));
+            }
+            $user->update([
+                'email_verified_at' => now(),
+            ]);
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi khi xác thực OTP AuthService@handleVerifyRegister: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+
+        return ServiceReturn::success();
+    }
+
+    /**
+     * Xử lý đăng xuất
+     * @param bool $forApi
+     * @return ServiceReturn
+     */
+    public function handleLogout(bool $forApi = false): ServiceReturn
     {
         Auth::logout();
         Caching::flushCacheSession();
@@ -157,118 +236,82 @@ class AuthService
     }
 
     /**
-     * Verify login with telegram
-     * @param array $authData
+     * Xử lý xác thực đăng nhập qua Telegram
+     * @param array{
+     *      id: string,
+     *      first_name: string,
+     *      last_name: string,
+     *      photo_url: string,
+     *      auth_date: int,
+     *      hash: string,
+     * } $data data telegram response
+     * @param bool $forApi
      * @return ServiceReturn
      */
-    public function verifyHashTelegram(array $authData): ServiceReturn
-    {
-        $checkHash = $authData['hash'] ?? '';
-        unset($authData['hash']);
-
-        $dataCheckArr = [];
-        foreach ($authData as $key => $value) {
-            if ($value) {
-                $dataCheckArr[] = $key . '=' . $value;
-            }
-        }
-        sort($dataCheckArr);
-
-        $dataCheckString = implode("\n", $dataCheckArr);
-        $secretKey = hash('sha256', config('services.telegram.bot_token'), true);
-        $hash = hash_hmac('sha256', $dataCheckString, $secretKey);
-
-        // Kiểm tra auth_date (không quá 24h)
-        if ((time() - ($authData['auth_date'] ?? 0)) > 86400) {
-            return ServiceReturn::error(message: __('auth.login.validation.telegram_hash_invalid'));
-        }
-        $validate = hash_equals($hash, $checkHash);
-        if (!$validate) {
-            return ServiceReturn::error(message: __('auth.login.validation.telegram_hash_invalid'));
-        }
-
-        return ServiceReturn::success();
-    }
-
-    /**
-     * Quick login with telegram id
-     * @param string $telegramId
-     * @return ServiceReturn
-     */
-    public function handleQuickLoginTelegram(string $telegramId): ServiceReturn
+    public function handleAuthTelegram(array $data, bool $forApi = false): ServiceReturn
     {
         try {
-            // Web cho phép đăng nhập với admin system
-            $user = $this->userRepository->getUserByTelegramId($telegramId, false, true);
-            if (!$user) {
-                return ServiceReturn::success(data: [
-                    'need_register' => true
-                ]);
+            // Xác thực hash telegram
+            $validateHash = $this->verifyHashTelegram($data);
+            if (!$validateHash) {
+                return ServiceReturn::error(message: __('auth.login.validation.telegram_hash_invalid'));
             }
-            // Kiểm tra user có bị khóa hay không
-            if ($user->disabled) {
-                return ServiceReturn::error(message: __('auth.login.validation.user_disabled'));
-            }
-
-            // Thực hiện đăng nhập
-            Auth::guard('web')->login($user, true);
-            // Lưu thông tin thiết bị đăng nhập website
-            $this->userDeviceRepository->syncActiveUserWeb($user->id);
-            request()->session()->regenerate();
-            return ServiceReturn::success(data: [
-                'need_register' => false
-            ]);
-        } catch (QueryException $exception) {
-            Logging::error(
-                message: 'Lỗi kiểm tra telegram id AuthService@handleLoginTelegram: ' . $exception->getMessage(),
-                exception: $exception
-            );
-            Auth::logout();
-            return ServiceReturn::error(message: __('common_error.server_error'));
-        }
-    }
-
-    /**
-     * @param array $authData
-     * @return ServiceReturn
-     */
-    public function handleAuthTelegram(array $authData): ServiceReturn
-    {
-        try {
             // Kiểm tra user có tồn tại trong hệ thống hay không
-            // Kiểm tra user có phải là role AGENCY hoặc CUSTOMER hay không
-            $user = $this->userRepository->getUserByTelegramId($authData['id'], false, false);
+            $user = $this->userRepository->getUserByTelegramId($data['id']);
             if (!$user) {
+                // User chưa có trong hệ thống, trả về thông báo cần đăng ký
+                // Khởi tạo token random để xác thực đăng ký
+                $token = Helper::generateTokenRandom();
+                // Lưu cache token với telegram data để xác thực đăng ký sau
+                Caching::setCache(
+                    key: CacheKey::CACHE_TELEGRAM_REGISTER,
+                    value: $data,
+                    uniqueKey: $token
+                );
                 return ServiceReturn::success(data: [
-                    'need_register' => true
+                    'need_register' => true,
+                    'token' => $token,
                 ]);
             }
             // Kiểm tra user có bị khóa hay không
             if ($user->disabled) {
                 return ServiceReturn::error(message: __('auth.login.validation.user_disabled'));
             }
-            // Đồng bộ thiết bị đăng nhập
-            $this->userDeviceRepository->syncActiveUserMobile(
-                userId: $user->id,
-                deviceId: $authData['device_id'],
-                deviceName: $authData['device_name'] ?? null,
-                deviceType: $authData['platform'] === 'ios' ? DeviceType::IOS : DeviceType::ANDROID,
-            );
-            // Tạo token Sanctum
-            $token = $user->createToken('api-token')->plainTextToken;
 
-            return ServiceReturn::success(data: [
-                'need_register' => false,
-                'token' => $token,
-                'user' => $user,
-            ]);
+            // Khởi tạo xác thực
+            if ($forApi){
+                // Đối với API, chỉ cho phép đăng nhập với role AGENCY hoặc CUSTOMER
+                if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                    return ServiceReturn::error(message: __('auth.login.validation.user_not_allowed'));
+                }
+                $token = $user->createToken('api-token')->plainTextToken;
 
+                return ServiceReturn::success(data: [
+                    'need_register' => false,
+                    'token' => $token,
+                    'user' => $user,
+                ]);
+            }else{
+                request()->session()->regenerate();
+                Auth::guard('web')->login($user, true);
+                return ServiceReturn::success(data: [
+                    'need_register' => false
+                ]);
+            }
         } catch (QueryException $exception) {
             Logging::error(
                 message: 'Lỗi kiểm tra telegram id AuthService@handleAuthTelegram: ' . $exception->getMessage(),
                 exception: $exception
             );
-            Auth::logout();
+            // Logout / Revoke token nếu lỗi
+            if (isset($user)) {
+                if ($forApi) {
+                    $user->currentAccessToken()?->delete();
+                }
+                else {
+                    Auth::guard('web')->logout();
+                }
+            }
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -276,24 +319,31 @@ class AuthService
     /**
      * Xử lý đăng ký mới khi user chưa có trong hệ thống
      * @param array $data
-     * @param bool $isMobile
+     * @param bool $forApi
      * @return ServiceReturn
      */
-    public function handleRegisterNewUser(array $data, bool $isMobile = false): ServiceReturn
+    public function handleRegisterTelegram(array $data, bool $forApi = false): ServiceReturn
     {
         DB::beginTransaction();
         try {
+            $telegramData = Caching::getCache(
+                key: CacheKey::CACHE_TELEGRAM_REGISTER,
+                uniqueKey: $data['token'],
+            );
+            if (!$telegramData) {
+                return ServiceReturn::error(message: __('auth.register.validation.token_invalid'));
+            }
+
             // Kiểm tra refer code có tồn tại trong hệ thống hay không
             $userRefer = $this->userRepository->getUserToRegisterByReferCode($data['refer_code']);
             if (!$userRefer) {
-                return ServiceReturn::error(message: __('auth.register.validation.invalid'));
+                return ServiceReturn::error(message: __('auth.register.validation.refer_code_invalid'));
             }
 
             /**
              * Tạo mới user
              * @var User $user
              */
-            
             $register = [
                 'name' => $data['name'],
                 'username' => $data['username'],
@@ -301,10 +351,8 @@ class AuthService
                 'role' => $data['role'],
                 'disabled' => false,
                 'referral_code' => Helper::generateReferCodeUser(UserRole::from($data['role'])),
+                'telegram_id' => $telegramData['id'],
             ];
-            if ($data['type'] == 'telegram') {
-                $register['telegram_id'] = $data['telegram_id'];
-            }
             $user = $this->userRepository->create($register);
 
             // Tạo mới user referral
@@ -312,15 +360,7 @@ class AuthService
                 'referrer_id' => $user->id,
                 'referred_id' => $userRefer->id,
             ]);
-            if ($isMobile) {
-                // Đồng bộ thiết bị đăng nhập
-                $this->userDeviceRepository->syncActiveUserMobile(
-                    userId: $user->id,
-                    deviceId: $data['device_id'],
-                    deviceName: $data['device_name'] ?? null,
-                    deviceType: $data['platform'] === 'ios' ? DeviceType::IOS : DeviceType::ANDROID,
-                );
-
+            if ($forApi) {
                 // Tạo token Sanctum
                 $token = $user->createToken('api-token')->plainTextToken;
                 DB::commit();
@@ -328,23 +368,22 @@ class AuthService
                     'token' => $token,
                     'user' => $user,
                 ]);
-            }else{
-                // Đăng nhập luôn
-            /** @var \App\Models\User $user */
+            }
+            else {
+                /** @var User $user */
                 Auth::guard('web')->login($user, true);
-                $this->userDeviceRepository->syncActiveUserWeb($user->id);
                 DB::commit();
                 request()->session()->regenerate();
                 return ServiceReturn::success();
             }
-        }catch (\Exception $exception) {
+        } catch (\Exception $exception) {
             Logging::error(
-                message: 'Lỗi khi đăng ký AuthService@handleRegisterNewUser: ' . $exception->getMessage(),
+                message: 'Lỗi khi đăng ký AuthService@handleRegisterTelegram: ' . $exception->getMessage(),
                 exception: $exception
             );
             DB::rollBack();
             // Logout / Revoke token nếu lỗi
-            if ($isMobile && isset($user)) {
+            if ($forApi && isset($user)) {
                 $user->currentAccessToken()?->delete();
             } else {
                 Auth::guard('web')->logout();
@@ -366,24 +405,64 @@ class AuthService
     }
 
     /**
-     * Tìm user agency hoặc customer có telegram id
+     * Xử lý quên mật khẩu
      * @param string $username
      * @return ServiceReturn
      */
-    public function findCustomerAgencyHasTelegram(string $username): ServiceReturn
+    public function handleForgotPassword(string $username): ServiceReturn
     {
         try {
+            /**
+             * customer system mới có thể quên mật khẩu
+             */
             $user = $this->userRepository->filterQuery([
                 'username' => $username,
-                'has_telegram' => true,
                 'roles' => [UserRole::AGENCY->value, UserRole::CUSTOMER->value],
                 'is_active' => true,
             ])->first();
             if (!$user) {
                 return ServiceReturn::error(message: __('auth.forgot_password.validation.user_exists'));
             }
-            return ServiceReturn::success(data: $user);
-        }catch (\Exception $exception) {
+            /**
+             * Kiểm tra user phải có thông tin social hoặc email verify thì mới quên mật khẩu
+             */
+            if (!$user->telegram_id && !$user->email_verified_at) {
+                return ServiceReturn::error(message: __('auth.forgot_password.validation.social_or_email_verify'));
+            }
+
+            // Kiểm tra xem có OTP trước đó trong cache ko
+            $cacheOtp = Caching::getCache(
+                key: CacheKey::CACHE_FORGOT_PASSWORD,
+                uniqueKey: $user->id,
+            );
+            if ($cacheOtp) {
+                // Xóa OTP cũ trong cache khi có OTP trước đó
+                Caching::clearCache(key: CacheKey::CACHE_FORGOT_PASSWORD, uniqueKey: $user->id);
+            }
+            // Sinh OTP mới
+            $otp = rand(100000, 999999);
+            // Thời gian hết hạn OTP (tính theo phút)
+            $expireMin = CommonConstant::OTP_EXPIRE_MIN;
+            Caching::setCache(
+                key: CacheKey::CACHE_FORGOT_PASSWORD,
+                value: $otp,
+                uniqueKey: $user->id,
+                expire: $expireMin,
+            );
+
+            // Mặc định là gửi email, nếu có telegram id thì gửi telegram bot
+            $sendTo = 'email';
+            if ($user->telegram_id) {
+                $sendTo = 'telegram';
+            }
+
+            return ServiceReturn::success(data: [
+                'otp' => $otp,
+                'expire_time' => $expireMin,
+                'user' => $user,
+                'send_to' => $sendTo,
+            ]);
+        } catch (\Exception $exception) {
             Logging::error(
                 message: 'Lỗi khi tìm user agency hoặc customer có telegram id AuthService@findCustomerAgencyHasTelegram: ' . $exception->getMessage(),
                 exception: $exception
@@ -400,19 +479,28 @@ class AuthService
     public function handleVerifyForgotPassword(array $data): ServiceReturn
     {
         try {
-            $user = $this->findCustomerAgencyHasTelegram($data['username']);
-            if ($user->isError()) {
-                return ServiceReturn::error(message: $user->getMessage());
+            /**
+             * customer system mới có thể quên mật khẩu
+             */
+            $user = $this->userRepository->filterQuery([
+                'username' => $data['username'],
+                'roles' => [UserRole::AGENCY->value, UserRole::CUSTOMER->value],
+                'is_active' => true,
+            ])->first();
+            if (!$user) {
+                return ServiceReturn::error(message: __('auth.forgot_password.validation.user_exists'));
             }
             /**
-             * @var User $user
+             * Kiểm tra user phải có thông tin social hoặc email verify thì mới quên mật khẩu
              */
-            $user = $user->getData();
+            if (!$user->telegram_id && !$user->email_verified_at) {
+                return ServiceReturn::error(message: __('auth.forgot_password.validation.social_or_email_verify'));
+            }
 
             // Kiểm tra OTP
             $cacheOtp = Caching::getCache(
-                key: CacheKey::CACHE_TELEGRAM_OTP,
-                uniqueKey: $user->telegram_id,
+                key: CacheKey::CACHE_FORGOT_PASSWORD,
+                uniqueKey: $user->id,
             );
             if (!$cacheOtp || $cacheOtp != $data['code']) {
                 return ServiceReturn::error(message: __('auth.verify_forgot_password.validation.otp_invalid'));
@@ -421,9 +509,9 @@ class AuthService
             $this->userRepository->query()
                 ->where('id', $user->id)
                 ->update(['password' => Hash::make($data['password'])]);
-            Caching::clearCache(key: CacheKey::CACHE_TELEGRAM_OTP, uniqueKey: $user->telegram_id);
+            Caching::clearCache(key: CacheKey::CACHE_FORGOT_PASSWORD, uniqueKey: $user->id);
             return ServiceReturn::success();
-        }catch (\Exception $exception) {
+        } catch (\Exception $exception) {
             Logging::error(
                 message: 'Lỗi khi xác nhận reset password AuthService@handleVerifyForgotPassword: ' . $exception->getMessage(),
                 exception: $exception
@@ -431,4 +519,42 @@ class AuthService
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
+
+
+    /**
+     * ---- Private methods ----
+     */
+
+     /**
+     * Verify hash telegram (dựa trên document telegram)
+     * @param array $authData
+     * @return bool
+     */
+    private function verifyHashTelegram(array $authData): bool
+    {
+        $checkHash = $authData['hash'] ?? '';
+        unset($authData['hash']);
+
+        $dataCheckArr = [];
+        foreach ($authData as $key => $value) {
+            if ($value) {
+                $dataCheckArr[] = $key . '=' . $value;
+            }
+        }
+        sort($dataCheckArr);
+
+        $dataCheckString = implode("\n", $dataCheckArr);
+        $secretKey = hash('sha256', config('services.telegram.bot_token'), true);
+        $hash = hash_hmac('sha256', $dataCheckString, $secretKey);
+
+        if ((time() - ($authData['auth_date'] ?? 0)) > 86400) {
+            return false;
+        }
+        $validate = hash_equals($hash, $checkHash);
+        if (!$validate) {
+            return false;
+        }
+        return true;
+    }
+
 }

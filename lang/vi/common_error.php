@@ -18,4 +18,6 @@ return [
     'validation_failed' => 'Dữ liệu không hợp lệ.',
     'max_content' => 'Nội dung không được vượt quá :max ký tự.',
     'inappropriate_language' => 'Nội dung không phù hợp với chính sách của hệ thống.',
+    'otp_expired' => 'Mã OTP đã hết hạn, vui lòng yêu cầu lại.',
+    'otp_invalid' => 'Mã OTP không hợp lệ, vui lòng thử lại.',
 ];
