@@ -12,34 +12,28 @@ class ServicePackage extends Model
     use HasFactory, SoftDeletes, GenerateIdSnowflake;
 
     protected $fillable = [
+        'id',
         'name',
         'platform',
-        'platform_setting_id',
         'features',
         'open_fee',
         'top_up_fee',
         'set_up_time',
         'disabled',
+        'description',
+        'range_min_top_up'
     ];
 
     protected $casts = [
+        'id' => 'string',
         'platform' => 'integer',
         'features' => 'array',
         'open_fee' => 'decimal:8',
-        'top_up_fee' => 'decimal:8',
+        'top_up_fee' => 'integer',
         'set_up_time' => 'integer',
         'disabled' => 'boolean',
+        'range_min_top_up' => 'decimal:8',
     ];
-
-    public function platformSetting()
-    {
-        return $this->belongsTo(PlatformSetting::class);
-    }
-
-    public function feeTiers()
-    {
-        return $this->hasMany(ServicePackageFeeTier::class, 'package_id');
-    }
 
     public function serviceUsers()
     {

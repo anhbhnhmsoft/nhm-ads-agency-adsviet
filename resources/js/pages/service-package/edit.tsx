@@ -26,7 +26,7 @@ type Props = {
 };
 const Edit = ({ meta_features, google_features, service_package }: Props) => {
     const { t } = useTranslation();
-
+    console.log(service_package)
     const { form, submit } = useFormEditServicePackage(service_package.id, service_package);
 
     const { data, setData, processing, errors } = form;
@@ -241,7 +241,7 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
                         step={'any'}
                         onChange={(e) => {
                             const stringValue = e.target.value;
-                            setData('set_up_time', stringValue);
+                            setData('set_up_time', Number(stringValue));
                         }}
                         required
                     />

@@ -4,7 +4,7 @@ namespace App\Core;
 
 final class RestResponse
 {
-    public static function success(array $data = [], string $message = 'Success', int $status = 200)
+    public static function success(mixed $data = [], string $message = 'Success', int $status = 200)
     {
         return response()->json([
             'message' => $message,
@@ -12,7 +12,7 @@ final class RestResponse
         ], $status);
     }
 
-    public static function validation(array $errors, string $message = 'common_error.validation_failed', int $status = 422)
+    public static function validation(mixed $errors, string $message = 'common_error.validation_failed', int $status = 422)
     {
         return response()->json([
             'message' => __($message),

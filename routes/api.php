@@ -28,13 +28,15 @@ Route::prefix('auth')->middleware('throttle:5,1')->group(function () {
 });
 
 Route::prefix('service')->group(function () {
-    Route::get('test', [ServiceController::class, 'test']);
+    Route::get('package', [ServiceController::class, 'package']);
 });
-
 
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('profile', [AuthController::class, 'getProfile']);
     });
+
+
+
 });

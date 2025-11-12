@@ -2,9 +2,21 @@ import useCheckRole from '@/hooks/use-check-role';
 import { _UserRole } from '@/lib/types/constants';
 import { IMenu } from '@/lib/types/type';
 import { resolveUrl } from '@/lib/utils';
-import { dashboard, user_list, user_list_employee } from '@/routes';
+import {
+    dashboard,
+    service_packages_create_view,
+    service_packages_index,
+    user_list,
+    user_list_employee,
+} from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
-import { LayoutDashboard, Users, BookUser, Settings } from 'lucide-react';
+import {
+    BookUser,
+    Boxes,
+    LayoutDashboard,
+    Settings,
+    Users,
+} from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -50,7 +62,7 @@ const useMenu = () => {
             {
                 title: t('menu.user_list_customer'),
                 url: user_list().url,
-                icon: <BookUser/>,
+                icon: <BookUser />,
                 is_menu: true,
                 active: isActive(user_list()),
                 can_show: checkRole([
@@ -73,7 +85,16 @@ const useMenu = () => {
                 active: isActive('/platform-settings'),
                 can_show: checkRole([_UserRole.ADMIN]),
             },
-            
+            {
+                title: t('menu.service_packages'),
+                url: service_packages_index().url,
+                icon: <Boxes />,
+                is_menu: true,
+                active:
+                    isActive(service_packages_index()) ||
+                    isActive(service_packages_create_view()),
+                can_show: checkRole([_UserRole.ADMIN]),
+            },
         ];
     }, [checkRole, t, isActive]);
 
