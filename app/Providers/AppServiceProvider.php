@@ -6,6 +6,8 @@ use App\Common\Constants\User\GatePermission;
 use App\Common\Constants\User\UserRole;
 use App\Models\User;
 use App\Repositories\ConfigRepository;
+use App\Repositories\ServicePackageRepository;
+use App\Repositories\ServiceUserRepository;
 use App\Repositories\UserDeviceRepository;
 use App\Repositories\PlatformSettingRepository;
 use App\Repositories\UserOtpRepository;
@@ -16,6 +18,9 @@ use App\Repositories\NotificationRepository;
 use App\Repositories\UserRepository;
 use App\Service\AuthService;
 use App\Service\MailService;
+use App\Service\MetaBusinessService;
+use App\Service\ServicePackageService;
+use App\Service\ServiceUserService;
 use App\Service\BinanceService;
 use App\Service\NowPaymentsService;
 use App\Service\ConfigService;
@@ -67,6 +72,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(WalletRepository::class);
         $this->app->bind(UserWalletTransactionRepository::class);
         $this->app->bind(NotificationRepository::class);
+        $this->app->bind(ServicePackageRepository::class);
+        $this->app->bind(ServiceUserRepository::class);
     }
 
     /**
@@ -86,6 +93,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(WalletTransactionService::class);
         $this->app->bind(NotificationService::class);
         $this->app->bind(MailService::class);
+        $this->app->bind(ServicePackageService::class);
+        $this->app->bind(ServiceUserService::class);
+        $this->app->singleton(MetaBusinessService::class);
     }
 
      /**

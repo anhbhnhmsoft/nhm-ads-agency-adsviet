@@ -38,6 +38,14 @@
         "password_placeholder": "Nhập mật khẩu mới (nếu muốn đổi)",
         "password_optional": "(Để trống nếu không đổi)",
         "foundation": "Nền tảng",
+        "edit": "Chỉnh sửa",
+        "delete": "Xóa",
+        "toggle_disable": "Thay đổi trạng thái",
+        "confirm_delete_title": "Bạn có chắc chắn không?",
+        "confirm_delete_description": "Hành động này không thể được hoàn tác. Thao tác này sẽ xóa vĩnh viễn dữ liệu của bạn khỏi máy chủ của chúng tôi.",
+        "cancel": "Hủy",
+        "confirm": "Xác nhận",
+        "submit": "Gửi",
         "success": "Thành công",
         "error": "Lỗi",
         "save_changes": "Lưu thay đổi",
@@ -56,29 +64,34 @@
             "employee": "Nhân viên",
             "agency": "Agency",
             "customer": "Khách hàng"
-      },
-      "platform_type": {
-        "google": "Google Ads",
-        "meta": "Meta Ads"
-      }
+        },
+        "platform_type": {
+            "google": "Google Ads",
+            "meta": "Meta Ads"
+        }
     },
     "menu": {
         "dashboard": "Trang chủ",
         "user": "Người dùng",
         "user_list_employee": "Danh sách nhân viên",
-      "user_create_employee": "Tạo nhân viên",
-      "user_list_customer": "Danh sách khách hàng",
-      "config": "Cấu hình",
-      "platform_settings": "Cấu hình nền tảng",
+        "user_create_employee": "Tạo nhân viên",
+        "user_list_customer": "Danh sách khách hàng",
+        "config": "Cấu hình",
+        "platform_settings": "Cấu hình nền tảng",
+        "service_packages": "Gói dịch vụ",
+        "service_packages_create": "Tạo gói dịch vụ",
+        "service_user": "Dịch vụ người dùng",
+        "service_user_list": "Danh sách dịch vụ",
+        "service_user_create": "Tạo dịch vụ người dùng",
       "crypto_wallet_config": "Cấu hình ví",
       "my_wallet": "Ví của tôi",
       "transactions": "Quản lý giao dịch"
     },
-  "platform": {
-    "settings": "Cấu hình nền tảng",
-    "app_or_client_id": "App ID / Client ID",
-    "bm_or_login_id": "Business Manager ID / Login Customer ID"
-  },
+    "platform": {
+        "settings": "Cấu hình nền tảng",
+        "app_or_client_id": "App ID / Client ID",
+        "bm_or_login_id": "Business Manager ID / Login Customer ID"
+    },
     "auth": {
         "components": {
             "customer": "Khách hàng",
@@ -117,7 +130,6 @@
     },
     "user": {
         "list_employee": {
-
         },
         "edit_employee": "Chỉnh sửa nhân viên",
         "confirm_delete": "Bạn có chắc chắn muốn xóa nhân viên này?",
@@ -153,6 +165,37 @@
         "new_password": "Mật khẩu mới",
         "amount": "Số tiền",
         "loading": "Đang tải thông tin ví...",
+        "error": "Không thể lấy thông tin ví"
+    },
+    "service_packages": {
+        "empty_title": "Chưa có gói dịch vụ nào",
+        "empty_description": "Bạn chưa tạo gói dịch vụ nào. Bắt đầu bằng cách tạo gói dịch vụ mới.",
+        "create_btn": "Tạo gói dịch vụ mới",
+        "title_create": "Tạo gói dịch vụ mới",
+        "title_edit": "Chỉnh sửa gói dịch vụ",
+        "name": "Tên gói dịch vụ",
+        "description": "Mô tả gói dịch vụ",
+        "platform": "Nền tảng",
+        "meta_features": "Tính năng Meta",
+        "google_features": "Tính năng Google",
+        "open_fee": "Phí mở gói $ (USDT)",
+        "range_min_top_up": "Số dư tối thiểu cần nạp $ (USDT)",
+        "range_min_top_up_desc": "Số dư tối thiểu cần nạp để sử dụng gói dịch vụ ",
+        "top_up_fee": "Phí nạp tiền (%)",
+        "set_up_time": "Thời gian thiết lập",
+        "set_up_time_desc": "Thời gian thiết lập gói dịch vụ (tính theo giờ)",
+        "disabled": "Khoá gói dịch vụ",
+        "disabled_desc": "Nếu khóa gói dịch vụ, khách hàng không thể sử dụng gói dịch vụ này (LƯU Ý).",
+        "toggle_desc": "Bạn có thể bật hoặc tắt."
+    },
+    "service_user": {
+        "create_title": "Tạo dịch vụ người dùng",
+        "user": "Người dùng",
+        "select_user": "Chọn người dùng",
+        "service_package": "Gói dịch vụ",
+        "select_service_package": "Chọn gói dịch vụ",
+        "meta_email": "Meta Email",
+        "display_name": "Tên hiển thị",
         "error": "Không thể lấy thông tin ví",
         "title": "Quản lý ví",
         "current_password": "Mật khẩu hiện tại",

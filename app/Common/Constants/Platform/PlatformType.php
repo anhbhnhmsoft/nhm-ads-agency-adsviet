@@ -14,5 +14,20 @@ enum PlatformType: int
             PlatformType::META => __('enums.PlatformType.META'),
         };
     }
+
+    public static function getValues(): array
+    {
+        return [
+            PlatformType::GOOGLE->value,
+            PlatformType::META->value,
+        ];
+    }
+
+    public static function getOptions(): array
+    {
+        return collect(self::cases())
+            ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+            ->toArray();
+    }
 }
 

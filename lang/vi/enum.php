@@ -11,5 +11,15 @@ return [
     'PlatformType' => [
         'GOOGLE' => 'Google Ads',
         'META' => 'Meta Ads',
-    ]
+    ],
+    'ServicePackageFeature' => [
+        'META_NEW_BM' => 'Tài khoản BM mới',
+        'META_FANPAGE_ATTACHED' => 'Fanpage đi kèm',
+        'META_MULTIBRAND_SUPPORT' => 'Hỗ trợ đa ngành hàng',
+        'META_TIMEZONE_ID' => 'Múi giờ BM',
+        'GOOGLE_TRUST_SCORE_HIGH' => 'Trusted Site - Google',
+        'NEW_ACCOUNT' => 'Tạo mới tài khoản',
+        'GUARANTEE' => 'Bảo hành (trong bao ngày)',
+        'SUPPORT_247' => 'Hỗ trợ 24/7',
+    ],
 ];
