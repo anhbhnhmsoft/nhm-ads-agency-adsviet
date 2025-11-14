@@ -135,34 +135,17 @@
     # note
     - lưu trữ các gói dịch vụ của hệ thống
     - Mỗi gói dịch vụ sẽ có các tính năng khác nhau
-    # quan hệ
-    - n-1 với bảng platform_settings qua platform_setting_id
     # cấu trúc
     - id (int, primary key, auto-increment)
     - name (varchar, not null) -- tên gói dịch vụ
-    - platform_setting_id (int, foreign key to platform_settings.id, not null) -- cài đặt nền tảng liên kết
-    - platform (smallint, not null) -- nền tảng (trong enum Platform)
+    - description (text, nullable) -- mô tả gói dịch vụ
+    - platform (smallint, not null) -- nền tảng (trong enum Platform - google ads hoặc meta ads)
     - features (text, not null) -- các tính năng của gói dịch vụ (json format)
     - open_fee (decimal(18, 8), not null) -- giá mở tài khoản
-    - top_up_fee (decimal(18, 8), not null) -- % phí nạp tiền
-    - set_up_time (int, not null) -- thời gian thiết lập (tính bằng phút)
+    - range_min_top_up (decimal(18, 8), not null) -- số dư tối thiểu cần phải nạp tiền để có thể sử dụng gói dịch vụ
+    - top_up_fee (smallint, not null, default 0) -- % phí nạp tiền
+    - set_up_time (int, not null) -- thời gian thiết lập (tính bằng giờ)
     - disabled (boolean, not null, default false) -- trạng thái
-    - softDeletes
-    - timestamps
-
-# bảng service_package_fee_tiers
-    # note
-    - lưu trữ các mức phí theo gói dịch vụ
-    - Mỗi gói dịch vụ có thể có nhiều mức phí khác nhau dựa trên số dư tài khoản quảng cáo
-    # quan hệ
-    - n-1 với bảng service_packages qua package_id
-
-    # cấu trúc
-    - id (int, primary key, auto-increment)
-    - package_id (int, foreign key to service_packages.id, not null)
-    - range_min (decimal(18, 8), not null) -- số dư tối thiểu
-    - range_max (decimal(18, 8), not null) -- số dư tối đa
-    - fee_percent (decimal(5, 2), not null) -- % phí áp dụng
     - softDeletes
     - timestamps
 
@@ -176,7 +159,7 @@
     - id (int, primary key, auto-increment)
     - package_id (int, foreign key to service_packages.id, not null)
     - user_id (int, foreign key to users.id, not null)
-    - config_account (text, not null) -- cấu hình tài khoản dịch vụ (json format - mã hóa)
+    - config_account (json, not null) -- cấu hình tài khoản dịch vụ (json format)
     - status (smallint, not null) -- trạng thái dịch vụ (trong enum ServiceUserStatus)
     - budget (decimal(18, 8), not null, default 0) -- ngân sách dịch vụ
     - description (varchar, nullable) -- mô tả thêm

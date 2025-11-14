@@ -21,6 +21,7 @@ class ServiceUser extends Model
     ];
 
     protected $casts = [
+        'id' => 'string',
         'package_id' => 'integer',
         'user_id' => 'integer',
         'config_account' => 'array',

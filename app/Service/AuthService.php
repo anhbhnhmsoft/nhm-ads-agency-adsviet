@@ -74,21 +74,20 @@ class AuthService
                     return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
                 }
             }
-            Logging::api('test');
-
+            $rememberMe = isset($data['remember_me']) && $data['remember_me'] === true;
             // Khởi tạo xác thực
             if ($forApi) {
                 // Tạo token Sanctum
                 $token = $user->createToken(
                     name: 'api-token',
-                    expiresAt: $data['remember_me'] ? now()->addDays(30) : null
+                    expiresAt: $rememberMe ? now()->addDays(30) : null
                 )->plainTextToken;
                 return ServiceReturn::success(data: [
                     'token' => $token,
                     'user' => $user,
                 ]);
             } else {
-                Auth::guard('web')->login($user);
+                Auth::guard('web')->login($user, $rememberMe);
                 // Làm mới session để ngăn chặn tấn công fixation session
                 request()->session()->regenerate();
                 return ServiceReturn::success(data: [

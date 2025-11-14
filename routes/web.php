@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ServiceUserController;
+use App\Http\Controllers\ServicePackageController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PlatformSettingController;
 use App\Http\Controllers\WalletController;
@@ -38,7 +40,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::put('/employee/{id}', [UserController::class, 'update'])->name('user_employee_update');
         Route::delete('/employee/{id}', [UserController::class, 'destroy'])->name('user_employee_destroy');
         Route::post('/employee/{id}/toggle-disable', [UserController::class, 'toggleDisable'])->name('user_employee_toggle_disable');
-        
+
         Route::get('/manager/{managerId}/employees', [UserController::class, 'getEmployeesByManager'])->name('user_get_employees_by_manager');
         Route::post('/employee/assign', [UserController::class, 'assignEmployee'])->name('user_assign_employee');
         Route::post('/employee/unassign', [UserController::class, 'unassignEmployee'])->name('user_unassign_employee');
@@ -66,5 +68,15 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/{userId}/lock', [WalletController::class, 'lock'])->name('wallet_lock');
         Route::post('/{userId}/unlock', [WalletController::class, 'unlock'])->name('wallet_unlock');
         Route::post('/{userId}/reset-password', [WalletController::class, 'resetPassword'])->name('wallet_reset_password');
+    });
+
+    Route::prefix('/service-packages')->group(function (){
+        Route::get('/', [ServicePackageController::class, 'index'])->name('service_packages_index');
+        Route::get('/create', [ServicePackageController::class, 'createView'])->name('service_packages_create_view');
+        Route::post('/create', [ServicePackageController::class, 'create'])->name('service_packages_create');
+        Route::get('/{id}/edit', [ServicePackageController::class, 'editView'])->name('service_packages_edit_view');
+        Route::put('/{id}', [ServicePackageController::class, 'update'])->name('service_packages_update');
+        Route::delete('/{id}', [ServicePackageController::class, 'destroy'])->name('service_packages_destroy');
+        Route::post('/{id}/toggle-disable', [ServicePackageController::class, 'toggleDisable'])->name('service_packages_toggle_disable');
     });
 });

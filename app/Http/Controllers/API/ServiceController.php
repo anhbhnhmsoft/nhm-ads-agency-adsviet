@@ -3,52 +3,67 @@
 namespace App\Http\Controllers\API;
 
 use App\Core\Controller;
-use FacebookAds\Api;
-use FacebookAds\Object\Fields\AdAccountFields;
+use App\Core\QueryListDTO;
+use App\Core\RestResponse;
+use App\Http\Resources\ServiceOwnerResource;
+use App\Http\Resources\ServicePackageResource;
+use App\Service\MetaBusinessService;
+use App\Service\ServicePackageService;
+use App\Service\ServiceUserService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
 class ServiceController extends Controller
 {
-
-    public function test()
+    public function __construct(
+        protected ServicePackageService $servicePackageService,
+        protected ServiceUserService    $serviceUserService,
+        protected MetaBusinessService $metaBusinessService,
+    )
     {
-        // 1. Khởi tạo (Code của bạn)
-
-//
-//            // 2. Thực hiện cuộc gọi API để test
-//            echo "Khởi tạo thành công. Đang thử gọi API...<br>";
-//
-//            // Lấy người dùng hiện tại (thông qua access token)
-//            $user = new AdUser('me');
-//
-//            // Lấy danh sách tài khoản quảng cáo của người dùng đó
-//            // Đây chính là lúc API được gọi thực sự
-//            $adAccounts = $user->getAdAccounts([
-//                AdAccountFields::ACCOUNT_ID,
-//                AdAccountFields::NAME,
-//                AdAccountFields::CURRENCY,
-//            ]);
-//
-//            // 3. Nếu thành công, in kết quả
-//            echo "<strong>KẾT NỐI THÀNH CÔNG!</strong><br>";
-//            echo "Tìm thấy " . count($adAccounts) . " tài khoản quảng cáo:<br>";
-//
-//            foreach ($adAccounts as $account) {
-//                echo "- ID: " . $account->{AdAccountFields::ACCOUNT_ID} .
-//                    " | Tên: " . $account->{AdAccountFields::NAME} .
-//                    " | Tiền tệ: " . $account->{AdAccountFields::CURRENCY} . "<br>";
-//            }
-//
-//        } catch (Exception $e) {
-//            // 4. Nếu thất bại, bắt lỗi
-//            echo "<strong>KẾT NỐI THẤT BẠI!</strong><br>";
-//            echo "Lỗi: " . $e->getMessage();
-//            echo "<br>Chi tiết: " . $e->getResponse();
-//        }
-//        Api::init(
-//            app_id: config('services.facebook.app_id'),
-//            app_secret: config('services.facebook.app_secret'),
-//            access_token: config('services.facebook.access_token'),
-//        );
-//
-//        $instance = Api::instance();
     }
+    public function serviceOwner(Request $request): JsonResponse
+    {
+        $params = $this->extractQueryPagination($request);
+        $result = $this->serviceUserService->getListServiceUserPagination(new QueryListDTO(
+            perPage: $params->get('per_page'),
+            page: $params->get('page'),
+            filter: $params->get('filter'),
+            sortBy: $params->get('sort_by'),
+            sortDirection: $params->get('direction'),
+        ));
+        $pagination = $result->getData();
+        return RestResponse::success(data: ServiceOwnerResource::collection($pagination)->response()->getData());
+    }
+
+    /**
+     * Lấy danh sách gói dịch vụ
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function package(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $result = $this->servicePackageService->getListServicePackage(new QueryListDTO(
+            perPage: $request->get('per_page', 10),
+            page: $request->get('page', 1),
+            filter: [
+                'is_active' => true
+            ],
+            sortBy: 'created_at',
+            sortDirection: 'desc',
+        ));
+        $pagination = $result->getData();
+        return RestResponse::success(data: ServicePackageResource::collection($pagination)->response()->getData());
+    }
+
+    /**
+     * Đăng ký gói dịch vụ cho người dùng
+     * @param Request $request
+     */
+    public function registerServicePackage(Request $request)
+    {
+
+    }
+
+
 }
