@@ -33,3 +33,23 @@ export const walletStatusLabel: Record<_WalletStatus, string> = {
     [_WalletStatus.ACTIVE]: 'wallet.active',
     [_WalletStatus.LOCKED]: 'wallet.locked',
 }
+
+export enum _ConfigName {
+    BEP20_WALLET_ADDRESS = 'BEP20_WALLET_ADDRESS',
+    TRC20_WALLET_ADDRESS = 'TRC20_WALLET_ADDRESS',
+}
+
+export const configNameLabel: Record<_ConfigName, string> = {
+    [_ConfigName.BEP20_WALLET_ADDRESS]: 'config.bep20_wallet_address',
+    [_ConfigName.TRC20_WALLET_ADDRESS]: 'config.trc20_wallet_address',
+}
+
+export enum _ConfigType {
+    IMAGE = 1,
+    STRING = 2,
+}
+
+export const configTypeLabel: Record<_ConfigType, string> = {
+    [_ConfigType.IMAGE]: 'config.type.image',
+    [_ConfigType.STRING]: 'config.type.string',
+}

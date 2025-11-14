@@ -3,13 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Core\Controller;
-use Illuminate\Support\Facades\Auth;
+use App\Service\BinanceService;
 
 class DashboardController extends Controller
 {
-    public function index()
+    // Hiển thị số dư USDT từ Binance
+    public function index(BinanceService $binanceService)
     {
-        return $this->rendering('dashboard/index',[]);
+        $balance = $binanceService->getUsdtSpotBalance();
+        $data = [];
+        if ($balance->isSuccess()) {
+            $data['binance'] = $balance->getData();
+        } else {
+            $data['binanceError'] = $balance->getMessage();
+        }
+        return $this->rendering('dashboard/index', $data);
     }
 
 }

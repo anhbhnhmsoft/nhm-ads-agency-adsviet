@@ -86,6 +86,14 @@ return new class extends Migration
             $table->smallInteger('status')->comment('Trạng thái giao dịch (trong enum WalletTransactionStatus)');
             $table->string('reference_id')->nullable()->comment('Mã tham chiếu bên ngoài (nếu có)');
             $table->string('description')->nullable()->comment('Mô tả giao dịch');
+            $table->string('network')->nullable()->comment('Mạng nạp (BEP20/TRC20)');
+            $table->string('tx_hash')->nullable()->comment('Hash giao dịch on-chain (nếu có)');
+            $table->string('customer_name')->nullable();
+            $table->string('customer_email')->nullable();
+            $table->string('deposit_address')->nullable()->comment('Địa chỉ ví nhận tiền');
+            $table->string('payment_id')->nullable()->comment('NowPayments payment ID');
+            $table->string('pay_address')->nullable()->comment('Địa chỉ ví từ NowPayments để nhận thanh toán');
+            $table->dateTime('expires_at')->nullable()->comment('Thời gian hết hạn lệnh nạp (15 phút sau khi tạo)');
             $table->softDeletes();
             $table->timestamps();
         });

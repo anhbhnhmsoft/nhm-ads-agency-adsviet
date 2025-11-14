@@ -1,15 +1,18 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ServiceUserController;
 use App\Http\Controllers\ServicePackageController;
+use App\Http\Controllers\NowPaymentsWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PlatformSettingController;
 use App\Http\Controllers\WalletController;
+use App\Http\Controllers\WalletTransactionController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
+Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('nowpayments_webhook');
 
 Route::middleware(['guest:web'])->group(function () {
     Route::get('/login', [AuthController::class, 'loginScreen'])->name('login');
@@ -61,13 +64,29 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/{id}/toggle', [PlatformSettingController::class, 'toggle'])->name('platform_settings_toggle');
     });
 
+    Route::prefix('/config')->group(function (){
+        Route::get('/', [ConfigController::class, 'index'])->name('config_index');
+        Route::put('/', [ConfigController::class, 'update'])->name('config_update');
+    });
+
     Route::prefix('/wallets')->group(function(){
+        Route::get('/', [WalletController::class, 'index'])->name('wallet_index');
+        Route::get('/min-amount/{network}', [WalletController::class, 'getMinimalAmount'])->name('wallet_min_amount');
+        Route::post('/top-up', [WalletController::class, 'myTopUp'])->name('wallet_my_top_up');
+        Route::post('/withdraw', [WalletController::class, 'myWithdraw'])->name('wallet_my_withdraw');
+        Route::post('/change-password', [WalletController::class, 'changePassword'])->name('wallet_change_password');
         Route::post('/{userId}/create', [WalletController::class, 'create'])->name('wallet_create');
         Route::post('/{userId}/top-up', [WalletController::class, 'topUp'])->name('wallet_top_up');
         Route::post('/{userId}/withdraw', [WalletController::class, 'withdraw'])->name('wallet_withdraw');
         Route::post('/{userId}/lock', [WalletController::class, 'lock'])->name('wallet_lock');
         Route::post('/{userId}/unlock', [WalletController::class, 'unlock'])->name('wallet_unlock');
         Route::post('/{userId}/reset-password', [WalletController::class, 'resetPassword'])->name('wallet_reset_password');
+        Route::post('/deposit/{id}/cancel', [WalletController::class, 'cancelDeposit'])->name('wallet_deposit_cancel');
+    });
+
+    Route::prefix('transactions')->group(function () {
+        Route::get('/', [WalletTransactionController::class, 'index'])->name('transactions_index');
+        Route::post('/{id}/approve', [WalletTransactionController::class, 'approve'])->name('transactions_approve');
     });
 
     Route::prefix('/service-packages')->group(function (){

@@ -18,6 +18,14 @@ class UserWalletTransaction extends Model
         'status',
         'reference_id',
         'description',
+        'network',
+        'tx_hash',
+        'customer_name',
+        'customer_email',
+        'deposit_address',
+        'payment_id',
+        'pay_address',
+        'expires_at',
     ];
 
     protected $casts = [
@@ -25,6 +33,7 @@ class UserWalletTransaction extends Model
         'amount' => 'decimal:8',
         'type' => 'integer',
         'status' => 'integer',
+        'expires_at' => 'datetime',
     ];
 
     public function wallet()
