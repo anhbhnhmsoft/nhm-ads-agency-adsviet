@@ -10,6 +10,7 @@ return [
     'api_not_found' => 'Nguồn không xác định đã xảy ra, vui lòng liên hệ quản trị viên để được hỗ trợ.',
     'method_not_allowed' => 'API không đúng định dạng, vui lòng liên hệ quản trị viên để được hỗ trợ.',
     'permission_error' => 'Bạn không có quyền làm tác vụ này, vui lòng liên hệ quản trị viên để được hỗ trợ.',
+    'permission_denied' => 'Bạn không có quyền truy cập tài nguyên này.',
     'authorization_header_not_found' => 'Không tìm thấy tiêu đề ủy quyền, vui lòng liên hệ quản trị viên để được hỗ trợ.',
     'refresh_token_fail' => 'Tài khoản của bạn đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.',
     'data_not_found' => 'Dữ liệu trống, vui lòng thử lại sau.',

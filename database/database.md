@@ -101,6 +101,14 @@
     - status (smallint, not null) -- trạng thái giao dịch (trong enum WalletTransactionStatus)
     - reference_id (varchar, nullable) -- mã tham chiếu bên ngoài (nếu có) 
     - description (varchar, nullable) -- mô tả giao dịch
+    - network (varchar, nullable) -- mạng nạp (BEP20/TRC20)
+    - tx_hash (varchar, nullable) -- hash giao dịch on-chain (nếu có)
+    - customer_name (varchar, nullable) -- tên khách hàng
+    - customer_email (varchar, nullable) -- email khách hàng
+    - deposit_address (varchar, nullable) -- địa chỉ ví nhận tiền
+    - payment_id (varchar, nullable) -- NowPayments payment ID
+    - pay_address (varchar, nullable) -- địa chỉ ví từ NowPayments để nhận thanh toán
+    - expires_at (datetime, nullable) -- thời gian hết hạn lệnh nạp (15 phút sau khi tạo)
     - softDeletes
     - timestamps
 

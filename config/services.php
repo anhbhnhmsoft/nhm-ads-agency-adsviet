@@ -40,5 +40,15 @@ return [
         'bot_username' => env('TELEGRAM_BOT_USERNAME'),
         'url_telegram_auth' => env('TELEGRAM_URL_TELEGRAM_AUTH'),
     ],
+    'binance' => [
+        'key' => env('BINANCE_API_KEY'),
+        'secret' => env('BINANCE_API_SECRET'),
+        'base_url' => env('BINANCE_API_BASE_URL'),
+    ],
+    'nowpayments' => [
+        'api_key' => env('NOWPAYMENTS_API_KEY'),
+        'ipn_secret_key' => env('NOWPAYMENTS_IPN_SECRET_KEY'),
+        'base_url' => env('NOWPAYMENTS_BASE_URL', 'https://api.nowpayments.io/v1'),
+    ],
     'mobile_deep_link' => env('EXPO_DEEP_LINK'),
 ];

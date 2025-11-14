@@ -15,8 +15,9 @@ return [
     ],
     'password' => [
         'required' => 'Mật khẩu là bắt buộc.',
-        'min' => 'Mật khẩu phải có ít nhất :min ký tự.',
         'regex' => 'Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số.',
+        'string' => 'Mật khẩu không hợp lệ.',
+        'min' => 'Mật khẩu phải có ít nhất :min ký tự.',
     ],
     'phone' => [
         'string' => 'Số điện thoại không hợp lệ.',
@@ -48,4 +49,15 @@ return [
         'exists' => 'Người dùng không tồn tại.',
     ],
     'token_invalid' => 'Token không hợp lệ.',
+    'amount' => [
+        'required' => 'Số tiền là bắt buộc.',
+        'numeric' => 'Số tiền phải là một số.',
+        'gt' => 'Số tiền phải lớn hơn 0.',
+        'min' => 'Số tiền tối thiểu là :min.',
+    ],
+    'network' => [
+        'required' => 'Mạng là bắt buộc.',
+        'string' => 'Mạng phải là một chuỗi ký tự.',
+        'in' => 'Mạng không hợp lệ. Chỉ chấp nhận BEP20 hoặc TRC20.',
+    ],
 ];

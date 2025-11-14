@@ -2,9 +2,9 @@ import useCheckRole from '@/hooks/use-check-role';
 import { _UserRole } from '@/lib/types/constants';
 import { IMenu } from '@/lib/types/type';
 import { resolveUrl } from '@/lib/utils';
-import { dashboard, user_list, user_list_employee } from '@/routes';
+import { dashboard, user_list, user_list_employee, config_index, wallet_index } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
-import { LayoutDashboard, Users, BookUser, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, BookUser, Settings, Wallet, Receipt } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -28,6 +28,22 @@ const useMenu = () => {
                 is_menu: true,
                 active: isActive(dashboard()),
                 can_show: true,
+            },
+            {
+                title: t('menu.my_wallet'),
+                url: wallet_index().url,
+                icon: <Wallet />,
+                is_menu: true,
+                active: isActive(wallet_index()),
+                can_show: checkRole([_UserRole.ADMIN, _UserRole.CUSTOMER, _UserRole.AGENCY]),
+            },
+            {
+                title: t('menu.transactions'),
+                url: '/transactions',
+                icon: <Receipt />,
+                is_menu: true,
+                active: isActive('/transactions'),
+                can_show: checkRole([_UserRole.ADMIN, _UserRole.CUSTOMER, _UserRole.AGENCY, _UserRole.EMPLOYEE, _UserRole.MANAGER]),
             },
             {
                 title: t('menu.user'),
@@ -71,6 +87,14 @@ const useMenu = () => {
                 icon: <Settings />,
                 is_menu: true,
                 active: isActive('/platform-settings'),
+                can_show: checkRole([_UserRole.ADMIN]),
+            },
+            {
+                title: t('menu.crypto_wallet_config'),
+                url: config_index().url,
+                icon: <Wallet />,
+                is_menu: true,
+                active: isActive(config_index()),
                 can_show: checkRole([_UserRole.ADMIN]),
             },
             
