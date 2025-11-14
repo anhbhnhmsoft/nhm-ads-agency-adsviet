@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ServiceUserController;
 use App\Http\Controllers\ServicePackageController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PlatformSettingController;

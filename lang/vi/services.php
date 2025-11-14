@@ -11,5 +11,6 @@ return [
         'top_up_fee_invalid' => 'Giá top up không hợp lệ',
         'set_up_time_invalid' => 'Thời gian thiết lập không hợp lệ',
         'disabled_invalid' => 'Trạng thái không hợp lệ',
+        'service_package_invalid' => 'Gói dịch vụ không hợp lệ',
     ],
 ];

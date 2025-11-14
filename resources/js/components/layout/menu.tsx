@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-
 const useMenu = () => {
     const { url, props } = usePage();
     const checkRole = useCheckRole(props.auth);

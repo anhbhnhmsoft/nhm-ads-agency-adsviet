@@ -44,7 +44,8 @@
         "confirm_delete_title": "Bạn có chắc chắn không?",
         "confirm_delete_description": "Hành động này không thể được hoàn tác. Thao tác này sẽ xóa vĩnh viễn dữ liệu của bạn khỏi máy chủ của chúng tôi.",
         "cancel": "Hủy",
-        "confirm": "Xác nhận"
+        "confirm": "Xác nhận",
+        "submit": "Gửi"
     },
     "enum": {
         "user_role": {
@@ -68,7 +69,10 @@
         "config": "Cấu hình",
         "platform_settings": "Cấu hình nền tảng",
         "service_packages": "Gói dịch vụ",
-        "service_packages_create": "Tạo gói dịch vụ"
+        "service_packages_create": "Tạo gói dịch vụ",
+        "service_user": "Dịch vụ người dùng",
+        "service_user_list": "Danh sách dịch vụ",
+        "service_user_create": "Tạo dịch vụ người dùng"
     },
     "platform": {
         "settings": "Cấu hình nền tảng",
@@ -169,5 +173,14 @@
         "disabled": "Khoá gói dịch vụ",
         "disabled_desc": "Nếu khóa gói dịch vụ, khách hàng không thể sử dụng gói dịch vụ này (LƯU Ý).",
         "toggle_desc": "Bạn có thể bật hoặc tắt."
+    },
+    "service_user": {
+        "create_title": "Tạo dịch vụ người dùng",
+        "user": "Người dùng",
+        "select_user": "Chọn người dùng",
+        "service_package": "Gói dịch vụ",
+        "select_service_package": "Chọn gói dịch vụ",
+        "meta_email": "Meta Email",
+        "display_name": "Tên hiển thị"
     }
 }

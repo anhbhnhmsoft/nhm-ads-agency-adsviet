@@ -14,13 +14,6 @@ import { Edit, MoreHorizontal, PackageOpen, Plus, Trash, ToggleLeft, ToggleRight
 import { router } from '@inertiajs/react';
 import { service_packages_create_view, service_packages_destroy, service_packages_edit_view, service_packages_toggle_disable } from '@/routes';
 import { ServicePackageItem, ServicePackagePagination } from '@/pages/service-package/types/type';
-import {
-    Card,
-    CardContent,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 
 import GoogleIcon from '@/images/google_icon.png';

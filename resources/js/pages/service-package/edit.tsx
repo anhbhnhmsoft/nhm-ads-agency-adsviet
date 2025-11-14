@@ -23,10 +23,11 @@ type Props = {
     meta_features: ServicePackageOption[];
     google_features: ServicePackageOption[];
     service_package: ServicePackageItem;
+    timezone_ids: {[key:number] : string};
+
 };
-const Edit = ({ meta_features, google_features, service_package }: Props) => {
+const Edit = ({ meta_features, google_features, service_package, timezone_ids }: Props) => {
     const { t } = useTranslation();
-    console.log(service_package)
     const { form, submit } = useFormEditServicePackage(service_package.id, service_package);
 
     const { data, setData, processing, errors } = form;
@@ -240,8 +241,7 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
                         type="number"
                         step={'any'}
                         onChange={(e) => {
-                            const stringValue = e.target.value;
-                            setData('set_up_time', Number(stringValue));
+                            setData('set_up_time', e.target.value);
                         }}
                         required
                     />
@@ -282,65 +282,111 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
                     : t('service_packages.google_features')}
             </h1>
             <div className={'grid grid-cols-1 gap-6 md:grid-cols-2'}>
-                {availableFeatures.map((feature) => (
-                    <div key={feature.key} className={'flex flex-col gap-2'}>
-                        {feature.type === 'boolean' && (
-                            <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50">
-                                <Checkbox
-                                    id={feature.key}
-                                    disabled={false}
-                                    checked={
-                                        !!getCurrentFeatureValue(
-                                            feature.key,
-                                            false,
-                                        )
-                                    }
-                                    onCheckedChange={(value) => {
-                                        const val = value as boolean;
-                                        // e là Event, nhưng Checkbox component của shadcn trả về giá trị trực tiếp
-                                        return handleFeatureChange(
-                                            feature.key,
-                                            val,
-                                        ); // <--- Nguồn gốc vấn đề 2
-                                    }}
-                                    className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
-                                />
-                                <div className="grid gap-1.5 font-normal">
-                                    <p className="text-sm leading-none font-medium">
-                                        {feature.label}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t('service_packages.toggle_desc')}
-                                    </p>
-                                </div>
-                            </Label>
-                        )}
-
-                        {feature.type === 'number' && (
-                            <>
-                                <Label htmlFor={feature.key}>
-                                    {feature.label}
+                {availableFeatures.map((feature) => {
+                    if (feature.type === 'boolean') {
+                        return (
+                            <div key={feature.key} className={'flex flex-col gap-2'}>
+                                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50">
+                                    <Checkbox
+                                        id={feature.key}
+                                        disabled={false}
+                                        checked={
+                                            !!getCurrentFeatureValue(
+                                                feature.key,
+                                                false,
+                                            )
+                                        }
+                                        onCheckedChange={(value) => {
+                                            const val = value as boolean;
+                                            // e là Event, nhưng Checkbox component của shadcn trả về giá trị trực tiếp
+                                            return handleFeatureChange(
+                                                feature.key,
+                                                val,
+                                            ); // <--- Nguồn gốc vấn đề 2
+                                        }}
+                                        className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+                                    />
+                                    <div className="grid gap-1.5 font-normal">
+                                        <p className="text-sm leading-none font-medium">
+                                            {feature.label}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {t('service_packages.toggle_desc')}
+                                        </p>
+                                    </div>
                                 </Label>
-                                <Input
-                                    type="text" // Dùng text để hỗ trợ thập phân
-                                    inputMode="decimal"
-                                    value={
-                                        (getCurrentFeatureValue(
+                            </div>
+                        )
+                    }
+
+                    if (feature.type === 'number') {
+                        if (feature.key === 'meta_timezone_id') {
+                            return (
+                                <div key={feature.key} className={'flex flex-col gap-2'}>
+                                    <Label htmlFor={feature.key}>
+                                        {feature.label}
+                                    </Label>
+                                    <Select
+                                        value={(getCurrentFeatureValue(
                                             feature.key,
                                             0,
-                                        ) as number) ?? ''
-                                    }
-                                    onChange={(e) =>
-                                        handleFeatureChange(
-                                            feature.key,
-                                            parseFloat(e.target.value) || 0,
-                                        )
-                                    }
-                                />
-                            </>
-                        )}
-                    </div>
-                ))}
+                                        ) as number).toString() ?? ''}
+                                        onValueChange={(value) => {
+                                            const numericValue = Number(value);
+                                            handleFeatureChange(
+                                                feature.key,
+                                                numericValue
+                                            )
+                                        }}
+                                        required
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue
+                                                placeholder={feature.label}
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                {Object.entries(timezone_ids).map(([id, name]) => (
+                                                    <SelectItem
+                                                        key={id}
+                                                        value={id}
+                                                    >
+                                                        {name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )
+                        }else{
+                            return (
+                                <div key={feature.key} className={'flex flex-col gap-2'}>
+                                    <Label htmlFor={feature.key}>
+                                        {feature.label}
+                                    </Label>
+                                    <Input
+                                        type="text" // Dùng text để hỗ trợ thập phân
+                                        inputMode="decimal"
+                                        value={
+                                            (getCurrentFeatureValue(
+                                                feature.key,
+                                                0,
+                                            ) as number) ?? ''
+                                        }
+                                        onChange={(e) =>
+                                            handleFeatureChange(
+                                                feature.key,
+                                                parseFloat(e.target.value) || 0,
+                                            )
+                                        }
+                                    />
+                                </div>
+                            )
+                        }
+                    }
+                })}
                 {errors.features && (
                     <p className="text-sm text-red-500">{errors.features}</p>
                 )}

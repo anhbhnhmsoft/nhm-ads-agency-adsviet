@@ -28,13 +28,19 @@ Route::prefix('auth')->middleware('throttle:5,1')->group(function () {
 });
 
 Route::prefix('service')->group(function () {
-    Route::get('package', [ServiceController::class, 'package']);
+//    Route::get('service-owner', [ServiceController::class, 'serviceOwner']);
+//    Route::get('package', [ServiceController::class, 'package']);
+    Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
 });
-
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('profile', [AuthController::class, 'getProfile']);
+    });
+    Route::prefix('service')->group(function () {
+        Route::get('service-owner', [ServiceController::class, 'serviceOwner']);
+        Route::get('package', [ServiceController::class, 'package']);
+//        Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
     });
 
 

@@ -6,6 +6,8 @@ export type ServicePackageOption = {
     type: 'boolean' | 'number'; // Chỉ chấp nhận 'boolean' hoặc 'number'
     label: string;
 };
+
+
 // TypeScript/JavaScript (Dùng cho Frontend hoặc Node.js)
 export type CreateServicePackageForm = {
     name: string;

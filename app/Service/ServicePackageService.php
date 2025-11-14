@@ -16,6 +16,11 @@ class ServicePackageService
     {
     }
 
+    /**
+     * Lấy danh sách gói dịch vụ
+     * @param QueryListDTO $queryListDTO
+     * @return ServiceReturn
+     */
     public function getListServicePackage(QueryListDTO $queryListDTO): ServiceReturn
     {
         try {
@@ -25,7 +30,8 @@ class ServicePackageService
                 ->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
             return ServiceReturn::success(data: $paginator);
-        }catch (\Exception $exception){
+        }
+        catch (\Exception $exception){
             Logging::error(
                 message: 'Lỗi lấy danh sách gói dịch vụ ServicePackageService@getListServicePackage: ' . $exception->getMessage(),
                 exception: $exception
@@ -42,6 +48,11 @@ class ServicePackageService
         }
     }
 
+    /**
+     * Tạo gói dịch vụ
+     * @param array $form
+     * @return ServiceReturn
+     */
     public function createServicePackage(array $form): ServiceReturn
     {
         try {
@@ -58,6 +69,11 @@ class ServicePackageService
         }
     }
 
+    /**
+     * Lấy gói dịch vụ theo id
+     * @param string $id
+     * @return ServiceReturn
+     */
     public function getServicePackageById(string $id): ServiceReturn
     {
         try {
@@ -74,7 +90,12 @@ class ServicePackageService
             return ServiceReturn::error(__('common_error.server_error'));
         }
     }
-
+    /**
+     * Cập nhật gói dịch vụ
+     * @param string $id
+     * @param array $form
+     * @return ServiceReturn
+     */
     public function updateServicePackage(string $id, array $form): ServiceReturn
     {
         try {
@@ -93,6 +114,11 @@ class ServicePackageService
         }
     }
 
+    /**
+     * Xóa gói dịch vụ
+     * @param string $id
+     * @return ServiceReturn
+     */
     public function deleteServicePackage(string $id): ServiceReturn
     {
         try {
@@ -107,6 +133,11 @@ class ServicePackageService
         }
     }
 
+    /**
+     * Bật/Tắt gói dịch vụ
+     * @param string $id
+     * @return ServiceReturn
+     */
     public function toggleDisable(string $id): ServiceReturn
     {
         try {

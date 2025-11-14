@@ -159,7 +159,7 @@
     - id (int, primary key, auto-increment)
     - package_id (int, foreign key to service_packages.id, not null)
     - user_id (int, foreign key to users.id, not null)
-    - config_account (text, not null) -- cấu hình tài khoản dịch vụ (json format - mã hóa)
+    - config_account (json, not null) -- cấu hình tài khoản dịch vụ (json format)
     - status (smallint, not null) -- trạng thái dịch vụ (trong enum ServiceUserStatus)
     - budget (decimal(18, 8), not null, default 0) -- ngân sách dịch vụ
     - description (varchar, nullable) -- mô tả thêm

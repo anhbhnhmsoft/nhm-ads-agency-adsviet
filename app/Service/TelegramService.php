@@ -35,11 +35,6 @@ class TelegramService
 
     public function handleWebhook(): void
     {
-//        try {
-//            $test = $this->bot->getWebhookUpdate();
-//            dd($test);
-//        }catch (\Exception $exception){
-//            dd($exception);
-//        }
+
     }
 }
