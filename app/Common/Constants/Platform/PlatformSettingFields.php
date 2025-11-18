@@ -89,18 +89,10 @@ class PlatformSettingFields
                 'key' => 'business_manager_id',
                 'label' => __('platform.fields.business_manager_id.label'),
                 'type' => 'text',
-                'required' => true,
+                'required' => false,
                 'placeholder' => __('platform.fields.business_manager_id.placeholder'),
                 'description' => __('platform.fields.business_manager_id.description'),
-            ],
-            [
-                'key' => 'ad_account_ids',
-                'label' => __('platform.fields.ad_account_ids.label'),
-                'type' => 'textarea',
-                'required' => false,
-                'placeholder' => __('platform.fields.ad_account_ids.placeholder'),
-                'description' => __('platform.fields.ad_account_ids.description'),
-            ],
+            ]
         ];
     }
 

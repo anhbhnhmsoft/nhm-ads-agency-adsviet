@@ -143,7 +143,7 @@ class WalletTransactionService
             }
 
             return [
-                'id' => $pendingTx->id,
+                'id' => (string) $pendingTx->id,
                 'amount' => (float) $pendingTx->amount,
                 'network' => $pendingTx->network,
                 'deposit_address' => $pendingTx->deposit_address,
@@ -160,7 +160,7 @@ class WalletTransactionService
 
 
     // Chỉ cho phép hủy nếu transaction thuộc về wallet của user và đang ở trạng thái PENDING
-    public function cancelDepositByUser(int $transactionId, int $userId): ServiceReturn
+    public function cancelDepositByUser(string|int $transactionId, int $userId): ServiceReturn
     {
         try {
             $transaction = $this->transactionRepository->query()->find($transactionId);

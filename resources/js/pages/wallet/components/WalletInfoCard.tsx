@@ -25,7 +25,7 @@ const WalletInfoCard = ({ t, wallet }: Props) => {
                     <Label className="text-muted-foreground">
                         {t('wallet.balance')}
                     </Label>
-                    <div className="mt-1 text-2xl font-semibold">{balanceDisplay} {t('wallet.currency')}</div>
+                    <div className="mt-1 text-2xl font-semibold">{balanceDisplay} {t('service_user.currency')}</div>
                 </div>
                 <div>
                     <Label className="text-muted-foreground">

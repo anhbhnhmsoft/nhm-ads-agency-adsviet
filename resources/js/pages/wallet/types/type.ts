@@ -30,7 +30,7 @@ export type Network = {
 };
 
 export interface PendingDeposit {
-    id: number;
+    id: string;
     amount: number;
     network: 'BEP20' | 'TRC20';
     deposit_address?: string;

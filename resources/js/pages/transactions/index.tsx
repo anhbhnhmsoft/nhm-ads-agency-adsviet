@@ -36,6 +36,8 @@
         const { t } = useTranslation();
         const [showFilters, setShowFilters] = useState(false);
 
+        const transactionsList = transactions?.data || [];
+
         const filterForm = useForm({
             type: filters.type || '',
             status: filters.status || '',
@@ -201,6 +203,7 @@
                                             <option value="3">{t('wallet.transaction_type.refund', { defaultValue: 'Hoàn tiền' })}</option>
                                             <option value="4">{t('wallet.transaction_type.fee', { defaultValue: 'Phí' })}</option>
                                             <option value="5">{t('wallet.transaction_type.cashback', { defaultValue: 'Cashback' })}</option>
+                                            <option value="6">{t('wallet.transaction_type.service_purchase', { defaultValue: 'Mua dịch vụ' })}</option>
                                         </select>
                                     </div>
                                     <div className="space-y-2">
@@ -268,7 +271,7 @@
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {transactions.length === 0 ? (
+                        {transactionsList.length === 0 ? (
                             <div className="py-8 text-center">
                                 <WalletIcon className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                                 <p className="text-gray-500">
@@ -278,7 +281,7 @@
                         ) : (
                             <>
                                 <div className="space-y-3">
-                                    {transactions.map((tx) => {
+                                    {transactionsList.map((tx) => {
                                         const statusClass = getStatusColor(tx.status);
                                         const explorerUrl = getExplorerUrl(tx.network, tx.txHash);
                                         const isPending = tx.status === TRANSACTION_STATUS.PENDING;
@@ -360,7 +363,7 @@
                                     <div className="mt-4 flex items-center justify-between">
                                         <div className="text-sm text-gray-600">
                                             {t('common.showing', {
-                                                defaultValue: 'Hiển thị :from đến :to trong tổng số :total',
+                                                defaultValue: 'Hiển thị {{from}} đến {{to}} trong tổng số {{total}}',
                                                 from: (pagination.current_page - 1) * pagination.per_page + 1,
                                                 to: Math.min(pagination.current_page * pagination.per_page, pagination.total),
                                                 total: pagination.total,

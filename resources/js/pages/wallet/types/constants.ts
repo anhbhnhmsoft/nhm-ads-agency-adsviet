@@ -5,6 +5,7 @@ export const TRANSACTION_TYPE = {
     REFUND: 3,
     FEE: 4,
     CASHBACK: 5,
+    SERVICE_PURCHASE: 6,
 } as const;
 
 export const TRANSACTION_STATUS = {
@@ -23,6 +24,7 @@ export const TRANSACTION_TYPE_MAP: Record<number, string> = {
     [TRANSACTION_TYPE.REFUND]: 'refund',
     [TRANSACTION_TYPE.FEE]: 'fee',
     [TRANSACTION_TYPE.CASHBACK]: 'cashback',
+    [TRANSACTION_TYPE.SERVICE_PURCHASE]: 'service_purchase',
 };
 
 export const TRANSACTION_STATUS_MAP: Record<number, string> = {

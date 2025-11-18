@@ -85,9 +85,9 @@ const WalletIndex = ({
 
     return (
         <div>
-            <Head title={t('wallet.title')} />
+            <Head title={t('menu.my_wallet')} />
             <h1 className="text-xl font-semibold">
-                {t('wallet.title')}
+                {t('menu.my_wallet')}
             </h1>
 
             {walletError && (
@@ -138,7 +138,7 @@ const WalletIndex = ({
 }
 
 WalletIndex.layout = (page: ReactNode) => (
-    <AppLayout breadcrumbs={[{ title: 'wallet.title' }]} children={page} />
+    <AppLayout breadcrumbs={[{ title: 'menu.my_wallet' }]} children={page} />
 );
 
 export default WalletIndex;

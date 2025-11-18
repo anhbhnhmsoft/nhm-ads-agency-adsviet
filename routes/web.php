@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServicePackageController;
+use App\Http\Controllers\ServiceOrderController;
 use App\Http\Controllers\NowPaymentsWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PlatformSettingController;
@@ -97,5 +98,17 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::put('/{id}', [ServicePackageController::class, 'update'])->name('service_packages_update');
         Route::delete('/{id}', [ServicePackageController::class, 'destroy'])->name('service_packages_destroy');
         Route::post('/{id}/toggle-disable', [ServicePackageController::class, 'toggleDisable'])->name('service_packages_toggle_disable');
+    });
+
+    Route::prefix('/service-purchase')->group(function (){
+        Route::get('/', [\App\Http\Controllers\ServicePurchaseController::class, 'index'])->name('service_purchase_index');
+        Route::post('/purchase', [\App\Http\Controllers\ServicePurchaseController::class, 'purchase'])->name('service_purchase_purchase');
+    });
+
+    Route::prefix('/service-orders')->group(function () {
+        Route::get('/', [ServiceOrderController::class, 'index'])->name('service_orders_index');
+        Route::post('/{id}/approve', [ServiceOrderController::class, 'approve'])->name('service_orders_approve');
+        Route::post('/{id}/cancel', [ServiceOrderController::class, 'cancel'])->name('service_orders_cancel');
+        Route::put('/{id}/config', [ServiceOrderController::class, 'updateConfig'])->name('service_orders_update_config');
     });
 });

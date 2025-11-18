@@ -17,9 +17,18 @@ class UserWalletTransactionRepository extends BaseRepository
         return $this->model()->create($attributes);
     }
 
-    public function updateById(int $id, array $attributes): bool
+    public function updateById(string|int $id, array $attributes): bool
     {
         return (bool) $this->query()->where('id', $id)->update($attributes);
+    }
+
+    // Tìm transaction theo reference_id và type
+    public function findByReferenceId(string $referenceId, int $type): ?UserWalletTransaction
+    {
+        return $this->query()
+            ->where('reference_id', $referenceId)
+            ->where('type', $type)
+            ->first();
     }
 }
 

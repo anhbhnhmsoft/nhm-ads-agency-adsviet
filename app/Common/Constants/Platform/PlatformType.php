@@ -10,8 +10,8 @@ enum PlatformType: int
     public function label()
     {
         return match ($this) {
-            PlatformType::GOOGLE => __('enums.PlatformType.GOOGLE'),
-            PlatformType::META => __('enums.PlatformType.META'),
+            PlatformType::GOOGLE => __('enum.PlatformType.GOOGLE'),
+            PlatformType::META => __('enum.PlatformType.META'),
         };
     }
 

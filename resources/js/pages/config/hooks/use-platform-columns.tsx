@@ -4,9 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { router } from '@inertiajs/react';
 import { PlatformSetting } from '@/lib/types/type';
 import { platformTypeLabel } from '@/lib/types/constants';
-import { Check, OctagonX } from 'lucide-react';
+import { Check, OctagonX, Pencil } from 'lucide-react';
 
-export function usePlatformColumns() {
+type UsePlatformColumnsProps = {
+  onEdit?: (item: PlatformSetting) => void;
+};
+
+export function usePlatformColumns({ onEdit }: UsePlatformColumnsProps = {}) {
   const { t } = useTranslation();
 
   return useMemo<ColumnDef<PlatformSetting>[]>(() => [
@@ -61,6 +65,16 @@ export function usePlatformColumns() {
         const disabled = !!it.disabled;
         return (
           <div className="flex items-center justify-center gap-2">
+            {onEdit && (
+              <button
+                type="button"
+                className="h-8 px-3 rounded border flex items-center gap-1 hover:bg-gray-100"
+                onClick={() => onEdit(it)}
+              >
+                <Pencil className="h-3 w-3" />
+                {t('common.edit')}
+              </button>
+            )}
             <button
               type="button"
               className={`h-8 px-3 rounded border ${disabled ? 'bg-primary text-white' : ''}`}
@@ -79,7 +93,7 @@ export function usePlatformColumns() {
       },
       meta: { headerClassName: 'text-center', cellClassName: 'text-center' },
     },
-  ], [t]);
+  ], [t, onEdit]);
 }
 
 

@@ -38,4 +38,23 @@ class ServiceUserRepository extends BaseRepository
         $query->orderBy($column, $direction);
         return $query;
     }
+
+    // Lấy dữ liệu cho bảng service users và referralBy cho user
+    public function withListRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'package:id,name,platform',
+            'user' => function ($userQuery) {
+                $userQuery->select('id', 'name', 'referral_code')
+                    ->with([
+                        'referredBy' => function ($referredQuery) {
+                            $referredQuery->select('id', 'referrer_id', 'referred_id')
+                                ->with([
+                                    'referrer:id,name,referral_code',
+                                ]);
+                        },
+                    ]);
+            },
+        ]);
+    }
 }
