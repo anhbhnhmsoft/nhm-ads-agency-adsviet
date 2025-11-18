@@ -25,6 +25,13 @@ return [
         'transaction_approved' => 'Xác thực giao dịch thành công',
         'transaction_cancelled' => 'Đã hủy giao dịch.',
         'withdraw_created' => 'Lệnh rút tiền đã được tạo. Vui lòng chờ admin xử lý.',
+        'wallet_created' => 'Đã tạo ví cho người dùng.',
+        'wallet_locked' => 'Đã khóa ví.',
+        'wallet_unlocked' => 'Đã mở khóa ví.',
+        'wallet_password_reset' => 'Đã đặt lại mật khẩu ví.',
+        'wallet_password_changed' => 'Đã đổi mật khẩu ví.',
+        'topup_success' => 'Nạp tiền thành công.',
+        'withdraw_success' => 'Rút tiền thành công.',
     ],
     'validation' => [
         'bank_name_required' => 'Vui lòng nhập tên ngân hàng hoặc ví điện tử',
