@@ -1,9 +1,10 @@
 import type { WalletTransaction } from '@/pages/wallet/types/type';
+import { LaravelPaginator } from '@/lib/types/type';
 
 export type Transaction = WalletTransaction;
 
 export interface TransactionsIndexProps {
-    transactions: Transaction[];
+    transactions: LaravelPaginator<Transaction>;
     pagination: {
         current_page: number;
         last_page: number;

@@ -9,7 +9,9 @@ import {
     user_list,
     user_list_employee,
     config_index,
-    wallet_index
+    wallet_index,
+    service_purchase_index,
+    service_orders_index,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -18,7 +20,10 @@ import {
     LayoutDashboard,
     Settings,
     Users,
-    Wallet, Receipt
+    Wallet,
+    Receipt,
+    ShoppingCart,
+    ClipboardList,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +55,30 @@ const useMenu = () => {
                 is_menu: true,
                 active: isActive(wallet_index()),
                 can_show: checkRole([_UserRole.ADMIN, _UserRole.CUSTOMER, _UserRole.AGENCY]),
+            },
+            {
+                title: t('menu.service_purchase'),
+                url: service_purchase_index().url,
+                icon: <ShoppingCart />,
+                is_menu: true,
+                active: isActive(service_purchase_index()),
+                can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
+            },
+            {
+                title: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE])
+                    ? t('menu.service_orders_admin')
+                    : t('menu.service_orders'),
+                url: service_orders_index().url,
+                icon: <ClipboardList />,
+                is_menu: true,
+                active: isActive(service_orders_index()),
+                can_show: checkRole([
+                    _UserRole.ADMIN,
+                    _UserRole.MANAGER,
+                    _UserRole.EMPLOYEE,
+                    _UserRole.CUSTOMER,
+                    _UserRole.AGENCY,
+                ]),
             },
             {
                 title: t('menu.transactions'),
@@ -121,6 +150,7 @@ const useMenu = () => {
                 active: isActive(config_index()),
                 can_show: checkRole([_UserRole.ADMIN]),
             },
+            
 
         ];
     }, [checkRole, t, isActive]);

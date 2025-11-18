@@ -230,7 +230,6 @@ class WalletController extends Controller
                 amount: (float) $data['amount'],
                 network: $data['network'],
                 orderId: $orderId,
-                customerName: $customerName,
                 successUrl: $successUrl,
                 cancelUrl: $cancelUrl,
             );
@@ -253,7 +252,7 @@ class WalletController extends Controller
                 Logging::web('WalletController@myTopUp: Missing payment_id', [
                     'payment_data' => $paymentData,
                 ]);
-                FlashMessage::error(__('Không thể tạo payment từ NowPayments: Thiếu payment_id'));
+                FlashMessage::error(__('common_error.wallet_nowpayments_missing_payment_id'));
                 return redirect()->back();
             }
 
@@ -271,7 +270,7 @@ class WalletController extends Controller
             );
 
             if ($createResult->isSuccess()) {
-                FlashMessage::success(__('Lệnh nạp đã được tạo. Vui lòng thanh toán qua NowPayments.'));
+                FlashMessage::success(__('wallet.flash.deposit_created'));
             } else {
                 Logging::web('WalletController@myTopUp: Failed to create deposit order', [
                     'error' => $createResult->getMessage(),
@@ -298,10 +297,10 @@ class WalletController extends Controller
             return redirect()->route('login');
         }
 
-        $result = $this->walletTransactionService->cancelDepositByUser((int)$transactionId, (int)$user->id);
+        $result = $this->walletTransactionService->cancelDepositByUser($transactionId, (int)$user->id);
         
         if ($result->isSuccess()) {
-            FlashMessage::success(__('Đã hủy lệnh nạp.'));
+            FlashMessage::success(__('wallet.flash.deposit_cancelled'));
         } else {
             FlashMessage::error($result->getMessage());
         }

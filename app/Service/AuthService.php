@@ -87,7 +87,7 @@ class AuthService
                     'user' => $user,
                 ]);
             } else {
-                Auth::guard('web')->login($user, $rememberMe);
+                Auth::guard('web')->login($user, $data['remember_me']);
                 // Làm mới session để ngăn chặn tấn công fixation session
                 request()->session()->regenerate();
                 return ServiceReturn::success(data: [
@@ -112,6 +112,16 @@ class AuthService
             }
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
+    }
+
+    public function handleLoginUsername(array $data): ServiceReturn
+    {
+        return $this->handleLogin([
+            'username' => $data['username'],
+            'password' => $data['password'],
+            'role' => $data['role'],
+            'remember_me' => $data['remember'] ?? false,
+        ], forApi: false);
     }
 
     /**
@@ -251,7 +261,7 @@ class AuthService
     {
         try {
             // Xác thực hash telegram
-            $validateHash = $this->verifyHashTelegram($data);
+            $validateHash = $this->verifyHashTelegramInternal($data);
             if (!$validateHash) {
                 return ServiceReturn::error(message: __('auth.login.validation.telegram_hash_invalid'));
             }
@@ -519,6 +529,94 @@ class AuthService
         }
     }
 
+    public function handleQuickLoginTelegram(string $telegramId): ServiceReturn
+    {
+        try {
+            $user = $this->userRepository->getUserByTelegramId($telegramId);
+            if (!$user) {
+                return ServiceReturn::success(data: [
+                    'need_register' => true,
+                ]);
+            }
+            
+            if ($user->disabled) {
+                return ServiceReturn::error(message: __('auth.login.validation.user_disabled'));
+            }
+
+            Auth::guard('web')->login($user, true);
+            request()->session()->regenerate();
+            
+            return ServiceReturn::success(data: [
+                'need_register' => false,
+            ]);
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi AuthService@handleQuickLoginTelegram: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    public function verifyHashTelegram(array $authData): ServiceReturn
+    {
+        $isValid = $this->verifyHashTelegramInternal($authData);
+        if (!$isValid) {
+            return ServiceReturn::error(message: __('auth.login.validation.telegram_hash_invalid'));
+        }
+        return ServiceReturn::success();
+    }
+
+    public function handleRegisterNewUser(array $data): ServiceReturn
+    {
+        DB::beginTransaction();
+        try {
+            // Kiểm tra refer code có tồn tại trong hệ thống hay không
+            $userRefer = $this->userRepository->getUserToRegisterByReferCode($data['refer_code']);
+            if (!$userRefer) {
+                return ServiceReturn::error(message: __('common_validation.refer_code.invalid'));
+            }
+            
+            $register = [
+                'name' => $data['name'],
+                'username' => $data['username'],
+                'password' => Hash::make($data['password']),
+                'role' => $data['role'],
+                'disabled' => false,
+                'referral_code' => Helper::generateReferCodeUser(UserRole::from($data['role'])),
+            ];
+
+            // Thêm telegram_id nếu có
+            if (isset($data['telegram_id'])) {
+                $register['telegram_id'] = $data['telegram_id'];
+            }
+
+            $user = $this->userRepository->create($register);
+
+            // Tạo mới user referral
+            $this->userReferralRepository->create([
+                'referrer_id' => $user->id,
+                'referred_id' => $userRefer->id,
+            ]);
+
+            DB::commit();
+
+            // Login user sau khi đăng ký
+            Auth::guard('web')->login($user, true);
+            request()->session()->regenerate();
+
+            return ServiceReturn::success(data: [
+                'user' => $user,
+            ]);
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi khi đăng ký AuthService@handleRegisterNewUser: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            DB::rollBack();
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
 
     /**
      * ---- Private methods ----
@@ -529,7 +627,7 @@ class AuthService
      * @param array $authData
      * @return bool
      */
-    private function verifyHashTelegram(array $authData): bool
+    private function verifyHashTelegramInternal(array $authData): bool
     {
         $checkHash = $authData['hash'] ?? '';
         unset($authData['hash']);

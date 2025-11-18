@@ -21,7 +21,8 @@ class ServiceUserTransactionLog extends Model
     ];
 
     protected $casts = [
-        'service_user_id' => 'integer',
+        'id' => 'string',
+        'service_user_id' => 'string',
         'amount' => 'decimal:8',
         'type' => 'integer',
         'status' => 'integer',

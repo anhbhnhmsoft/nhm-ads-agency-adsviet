@@ -53,7 +53,7 @@
         "filter": "Lọc",
         "all": "Tất cả",
         "reset": "Đặt lại",
-        "showing": "Hiển thị :from đến :to trong tổng số :total",
+        "showing": "Hiển thị {{from}} đến {{to}} trong tổng số {{total}}",
         "previous": "Trước",
         "next": "Sau"
     },
@@ -85,12 +85,16 @@
         "service_user_create": "Tạo dịch vụ người dùng",
       "crypto_wallet_config": "Cấu hình ví",
       "my_wallet": "Ví của tôi",
+      "service_purchase": "Gói dịch vụ",
+      "service_orders": "Đơn dịch vụ",
+      "service_orders_admin": "Quản lý đơn dịch vụ",
       "transactions": "Quản lý giao dịch"
     },
     "platform": {
         "settings": "Cấu hình nền tảng",
         "app_or_client_id": "App ID / Client ID",
-        "bm_or_login_id": "Business Manager ID / Login Customer ID"
+        "bm_or_login_id": "Business Manager ID / Login Customer ID",
+        "edit_mode": "Đang chỉnh sửa cấu hình ID: {{id}}"
     },
     "auth": {
         "components": {
@@ -105,7 +109,6 @@
             "login": "Đăng nhập",
             "title": "Truy cập hệ thống",
             "login_with": "Đăng nhập bằng {{provider}}",
-            "description": "Đăng nhập để truy cập hệ thống quản lý quảng cáo",
             "signup_prompt": "Chưa có tài khoản? ",
             "signup_link": "Đăng ký"
         },
@@ -164,8 +167,26 @@
         "password": "Mật khẩu ví",
         "new_password": "Mật khẩu mới",
         "amount": "Số tiền",
+        "generic_error": "Không thể hủy lệnh nạp",
         "loading": "Đang tải thông tin ví...",
-        "error": "Không thể lấy thông tin ví"
+        "error": "Không thể lấy thông tin ví",
+        "transaction_type": {
+            "unknown": "Không xác định",
+            "deposit": "Nạp tiền",
+            "withdraw": "Rút tiền",
+            "refund": "Hoàn tiền",
+            "fee": "Phí",
+            "cashback": "Hoàn tiền thưởng",
+            "service_purchase": "Mua dịch vụ"
+        },
+        "transaction_status": {
+            "unknown": "Không xác định",
+            "pending": "Chờ xử lý",
+            "approved": "Đã duyệt",
+            "rejected": "Từ chối",
+            "completed": "Hoàn thành",
+            "cancelled": "Đã hủy"
+        }
     },
     "service_packages": {
         "empty_title": "Chưa có gói dịch vụ nào",
@@ -227,6 +248,8 @@
         "network": "Mạng",
         "not_found": "Chưa có ví. Vui lòng liên hệ admin.",
         "back_cancel": "Hủy lệnh",
+        "confirm_cancel_deposit": "Xác nhận hủy lệnh nạp",
+        "confirm_cancel_deposit_message": "Bạn có chắc chắn muốn hủy lệnh nạp này không?",
         "payment_link": "Link thanh toán",
         "pay_now": "Thanh toán ngay",
         "password_not_match": "Mật khẩu xác nhận không khớp",
@@ -235,24 +258,7 @@
         "minimum_amount": "Số tiền tối thiểu: :amount USD",
         "transaction_history": "Lịch sử giao dịch",
         "no_transactions": "Chưa có giao dịch nào",
-        "view_on_explorer": "Xem trên blockchain explorer",
-        "transaction_type": {
-            "unknown": "Không xác định",
-            "deposit": "Nạp tiền",
-            "withdraw": "Rút tiền",
-            "refund": "Hoàn tiền",
-            "fee": "Phí",
-            "cashback": "Hoàn tiền thưởng"
-        },
-        "transaction_status": {
-            "unknown": "Không xác định",
-            "pending": "Chờ xử lý",
-            "approved": "Đã duyệt",
-            "rejected": "Từ chối",
-            "completed": "Hoàn thành",
-            "cancelled": "Đã hủy"
-        },
-        "test_webhook": "Test NowPayments IPN"
+        "view_on_explorer": "Xem trên blockchain explorer"
     },
     "transactions": {
         "title": "Quản lý giao dịch",
@@ -266,5 +272,102 @@
         "confirm_approve": "Xác nhận duyệt giao dịch này?",
         "items": "giao dịch",
         "view_on_explorer": "Xem trên explorer"
+    },
+    "service_purchase": {
+        "service_selection": "Chọn Dịch vụ",
+        "available_services": "Dịch vụ Có sẵn",
+        "wallet_balance": "Số dư ví",
+        "account_opening_fee": "Phí mở tài khoản",
+        "service_fee_pct": "Phí dịch vụ top-up",
+        "min_top_up": "Top-up tối thiểu",
+        "max_top_up": "Top-up tối đa",
+        "setup_time": "Thời gian setup",
+        "hours": "giờ",
+        "features": "Tính năng",
+        "select_service": "Chọn dịch vụ này",
+        "top_up_amount": "Số tiền top-up (USD)",
+        "optional": "Tùy chọn",
+        "customer_notes": "Ghi chú của khách hàng",
+        "customer_notes_placeholder": "Ghi chú thêm về đơn hàng...",
+        "calculate_fee": "Tính phí",
+        "total_cost": "Tổng chi phí",
+        "service_fee": "Phí dịch vụ",
+        "top_up": "Top-up",
+        "purchase_now": "Mua ngay",
+        "insufficient_balance": "Số dư không đủ",
+        "please_top_up_wallet": "Vui lòng nạp thêm tiền vào ví",
+        "invalid_amount": "Số tiền không hợp lệ",
+        "amount_too_low": "Số tiền quá thấp",
+        "amount_too_high": "Số tiền quá cao",
+        "order_summary": "Tóm tắt đơn hàng",
+        "back_to_services": "Quay lại danh sách",
+        "info_message": "Chọn dịch vụ phù hợp với nhu cầu của bạn. Thanh toán chỉ qua USDT.",
+        "search_placeholder": "Tìm kiếm dịch vụ...",
+        "no_services_found": "Không tìm thấy dịch vụ nào",
+        "meta_email": "Email Meta",
+        "display_name": "Tên hiển thị",
+        "display_name_placeholder": "Nhập tên hiển thị",
+        "feature_labels": {
+            "meta_new_bm": "BM mới, sạch lịch sử",
+            "meta_multibrand_support": "Hỗ trợ đa thương hiệu",
+            "meta_fanpage_attached": "Kèm fanpage chất lượng",
+            "meta_timezone_id": "Múi giờ BM",
+            "new_account": "Tài khoản mới 100%",
+            "guarantee": "Bảo hành",
+            "support_247": "Hỗ trợ 24/7",
+            "google_trust_score_high": "Trust score cao"
+        },
+        "feature_values": {
+            "guarantee": "Bảo hành {{value}} ngày",
+            "meta_timezone_id": "Múi giờ: #{{value}}"
+        }
+    },
+    "service_orders": {
+        "title": "Đơn dịch vụ của bạn",
+        "subtitle": "Xem danh sách các gói dịch vụ bạn đã mua.",
+        "admin_title": "Quản lý đơn dịch vụ",
+        "admin_subtitle": "Xác nhận hoặc hủy các đơn dịch vụ đang chờ xử lý.",
+        "empty": "Chưa có đơn dịch vụ nào.",
+        "go_to_packages": "Mua thêm dịch vụ",
+        "availability": {
+            "available": "Đã kích hoạt",
+            "pending": "Đang xử lý"
+        },
+        "table": {
+            "stt": "STT",
+            "order_id": "Mã đơn",
+            "referral": "Người giới thiệu",
+            "account_info": "Thông tin tài khoản",
+            "platform": "Nền tảng",
+            "status": "Trạng thái đơn",
+            "availability": "Trạng thái sử dụng",
+            "created_at": "Thời gian tạo",
+            "actions": "Thao tác"
+        },
+        "status": {
+            "pending": "Đang chờ",
+            "queue_job_pending": "Chờ xử lý",
+            "queue_job_on_process": "Đang xử lý",
+            "processing": "Đang xử lý",
+            "active": "Đã kích hoạt",
+            "failed": "Thất bại",
+            "cancelled": "Đã hủy",
+            "unknown": "Không xác định"
+        },
+        "actions": {
+            "approve": "Xác nhận",
+            "cancel": "Hủy",
+            "edit": "Chỉnh sửa"
+        },
+        "confirm_cancel": "Bạn có chắc muốn hủy đơn dịch vụ này?",
+        "form": {
+            "meta_email_placeholder": "Nhập email Meta",
+            "display_name_placeholder": "Nhập tên hiển thị",
+            "bm_id_placeholder": "Nhập Business Manager ID"
+        },
+        "admin_form_title": "Xác nhận đơn dịch vụ",
+        "admin_form_description": "Nhập đầy đủ thông tin Meta để kích hoạt tài khoản dịch vụ cho khách hàng.",
+        "edit_config_title": "Chỉnh sửa cấu hình tài khoản",
+        "edit_config_description": "Cập nhật thông tin Meta hoặc bổ sung Business Manager ID cho đơn dịch vụ."
     }
 }

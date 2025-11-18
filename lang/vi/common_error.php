@@ -21,4 +21,8 @@ return [
     'inappropriate_language' => 'Nội dung không phù hợp với chính sách của hệ thống.',
     'otp_expired' => 'Mã OTP đã hết hạn, vui lòng yêu cầu lại.',
     'otp_invalid' => 'Mã OTP không hợp lệ, vui lòng thử lại.',
+    'service_purchase_login_required' => 'Bạn cần đăng nhập trước khi mua dịch vụ.',
+    'wallet_nowpayments_missing_payment_id' => 'Không thể tạo payment từ NowPayments: Thiếu payment_id.',
+    'wallet_transaction_not_found' => 'Giao dịch không tồn tại.',
+    'wallet_transaction_not_pending' => 'Giao dịch không ở trạng thái chờ.',
 ];

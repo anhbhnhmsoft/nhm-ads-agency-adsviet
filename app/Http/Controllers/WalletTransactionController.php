@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Common\Constants\Wallet\WalletTransactionStatus;
-use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Core\QueryListDTO;
@@ -28,7 +27,7 @@ class WalletTransactionController extends Controller
         if (!$user) {
             Logging::web('WalletTransactionController@index: No user authenticated');
             return redirect()->route('login');
-        };
+        }
 
         // Xác định wallet_ids dựa trên role
         $walletIds = null;
@@ -139,12 +138,12 @@ class WalletTransactionController extends Controller
 
         $transaction = $this->walletTransactionService->findById($id);
         if (!$transaction) {
-            FlashMessage::error(__('Giao dịch không tồn tại'));
+            FlashMessage::error(__('common_error.wallet_transaction_not_found'));
             return redirect()->back();
         }
 
         if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
-            FlashMessage::error(__('Giao dịch không ở trạng thái chờ'));
+            FlashMessage::error(__('common_error.wallet_transaction_not_pending'));
             return redirect()->back();
         }
 
@@ -156,7 +155,7 @@ class WalletTransactionController extends Controller
         );
 
         if ($result->isSuccess()) {
-            FlashMessage::success(__('Xác thực giao dịch thành công'));
+            FlashMessage::success(__('wallet.flash.transaction_approved'));
         } else {
             FlashMessage::error($result->getMessage());
         }

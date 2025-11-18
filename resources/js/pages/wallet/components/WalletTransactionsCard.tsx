@@ -15,6 +15,7 @@ import {
     Ban,
     CheckCircle2,
     XCircle,
+    ShoppingCart,
 } from 'lucide-react';
 import type { WalletTransaction } from '@/pages/wallet/types/type';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,8 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                 return <Percent className="h-5 w-5 text-amber-500" />;
             case TRANSACTION_TYPE.CASHBACK:
                 return <Gift className="h-5 w-5 text-emerald-500" />;
+            case TRANSACTION_TYPE.SERVICE_PURCHASE:
+                return <ShoppingCart className="h-5 w-5 text-pink-500" />;
             default:
                 return <WalletIcon className="h-5 w-5 text-muted-foreground" />;
         }
@@ -125,7 +128,7 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5" />
-                    {t('wallet.transaction_history')}
+                    {t('service_user.transaction_history')}
                 </CardTitle>
             </CardHeader>
             <CardContent>
@@ -133,7 +136,7 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                     <div className="py-8 text-center">
                         <WalletIcon className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                         <p className="text-gray-500">
-                            {t('wallet.no_transactions')}
+                            {t('service_user.no_transactions')}
                         </p>
                     </div>
                 ) : (

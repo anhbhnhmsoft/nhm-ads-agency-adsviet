@@ -43,12 +43,16 @@ class PlatformSettingService
     public function create(array $data): ServiceReturn
     {
         try {
+            $config = $data['config'] ?? [];
+            $platform = (int) $data['platform'];
+
             $payload = [
-                'platform' => (int) $data['platform'],
-                'config' => $data['config'] ?? [],
+                'platform' => $platform,
+                'config' => $config,
                 'disabled' => (bool) ($data['disabled'] ?? false),
             ];
             $created = $this->platformSettingRepository->create($payload);
+            
             // Nếu disabled false vô hiệu hóa các config khác cùng platform
             if ((bool) $data['disabled'] === false) {
                 $affected = $this->platformSettingRepository->deactivateOthersByPlatform($created->platform, (string)$created->id);

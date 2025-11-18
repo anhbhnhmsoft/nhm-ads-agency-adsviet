@@ -20,6 +20,7 @@ use App\Service\AuthService;
 use App\Service\MailService;
 use App\Service\MetaBusinessService;
 use App\Service\ServicePackageService;
+use App\Service\ServicePurchaseService;
 use App\Service\ServiceUserService;
 use App\Service\BinanceService;
 use App\Service\NowPaymentsService;
@@ -94,6 +95,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(NotificationService::class);
         $this->app->bind(MailService::class);
         $this->app->bind(ServicePackageService::class);
+        $this->app->bind(ServicePurchaseService::class);
         $this->app->bind(ServiceUserService::class);
         $this->app->singleton(MetaBusinessService::class);
     }
