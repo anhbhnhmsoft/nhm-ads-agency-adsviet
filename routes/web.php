@@ -88,6 +88,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::prefix('transactions')->group(function () {
         Route::get('/', [WalletTransactionController::class, 'index'])->name('transactions_index');
         Route::post('/{id}/approve', [WalletTransactionController::class, 'approve'])->name('transactions_approve');
+        Route::post('/{id}/cancel', [WalletTransactionController::class, 'cancel'])->name('transactions_cancel');
     });
 
     Route::prefix('/service-packages')->group(function (){

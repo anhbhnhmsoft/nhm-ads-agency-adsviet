@@ -26,6 +26,7 @@ class UserWalletTransaction extends Model
         'payment_id',
         'pay_address',
         'expires_at',
+        'withdraw_info',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class UserWalletTransaction extends Model
         'type' => 'integer',
         'status' => 'integer',
         'expires_at' => 'datetime',
+        'withdraw_info' => 'array',
     ];
 
     public function wallet()

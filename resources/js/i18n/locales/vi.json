@@ -270,7 +270,12 @@
         "user_id": "User ID",
         "enter_user_id": "Nhập User ID",
         "approve": "Duyệt",
+        "cancel": "Hủy",
+        "view_info": "Xem thông tin",
         "confirm_approve": "Xác nhận duyệt giao dịch này?",
+        "confirm_cancel": "Xác nhận hủy giao dịch này?",
+        "withdraw_info_title": "Thông tin rút tiền",
+        "withdraw_info_description": "Thông tin tài khoản người dùng đã nhập",
         "items": "giao dịch",
         "view_on_explorer": "Xem trên explorer"
     },
