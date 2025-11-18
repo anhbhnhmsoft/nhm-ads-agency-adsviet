@@ -23,10 +23,9 @@ type Props = {
     meta_features: ServicePackageOption[];
     google_features: ServicePackageOption[];
     service_package: ServicePackageItem;
-    timezone_ids: {[key:number] : string};
 
 };
-const Edit = ({ meta_features, google_features, service_package, timezone_ids }: Props) => {
+const Edit = ({ meta_features, google_features, service_package }: Props) => {
     const { t } = useTranslation();
     const { form, submit } = useFormEditServicePackage(service_package.id, service_package);
 
@@ -326,38 +325,24 @@ const Edit = ({ meta_features, google_features, service_package, timezone_ids }:
                                     <Label htmlFor={feature.key}>
                                         {feature.label}
                                     </Label>
-                                    <Select
-                                        value={(getCurrentFeatureValue(
-                                            feature.key,
-                                            0,
-                                        ) as number).toString() ?? ''}
-                                        onValueChange={(value) => {
-                                            const numericValue = Number(value);
+                                    <Input
+                                        type="number"
+                                        value={
+                                            (getCurrentFeatureValue(
+                                                feature.key,
+                                                0,
+                                            ) as number) ?? ''
+                                        }
+                                        onChange={(e) =>
                                             handleFeatureChange(
                                                 feature.key,
-                                                numericValue
+                                                parseFloat(e.target.value) || 0,
                                             )
-                                        }}
-                                        required
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue
-                                                placeholder={feature.label}
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                                {Object.entries(timezone_ids).map(([id, name]) => (
-                                                    <SelectItem
-                                                        key={id}
-                                                        value={id}
-                                                    >
-                                                        {name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
+                                        }
+                                    />
+                                    <span className="text-sm text-slate-400">
+                                        {t('service_packages.meta_timezone_id_desc')}
+                                    </span>
                                 </div>
                             )
                         }else{

@@ -119,29 +119,7 @@ enum ServicePackageFeature: string
     public static function getOptionsMetaTimezoneId(): array
     {
         return [
-            0   => 'TZ_UNKNOWN',
-            1   => '(GMT-08:00) America/Los_Angeles',
-            2   => '(GMT-07:00) America/Denver',
-            3   => '(GMT-10:00) Pacific/Honolulu',
-            4   => '(GMT-09:00) America/Anchorage',
-            5   => '(GMT-07:00) America/Phoenix',
-            6   => '(GMT-06:00) America/Chicago',
-            7   => '(GMT-05:00) America/New_York',
-            8   => '(GMT-04:00) Atlantic/South_Georgia',
-            9   => '(GMT-03:00) America/Buenos_Aires',
-            10  => '(GMT-02:00) America/Noronha',
-            11  => '(GMT+00:00) Europe/London',
-            12  => '(GMT+01:00) Europe/Paris',
-            13  => '(GMT+02:00) Europe/Istanbul',
-            14  => '(GMT+03:00) Asia/Dubai',
-            15  => '(GMT+04:00) Asia/Baku',
-            141 => '(GMT+07:00) Asia/Bangkok',
-            142 => '(GMT+07:00) Asia/Ho_Chi_Minh',
-            146 => '(GMT+08:00) Asia/Hong_Kong',
-            147 => '(GMT+08:00) Asia/Singapore',
-            150 => '(GMT+09:00) Asia/Tokyo',
-            152 => '(GMT+10:00) Australia/Sydney',
-            155 => '(GMT+12:00) Pacific/Auckland',
+
         ];
     }
 }

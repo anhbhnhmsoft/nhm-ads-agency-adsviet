@@ -207,7 +207,8 @@
         "set_up_time_desc": "Thời gian thiết lập gói dịch vụ (tính theo giờ)",
         "disabled": "Khoá gói dịch vụ",
         "disabled_desc": "Nếu khóa gói dịch vụ, khách hàng không thể sử dụng gói dịch vụ này (LƯU Ý).",
-        "toggle_desc": "Bạn có thể bật hoặc tắt."
+        "toggle_desc": "Bạn có thể bật hoặc tắt.",
+        "meta_timezone_id_desc": "Hãy điền timezone id theo danh sách sau: https://developers.facebook.com/docs/marketing-api/reference/ad-account/timezone-ids/v24.0"
     },
     "service_user": {
         "create_title": "Tạo dịch vụ người dùng",

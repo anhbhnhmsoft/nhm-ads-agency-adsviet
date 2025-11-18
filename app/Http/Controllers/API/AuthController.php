@@ -202,7 +202,7 @@ class AuthController extends Controller
             );
         }
         // Xử lý login từ Telegram
-        $result = $this->authService->handleAuthTelegram($validator->getData());
+        $result = $this->authService->handleAuthTelegram($validator->getData(), true);
         if ($result->isError()) {
             return RestResponse::error(
                 message: $result->getMessage(),

@@ -5,6 +5,9 @@ namespace App\Service;
 use App\Core\ServiceReturn;
 use FacebookAds\Api;
 
+/**
+ * Class MetaBusinessService phục vụ tương tác với Meta Business API (không dùng lưu trữ database ở đây nhé)
+ */
 class MetaBusinessService
 {
     private ?Api $api;
@@ -139,76 +142,42 @@ class MetaBusinessService
     }
 
     /**
-     * Response demo
-     * [
-     * "data" => array:3 [
-     * 0 => array:7 [
-     * "id" => "act_1152480950321081"
-     * "account_id" => "1152480950321081"
-     * "name" => "001-HYHD-SC27-(GMT + 8)-110"
-     * "account_status" => 2
-     * "currency" => "USD"
-     * "spend_cap" => "10000"
-     * "amount_spent" => "219"
-     * ]
-     * 1 => array:7 [
-     * "id" => "act_1737039264351297"
-     * "account_id" => "1737039264351297"
-     * "name" => "001-HYHD-SC27-(GMT + 8)-109"
-     * "account_status" => 2
-     * "currency" => "USD"
-     * "spend_cap" => "0"
-     * "amount_spent" => "0"
-     * ]
-     * 2 => array:7 [
-     * "id" => "act_743485138536593"
-     * "account_id" => "743485138536593"
-     * "name" => "Adviet01"
-     * "account_status" => 1
-     * "currency" => "VND"
-     * "spend_cap" => "0"
-     * "amount_spent" => "1259692"
-     * ]
-     * ]
-     * "paging" => array:1 [
-     * "cursors" => array:2 [
-     * "before" => "QVFIU01IRFEtYi1VdGtSTXgzS25rTlVHY0R3ZAHBncUlKcElTM3IxVllSUi0wUGxjMTFROExpNXE5RTJnZADBFZAUZAJRHNrY2dCb3J1N19FMVRnUHlBUEdHTHpR"
-     * "after" => "QVFIU1c0U0hMNXZAYYW9wam02bkFFTU01clNuZAmVkTFpXUmJ3cWhyZAml6N2JjMHFKcUk0QlNoc1ZAyQV9LNWk1R3lITExGcGhKdGZAvTTZAxMHpNaXBKNzFGdW9n"
-     * ]
-     * ]
-     * ]
-     */
-    /**
-     * Lấy danh sách ads account thuộc business
-     * @param string $BmId
+     * Lấy MỘT TRANG danh sách ads account thuộc business
+     * @param string $bmId
+     * @param int $limit Số lượng muốn lấy (ví dụ: 25)
+     * @param string|null $after Con trỏ "trang kế tiếp" (lấy từ request)
+     * @param string|null $before Con trỏ "trang trước" (lấy từ request)
      * @return ServiceReturn
      */
-    public function getOwnerAdsAccount(string $BmId): ServiceReturn
+    public function getOwnerAdsAccountPaginated(string $bmId, int $limit = 25, ?string $after = null , ?string $before = null): ServiceReturn
     {
         try {
-            $response = $this->api->call(
-                "/{$BmId}/owned_ad_accounts",
-                'GET',
-                ['fields' => 'id,account_id,name,account_status,currency,spend_cap,amount_spent']
-            )->getContent();
+            $endpoint = "/{$bmId}/owned_ad_accounts";
+            $params = [
+                'fields' => 'id,account_id,name',
+                'limit' => $limit
+            ];
+            // Nếu frontend gửi 'after' (để xem trang kế), thêm nó vào
+            if ($after) {
+                $params['after'] = $after;
+            }
+            // Nếu frontend gửi 'before' (để xem trang trước), thêm nó vào
+            if ($before) {
+                $params['before'] = $before;
+            }
+
+            // Chỉ gọi API 1 LẦN DUY NHẤT
+            $response = $this->api->call($endpoint, 'GET', $params)->getContent();
+
+            // Trả về cả 'data' và 'paging'
+            // Frontend sẽ dùng 'paging.cursors.after' để gọi trang tiếp theo
             return ServiceReturn::success(data: $response);
-        }catch (\Exception $exception){
+
+        } catch (\Exception $exception){
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
 
-    /**
-     * Response demo
-     *  [
-     *  "id" => "act_743485138536593"
-     *  "account_id" => "743485138536593"
-     *  "name" => "Adviet01"
-     *  "account_status" => 1
-     *  "currency" => "VND"
-     *  "spend_cap" => "0"
-     *  "amount_spent" => "1259692"
-     *  ]
-     */
     /**
      * Lấy chi tiết ads account theo id (Lưu ý: id acount phải có act_ ở đầu)
      * @param string $accountId
@@ -217,42 +186,79 @@ class MetaBusinessService
     public function getDetailAdsAccount(string $accountId): ServiceReturn
     {
         try {
+            // Danh sách các trường (fields) cần lấy
+            $fields = [
+                'id',
+                'account_id',       // -> Account's ID
+                'name',             // -> Account's Name
+                'account_status',   // -> Account's status (Trả về số 1, 2, ...)
+                'spend_cap',        // -> Limit (và Hidden Limit)
+                'balance',          // -> Balance (Số dư hiện tại, thường là nợ)
+                'currency',         // -> Currency (VD: "USD")
+                'amount_spent',     // -> Total spending
+                'created_time',     // -> Creation time
+                'is_prepay_account',// -> Là tài khoản trả trước hay không (boolean)
+                'timezone_id',      // -> Timezone ID (VD: 1)
+                'timezone_name',    // -> Timezone (VD: "America/Creston")
+            ];
+
             $response = $this->api->call(
-                "/{$accountId}",
-                'GET',
-                ['fields' => 'id,account_id,name,account_status,currency,spend_cap,amount_spent']
-            )->getContent();
+                    "/{$accountId}",
+                    'GET',
+                    ['fields' => implode(',', $fields)]
+                )->getContent();
+
             return ServiceReturn::success(data: $response);
-        }catch (\Exception $exception){
+
+        } catch (\Exception $exception){
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
 
     /**
-     * Lấy danh sách chiến dịch (campaigns) của một ads account
-     * @param string $accountId
+     * Lấy MỘT TRANG danh sách chiến dịch (campaigns) của một ads account
+     * @param string $accountId ID tài khoản (phải có 'act_')
+     * @param int $limit Số lượng muốn lấy
+     * @param string|null $after Con trỏ trang kế tiếp
+     * @param string|null $before Con trỏ trang trước
      * @return ServiceReturn
      */
-    public function getCampaigns(string $accountId): ServiceReturn
+    public function getCampaignsPaginated(string $accountId, int $limit = 25, ?string $after = null, ?string $before = null): ServiceReturn
     {
         try {
             // Các trường (fields) cơ bản của một chiến dịch
             $fields = [
                 'id',
                 'name',
-                'status', // Trạng thái: ACTIVE, PAUSED, ARCHIVED, ...
-                'objective', // Mục tiêu: OUTCOME_SALES, OUTCOME_LEADS, ...
+                'status',           // Trạng thái cài đặt (ACTIVE, PAUSED)
+                'effective_status', // <-- QUAN TRỌNG: Trạng thái thực tế
+                'objective',
                 'daily_budget',
                 'lifetime_budget',
+                'budget_remaining', // Ngân sách còn lại (nếu dùng lifetime)
+                'spend_cap',        // Giới hạn chi tiêu
                 'created_time',
+                'start_time',       // Ngày bắt đầu
+                'stop_time',        // Ngày kết thúc
             ];
-
+            $params = [
+                'fields' => implode(',', $fields),
+                'limit' => $limit
+            ];
+            // Thêm con trỏ phân trang (nếu có)
+            if ($after) {
+                $params['after'] = $after;
+            }
+            if ($before) {
+                $params['before'] = $before;
+            }
             $response = $this->api->call(
                 "/{$accountId}/campaigns", // Endpoint
                 'GET',
-                ['fields' => implode(',', $fields)] // Truyền các trường bạn muốn lấy
+                $params
             )->getContent();
 
+            // Trả về cả 'data' và 'paging' cho frontend xử lý
             return ServiceReturn::success(data: $response);
 
         } catch (\Exception $exception) {

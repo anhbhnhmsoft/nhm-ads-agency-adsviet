@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CommonController;
+use App\Http\Controllers\API\MetaController;
 use App\Http\Controllers\API\ServiceController;
 use App\Http\Middleware\VerifyTelegramIp;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,9 @@ Route::middleware('auth:sanctum')->group(function () {
 //        Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
     });
 
-
+    Route::prefix('meta')->group(function () {
+        Route::get('/{serviceUserId}/accounts', [MetaController::class, 'getAdsAccount']);
+        Route::get('/{serviceUserId}/{accountId}/campaigns', [MetaController::class, 'getCampaigns']);
+    });
 
 });
