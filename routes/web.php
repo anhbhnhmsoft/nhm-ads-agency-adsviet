@@ -8,6 +8,7 @@ use App\Http\Controllers\ServiceOrderController;
 use App\Http\Controllers\NowPaymentsWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PlatformSettingController;
+use App\Http\Controllers\ServicePurchaseController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\WalletTransactionController;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -102,8 +103,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     });
 
     Route::prefix('/service-purchase')->group(function (){
-        Route::get('/', [\App\Http\Controllers\ServicePurchaseController::class, 'index'])->name('service_purchase_index');
-        Route::post('/purchase', [\App\Http\Controllers\ServicePurchaseController::class, 'purchase'])->name('service_purchase_purchase');
+        Route::get('/', [ServicePurchaseController::class, 'index'])->name('service_purchase_index');
+        Route::post('/purchase', [ServicePurchaseController::class, 'purchase'])->name('service_purchase_purchase');
     });
 
     Route::prefix('/service-orders')->group(function () {

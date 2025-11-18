@@ -5,8 +5,11 @@ namespace App\Http\Controllers\API;
 use App\Core\Controller;
 use App\Core\RestResponse;
 use App\Http\Requests\API\Wallet\WalletChangePasswordRequest;
+use App\Http\Requests\API\Wallet\WalletDepositRequest;
 use App\Http\Requests\API\Wallet\WalletWithdrawRequest;
 use App\Repositories\WalletRepository;
+use App\Service\ConfigService;
+use App\Service\NowPaymentsService;
 use App\Service\WalletService;
 use App\Service\WalletTransactionService;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +22,8 @@ class WalletController extends Controller
         protected WalletService $walletService,
         protected WalletTransactionService $walletTransactionService,
         protected WalletRepository $walletRepository,
+        protected NowPaymentsService $nowPaymentsService,
+        protected ConfigService $configService,
     ) {
     }
 
@@ -47,6 +52,73 @@ class WalletController extends Controller
             newPassword: $data['new_password'],
         );
         return $this->handleServiceReturn($result, __('wallet.flash.wallet_password_changed'));
+    }
+
+    public function deposit(WalletDepositRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return RestResponse::error(message: __('common_error.permission_denied'), status: 401);
+        }
+
+        $data = $request->validated();
+
+        // Lấy địa chỉ ví mạng nạp từ config
+        $configResult = $this->configService->getAll();
+        $configs = $configResult->isSuccess() ? $configResult->getData() : [];
+        $networkConfigKey = $data['network'] === 'BEP20' ? 'BEP20_WALLET_ADDRESS' : 'TRC20_WALLET_ADDRESS';
+        $networkAddress = $configs[$networkConfigKey]['value'] ?? null;
+
+        if (empty($networkAddress)) {
+            return RestResponse::error(message: __('wallet.network_not_configured'), status: 400);
+        }
+
+        // Tạo payment trên NowPayments
+        $orderId = 'DEPOSIT_' . time() . '_' . $user->id;
+        $successUrl = '';
+        $cancelUrl = '';
+
+        $paymentResult = $this->nowPaymentsService->createPayment(
+            amount: (float) $data['amount'],
+            network: $data['network'],
+            orderId: $orderId,
+            successUrl: $successUrl,
+            cancelUrl: $cancelUrl,
+        );
+
+        if ($paymentResult->isError()) {
+            return RestResponse::error(message: $paymentResult->getMessage(), status: 400);
+        }
+
+        $paymentData = $paymentResult->getData();
+        $paymentId = $paymentData['payment_id'] ?? null;
+
+        if (empty($paymentId)) {
+            return RestResponse::error(message: __('common_error.wallet_nowpayments_missing_payment_id'), status: 500);
+        }
+
+        $expiresAt = now()->addMinutes(15);
+        $createResult = $this->walletTransactionService->createDepositOrder(
+            userId: (int) $user->id,
+            amount: (float) $data['amount'],
+            network: $data['network'],
+            depositAddress: $networkAddress,
+            customerName: $user->name ?: ('User ' . $user->id),
+            paymentId: $paymentId,
+            payAddress: $paymentData['pay_address'] ?? null,
+            expiresAt: $expiresAt,
+        );
+
+        if ($createResult->isError()) {
+            return RestResponse::error(message: $createResult->getMessage(), status: 400);
+        }
+
+        return RestResponse::success(
+            data: [
+                'transaction' => $createResult->getData(),
+            ],
+            message: __('wallet.flash.deposit_created')
+        );
     }
 
     public function withdraw(WalletWithdrawRequest $request): JsonResponse
@@ -86,6 +158,11 @@ class WalletController extends Controller
             message: __('wallet.flash.withdraw_created')
         );
     }
+
+    public function TopUp(){
+        
+    }
+
 
     private function handleServiceReturn($serviceReturn, ?string $successMessage = null): JsonResponse
     {
