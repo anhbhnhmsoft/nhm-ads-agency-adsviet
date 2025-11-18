@@ -7,7 +7,6 @@ use App\Core\QueryListDTO;
 use App\Core\RestResponse;
 use App\Http\Resources\ServiceOwnerResource;
 use App\Http\Resources\ServicePackageResource;
-use App\Service\MetaBusinessService;
 use App\Service\ServicePackageService;
 use App\Service\ServiceUserService;
 use Illuminate\Http\JsonResponse;
@@ -18,10 +17,15 @@ class ServiceController extends Controller
     public function __construct(
         protected ServicePackageService $servicePackageService,
         protected ServiceUserService    $serviceUserService,
-        protected MetaBusinessService $metaBusinessService,
     )
     {
     }
+
+    /**
+     * Lấy danh sách dịch vụ đang sử dụng của người dùng
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function serviceOwner(Request $request): JsonResponse
     {
         $params = $this->extractQueryPagination($request);

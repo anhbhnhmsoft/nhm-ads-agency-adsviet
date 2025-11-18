@@ -45,8 +45,23 @@ class ServiceUser extends Model
         return $this->hasMany(ServiceUserTransactionLog::class, 'service_user_id');
     }
 
-    public function campaigns()
+
+    /**
+     * Danh sách ads account Meta liên kết với người dùng dịch vụ - chỉ với dịch vụ Meta Ads
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function metaAccount()
     {
-        return $this->hasMany(Campaign::class, 'service_user_id');
+        return $this->hasMany(MetaAccount::class, 'service_user_id');
     }
+     /**
+     * Danh sách ads campaign Meta liên kết với người dùng dịch vụ - chỉ với dịch vụ Meta Ads
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function metaAdsCampaigns()
+    {
+        return $this->hasMany(MetaAdsCampaign::class, 'service_user_id');
+    }
+
+
 }

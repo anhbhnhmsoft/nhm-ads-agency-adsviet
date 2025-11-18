@@ -58,7 +58,6 @@ class ServicePackageController extends Controller
             data: [
                 'meta_features' => ServicePackageFeature::getOptionsByPlatform('meta'),
                 'google_features' => ServicePackageFeature::getOptionsByPlatform('google'),
-                'timezone_ids' => ServicePackageFeature::getOptionsMetaTimezoneId(),
             ]
         );
     }
@@ -172,7 +171,6 @@ class ServicePackageController extends Controller
         return $this->rendering(
             view: 'service-package/edit',
             data: [
-                'timezone_ids' => ServicePackageFeature::getOptionsMetaTimezoneId(),
                 'meta_features' => ServicePackageFeature::getOptionsByPlatform('meta'),
                 'google_features' => ServicePackageFeature::getOptionsByPlatform('google'),
                 'service_package' => fn () => ServicePackageResource::make($result->getData())->toArray(request()),

@@ -28,7 +28,7 @@ abstract class BaseRepository
         return $this->model()->create($attributes);
     }
 
-    public function find(int $id): Model|false
+    public function find(int $id): ?Model
     {
         return $this->model()->find($id);
     }

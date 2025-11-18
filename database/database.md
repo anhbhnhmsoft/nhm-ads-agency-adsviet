@@ -174,6 +174,53 @@
     - softDeletes
     - timestamps
 
+# bảng meta_accounts
+    # note
+    - lưu trữ thông tin tài khoản Meta Ads liên kết với người dùng sử dụng gói dịch vụ (chỉ có platform = Meta Ads)
+    # quan hệ
+    - n-1 với bảng service_users qua service_user_id
+    # cấu trúc
+    - id (int, primary key, auto-increment)
+    - service_user_id (int, foreign key to service_users.id, not null)
+    - account_id (varchar, index, not null) -- ID tài khoản Meta Ads
+    - account_name (varchar, not null) -- Tên tài khoản Meta Ads
+    - account_status (smallint, not null, default 0) -- Trạng thái tài khoản (trong enum MetaAdsAccountStatus)
+    - spend_cap (varchar, nullable) -- Giới hạn chi tiêu
+    - amount_spent (varchar, nullable) -- Tổng số tiền đã chi tiêu
+    - balance (varchar, nullable) -- Số dư tài khoản Meta Ads
+    - currency (varchar, nullable) -- Tiền tệ tài khoản Meta Ads
+    - created_time (timestamp, nullable) -- Thời gian tạo tài khoản
+    - is_prepay_account (boolean, not null, default false) -- Là tài khoản trả trước hay không
+    - timezone_id (int, nullable) -- Mã múi giờ (VD: 1)
+    - timezone_name (varchar, nullable) -- Mã múi giờ (VD: "America/Creston")
+    - last_synced_at (timestamp, nullable) -- Thời gian đồng bộ cuối cùng
+    - softDeletes
+    - timestamps
+
+# bảng meta_ads_campaigns
+    # note
+    - lưu trữ thông tin chiến dịch Meta Ads liên kết với người dùng sử dụng gói dịch vụ
+    # quan hệ
+    - n-1 với bảng service_users qua service_user_id
+    - n-1 với bảng meta_accounts qua meta_account_id
+    # cấu trúc
+    - id (int, primary key, auto-increment)
+    - service_user_id (int, foreign key to service_users.id, not null)
+    - meta_account_id (int, foreign key to meta_accounts.id, not null)
+    - campaign_id (varchar, index, not null) -- ID chiến dịch Meta Ads
+    - name (varchar, not null) -- Tên chiến dịch Meta Ads
+    - status (varchar, nullable) --  Trạng thái chiến dịch Meta Ads
+    - effective_status (varchar, nullable) -- Trạng thái hiệu lực chiến dịch Meta Ads
+    - objective (varchar, nullable) -- Mục tiêu chiến dịch Meta Ads
+    - daily_budget (varchar, nullable) -- Ngân sách hàng ngày
+    - budget_remaining (varchar, nullable) -- Ngân sách còn lại
+    - created_time (timestamp, nullable) -- Thời gian tạo chiến dịch
+    - start_time (timestamp, nullable) -- Thời gian bắt đầu chiến dịch
+    - stop_time (timestamp, nullable) -- Thời gian kết thúc chiến dịch
+    - last_synced_at (timestamp, nullable) -- Thời gian đồng bộ cuối cùng
+    - softDeletes
+    - timestamps
+
 
 # bảng service_user_transaction_logs
     # note
