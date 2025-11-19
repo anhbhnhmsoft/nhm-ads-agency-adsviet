@@ -7,12 +7,12 @@ use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
-use App\Models\UserWallet;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\WalletRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class WalletTransactionService
 {
@@ -40,7 +40,6 @@ class WalletTransactionService
                 'network' => $network,
                 'deposit_address' => $depositAddress,
                 'customer_name' => $customerName,
-                'customer_email' => $customerEmail,
                 'payment_id' => $paymentId,
                 'pay_address' => $payAddress,
                 'expires_at' => $expiresAt,
@@ -54,13 +53,20 @@ class WalletTransactionService
     }
 
     // Tạo lệnh rút tiền (WITHDRAW) cho user và trừ tiền ngay
-    public function createWithdrawOrder(int $userId, float $amount, array $withdrawInfo): ServiceReturn
+    public function createWithdrawOrder(int $userId, float $amount, array $withdrawInfo, ?string $walletPassword = null): ServiceReturn
     {
         try {
-            return DB::transaction(function () use ($userId, $amount, $withdrawInfo) {
+            return DB::transaction(function () use ($userId, $amount, $withdrawInfo, $walletPassword) {
                 $wallet = $this->walletRepository->findByUserId($userId);
                 if (!$wallet) {
                     return ServiceReturn::error(message: __('Ví không tồn tại'));
+                }
+
+                // Kiểm tra mật khẩu ví nếu có đặt
+                if (!empty($wallet->password)) {
+                    if (empty($walletPassword) || !Hash::check($walletPassword, $wallet->password)) {
+                        return ServiceReturn::error(message: __('Mật khẩu ví không chính xác'));
+                    }
                 }
 
                 // Kiểm tra số dư

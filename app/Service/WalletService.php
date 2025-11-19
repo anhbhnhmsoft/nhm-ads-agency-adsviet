@@ -5,10 +5,12 @@ namespace App\Service;
 use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
+use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Models\User;
 use App\Repositories\WalletRepository;
 use App\Repositories\UserReferralRepository;
+use App\Repositories\UserWalletTransactionRepository;
 use App\Common\Constants\Wallet\WalletStatus;
 use App\Common\Constants\User\UserRole;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +21,7 @@ class WalletService
     public function __construct(
         protected WalletRepository $walletRepository,
         protected UserReferralRepository $userReferralRepository,
+        protected UserWalletTransactionRepository $transactionRepository,
     ) {
     }
 
@@ -262,6 +265,34 @@ class WalletService
         }
     }
 
+    public function getTransactionsForUser(int $userId, QueryListDTO $queryListDTO): ServiceReturn
+    {
+        try {
+            $wallet = $this->walletRepository->findByUserId($userId);
+            if (!$wallet) {
+                return ServiceReturn::error(message: __('common_error.data_not_found'));
+            }
+
+            $paginator = $this->transactionRepository
+                ->filterForWallet($wallet->id, $queryListDTO->filter ?? [])
+                ->orderBy($queryListDTO->sortBy ?? 'created_at', $queryListDTO->sortDirection ?? 'desc')
+                ->paginate(
+                    $queryListDTO->perPage,
+                    ['*'],
+                    'page',
+                    $queryListDTO->page
+                );
+
+            return ServiceReturn::success(data: $paginator);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'WalletService@getTransactionsForUser error: '.$e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     private function canPerformAction(User $actor, int $targetUserId): bool
     {
         $role = $actor->role;
@@ -279,6 +310,11 @@ class WalletService
                 ->exists();
         }
         return false;
+    }
+
+    public function canViewWallet(User $actor, int $targetUserId): bool
+    {
+        return $this->canPerformAction($actor, $targetUserId);
     }
 
     // Lấy danh sách wallet IDs của các user được quản lý bởi referrer

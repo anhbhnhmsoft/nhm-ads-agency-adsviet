@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('wallet')->group(function () {
         Route::get('me', [WalletController::class, 'me']);
+        Route::get('transactions', [WalletController::class, 'transactions']);
         Route::post('deposit', [WalletController::class, 'deposit'])->middleware('throttle:5,1');
         Route::post('change-password', [WalletController::class, 'changePassword'])->middleware('throttle:5,1');
         Route::post('withdraw', [WalletController::class, 'withdraw'])->middleware('throttle:5,1');
