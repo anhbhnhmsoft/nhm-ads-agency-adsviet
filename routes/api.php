@@ -43,7 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{serviceUserId}/accounts', [MetaController::class, 'getAdsAccount']);
         Route::get('/{serviceUserId}/{accountId}/campaigns', [MetaController::class, 'getCampaigns']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [MetaController::class, 'detailCampaign']);
-        Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insights', [MetaController::class, 'getCampaignInsights']);
+        Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [MetaController::class, 'getCampaignInsights']);
     });
 
     Route::prefix('wallet')->group(function () {

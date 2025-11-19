@@ -438,8 +438,8 @@ class MetaBusinessService
             $dailyData = $response['data'] ?? [];
             // 1. Xác định kích thước gộp (Chunk size)
             $chunkSize = match ($datePreset) {
-                AdDatePresetValues::LAST_30D, AdDatePresetValues::LAST_28D => 5, // 30 ngày thì 5 ngày gộp 1
-                AdDatePresetValues::LAST_90D => 15,            // 90 ngày thì 15 ngày gộp 1
+                // 30 ngày thì 5 ngày gộp 1
+                AdDatePresetValues::LAST_90D => 2,            // 90 ngày thì 2 ngày gộp 1
                 default => 1,                // 7, 14 ngày thì giữ nguyên từng ngày
             };
             // Nếu không cần gộp (size = 1), trả về luôn
@@ -483,53 +483,6 @@ class MetaBusinessService
                 $result[] = $mergedPoint;
             }
             return ServiceReturn::success(data: $result);
-        } catch (\Exception $exception) {
-            return ServiceReturn::error(message: $exception->getMessage());
-        }
-    }
-
-
-    /**
-     * Lấy lịch sử hoạt động của chiến dịch (Gọi từ cấp Tài khoản và lọc).
-     *
-     * @param string $accountId ID tài khoản (Bắt buộc, vd: act_123456)
-     * @param string $campaignId ID chiến dịch cần xem
-     * @return ServiceReturn
-     */
-    public function getCampaignActivity(string $accountId, string $campaignId): ServiceReturn
-    {
-        try {
-            $fields = [
-                'event_type',   // Loại sự kiện (CAMPAIGN_PAUSED, CAMPAIGN_BUDGET_UPDATE...)
-                'event_time',   // Thời gian
-                'actor_name',   // Người thực hiện
-                'extra_data',   // Dữ liệu cũ/mới
-                'translated_event_type', // Tên sự kiện dễ đọc
-            ];
-
-            $params = [
-                'fields' => implode(',', $fields),
-                'limit' => 20,
-
-                // 🚀 QUAN TRỌNG: Phải lọc theo ID chiến dịch
-                'filtering' => [
-                    [
-                        'field' => 'object_id',
-                        'operator' => 'EQUAL',
-                        'value' => $campaignId
-                    ],
-                ],
-            ];
-
-            // Gọi vào endpoint của TÀI KHOẢN (/activities) chứ không phải Campaign
-            $response = $this->api->call(
-                "/{$accountId}/activities",
-                'GET',
-                $params
-            )->getContent();
-
-            return ServiceReturn::success(data: $response);
-
         } catch (\Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
