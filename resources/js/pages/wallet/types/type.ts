@@ -7,6 +7,11 @@ export interface WalletTransaction {
     network?: string | null;
     txHash?: string | null;
     payment_id?: string | null;
+    withdraw_info?: {
+        bank_name?: string;
+        account_holder?: string;
+        account_number?: string;
+    } | null;
     createdAt?: string | null;
     user?: {
         id: string;

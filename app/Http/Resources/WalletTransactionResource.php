@@ -25,6 +25,7 @@ class WalletTransactionResource extends JsonResource
             'network' => $this->network,
             'txHash' => $this->tx_hash,
             'payment_id' => $this->payment_id,
+            'withdraw_info' => $this->withdraw_info,
             'createdAt' => optional($this->created_at)->toIso8601String(),
             'user' => ($this->wallet && $this->wallet->user) ? [
                 'id' => (string) $this->wallet->user->id,

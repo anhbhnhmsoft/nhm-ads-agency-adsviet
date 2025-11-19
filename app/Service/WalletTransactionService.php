@@ -7,12 +7,12 @@ use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
-use App\Models\UserWallet;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\WalletRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class WalletTransactionService
 {
@@ -40,7 +40,6 @@ class WalletTransactionService
                 'network' => $network,
                 'deposit_address' => $depositAddress,
                 'customer_name' => $customerName,
-                'customer_email' => $customerEmail,
                 'payment_id' => $paymentId,
                 'pay_address' => $payAddress,
                 'expires_at' => $expiresAt,
@@ -49,6 +48,50 @@ class WalletTransactionService
             return ServiceReturn::success(data: $transaction);
         } catch (QueryException $e) {
             Logging::error('WalletTransactionService@createDepositOrder error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Tạo lệnh rút tiền (WITHDRAW) cho user và trừ tiền ngay
+    public function createWithdrawOrder(int $userId, float $amount, array $withdrawInfo, ?string $walletPassword = null): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($userId, $amount, $withdrawInfo, $walletPassword) {
+                $wallet = $this->walletRepository->findByUserId($userId);
+                if (!$wallet) {
+                    return ServiceReturn::error(message: __('Ví không tồn tại'));
+                }
+
+                // Kiểm tra mật khẩu ví nếu có đặt
+                if (!empty($wallet->password)) {
+                    if (empty($walletPassword) || !Hash::check($walletPassword, $wallet->password)) {
+                        return ServiceReturn::error(message: __('Mật khẩu ví không chính xác'));
+                    }
+                }
+
+                // Kiểm tra số dư
+                if ((float) $wallet->balance < $amount) {
+                    return ServiceReturn::error(message: __('Số dư không đủ'));
+                }
+
+                // Trừ tiền ngay khi tạo lệnh
+                $newBalance = (float) $wallet->balance - $amount;
+                $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
+
+                // Tạo transaction với status PENDING
+                $transaction = $this->transactionRepository->create([
+                    'wallet_id' => $wallet->id,
+                    'amount' => -$amount,
+                    'type' => WalletTransactionType::WITHDRAW->value,
+                    'status' => WalletTransactionStatus::PENDING->value,
+                    'description' => 'User tạo lệnh rút tiền',
+                    'withdraw_info' => $withdrawInfo,
+                ]);
+
+                return ServiceReturn::success(data: $transaction);
+            });
+        } catch (QueryException $e) {
+            Logging::error('WalletTransactionService@createWithdrawOrder error: '.$e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -100,6 +143,38 @@ class WalletTransactionService
             });
         } catch (\Throwable $e) {
             Logging::error('WalletTransactionService@approveDeposit error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Duyệt lệnh rút tiền (WITHDRAW) - chỉ cập nhật status, không cần trừ tiền vì đã trừ khi tạo lệnh
+    public function approveWithdraw(int $transactionId, ?string $txHash = null): ServiceReturn
+    {
+        try {
+            $transaction = $this->transactionRepository->query()->find($transactionId);
+            if (!$transaction) {
+                return ServiceReturn::error(message: __('Giao dịch không tồn tại'));
+            }
+
+            // Kiểm tra là lệnh rút tiền
+            if ((int) $transaction->type !== WalletTransactionType::WITHDRAW->value) {
+                return ServiceReturn::error(message: __('Không phải lệnh rút tiền'));
+            }
+
+            if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
+                return ServiceReturn::error(message: __('Giao dịch không ở trạng thái chờ'));
+            }
+
+            // Cập nhật trạng thái giao dịch thành COMPLETED (đã hoàn thành chuyển tiền)
+            $this->transactionRepository->updateById($transactionId, [
+                'status' => WalletTransactionStatus::COMPLETED->value,
+                'tx_hash' => $txHash,
+                'description' => 'Admin duyệt và đã chuyển tiền rút',
+            ]);
+
+            return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@approveWithdraw error: '.$e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -188,6 +263,93 @@ class WalletTransactionService
             return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error('WalletTransactionService@cancelDepositByUser error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Hủy lệnh rút tiền và hoàn lại tiền cho user
+    public function cancelWithdrawByUser(string|int $transactionId, int $userId): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($transactionId, $userId) {
+                $transaction = $this->transactionRepository->query()->find($transactionId);
+                if (!$transaction) {
+                    return ServiceReturn::error(message: __('Giao dịch không tồn tại'));
+                }
+
+                // Kiểm tra wallet thuộc về user
+                $wallet = $this->walletRepository->query()->find($transaction->wallet_id);
+                if (!$wallet || (int)$wallet->user_id !== $userId) {
+                    return ServiceReturn::error(message: __('common_error.permission_denied'));
+                }
+
+                // Kiểm tra là lệnh rút tiền
+                if ((int) $transaction->type !== WalletTransactionType::WITHDRAW->value) {
+                    return ServiceReturn::error(message: __('Không phải lệnh rút tiền'));
+                }
+
+                // Kiểm tra trạng thái PENDING
+                if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
+                    return ServiceReturn::error(message: __('Giao dịch không ở trạng thái chờ'));
+                }
+
+                // Hoàn lại tiền vào ví (amount là số âm, nên dùng abs để lấy giá trị dương)
+                $refundAmount = abs((float) $transaction->amount);
+                $newBalance = (float) $wallet->balance + $refundAmount;
+                $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
+
+                // Cập nhật trạng thái thành CANCELLED
+                $this->transactionRepository->updateById($transactionId, [
+                    'status' => WalletTransactionStatus::CANCELLED->value,
+                    'description' => 'User hủy lệnh rút tiền',
+                ]);
+
+                return ServiceReturn::success();
+            });
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@cancelWithdrawByUser error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Admin hủy lệnh rút tiền và hoàn lại tiền cho user
+    public function cancelWithdrawByAdmin(string|int $transactionId): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($transactionId) {
+                $transaction = $this->transactionRepository->query()->find($transactionId);
+                if (!$transaction) {
+                    return ServiceReturn::error(message: __('Giao dịch không tồn tại'));
+                }
+
+                // Kiểm tra là lệnh rút tiền
+                if ((int) $transaction->type !== WalletTransactionType::WITHDRAW->value) {
+                    return ServiceReturn::error(message: __('Không phải lệnh rút tiền'));
+                }
+
+                // Kiểm tra trạng thái PENDING
+                if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
+                    return ServiceReturn::error(message: __('Giao dịch không ở trạng thái chờ'));
+                }
+
+                // Hoàn lại tiền vào ví
+                $wallet = $this->walletRepository->query()->find($transaction->wallet_id);
+                if ($wallet) {
+                    $refundAmount = abs((float) $transaction->amount);
+                    $newBalance = (float) $wallet->balance + $refundAmount;
+                    $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
+                }
+
+                // Cập nhật trạng thái thành CANCELLED
+                $this->transactionRepository->updateById($transactionId, [
+                    'status' => WalletTransactionStatus::CANCELLED->value,
+                    'description' => 'Admin hủy lệnh rút tiền',
+                ]);
+
+                return ServiceReturn::success();
+            });
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@cancelWithdrawByAdmin error: '.$e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }

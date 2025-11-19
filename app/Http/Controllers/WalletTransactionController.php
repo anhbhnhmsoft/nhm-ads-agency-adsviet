@@ -127,7 +127,7 @@ class WalletTransactionController extends Controller
         ]);
     }
 
-    // Xác nhận giao dịch role:admin
+    // Xác nhận giao dịch role:adminx
     public function approve(int $id, Request $request)
     {
         $user = Auth::user();
@@ -149,13 +149,69 @@ class WalletTransactionController extends Controller
 
         $txHash = $request->input('tx_hash');
 
-        $result = app(\App\Service\WalletTransactionService::class)->approveDeposit(
-            transactionId: $id,
-            txHash: $txHash
-        );
+        // Kiểm tra loại giao dịch
+        if ((int) $transaction->type === \App\Common\Constants\Wallet\WalletTransactionType::DEPOSIT->value) {
+            $result = $this->walletTransactionService->approveDeposit(
+                transactionId: $id,
+                txHash: $txHash
+            );
+        } elseif ((int) $transaction->type === \App\Common\Constants\Wallet\WalletTransactionType::WITHDRAW->value) {
+            $result = $this->walletTransactionService->approveWithdraw(
+                transactionId: $id,
+                txHash: $txHash
+            );
+        } else {
+            FlashMessage::error(__('Loại giao dịch không được hỗ trợ'));
+            return redirect()->back();
+        }
 
         if ($result->isSuccess()) {
             FlashMessage::success(__('wallet.flash.transaction_approved'));
+        } else {
+            FlashMessage::error($result->getMessage());
+        }
+
+        return redirect()->back();
+    }
+
+    // Hủy giao dịch role:admin
+    public function cancel(int $id, Request $request)
+    {
+        $user = Auth::user();
+        if (!$user || $user->role !== UserRole::ADMIN->value) {
+            FlashMessage::error(__('common_error.permission_denied'));
+            return redirect()->back();
+        }
+
+        $transaction = $this->walletTransactionService->findById($id);
+        if (!$transaction) {
+            FlashMessage::error(__('common_error.wallet_transaction_not_found'));
+            return redirect()->back();
+        }
+
+        if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
+            FlashMessage::error(__('common_error.wallet_transaction_not_pending'));
+            return redirect()->back();
+        }
+
+        // Kiểm tra loại giao dịch
+        if ((int) $transaction->type === \App\Common\Constants\Wallet\WalletTransactionType::DEPOSIT->value) {
+            // Với deposit, chỉ cập nhật status (chưa cộng tiền nên không cần hoàn lại)
+            $result = $this->walletTransactionService->updateTransactionStatus(
+                transactionId: $id,
+                status: WalletTransactionStatus::CANCELLED->value,
+                description: 'Admin hủy lệnh nạp tiền'
+            );
+        } elseif ((int) $transaction->type === \App\Common\Constants\Wallet\WalletTransactionType::WITHDRAW->value) {
+            // Với withdraw, hủy và hoàn lại tiền
+            $result = $this->walletTransactionService->cancelWithdrawByAdmin($id);
+        } else {
+            FlashMessage::error(__('Loại giao dịch không được hỗ trợ'));
+            return redirect()->back();
+        }
+
+        if ($result->isSuccess()) {
+            FlashMessage::success(__('wallet.flash.transaction_cancelled'));
         } else {
             FlashMessage::error($result->getMessage());
         }

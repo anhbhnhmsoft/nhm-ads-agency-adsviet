@@ -3,6 +3,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CommonController;
 use App\Http\Controllers\API\MetaController;
 use App\Http\Controllers\API\ServiceController;
+use App\Http\Controllers\API\WalletController;
 use App\Http\Middleware\VerifyTelegramIp;
 use Illuminate\Support\Facades\Route;
 
@@ -28,12 +29,6 @@ Route::prefix('auth')->middleware('throttle:5,1')->group(function () {
     Route::post('verify-forgot-password', [AuthController::class, 'verifyForgotPassword']);
 });
 
-Route::prefix('service')->group(function () {
-//    Route::get('service-owner', [ServiceController::class, 'serviceOwner']);
-//    Route::get('package', [ServiceController::class, 'package']);
-    Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
-});
-
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('profile', [AuthController::class, 'getProfile']);
@@ -41,12 +36,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('service')->group(function () {
         Route::get('service-owner', [ServiceController::class, 'serviceOwner']);
         Route::get('package', [ServiceController::class, 'package']);
-//        Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
+       Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
     });
 
     Route::prefix('meta')->group(function () {
         Route::get('/{serviceUserId}/accounts', [MetaController::class, 'getAdsAccount']);
         Route::get('/{serviceUserId}/{accountId}/campaigns', [MetaController::class, 'getCampaigns']);
+    });
+
+    Route::prefix('wallet')->group(function () {
+        Route::get('me', [WalletController::class, 'me']);
+        Route::get('transactions', [WalletController::class, 'transactions']);
+        Route::post('deposit', [WalletController::class, 'deposit'])->middleware('throttle:5,1');
+        Route::post('change-password', [WalletController::class, 'changePassword'])->middleware('throttle:5,1');
+        Route::post('withdraw', [WalletController::class, 'withdraw'])->middleware('throttle:5,1');
     });
 
 });

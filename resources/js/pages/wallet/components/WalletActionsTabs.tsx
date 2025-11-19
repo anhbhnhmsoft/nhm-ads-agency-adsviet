@@ -134,7 +134,7 @@ const WalletActionsTabs = ({
                         <form onSubmit={handleWithdraw} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="withdraw-amount">
-                                    {t('service_user.amount')}
+                                    {t('wallet.amount')}
                                 </Label>
                                 <Input
                                     id="withdraw-amount"
@@ -206,7 +206,7 @@ const WalletActionsTabs = ({
                             <Button type="submit" disabled={withdrawForm.processing}>
                                 {withdrawForm.processing
                                     ? t('common.processing')
-                                    : t('service_user.withdraw')}
+                                    : t('wallet.withdraw')}
                             </Button>
                         </form>
                     )}

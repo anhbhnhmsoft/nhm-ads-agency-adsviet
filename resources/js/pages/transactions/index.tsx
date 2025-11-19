@@ -22,7 +22,10 @@
         XCircle,
         Search,
         Filter,
+        Eye,
+        X,
     } from 'lucide-react';
+    import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
     import { cn } from '@/lib/utils';
     import { TRANSACTION_TYPE, TRANSACTION_STATUS, TRANSACTION_TYPE_MAP, TRANSACTION_STATUS_MAP } from '@/pages/wallet/types/constants';
     import type { TransactionsIndexProps } from './types/type';
@@ -35,6 +38,12 @@
     const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: TransactionsIndexProps) => {
         const { t } = useTranslation();
         const [showFilters, setShowFilters] = useState(false);
+        const [showWithdrawInfo, setShowWithdrawInfo] = useState(false);
+        const [selectedWithdrawInfo, setSelectedWithdrawInfo] = useState<{
+            bank_name?: string;
+            account_holder?: string;
+            account_number?: string;
+        } | null>(null);
 
         const transactionsList = transactions?.data || [];
 
@@ -47,6 +56,8 @@
         const approveForm = useForm<{ tx_hash?: string }>({
             tx_hash: '',
         });
+
+        const cancelForm = useForm({});
 
         const handleFilter = (e: React.FormEvent) => {
             e.preventDefault();
@@ -71,6 +82,24 @@
                 router.reload({ only: ['transactions', 'pagination'] });
             },
         });
+    };
+
+    const handleCancel = (transactionId: string) => {
+        if (!confirm(t('transactions.confirm_cancel', { defaultValue: 'Xác nhận hủy giao dịch này?' }))) {
+            return;
+        }
+
+        cancelForm.post(`/transactions/${transactionId}/cancel`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                router.reload({ only: ['transactions', 'pagination'] });
+            },
+        });
+    };
+
+    const handleViewWithdrawInfo = (withdrawInfo: { bank_name?: string; account_holder?: string; account_number?: string } | null) => {
+        setSelectedWithdrawInfo(withdrawInfo);
+        setShowWithdrawInfo(true);
     };
 
         const getTransactionIcon = (type?: number | null) => {
@@ -285,6 +314,8 @@
                                         const statusClass = getStatusColor(tx.status);
                                         const explorerUrl = getExplorerUrl(tx.network, tx.txHash);
                                         const isPending = tx.status === TRANSACTION_STATUS.PENDING;
+                                        const isWithdraw = tx.type === TRANSACTION_TYPE.WITHDRAW;
+                                        const hasWithdrawInfo = isWithdraw && tx.withdraw_info;
 
                                         return (
                                             <div
@@ -294,7 +325,7 @@
                                                 <div className="flex items-center gap-3 flex-1">
                                                     {getTransactionIcon(tx.type)}
                                                     <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 flex-wrap">
                                                             <span className="font-medium">
                                                                 {t(`wallet.transaction_type.${getTypeKey(tx.type)}`, { defaultValue: String(tx.type) })}
                                                             </span>
@@ -302,13 +333,34 @@
                                                                 {t(`wallet.transaction_status.${getStatusKey(tx.status)}`, { defaultValue: String(tx.status) })}
                                                             </Badge>
                                                             {isPending && canApprove && (
+                                                                <>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="default"
+                                                                        onClick={() => handleApprove(tx.id)}
+                                                                        disabled={approveForm.processing}
+                                                                    >
+                                                                        {t('transactions.approve', { defaultValue: 'Duyệt' })}
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() => handleCancel(tx.id)}
+                                                                        disabled={cancelForm.processing}
+                                                                    >
+                                                                        <X className="mr-1 h-3 w-3" />
+                                                                        {t('transactions.cancel', { defaultValue: 'Hủy' })}
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                            {hasWithdrawInfo && (
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    onClick={() => handleApprove(tx.id)}
-                                                                    disabled={approveForm.processing}
+                                                                    onClick={() => handleViewWithdrawInfo(tx.withdraw_info || null)}
                                                                 >
-                                                                    {t('transactions.approve', { defaultValue: 'Duyệt' })}
+                                                                    <Eye className="mr-1 h-3 w-3" />
+                                                                    {t('transactions.view_info', { defaultValue: 'Xem thông tin' })}
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -393,6 +445,40 @@
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Dialog hiển thị thông tin rút tiền */}
+                <Dialog open={showWithdrawInfo} onOpenChange={setShowWithdrawInfo}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{t('transactions.withdraw_info_title', { defaultValue: 'Thông tin rút tiền' })}</DialogTitle>
+                            <DialogDescription>
+                                {t('transactions.withdraw_info_description', { defaultValue: 'Thông tin tài khoản người dùng đã nhập' })}
+                            </DialogDescription>
+                        </DialogHeader>
+                        {selectedWithdrawInfo && (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>{t('service_user.bank_name', { defaultValue: 'Tên Ngân hàng/Ví điện tử' })}</Label>
+                                    <div className="rounded-md border p-2 text-sm">
+                                        {selectedWithdrawInfo.bank_name || '-'}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>{t('service_user.account_holder', { defaultValue: 'Tên Chủ tài khoản/Ví' })}</Label>
+                                    <div className="rounded-md border p-2 text-sm">
+                                        {selectedWithdrawInfo.account_holder || '-'}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>{t('service_user.account_number', { defaultValue: 'Số Tài khoản/Số điện thoại ví' })}</Label>
+                                    <div className="rounded-md border p-2 text-sm">
+                                        {selectedWithdrawInfo.account_number || '-'}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
             </div>
         );
     };
