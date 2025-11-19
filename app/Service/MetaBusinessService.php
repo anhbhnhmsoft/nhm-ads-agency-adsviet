@@ -4,9 +4,16 @@ namespace App\Service;
 
 use App\Core\ServiceReturn;
 use FacebookAds\Api;
+use FacebookAds\Object\Values\AdDatePresetValues;
 
 /**
  * Class MetaBusinessService phục vụ tương tác với Meta Business API (không dùng lưu trữ database ở đây nhé)
+ *
+ * @note: Các hàm trong class này đều không lưu trữ dữ liệu vào database, chỉ dùng để tương tác với API.
+ *
+ * Các note:
+ * - date_preset: today, yesterday, this_month, last_month, this_quarter, maximum, data_maximum, last_3d, last_7d, last_14d, last_28d, last_30d, last_90d, last_week_mon_sun, last_week_sun_sat, last_quarter, last_year, this_week_mon_today, this_week_sun_today, this_year
+ *
  */
 class MetaBusinessService
 {
@@ -42,7 +49,7 @@ class MetaBusinessService
             $response = $this->api->call('/me')
                 ->getContent();
             return ServiceReturn::success(data: $response);
-        }catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -63,7 +70,7 @@ class MetaBusinessService
                 ]
             )->getContent();
             return ServiceReturn::success(data: $response);
-        }catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
 
@@ -88,7 +95,7 @@ class MetaBusinessService
                 ]
             )->getContent();
             return ServiceReturn::success(data: $response);
-        }catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -108,7 +115,7 @@ class MetaBusinessService
                 ]
             )->getContent();
             return ServiceReturn::success(data: $response);
-        }catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -126,17 +133,17 @@ class MetaBusinessService
                 '/' . $BmId . '/adaccount',
                 'POST',
                 [
-                    'name'              => $params['name'], // Tên ads account
-                    'currency'          => 'USD', // Loại tiền tệ , Mặc định USD
-                    'timezone_id'       => $params['timezone_id'] , // Múi giờ, tham khảo: https://developers.facebook.com/docs/marketing-api/reference/ad-account/timezone-id/
-                    'end_advertiser'    => $BmId, // Business quản lý ads account
-                    'media_agency'      => 'NONE', // Business đại lý
-                    'partner'           => 'NONE', // Business đối tác
-                    'invoice'           => false,
+                    'name' => $params['name'], // Tên ads account
+                    'currency' => 'USD', // Loại tiền tệ , Mặc định USD
+                    'timezone_id' => $params['timezone_id'], // Múi giờ, tham khảo: https://developers.facebook.com/docs/marketing-api/reference/ad-account/timezone-id/
+                    'end_advertiser' => $BmId, // Business quản lý ads account
+                    'media_agency' => 'NONE', // Business đại lý
+                    'partner' => 'NONE', // Business đối tác
+                    'invoice' => false,
                 ]
             )->getContent();
             return ServiceReturn::success(data: $response);
-        }catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -149,7 +156,7 @@ class MetaBusinessService
      * @param string|null $before Con trỏ "trang trước" (lấy từ request)
      * @return ServiceReturn
      */
-    public function getOwnerAdsAccountPaginated(string $bmId, int $limit = 25, ?string $after = null , ?string $before = null): ServiceReturn
+    public function getOwnerAdsAccountPaginated(string $bmId, int $limit = 25, ?string $after = null, ?string $before = null): ServiceReturn
     {
         try {
             $endpoint = "/{$bmId}/owned_ad_accounts";
@@ -173,7 +180,7 @@ class MetaBusinessService
             // Frontend sẽ dùng 'paging.cursors.after' để gọi trang tiếp theo
             return ServiceReturn::success(data: $response);
 
-        } catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -203,14 +210,14 @@ class MetaBusinessService
             ];
 
             $response = $this->api->call(
-                    "/{$accountId}",
-                    'GET',
-                    ['fields' => implode(',', $fields)]
-                )->getContent();
+                "/{$accountId}",
+                'GET',
+                ['fields' => implode(',', $fields)]
+            )->getContent();
 
             return ServiceReturn::success(data: $response);
 
-        } catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -267,46 +274,265 @@ class MetaBusinessService
     }
 
     /**
-     * Lấy dữ liệu chi tiêu (và insights khác) HÀNG NGÀY cho một chiến dịch.
-     * Dùng hàm này để vẽ biểu đồ (chart).
-     * @param string $campaignId ID chiến dịch (ví dụ: '238...')
-     * @param array $timeRange Ví dụ: ['since' => '2025-11-01', 'until' => '2025-11-10']
+     * Lấy insights chi tiêu (và insights khác)cho toàn bộ tài khoản THEO TỪNG CHIẾN DỊCH.
+     * @param string $accountId ID tài khoản (act_...)
+     * @param string $datePreset ('today', 'maximum', 'last_7d', ...)
+     * @param array $fields Mảng các trường muốn lấy (nếu để trống sẽ lấy mặc định)
      * @return ServiceReturn
      */
-    public function getCampaignDailyInsights(string $campaignId, array $timeRange): ServiceReturn
+    public function getAccountInsightsByCampaign(string $accountId, string $datePreset, array $fields = []): ServiceReturn
     {
         try {
-            // Các trường (fields) bạn muốn lấy cho biểu đồ
-            $fields = [
-                'spend',         // Chi tiêu
-                'impressions',   // Lượt hiển thị
-                'clicks',        // Lượt nhấp
-                'cpc',           // Chi phí/lượt nhấp
-                'date_start',    // Ngày bắt đầu (cho time_increment)
-                'date_stop',     // Ngày kết thúc (cho time_increment)
-            ];
-
-            // Tham số
+            // Nếu không truyền fields, dùng mặc định
+            if (empty($fields)) {
+                $fields = [
+                    'campaign_id', // <-- Trường breakdown
+                    'campaign_name',
+                    'spend',
+                    'clicks',
+                    'impressions',
+                ];
+            }
             $params = [
                 'fields' => implode(',', $fields),
-                // time_range phải được encode thành JSON string
-                'time_range' => json_encode($timeRange),
-                // time_increment = 1 nghĩa là "chia nhỏ dữ liệu theo từng ngày"
-                'time_increment' => 1,
-//                'level' => 'campaign', // Chỉ định rõ level (mặc dù là mặc định)
+                'date_preset' => $datePreset, // Dùng biến
+                'level' => 'campaign',
+                'limit' => 500, // Lấy tối đa 500 chiến dịch
             ];
 
+            // Lưu ý: Hàm này cũng có thể cần phân trang (pagination)
+            // nếu tài khoản có > 500 chiến dịch, nhưng với
+            // hầu hết các trường hợp thì 500 là đủ.
             $response = $this->api->call(
-                "/{$campaignId}/insights", // Endpoint
+                "/{$accountId}/insights", // Gọi từ cấp tài khoản
                 'GET',
                 $params
             )->getContent();
 
-            // Dữ liệu trả về sẽ là một mảng 'data' chứa nhiều object (mỗi object 1 ngày)
             return ServiceReturn::success(data: $response);
 
         } catch (\Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
+
+    /**
+     * Lấy thông tin chi tiết của một chiến dịch.
+     * @param string $campaignId
+     * @return ServiceReturn
+     */
+    public function getCampaignDetail(string $campaignId): ServiceReturn
+    {
+
+        try {
+            $fields = [
+                'id',
+                'name',
+                'account_id',
+                'status',           // Trạng thái cài đặt (ACTIVE, PAUSED)
+                'objective',
+                'budget_remaining', // Ngân sách còn lại (nếu dùng lifetime)
+                'spend_cap',        // Giới hạn chi tiêu
+                'start_time',       // Ngày bắt đầu
+                'stop_time',
+                'brand_lift_studies',
+                'effective_status', // -> "Active"
+                'daily_budget',     // -> "Ngân sách" (nếu hàng ngày)
+                'lifetime_budget',  // -> "Ngân sách" (nếu trọn đời)
+                'issues_info', // -> "Vấn đề nghiêm trọng"
+                'created_time',
+            ];
+            $response = $this->api->call(
+                "/{$campaignId}", // Endpoint
+                'GET',
+                [
+                    'fields' => implode(',', $fields),
+                ]
+            )->getContent();
+            return ServiceReturn::success(data: $response);
+        } catch (\Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
+     * Lấy dữ liệu Insights TỔNG HỢP cho một chiến dịch.
+     * @param string $campaignId
+     * @param string $datePreset ('today', 'maximum', 'last_7d', ...)
+     * @return ServiceReturn
+     */
+    public function getCampaignInsights(string $campaignId, string $datePreset = 'maximum'): ServiceReturn
+    {
+        try {
+            $fields = [
+                'spend',         // -> Chi tiêu
+                'impressions',   // -> Lượt hiển thị
+                'clicks',        // -> Lượt nhấp
+                'cpc',           // -> Chi phí cho mỗi click
+                'cpm',           // -> Chi phí cho 1000 lượt hiển thị
+                'purchase_roas', // -> Lợi nhuận mỗi lần mua hàng
+                'actions{action_type, value}', // -> Chuyển đổi
+                'results{action_type, value}', // -> Chuyển đổi
+            ];
+
+            $params = [
+                'fields' => implode(',', $fields),
+                'date_preset' => $datePreset,
+            ];
+
+            $response = $this->api->call(
+                "/{$campaignId}/insights",
+                'GET',
+                $params
+            )->getContent();
+
+            // API sẽ tự động trả về dữ liệu đã tính toán %
+            return ServiceReturn::success(data: $response);
+
+        } catch (\Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
+     * Lấy dữ liệu Insights HÀNG NGÀY (cho biểu đồ)
+     * @param string $campaignId
+     * @param string $datePreset ('last_7d', 'last_30d', 'this_week', 'this_month', ...)
+     * @return ServiceReturn
+     */
+    public function getCampaignDailyInsights(string $campaignId, string $datePreset = 'last_7d'): ServiceReturn
+    {
+        // Chỉ chấp nhận các date_preset trong array này
+        if (!in_array($datePreset, [
+            AdDatePresetValues::LAST_7D,
+            AdDatePresetValues::LAST_14D,
+            AdDatePresetValues::LAST_30D,
+            AdDatePresetValues::LAST_28D,
+            AdDatePresetValues::LAST_90D
+        ])) {
+            return ServiceReturn::error(message: __('meta.error.date_preset_invalid'));
+        }
+        try {
+            $fields = [
+                'spend',         // -> Chi tiêu
+                'impressions',   // -> Lượt hiển thị
+                'clicks',        // -> Lượt nhấp
+                'cpc',           // -> Chi phí cho mỗi click
+                'cpm',           // -> Chi phí cho 1000 lượt hiển thị
+                'date_start',    // Ngày bắt đầu
+            ];
+            $params = [
+                'fields' => implode(',', $fields),
+                'date_preset' => $datePreset,
+                'time_increment' => 1,
+                'limit' => 100,
+            ];
+
+            $response = $this->api->call(
+                "/{$campaignId}/insights",
+                'GET',
+                $params
+            )->getContent();
+
+
+            $dailyData = $response['data'] ?? [];
+            // 1. Xác định kích thước gộp (Chunk size)
+            $chunkSize = match ($datePreset) {
+                AdDatePresetValues::LAST_30D, AdDatePresetValues::LAST_28D => 5, // 30 ngày thì 5 ngày gộp 1
+                AdDatePresetValues::LAST_90D => 15,            // 90 ngày thì 15 ngày gộp 1
+                default => 1,                // 7, 14 ngày thì giữ nguyên từng ngày
+            };
+            // Nếu không cần gộp (size = 1), trả về luôn
+            if ($chunkSize === 1) {
+                return ServiceReturn::success(data: $dailyData);
+            }
+            // array_chunk sẽ cắt mảng $dailyData thành các mảng con có $chunkSize phần tử
+            $chunks = array_chunk($dailyData, $chunkSize);
+            $result = [];
+            foreach ($chunks as $chunk) {
+                $mergedPoint = [
+                    'spend' => 0,
+                    'impressions' => 0,
+                    'clicks' => 0,
+                    // Lấy ngày bắt đầu của phần tử đầu tiên trong nhóm
+                    'date_start' => $chunk[0]['date_start'],
+                    // Lấy ngày kết thúc của phần tử cuối cùng trong nhóm
+                    'date_stop' => end($chunk)['date_stop'],
+                ];
+
+                // Cộng dồn các chỉ số thô (Raw Metrics)
+                foreach ($chunk as $day) {
+                    $mergedPoint['spend'] += (float) ($day['spend'] ?? 0);
+                    $mergedPoint['impressions'] += (int) ($day['impressions'] ?? 0);
+                    $mergedPoint['clicks'] += (int) ($day['clicks'] ?? 0);
+                }
+
+                // Tính toán lại các chỉ số trung bình (Derived Metrics)
+                // QUAN TRỌNG: Không được cộng trung bình rồi chia, mà phải tính từ tổng
+                // CPC = Spend / Clicks
+                $mergedPoint['cpc'] = $mergedPoint['clicks'] > 0
+                    ? round($mergedPoint['spend'] / $mergedPoint['clicks'], 2)
+                    : 0;
+
+                // CPM = (Spend / Impressions) * 1000
+                $mergedPoint['cpm'] = $mergedPoint['impressions'] > 0
+                    ? round(($mergedPoint['spend'] / $mergedPoint['impressions']) * 1000, 2)
+                    : 0;
+                // Format lại số liệu thành string (để giống format API trả về)
+                $mergedPoint['spend'] = (string) $mergedPoint['spend'];
+                $result[] = $mergedPoint;
+            }
+            return ServiceReturn::success(data: $result);
+        } catch (\Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+
+    /**
+     * Lấy lịch sử hoạt động của chiến dịch (Gọi từ cấp Tài khoản và lọc).
+     *
+     * @param string $accountId ID tài khoản (Bắt buộc, vd: act_123456)
+     * @param string $campaignId ID chiến dịch cần xem
+     * @return ServiceReturn
+     */
+    public function getCampaignActivity(string $accountId, string $campaignId): ServiceReturn
+    {
+        try {
+            $fields = [
+                'event_type',   // Loại sự kiện (CAMPAIGN_PAUSED, CAMPAIGN_BUDGET_UPDATE...)
+                'event_time',   // Thời gian
+                'actor_name',   // Người thực hiện
+                'extra_data',   // Dữ liệu cũ/mới
+                'translated_event_type', // Tên sự kiện dễ đọc
+            ];
+
+            $params = [
+                'fields' => implode(',', $fields),
+                'limit' => 20,
+
+                // 🚀 QUAN TRỌNG: Phải lọc theo ID chiến dịch
+                'filtering' => [
+                    [
+                        'field' => 'object_id',
+                        'operator' => 'EQUAL',
+                        'value' => $campaignId
+                    ],
+                ],
+            ];
+
+            // Gọi vào endpoint của TÀI KHOẢN (/activities) chứ không phải Campaign
+            $response = $this->api->call(
+                "/{$accountId}/activities",
+                'GET',
+                $params
+            )->getContent();
+
+            return ServiceReturn::success(data: $response);
+
+        } catch (\Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
 }
