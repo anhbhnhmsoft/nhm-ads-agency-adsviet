@@ -282,19 +282,25 @@ class MetaService
                 return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
             }
             // Lấy thông tin chi tiết insights chiến dịch từ Meta Business (today)
-            $insightsTodayResult = $this->metaBusinessService->getCampaignInsights($campaign->campaign_id, 'today');
+            $insightsTodayResult = $this->metaBusinessService->getCampaignInsights($campaign->campaign_id, AdDatePresetValues::TODAY);
             if ($insightsTodayResult->isError()) {
                 return ServiceReturn::error(message: __('meta.error.failed_to_fetch_campaign_detail'));
             }
-            // Lấy thông tin chi tiết insights chiến dịch từ Meta Business (maximum)
-            $insightsTotalResult = $this->metaBusinessService->getCampaignInsights($campaign->campaign_id, 'maximum');
+            // Lấy thông tin chi tiết insights chiến dịch từ Meta Business (last 7 days)
+            $insightsTotalResult = $this->metaBusinessService->getCampaignInsights($campaign->campaign_id, AdDatePresetValues::LAST_7D);
             if ($insightsTotalResult->isError()) {
                 return ServiceReturn::error(message: __('meta.error.failed_to_fetch_campaign_detail'));
             }
 
+            $insightsMaximumResult = $this->metaBusinessService->getCampaignInsights($campaign->campaign_id, AdDatePresetValues::MAXIMUM);
+            if ($insightsMaximumResult->isError()) {
+                return ServiceReturn::error(message: __('meta.error.failed_to_fetch_campaign_detail'));
+            }
+
+
             $insightsToday = $insightsTodayResult->getData()['data'][0] ?? [];
             $insightsTotal = $insightsTotalResult->getData()['data'][0] ?? [];
-
+            $insightsMaximum = $insightsMaximumResult->getData()['data'][0] ?? [];
             // Tổng chuyển đổi hôm nay
             $totalConversionsToday = 0;
             foreach ($insightsToday['actions'] ?? [] as $action) {
@@ -306,6 +312,21 @@ class MetaService
                 $totalConversionsTotal += (int)($action['value'] ?? 0);
             }
 
+            // tính toán hiệu quả
+            // 1. Lấy CPC (Mặc định là 0 nếu không có)
+            $cpc = (float) ($insightsMaximum['cpc'] ?? 0);
+            // 2. Lấy CPM (Mặc định là 0 nếu không có)
+            $cpm = (float) ($insightsMaximum['cpm'] ?? 0);
+            // 3. Lấy ROAS (Cái này Meta trả về dạng mảng object, cần xử lý kỹ)
+            // Cấu trúc Meta trả về: "purchase_roas": [{ "action_type": "omni_purchase", "value": "2.5" }]
+            $roas = 0;
+            if (isset($insightsMaximum['purchase_roas'])) {
+                foreach ($insightsMaximum['purchase_roas'] as $roasItem) {
+                    // Thường lấy 'omni_purchase' hoặc phần tử đầu tiên
+                    $roas = (float) $roasItem['value'];
+                    break;
+                }
+            }
             $data = [
                 // Các thông tin cơ bản
                 'id' => $campaign->id,
@@ -328,6 +349,11 @@ class MetaService
                 // Tổng chi tiêu trong tổng thời gian
                 'total_spend' => $insightsTotal['spend'] ?? 0,
 
+                'cpc_avg' => $cpc,
+                'cpm_avg' => $cpm,
+                'roas_avg' => $roas,
+
+                // đo lường hiệu quả (7 ngày)
                 'insight' => [
                     // Tổng chi tiêu
                     'spend' => [
@@ -384,6 +410,7 @@ class MetaService
                         ),
                     ],
                 ]
+
             ];
 
             // Lưu vào cache

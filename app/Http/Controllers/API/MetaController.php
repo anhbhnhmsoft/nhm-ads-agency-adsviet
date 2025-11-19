@@ -84,10 +84,9 @@ class MetaController extends Controller
      * Lấy thông tin chi tiết chiến dịch quảng cáo theo service user id và campaign id
      * @param string $serviceUserId
      * @param string $campaignId
-     * @param Request $request
      * @return JsonResponse
      */
-    public function detailCampaign(string $serviceUserId, string $campaignId, Request $request): JsonResponse
+    public function detailCampaign(string $serviceUserId, string $campaignId): JsonResponse
     {
         $result = $this->metaService->getCampaignDetail(
             serviceUserId: $serviceUserId,
