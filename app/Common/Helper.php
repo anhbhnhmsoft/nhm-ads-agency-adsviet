@@ -34,4 +34,23 @@ class Helper
     {
         return Str::random(60);
     }
+
+    /**
+     * Tính toán phần trăm thay đổi giữa hai giá trị
+     * @param float $previous Giá trị trước đó
+     * @param float $current Giá trị hiện tại
+     * @return float Phần trăm thay đổi
+     */
+    public static function calculatePercentageChange($previous, $current): float
+    {
+        if ($previous == 0) {
+            if ($current > 0) {
+                return 100.0; // Tăng 100% nếu hôm qua là 0
+            }
+            return 0.0; // Không thay đổi (0 so với 0)
+        }
+
+        $change = (($current - $previous) / $previous) * 100;
+        return round($change, 1);
+    }
 }
