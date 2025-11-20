@@ -197,6 +197,34 @@
     - softDeletes
     - timestamps
 
+# bảng meta_ads_account_insights
+    #note
+    - lưu trữ thông tin insight của tài khoản Meta Ads liên kết với người dùng sử dụng gói dịch vụ (chỉ có platform = Meta Ads)
+    # quan hệ
+    - n-1 với bảng service_users qua service_user_id
+    - n-1 với bảng meta_accounts qua meta_account_id
+    # cấu trúc
+    - id (int, primary key, auto-increment)
+    - service_user_id (int, foreign key to service_users.id, not null)
+    - meta_account_id (int, foreign key to meta_accounts.id, not null)
+    - date (date, index, not null) -- Ngày insight
+    - spend (varchar, nullable) -- Chi tiêu
+    - impressions (varchar, nullable) -- Lượt hiển thị
+    - reach (varchar, nullable) -- Lượt xem
+    - frequency (varchar, nullable) -- Tần suất hiển thị
+    - clicks (varchar, nullable) -- Lượt click
+    - inline_link_clicks (varchar, nullable) -- Lượt click vào liên kết trong nội dung
+    - ctr (varchar, nullable) -- Tỷ lệ click-through rate (CTR)
+    - cpc (varchar, nullable) -- Chi phí mỗi click
+    - cpm (varchar, nullable) -- Chi phí mỗi 1000 lượt hiển thị
+    - actions (json, nullable) -- Lượt hành động
+    - purchase_roas (varchar, nullable) -- Hiệu quả mua hàng
+    - last_synced_at (timestamp, nullable) -- Thời gian đồng bộ cuối cùng
+    - softDeletes
+    - timestamps
+
+
+
 # bảng meta_ads_campaigns
     # note
     - lưu trữ thông tin chiến dịch Meta Ads liên kết với người dùng sử dụng gói dịch vụ

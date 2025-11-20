@@ -44,14 +44,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{serviceUserId}/{accountId}/campaigns', [MetaController::class, 'getCampaigns']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [MetaController::class, 'detailCampaign']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [MetaController::class, 'getCampaignInsights']);
+        Route::get('/test', [MetaController::class, 'test']); // để test
     });
 
     Route::prefix('wallet')->group(function () {
         Route::get('me', [WalletController::class, 'me']);
         Route::get('transactions', [WalletController::class, 'transactions']);
-        Route::post('deposit', [WalletController::class, 'deposit'])->middleware('throttle:5,1');
+        Route::post('deposit', [WalletController::class, 'deposit']) // API nạp tiền
+            ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
         Route::post('change-password', [WalletController::class, 'changePassword'])->middleware('throttle:5,1');
-        Route::post('withdraw', [WalletController::class, 'withdraw'])->middleware('throttle:5,1');
+        Route::post('withdraw', [WalletController::class, 'withdraw']) // API rút tiền
+            ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
     });
 
 });

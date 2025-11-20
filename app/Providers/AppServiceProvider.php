@@ -7,6 +7,7 @@ use App\Common\Constants\User\UserRole;
 use App\Models\User;
 use App\Repositories\ConfigRepository;
 use App\Repositories\MetaAccountRepository;
+use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\MetaAdsCampaignRepository;
 use App\Repositories\ServicePackageRepository;
 use App\Repositories\ServiceUserRepository;
@@ -80,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ServiceUserRepository::class);
         $this->app->bind(MetaAccountRepository::class);
         $this->app->bind(MetaAdsCampaignRepository::class);
+        $this->app->bind(MetaAdsAccountInsightRepository::class);
     }
 
     /**

@@ -38,8 +38,8 @@ class SyncMetaJob implements ShouldQueue
         // Đồng bộ tài khoản quảng cáo
         $metaService->syncMetaAccounts($this->serviceUser);
 
-        // Đồng bộ chiến dịch quảng cáo
-        $metaService->syncMetaAdsCampaigns($this->serviceUser);
+        // Đồng bộ chiến dịch quảng cáo và insight của ads account
+        $metaService->syncMetaAdsAndCampaigns($this->serviceUser);
     }
 
 }
