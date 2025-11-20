@@ -12,6 +12,7 @@ use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Models\ServiceUser;
 use App\Repositories\MetaAccountRepository;
+use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\MetaAdsCampaignRepository;
 use App\Repositories\ServiceUserRepository;
 use Carbon\Carbon;
@@ -30,6 +31,7 @@ class MetaService
         protected MetaAccountRepository     $metaAccountRepository,
         protected MetaAdsCampaignRepository $metaAdsCampaignRepository,
         protected ServiceUserRepository     $serviceUserRepository,
+        protected MetaAdsAccountInsightRepository $metaAdsAccountInsightRepository,
     )
     {
     }
@@ -122,7 +124,8 @@ class MetaService
             $query = $this->metaAccountRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
             return ServiceReturn::success(data: $paginator);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Logging::error(
                 message: 'Lỗi khi lấy danh sách tài khoản quảng cáo MetaService@getAdsAccountPaginatedByServiceUser: ' . $e->getMessage(),
                 exception: $e
@@ -138,7 +141,6 @@ class MetaService
             );
         }
     }
-
 
     /**
      * Lấy danh sách chiến dịch quảng cáo theo service user và account id, có phân trang
@@ -565,13 +567,60 @@ class MetaService
      * @param ServiceUser $serviceUser
      * @return ServiceReturn
      */
-    public function syncMetaAdsCampaigns(ServiceUser $serviceUser): ServiceReturn
+    public function syncMetaAdsAndCampaigns(ServiceUser $serviceUser): ServiceReturn
     {
         try {
             $this->metaAccountRepository->query()
                 ->where('service_user_id', $serviceUser->id)
                 ->chunkById(50, function (Collection $metaAccounts) use ($serviceUser) {
                     foreach ($metaAccounts as $metaAccount) {
+                        // sync insight của ads account
+                        $insightResult = $this->metaBusinessService->getAccountDailyInsights(
+                            accountId: $metaAccount->account_id,
+                        );
+                        // Xử lý kết quả
+                        // Nếu bị lỗi thì next sang tài khoản tiếp theo
+                        if ($insightResult->isSuccess()) {
+                            $insights = $insightResult->getData()['data'] ?? [];
+                            foreach ($insights as $insight) {
+                                // Lấy ROAS (Cái này Meta trả về dạng mảng object, cần xử lý kỹ)
+                                // Cấu trúc Meta trả về: "purchase_roas": [{ "action_type": "omni_purchase", "value": "2.5" }]
+                                $roas = $this->getRoas($insight);
+                                // Lưu dữ liệu vào DB
+                                // try catch lồng nhau để tránh lỗi khi lưu vào DB và ko bị ảnh hưởng đến các vòng lặp khác
+                                try {
+                                    $this->metaAdsAccountInsightRepository->query()->updateOrCreate(
+                                        [
+                                            'service_user_id' => $serviceUser->id,
+                                            'meta_account_id' => $metaAccount->id,
+                                            'date' => $insight['date_start'], // Lưu ngày bắt đầu của insight
+                                        ],
+                                        [
+                                            'spend' => $insight['spend'] ?? null,
+                                            'impressions' => $insight['impressions'] ?? null,
+                                            'reach' => $insight['reach'] ?? null,
+                                            'frequency' => $insight['frequency'] ?? null,
+                                            'clicks' => $insight['clicks'] ?? null,
+                                            'inline_link_clicks' => $insight['inline_link_clicks'] ?? null,
+                                            'ctr' => $insight['ctr'] ?? null,
+                                            'cpc' => $insight['cpc'] ?? null,
+                                            'cpm' => $insight['cpm'] ?? null,
+                                            'actions' => $insight['actions'] ?? null,
+                                            'purchase_roas' => $roas ?? null,
+                                            'last_synced_at' => now(),
+                                        ]
+                                    );
+                                }
+                                catch (\Exception $exception){
+                                    Logging::error('Error sync ads account insight: ' . $exception->getMessage());
+                                }
+                            }
+                        }else{
+                            Logging::error('Error sync ads account insight: ' . $insightResult->getMessage());
+                        }
+
+
+                        // sync chiến dịch quảng cáo
                         $after = null;
                         $campaignResult = $this->metaBusinessService->getCampaignsPaginated(
                             accountId: $metaAccount->account_id,
@@ -580,44 +629,64 @@ class MetaService
                         );
                         // Xử lý kết quả
                         // Nếu bị lỗi thì next sang tài khoản tiếp theo
-                        if ($campaignResult->isError()) {
-                            // Xử lý lỗi sau
-                            Logging::error('Error sync ads campaign: ' . $campaignResult->getMessage());
-                            continue;
-                        }
-                        $data = $campaignResult->getData();
-                        $campaigns = $data['data'] ?? [];
-                        foreach ($campaigns as $campaignData) {
-                            try {
-                                // Lưu dữ liệu vào DB
-                                $this->metaAdsCampaignRepository->query()->updateOrCreate(
-                                    [
-                                        'campaign_id' => $campaignData['id'],
-                                        'service_user_id' => $serviceUser->id,
-                                        'meta_account_id' => $metaAccount->id,
-                                    ],
-                                    [
-                                        'name' => $campaignData['name'],
-                                        'status' => $campaignData['status'],
-                                        'effective_status' => $campaignData['effective_status'],
-                                        'objective' => $campaignData['objective'],
-                                        'daily_budget' => $campaignData['daily_budget'] ?? null,
-                                        'budget_remaining' => $campaignData['budget_remaining'] ?? null,
-                                        'created_time' => ($campaignData['created_time'] ?? null) ? Carbon::parse($campaignData['created_time']) : null,
-                                        'start_time' => ($campaignData['start_time'] ?? null) ? Carbon::parse($campaignData['start_time']) : null,
-                                        'stop_time' => ($campaignData['stop_time'] ?? null) ? Carbon::parse($campaignData['stop_time']) : null,
-                                        'last_synced_at' => now(),
-                                    ]
-                                );
-                            } catch (\Exception $e) {
-                                Logging::error('Error sync ads campaign: ' . $e->getMessage());
+                        if ($campaignResult->isSuccess()) {
+                            $data = $campaignResult->getData();
+                            $campaigns = $data['data'] ?? [];
+                            foreach ($campaigns as $campaignData) {
+                                // try catch lồng nhau để tránh lỗi khi lưu vào DB và ko bị ảnh hưởng đến các vòng lặp khác
+                                try {
+                                    // Lưu dữ liệu vào DB
+                                    $this->metaAdsCampaignRepository->query()->updateOrCreate(
+                                        [
+                                            'campaign_id' => $campaignData['id'],
+                                            'service_user_id' => $serviceUser->id,
+                                            'meta_account_id' => $metaAccount->id,
+                                        ],
+                                        [
+                                            'name' => $campaignData['name'],
+                                            'status' => $campaignData['status'],
+                                            'effective_status' => $campaignData['effective_status'],
+                                            'objective' => $campaignData['objective'],
+                                            'daily_budget' => $campaignData['daily_budget'] ?? null,
+                                            'budget_remaining' => $campaignData['budget_remaining'] ?? null,
+                                            'created_time' => ($campaignData['created_time'] ?? null) ? Carbon::parse($campaignData['created_time']) : null,
+                                            'start_time' => ($campaignData['start_time'] ?? null) ? Carbon::parse($campaignData['start_time']) : null,
+                                            'stop_time' => ($campaignData['stop_time'] ?? null) ? Carbon::parse($campaignData['stop_time']) : null,
+                                            'last_synced_at' => now(),
+                                        ]
+                                    );
+                                }
+                                catch (\Exception $e) {
+                                    Logging::error('Error sync ads campaign: ' . $e->getMessage());
+                                }
                             }
+                        }else{
+                            Logging::error('Error sync ads campaign: ' . $campaignResult->getMessage());
                         }
+
                     }
                 });
             return ServiceReturn::success();
         } catch (\Exception $exception) {
             return ServiceReturn::error('Error sync ads campaign: ' . $exception->getMessage());
         }
+    }
+
+    /**
+     * Lấy ROAS (Return On Ad Spend) từ insights.
+     * @param $insights
+     * @return float
+     */
+    private function getRoas($insights)
+    {
+        $roas = 0.0;
+        if (isset($insights['purchase_roas'])) {
+            foreach ($insights['purchase_roas'] as $roasItem) {
+                // Thường lấy 'omni_purchase' hoặc phần tử đầu tiên
+                $roas = (float) $roasItem['value'];
+                break;
+            }
+        }
+        return $roas;
     }
 }

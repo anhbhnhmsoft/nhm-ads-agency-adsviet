@@ -6,6 +6,7 @@ use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Core\RestResponse;
 use App\Http\Resources\MetaAdsCampaignResource;
+use App\Service\MetaBusinessService;
 use App\Service\MetaService;
 use FacebookAds\Object\Values\AdDatePresetValues;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +19,10 @@ use Illuminate\Validation\Rule;
 class MetaController extends Controller
 {
 
-    public function __construct(protected MetaService $metaService)
+    public function __construct(
+        protected MetaService $metaService,
+        protected MetaBusinessService $metaBusinessService,
+    )
     {
     }
 
@@ -132,5 +136,10 @@ class MetaController extends Controller
         }
         $data = $result->getData();
         return RestResponse::success(data: $data);
+    }
+
+    public function test()
+    {
+
     }
 }

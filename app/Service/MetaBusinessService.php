@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Core\ServiceReturn;
 use FacebookAds\Api;
 use FacebookAds\Object\Values\AdDatePresetValues;
+use FacebookAds\Object\Values\AdsInsightsDatePresetValues;
 
 /**
  * Class MetaBusinessService phục vụ tương tác với Meta Business API (không dùng lưu trữ database ở đây nhé)
@@ -266,6 +267,63 @@ class MetaBusinessService
             )->getContent();
 
             // Trả về cả 'data' và 'paging' cho frontend xử lý
+            return ServiceReturn::success(data: $response);
+
+        } catch (\Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
+     * Lấy insights của tài khoản quảng cáo được chia nhỏ theo TỪNG NGÀY. (trong vòng 30 ngày)
+     * Dùng để đồng bộ dữ liệu lịch sử vào Database.
+     * @param string $accountId ID tài khoản (bắt buộc phải có tiền tố 'act_', ví dụ: act_123456)
+     * @return ServiceReturn
+     */
+    public function getAccountDailyInsights(string $accountId): ServiceReturn
+    {
+        try {
+            // Các trường cần lấy để lưu vào DB
+            $fields = [
+                // 1. Cơ bản
+                'date_start',
+                'date_stop',
+                'spend',
+                'impressions',
+
+                // 2. Tiếp cận & Tần suất
+                'reach',
+                'frequency',
+
+                // 3. Traffic
+                'clicks',            // Tổng click
+                'inline_link_clicks', // Click vào link (Quan trọng)
+                'ctr',
+                'cpc',
+                'cpm',
+
+                // 4. Chuyển đổi & Doanh thu (Dạng Mảng/JSON)
+                'actions',          // Số lượng (VD: 5 leads)
+                'purchase_roas',    // Hiệu quả mua hàng
+            ];
+
+            // Cấu hình mặc định
+            $defaultParams = [
+                'fields'         => implode(',', $fields),
+                'level'          => 'account', // Lấy tổng cấp tài khoản
+                'time_increment' => 1, // Chia theo từng ngày
+                'date_preset'    => AdsInsightsDatePresetValues::LAST_30D // Mặc định lấy 30 ngày nếu không truyền gì
+            ];
+
+            // Gộp tham số (Ưu tiên tham số truyền vào)
+            $params = array_merge($defaultParams);
+
+            $response = $this->api->call(
+                "/{$accountId}/insights",
+                'GET',
+                $params
+            )->getContent();
+
             return ServiceReturn::success(data: $response);
 
         } catch (\Exception $exception) {
