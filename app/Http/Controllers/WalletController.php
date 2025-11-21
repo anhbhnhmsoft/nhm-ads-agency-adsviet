@@ -11,7 +11,6 @@ use App\Http\Requests\Wallet\WalletMyWithdrawRequest;
 use App\Http\Requests\Wallet\WalletResetPasswordRequest;
 use App\Http\Requests\Wallet\WalletTopUpRequest;
 use App\Http\Requests\Wallet\WalletWithdrawRequest;
-use App\Repositories\WalletRepository;
 use App\Service\ConfigService;
 use App\Service\NowPaymentsService;
 use App\Service\WalletTransactionService;
@@ -19,7 +18,6 @@ use App\Service\WalletService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 
 class WalletController extends Controller
 {
@@ -28,7 +26,6 @@ class WalletController extends Controller
         protected ConfigService $configService,
         protected WalletTransactionService $walletTransactionService,
         protected NowPaymentsService $nowPaymentsService,
-        protected WalletRepository $walletRepository,
     ) {}
 
     public function index()
@@ -322,15 +319,6 @@ class WalletController extends Controller
         try {
             $data = $request->validated();
             
-            // Kiểm tra mật khẩu ví nếu có
-            $wallet = $this->walletRepository->findByUserId((int) $user->id);
-            if ($wallet && !empty($wallet->password)) {
-                if (empty($data['password']) || !Hash::check($data['password'], $wallet->password)) {
-                    FlashMessage::error(__('Mật khẩu ví không chính xác'));
-                    return redirect()->back();
-                }
-            }
-
             // Tạo withdraw_info từ form
             $withdrawInfo = [
                 'bank_name' => $data['bank_name'],
@@ -342,7 +330,8 @@ class WalletController extends Controller
             $result = $this->walletTransactionService->createWithdrawOrder(
                 userId: (int) $user->id,
                 amount: (float) $data['amount'],
-                withdrawInfo: $withdrawInfo
+                withdrawInfo: $withdrawInfo,
+                walletPassword: $data['password'] ?? null
             );
 
             if ($result->isSuccess()) {

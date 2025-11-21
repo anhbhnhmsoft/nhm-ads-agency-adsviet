@@ -176,7 +176,7 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                                         {tx.description}
                                                     </p>
                                                 )}
-                                                <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                                                <div className="hidden mt-1 sm:flex items-center gap-2 text-xs text-muted-foreground">
                                                     {getStatusIcon(tx.status)}
                                                     {tx.createdAt && (
                                                         <span>{getTimeSince(tx.createdAt)}</span>
@@ -187,7 +187,7 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-start gap-2 md:items-end">
+                                        <div className="flex sm:flex-col flex-row items-start gap-2 md:items-end">
                                             <div
                                                 className={cn(
                                                     'text-base font-semibold',
@@ -196,7 +196,16 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                             >
                                                 {formatUSDT(tx.amount)}
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <div className="sm:hidden ms-4 mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                                                    {getStatusIcon(tx.status)}
+                                                    {tx.createdAt && (
+                                                        <span>{getTimeSince(tx.createdAt)}</span>
+                                                    )}
+                                                    {tx.network && (
+                                                        <span className="ml-2">• {tx.network}</span>
+                                                    )}
+                                                </div>
+                                            <div className="sm:flex hidden items-center gap-2 text-xs text-muted-foreground">
                                                 {tx.network && <span className="uppercase">{tx.network}</span>}
                                                 {explorerUrl && (
                                                     <Button

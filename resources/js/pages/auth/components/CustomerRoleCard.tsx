@@ -21,7 +21,7 @@ const CustomerRoleCard = ({ role, setRole }: Props) => {
                     <div className="text-center">
                         <User className="h-8 w-8 text-green-600 mx-auto mb-2"/>
                         <h3 className="font-bold text-green-800">{t('auth.components.customer')}</h3>
-                        <p className="text-xs text-green-600 mt-1">{t('auth.components.customer_desc')}</p>
+                        <p className="hidden sm:block text-xs text-green-600 mt-1">{t('auth.components.customer_desc')}</p>
                     </div>
                 </div>
             </div>
@@ -34,7 +34,7 @@ const CustomerRoleCard = ({ role, setRole }: Props) => {
                     <div className="text-center">
                         <ShieldCheck className="h-8 w-8 text-blue-600 mx-auto mb-2"/>
                         <h3 className="font-bold text-blue-800">{t('auth.components.agency')}</h3>
-                        <p className="text-xs text-blue-600 mt-1">{t('auth.components.agency_desc')}</p>
+                        <p className="hidden sm:block text-xs text-blue-600 mt-1">{t('auth.components.agency_desc')}</p>
                     </div>
                 </div>
             </div>

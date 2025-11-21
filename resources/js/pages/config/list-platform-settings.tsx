@@ -1,101 +1,134 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { useTranslation } from 'react-i18next';
-import { DataTable } from '@/components/table/data-table';
-import { Separator } from '@/components/ui/separator';
-import { usePlatformColumns } from '@/pages/config/hooks/use-platform-columns';
-import { PlatformSettingListPagination, PlatformSetting } from '@/lib/types/type';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePlatformForm } from '@/pages/config/hooks/use-platform-form';
 import PlatformSettingForm, { FieldConfig } from '@/pages/config/components/PlatformSettingForm';
-import { Button } from '@/components/ui/button';
+import axios from 'axios';
+import { _PlatformType } from '@/lib/types/constants';
 
 type Props = {
-  paginator: PlatformSettingListPagination;
   googleFields: FieldConfig[];
   metaFields: FieldConfig[];
 };
 
-const ListPlatformSettings = ({ paginator, googleFields, metaFields }: Props) => {
+const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
   const { t } = useTranslation();
-  const [editingItem, setEditingItem] = useState<PlatformSetting | null>(null);
+  const [currentSetting, setCurrentSetting] = useState<{ id: string; platform: number; config: Record<string, any>; disabled: boolean } | null>(null);
+  const [loading, setLoading] = useState(false);
   
   const { form } = usePlatformForm({
-    initial: undefined,
+    initial: {
+      platform: _PlatformType.GOOGLE,
+      config: {},
+      disabled: false,
+    },
     storeUrl: '/platform-settings',
   });
   const { data, setData, processing, errors, reset, post, put } = form;
 
-  const handleEdit = (item: PlatformSetting) => {
-    setEditingItem(item);
-    setData({
-      platform: item.platform,
-      config: item.config || {},
-      disabled: item.disabled || false,
-    });
+  useEffect(() => {
+    if (data.platform) {
+      loadPlatformData(data.platform);
+    }
+  }, []);
+
+  // Handler khi platform thay đổi
+  const handlePlatformChange = (platform: number) => {
+    loadPlatformData(platform);
   };
 
-  const handleCancelEdit = () => {
-    setEditingItem(null);
-    reset();
-    setData({
-      platform: 1,
-      config: {},
-      disabled: false,
-    });
+  type PlatformSettingPayload = {
+    id: string;
+    platform: number;
+    config: Record<string, any> | null;
+    disabled: boolean;
+  };
+
+  const loadPlatformData = async (platform: number) => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`/platform-settings/platform/${platform}`);
+      const setting: PlatformSettingPayload | null = response.data?.data ?? null;
+      if (setting) {
+        setCurrentSetting({
+          id: setting.id,
+          platform: setting.platform,
+          config: setting.config || {},
+          disabled: setting.disabled || false,
+        });
+        setData({
+          platform: Number(setting.platform),
+          config: (setting.config ?? {}) as Record<string, any>,
+          disabled: Boolean(setting.disabled),
+        });
+      } else {
+        setCurrentSetting(null);
+        setData({
+          platform,
+          config: {},
+          disabled: false,
+        });
+      }
+    } catch (error) {
+      // Chưa có data
+      setCurrentSetting(null);
+      setData({
+        platform,
+        config: {},
+        disabled: false,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (editingItem) {
-      put(`/platform-settings/${editingItem.id}`, {
+    if (currentSetting) {
+      put(`/platform-settings/${currentSetting.id}`, {
         onSuccess: () => {
-          handleCancelEdit();
+          loadPlatformData(data.platform);
         },
       });
     } else {
+      // Chưa có data, dùng POST để tạo mới
       post('/platform-settings', {
         onSuccess: () => {
-          reset();
-          setData({
-            platform: 1,
-            config: {},
-            disabled: false,
-          });
+          // Reload lại data sau khi tạo
+          loadPlatformData(data.platform);
         },
       });
     }
   };
 
-  const columns = usePlatformColumns({ onEdit: handleEdit });
-
   return (
     <div>
       <h1 className="text-xl font-semibold">{t('menu.platform_settings', { defaultValue: 'Cấu hình nền tảng' })}</h1>
-      <div className="mt-4">
-        {editingItem && (
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {t('platform.edit_mode', { id: editingItem.id })}
-            </p>
-            <Button type="button" variant="outline" onClick={handleCancelEdit}>
-              {t('common.cancel')}
-            </Button>
-          </div>
-        )}
-        <PlatformSettingForm
-          data={data}
-          setData={setData}
-          processing={processing}
-          errors={errors}
-          onSubmit={handleFormSubmit}
-          googleFields={googleFields}
-          metaFields={metaFields}
-        />
-      </div>
-
-      <Separator className="my-4" />
-
-      <DataTable columns={columns} paginator={paginator} />
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>{t('platform.title', { defaultValue: 'Cấu hình nền tảng' })}</CardTitle>
+          <CardDescription>
+            {t('platform.description', { defaultValue: 'Chọn nền tảng và cấu hình thông tin' })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">{t('common.loading', { defaultValue: 'Đang tải...' })}</div>
+          ) : (
+            <PlatformSettingForm
+              data={data}
+              setData={setData}
+              onPlatformChange={handlePlatformChange}
+              processing={processing}
+              errors={errors}
+              onSubmit={handleFormSubmit}
+              googleFields={googleFields}
+              metaFields={metaFields}
+            />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

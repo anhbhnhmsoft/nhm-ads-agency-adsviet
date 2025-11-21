@@ -22,7 +22,7 @@ const RoleSystemCard = ({role, setRole}: Props) => {
                    <div className="text-center">
                        <User className="h-8 w-8 text-green-600 mx-auto mb-2"/>
                        <h3 className="font-bold text-green-800">{t('auth.components.customer')}</h3>
-                       <p className="text-xs text-green-600 mt-1">{t('auth.components.customer_desc')}</p>
+                       <p className="hidden sm:block text-xs text-green-600 mt-1">{t('auth.components.customer_desc')}</p>
                    </div>
                </div>
            </div>
@@ -35,7 +35,7 @@ const RoleSystemCard = ({role, setRole}: Props) => {
                    <div className="text-center">
                        <Shield className="h-8 w-8 text-blue-600 mx-auto mb-2"/>
                        <h3 className="font-bold text-blue-800">{t('auth.components.admin')}</h3>
-                       <p className="text-xs text-blue-600 mt-1">{t('auth.components.admin_desc')}</p>
+                       <p className="hidden sm:block text-xs text-blue-600 mt-1">{t('auth.components.admin_desc')}</p>
                    </div>
                </div>
            </div>

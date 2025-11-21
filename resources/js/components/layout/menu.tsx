@@ -12,6 +12,7 @@ import {
     wallet_index,
     service_purchase_index,
     service_orders_index,
+    service_management_index,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -24,6 +25,7 @@ import {
     Receipt,
     ShoppingCart,
     ClipboardList,
+    KanbanSquare,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +56,7 @@ const useMenu = () => {
                 icon: <Wallet />,
                 is_menu: true,
                 active: isActive(wallet_index()),
-                can_show: checkRole([_UserRole.ADMIN, _UserRole.CUSTOMER, _UserRole.AGENCY]),
+                can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
             },
             {
                 title: t('menu.service_purchase'),
@@ -72,6 +74,20 @@ const useMenu = () => {
                 icon: <ClipboardList />,
                 is_menu: true,
                 active: isActive(service_orders_index()),
+                can_show: checkRole([
+                    _UserRole.ADMIN,
+                    _UserRole.MANAGER,
+                    _UserRole.EMPLOYEE,
+                    _UserRole.CUSTOMER,
+                    _UserRole.AGENCY,
+                ]),
+            },
+            {
+                title: t('menu.service_management'),
+                url: service_management_index().url,
+                icon: <KanbanSquare />,
+                is_menu: true,
+                active: isActive(service_management_index()),
                 can_show: checkRole([
                     _UserRole.ADMIN,
                     _UserRole.MANAGER,

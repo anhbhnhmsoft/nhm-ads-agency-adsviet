@@ -1,27 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { useTranslation } from 'react-i18next';
-import { Head } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import FacebookIcon from '@/images/facebook_icon.png';
+import GoogleIcon from '@/images/google_icon.png';
+import AppLayout from '@/layouts/app-layout';
+import { _PlatformType } from '@/lib/types/constants';
+import { useServicePurchaseForm } from '@/pages/service-purchase/hooks/use-form';
+import type { ServicePackage, ServicePurchasePageProps } from '@/pages/service-purchase/types/type';
+import { Head } from '@inertiajs/react';
 import {
+    AlertTriangle,
+    Calculator,
+    CheckCircle,
+    DollarSign,
+    Info,
+    Search,
     ShoppingCart,
     Wallet,
-    DollarSign,
-    CheckCircle,
-    AlertTriangle,
-    Info,
-    Calculator,
-    Search,
 } from 'lucide-react';
-import { _PlatformType } from '@/lib/types/constants';
-import GoogleIcon from '@/images/google_icon.png';
-import FacebookIcon from '@/images/facebook_icon.png';
-import type { ServicePackage, PackagesProp, ServicePurchasePageProps } from '@/pages/service-purchase/types/type';
-import { useServicePurchaseForm } from '@/pages/service-purchase/hooks/use-form';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const normalizeCurrencyInput = (value: string): string => {
     if (!value) return '';
@@ -41,6 +41,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
     const [topUpAmount, setTopUpAmount] = useState<string>('');
     const [showCalculator, setShowCalculator] = useState(false);
     const [searchQuery, setSearchQuery] = useState<string>('');
+    const [metaEmail, setMetaEmail] = useState<string>('');
+    const [displayName, setDisplayName] = useState<string>('');
 
     const packageList = useMemo<ServicePackage[]>(() => {
         if (Array.isArray(packages)) {
@@ -111,15 +113,11 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
     };
 
     // Validate top-up amount
-    const validateTopUpAmount = (amount: string, pkg: ServicePackage) => {
+    const validateTopUpAmount = (amount: string) => {
         if (!amount) return null;
         const numAmount = parseCurrencyInput(amount);
         if (numAmount <= 0) {
             return t('service_purchase.invalid_amount');
-        }
-        const minTopUp = parseFloat(pkg.range_min_top_up || '0');
-        if (minTopUp > 0 && numAmount < minTopUp) {
-            return t('service_purchase.amount_too_low', { min: formatUSD(minTopUp) });
         }
         return null;
     };
@@ -147,15 +145,17 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
             return;
         }
 
-        if (topUpAmount && validateTopUpAmount(topUpAmount, selectedPackage)) {
-            alert(validateTopUpAmount(topUpAmount, selectedPackage));
+        if (topUpAmount && validateTopUpAmount(topUpAmount)) {
+            alert(validateTopUpAmount(topUpAmount));
             return;
         }
 
-        submitPurchase(selectedPackage.id, payloadTopUp, () => {
+        submitPurchase(selectedPackage.id, payloadTopUp, metaEmail, displayName, () => {
             setSelectedPackage(null);
             setTopUpAmount('');
             setShowCalculator(false);
+            setMetaEmail('');
+            setDisplayName('');
         });
     };
 
@@ -217,14 +217,14 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                     <div className="grid grid-cols-2 gap-4">
                         <div className="text-center p-3 bg-blue-50 rounded-lg">
                             <div className="text-xl font-bold text-blue-600">
-                                {formatUSD(pkg.open_fee)}
+                                {formatUSDT(parseFloat(pkg.open_fee))}
                             </div>
                             <div className="text-xs text-gray-600">
                                 {t('service_purchase.account_opening_fee')}
                             </div>
                         </div>
                         <div className="text-center p-3 bg-green-50 rounded-lg">
-                            <div className="text-xl font-bold text-green-600">
+                            <div className="sm:text-xl text-base font-bold text-green-600">
                                 {pkg.top_up_fee}%
                             </div>
                             <div className="text-xs text-gray-600">
@@ -284,7 +284,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
         if (!selectedPackage) return null;
 
         const platformInfo = getPlatformInfo(selectedPackage.platform);
-        const topUpError = topUpAmount ? validateTopUpAmount(topUpAmount, selectedPackage) : null;
+        const topUpError = topUpAmount ? validateTopUpAmount(topUpAmount) : null;
         const { serviceFee, totalCost, openFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount);
         const hasInsufficientBalance = wallet_balance < totalCost;
         const isMetaPlatform = selectedPackage.platform === _PlatformType.META;
@@ -297,7 +297,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             <span className="text-2xl">{platformInfo.icon}</span>
                             {t('service_purchase.order_summary')}: {selectedPackage.name}
                         </CardTitle>
-                        <Button variant="outline" onClick={() => setSelectedPackage(null)}>
+                        <Button className="hidden sm:block" variant="outline" onClick={() => setSelectedPackage(null)}>
                             {t('service_purchase.back_to_services')}
                         </Button>
                     </div>
@@ -311,7 +311,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                 <Wallet className="h-5 w-5 text-green-600" />
                                 <span className="font-medium">{t('service_purchase.wallet_balance')}:</span>
                             </div>
-                            <div className="text-xl font-bold text-green-600">
+                            <div className="sm:text-xl text-base font-bold text-green-600">
                                 {formatUSDT(wallet_balance)}
                             </div>
                         </div>
@@ -321,13 +321,44 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-3 bg-gray-50 rounded-lg">
                             <div className="text-sm text-gray-600">{t('service_purchase.account_opening_fee')}</div>
-                            <div className="text-lg font-bold">{formatUSD(openFee)}</div>
+                            <div className="sm:text-lg text-base font-bold">{formatUSDT(openFee)}</div>
                         </div>
                         <div className="p-3 bg-gray-50 rounded-lg">
                             <div className="text-sm text-gray-600">{t('service_purchase.service_fee_pct')}</div>
-                            <div className="text-lg font-bold">{selectedPackage.top_up_fee}%</div>
+                            <div className="sm:text-lg text-base font-bold">{selectedPackage.top_up_fee}%</div>
                         </div>
                     </div>
+
+                    {/* Meta Account Info - Only for Meta platform */}
+                    {isMetaPlatform && (
+                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="font-medium text-gray-800">{t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })}</div>
+                            <div className="space-y-2">
+                                <Label htmlFor="metaEmail">
+                                    {t('service_purchase.meta_email')}:
+                                </Label>
+                                <Input
+                                    id="metaEmail"
+                                    type="email"
+                                    placeholder="abc123@gmail.com"
+                                    value={metaEmail}
+                                    onChange={(e) => setMetaEmail(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="displayName">
+                                    {t('service_purchase.display_name')}:
+                                </Label>
+                                <Input
+                                    id="displayName"
+                                    type="text"
+                                    placeholder="abc"
+                                    value={displayName}
+                                    onChange={(e) => setDisplayName(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {/* Top-up Amount */}
                     <div className="space-y-2">
@@ -338,11 +369,12 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             <Input
                                 id="topUpAmount"
                                 type="number"
-                                placeholder={`${formatUSD(selectedPackage.range_min_top_up)} - ...`}
+                                placeholder={`${Math.ceil(
+                                    Number(selectedPackage.range_min_top_up || '0')
+                                )} USDT`}
                                 value={topUpAmount}
                                 onChange={(e) => setTopUpAmount(e.target.value)}
-                                min={selectedPackage.range_min_top_up}
-                                step="0.01"
+                                step="1"
                             />
                             <Button
                                 variant="outline"
@@ -357,6 +389,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                 {topUpError}
                             </div>
                         )}
+                        <p className="text-xs text-muted-foreground">
+                            {t('service_purchase.top_up_amount_note')}
+                        </p>
                     </div>
 
                     {/* Fee Calculator */}
@@ -366,21 +401,21 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="flex justify-between">
                                     <span>{t('service_purchase.account_opening_fee')}:</span>
-                                    <span className="font-medium">{formatUSD(openFee)}</span>
+                                    <span className="font-medium">{formatUSDT(openFee)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>{t('service_purchase.top_up')}:</span>
-                                    <span className="font-medium">{formatUSD(topUpNum)}</span>
+                                    <span className="font-medium">{formatUSDT(topUpNum)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>
                                         {t('service_purchase.service_fee')} ({selectedPackage.top_up_fee}%):
                                     </span>
-                                    <span className="font-medium">{formatUSD(serviceFee)}</span>
+                                    <span className="font-medium">{formatUSDT(serviceFee)}</span>
                                 </div>
                             </div>
                             <div className="border-t pt-2">
-                                <div className="flex justify-between font-bold text-lg">
+                                <div className="flex justify-between font-bold sm:text-lg text-md">
                                     <span>{t('service_purchase.total_cost')}:</span>
                                     <span className={hasInsufficientBalance ? 'text-red-600' : 'text-green-600'}>
                                         {formatUSDT(totalCost)}
@@ -403,7 +438,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
 
                     {/* Purchase Button */}
                     <Button
-                        className="w-full"
+                        className="w-full mb-3"
                         size="lg"
                         onClick={handlePurchase}
                         disabled={hasInsufficientBalance || !!topUpError || purchaseForm.processing}
@@ -412,6 +447,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                         {purchaseForm.processing
                             ? t('common.processing')
                             : `${t('service_purchase.purchase_now')} - ${formatUSDT(totalCost)}`}
+                    </Button>
+                    <Button className="sm:hidden block w-full" variant="outline" onClick={() => setSelectedPackage(null)}>
+                            {t('service_purchase.back_to_services')}
                     </Button>
                 </CardContent>
             </Card>
@@ -422,8 +460,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
         <AppLayout>
             <Head title={t('service_purchase.service_selection')} />
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold text-gray-900">{t('service_purchase.service_selection')}</h1>
+                <div className="flex sm:flex-row flex-col items-center justify-between">
+                    <h1 className="sm:text-3xl text-xl sm:mb-0 mb-4 font-bold text-gray-900">{t('service_purchase.service_selection')}</h1>
                     <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-lg">
                         <Wallet className="h-5 w-5 text-green-600" />
                         <span className="text-sm text-gray-600">{t('service_purchase.wallet_balance')}:</span>

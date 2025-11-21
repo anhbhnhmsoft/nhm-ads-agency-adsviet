@@ -1,0 +1,763 @@
+import { useMemo, useState } from 'react';
+import { Head } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
+import type { ServiceOrder, ServiceOrderPagination } from '@/pages/service-order/types/type';
+import type {
+    MetaAccount,
+    MetaCampaign,
+    CampaignDetail,
+    CampaignDailyInsight,
+} from '@/pages/service-management/types/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { DataTablePagination } from '@/components/table/pagination';
+import axios from 'axios';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { useTranslation } from 'react-i18next';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, Radio, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
+import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
+
+type Props = {
+    paginator: ServiceOrderPagination;
+};
+
+const ServiceManagementIndex = ({ paginator }: Props) => {
+    const { t } = useTranslation();
+    const services = paginator?.data ?? [];
+
+    const [selectedService, setSelectedService] = useState<ServiceOrder | null>(null);
+    const [accounts, setAccounts] = useState<MetaAccount[]>([]);
+    const [accountsLoading, setAccountsLoading] = useState(false);
+    const [accountsError, setAccountsError] = useState<string | null>(null);
+
+    const [campaignsByAccount, setCampaignsByAccount] = useState<Record<string, MetaCampaign[]>>({});
+    const [campaignLoadingId, setCampaignLoadingId] = useState<string | null>(null);
+    const [campaignError, setCampaignError] = useState<string | null>(null);
+    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+    const [selectedCampaign, setSelectedCampaign] = useState<MetaCampaign | null>(null);
+    const [campaignDetail, setCampaignDetail] = useState<CampaignDetail | null>(null);
+    const [campaignDetailLoading, setCampaignDetailLoading] = useState(false);
+    const [campaignDetailError, setCampaignDetailError] = useState<string | null>(null);
+    const [insightPreset, setInsightPreset] = useState<'last_7d' | 'last_30d'>('last_7d');
+    const [campaignInsights, setCampaignInsights] = useState<CampaignDailyInsight[]>([]);
+    const [campaignInsightsLoading, setCampaignInsightsLoading] = useState(false);
+    const [campaignInsightsError, setCampaignInsightsError] = useState<string | null>(null);
+
+    const parseNumber = (value: number | string | null | undefined): number | null => {
+        if (typeof value === 'number') {
+            return Number.isFinite(value) ? value : null;
+        }
+        if (typeof value === 'string') {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+        return null;
+    };
+
+    const formatNumber = (
+        value: number | string | null | undefined,
+        options: Intl.NumberFormatOptions = { maximumFractionDigits: 2 }
+    ): string => {
+        const parsed = parseNumber(value);
+        if (parsed === null) {
+            return '--';
+        }
+        return parsed.toLocaleString(undefined, options);
+    };
+
+    const formatCurrency = (value: number | string | null | undefined): string => {
+        const formatted = formatNumber(value, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+        return formatted === '--' ? '--' : `${formatted} USDT`;
+    };
+
+    const formatPercentChange = (value: number | string | null | undefined): string => {
+        const parsed = parseNumber(value);
+        if (parsed === null) {
+            return '--';
+        }
+        const formatted = parsed.toFixed(2);
+        return `${parsed >= 0 ? '+' : ''}${formatted}%`;
+    };
+
+    // Normalize cpc và cpm từ integer thành float để tránh lỗi type mismatch
+    const normalizeInsightItem = (item: any): CampaignDailyInsight => {
+        return {
+            ...item,
+            // Đảm bảo cpc và cpm luôn là number (float), không phải integer
+            cpc: item.cpc != null ? Number(item.cpc) : null,
+            cpm: item.cpm != null ? Number(item.cpm) : null,
+        };
+    };
+
+    const insightPresetOptions = useMemo(
+        () => [
+            { value: 'last_7d', label: t('service_management.spend_chart_preset_7d') },
+            { value: 'last_30d', label: t('service_management.spend_chart_preset_30d') },
+        ],
+        [t]
+    );
+
+    const chartEntries = useMemo(() => {
+        if (!campaignInsights.length) {
+            return [];
+        }
+        return campaignInsights.map((item, index) => {
+            const value = parseNumber(item.spend) ?? 0;
+            const date = item.date_start ? new Date(item.date_start) : null;
+            const label = date
+                ? date.toLocaleDateString('vi-VN', { weekday: 'short' })
+                : `#${index + 1}`;
+            const tooltipLabel = date
+                ? date.toLocaleDateString('vi-VN', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: '2-digit',
+                  })
+                : label;
+            return {
+                label,
+                value,
+                tooltipLabel,
+            };
+        });
+    }, [campaignInsights]);
+
+    const closeView = () => {
+        setSelectedService(null);
+        setAccounts([]);
+        setCampaignsByAccount({});
+        setSelectedAccountId(null);
+        setAccountsError(null);
+        setCampaignError(null);
+        setSelectedCampaign(null);
+        setCampaignDetail(null);
+        setCampaignDetailError(null);
+        setCampaignInsights([]);
+        setCampaignInsightsError(null);
+        setCampaignInsightsLoading(false);
+    };
+
+    const extractData = (payload: any) => {
+        if (!payload) return [];
+        if (Array.isArray(payload.data)) {
+            return payload.data;
+        }
+        if (payload.data?.data) {
+            return payload.data.data;
+        }
+        return [];
+    };
+
+    const handleViewService = async (service: ServiceOrder) => {
+        setSelectedService(service);
+        setAccounts([]);
+        setCampaignsByAccount({});
+        setSelectedAccountId(null);
+        await loadAccounts(service.id);
+    };
+
+    const loadAccounts = async (serviceId: string) => {
+        setAccountsLoading(true);
+        setAccountsError(null);
+        try {
+            const response = await axios.get(`/meta/${serviceId}/accounts`, { params: { per_page: 20 } });
+            const items = extractData(response.data?.data);
+            setAccounts(items as MetaAccount[]);
+        } catch (error: any) {
+            setAccountsError(error?.response?.data?.message || t('service_management.accounts_error'));
+        } finally {
+            setAccountsLoading(false);
+        }
+    };
+
+    const loadCampaigns = async (account: MetaAccount) => {
+        if (!selectedService) return;
+        setSelectedAccountId(account.id);
+        setCampaignError(null);
+        setCampaignLoadingId(account.id);
+        setSelectedCampaign(null);
+        setCampaignDetail(null);
+        try {
+            const response = await axios.get(`/meta/${selectedService.id}/${account.id}/campaigns`, {
+                params: { per_page: 25 },
+            });
+            const items = extractData(response.data?.data);
+            setCampaignsByAccount((prev) => ({
+                ...prev,
+                [account.id]: items as MetaCampaign[],
+            }));
+        } catch (error: any) {
+            setCampaignError(error?.response?.data?.message || t('service_management.campaigns_error'));
+        } finally {
+            setCampaignLoadingId(null);
+        }
+    };
+
+    const loadCampaignInsights = async (campaign: MetaCampaign, preset: 'last_7d' | 'last_30d') => {
+        if (!selectedService) return;
+        setCampaignInsightsLoading(true);
+        setCampaignInsightsError(null);
+        try {
+            const response = await axios.get(
+                `/meta/${selectedService.id}/${campaign.id}/detail-campaign-insight`,
+                { params: { date_preset: preset } }
+            );
+            const payload = response.data?.data;
+            const rawItems: any[] = Array.isArray(payload?.data)
+                ? (payload.data as any[])
+                : Array.isArray(payload)
+                    ? (payload as any[])
+                    : [];
+            // Normalize dữ liệu: convert integer cpc/cpm thành float
+            const items: CampaignDailyInsight[] = rawItems.map(normalizeInsightItem);
+            setCampaignInsights(items);
+        } catch (error: any) {
+            setCampaignInsightsError(error?.response?.data?.message || t('service_management.campaign_insight_error'));
+            setCampaignInsights([]);
+        } finally {
+            setCampaignInsightsLoading(false);
+        }
+    };
+
+    const loadCampaignDetail = async (campaign: MetaCampaign) => {
+        if (!selectedService) return;
+        setSelectedCampaign(campaign);
+        setCampaignInsights([]);
+        setCampaignInsightsError(null);
+        setCampaignDetailLoading(true);
+        setCampaignDetailError(null);
+        try {
+            const response = await axios.get(`/meta/${selectedService.id}/${campaign.id}/detail-campaign`);
+            if (response.data?.data) {
+                setCampaignDetail(response.data.data as CampaignDetail);
+            }
+            await loadCampaignInsights(campaign, insightPreset);
+        } catch (error: any) {
+            setCampaignDetailError(error?.response?.data?.message || t('service_management.campaign_detail_error'));
+        } finally {
+            setCampaignDetailLoading(false);
+        }
+    };
+
+    const handleInsightPresetChange = (value: 'last_7d' | 'last_30d') => {
+        setInsightPreset(value);
+        if (selectedCampaign) {
+            loadCampaignInsights(selectedCampaign, value);
+        }
+    };
+
+    const renderConfigInfo = (service: ServiceOrder) => {
+        const config = service.config_account || {};
+        return (
+            <div className="text-sm text-muted-foreground space-y-1">
+                {config.meta_email && (
+                    <div>
+                        <span className="font-medium text-foreground">{t('service_management.meta_email')}:</span>{' '}
+                        {config.meta_email}
+                    </div>
+                )}
+                {config.display_name && (
+                    <div>
+                        <span className="font-medium text-foreground">{t('service_management.display_name')}:</span>{' '}
+                        {config.display_name}
+                    </div>
+                )}
+                {config.bm_id && (
+                    <div>
+                        <span className="font-medium text-foreground">{t('service_management.bm_id')}:</span>{' '}
+                        {config.bm_id}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderServiceList = () => {
+        if (services.length === 0) {
+            return (
+                <Card>
+                    <CardContent className="py-12 text-center text-muted-foreground">
+                        {t('service_management.empty')}
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        return (
+            <div className="grid gap-4">
+                {services.map((service) => (
+                    <Card key={service.id}>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-lg">{service.package?.name || 'Service'}</CardTitle>
+                                <CardDescription>
+                                    {t('service_management.created_at', {
+                                        date: service.created_at
+                                            ? new Date(service.created_at).toLocaleString()
+                                            : '--',
+                                    })}
+                                </CardDescription>
+                            </div>
+                            <Badge variant="secondary">{service.package?.platform_label}</Badge>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {renderConfigInfo(service)}
+                            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                                <div>
+                                    <span className="font-medium text-foreground">
+                                        {t('service_management.total_budget')}:
+                                    </span>{' '}
+                                    {service.budget || 0} USDT
+                                </div>
+                                <div>
+                                    <span className="font-medium text-foreground">
+                                        {t('service_management.topup_fee')}:
+                                    </span>{' '}
+                                    {service.top_up_fee ?? 0}%
+                                </div>
+                            </div>
+                            <Button onClick={() => handleViewService(service)}>
+                                {t('service_management.view_campaigns')}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        );
+    };
+
+    const renderCampaignView = () => {
+        if (!selectedService) return null;
+
+        return (
+            <div className="space-y-6">
+                <div className="sm:flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-semibold">{t('service_management.dialog_title')}</h2>
+                        <p className="text-muted-foreground sm:mb-0 mb-4">
+                            {selectedService?.package?.name} •{' '}
+                            {t('service_management.dialog_platform', {
+                                platform: selectedService?.package?.platform_label,
+                            })}
+                        </p>
+                    </div>
+                    <Button variant="outline" onClick={closeView}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        {t('service_management.back_to_services')}
+                    </Button>
+                </div>
+
+                {accountsError && (
+                    <Alert variant="destructive">
+                        <AlertTitle>{t('service_management.accounts_error_title')}</AlertTitle>
+                        <AlertDescription>{accountsError}</AlertDescription>
+                    </Alert>
+                )}
+
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-3">
+                        <h3 className="font-semibold flex items-center gap-2">
+                            <Radio className="h-4 w-4 text-primary" />
+                            {t('service_management.accounts')}
+                        </h3>
+                        <ScrollArea className="h-[400px] rounded border p-3">
+                            {accountsLoading ? (
+                                <div className="flex items-center justify-center py-10 text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    {t('service_management.loading')}
+                                </div>
+                            ) : accounts.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    {t('service_management.accounts_empty')}
+                                </p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {accounts.map((account) => (
+                                        <div
+                                            key={account.id}
+                                            className={`rounded border p-3 cursor-pointer transition-colors ${
+                                                selectedAccountId === account.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                                            }`}
+                                            onClick={() => loadCampaigns(account)}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-sm">
+                                                        {account.account_name || account.account_id}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        ID: {account.account_id}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        loadCampaigns(account);
+                                                    }}
+                                                    disabled={campaignLoadingId === account.id}
+                                                >
+                                                    {campaignLoadingId === account.id && (
+                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                    )}
+                                                    {t('service_management.load_campaigns')}
+                                                </Button>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                                                {account.currency && (
+                                                    <div>
+                                                        <span className="font-medium">{t('service_management.currency')}:</span> {account.currency}
+                                                    </div>
+                                                )}
+                                                {account.balance && (
+                                                    <div>
+                                                        <span className="font-medium">{t('service_management.balance')}:</span> {account.balance}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </div>
+
+                    <div className="space-y-3">
+                        <h3 className="font-semibold">{t('service_management.campaigns')}</h3>
+                        {campaignError && (
+                            <Alert variant="destructive">
+                                <AlertTitle>{t('service_management.campaigns_error_title')}</AlertTitle>
+                                <AlertDescription>{campaignError}</AlertDescription>
+                            </Alert>
+                        )}
+                        {selectedAccountId ? (
+                            <ScrollArea className="h-[400px] border rounded p-3">
+                                {campaignLoadingId === selectedAccountId ? (
+                                    <div className="flex items-center justify-center py-10 text-muted-foreground">
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        {t('service_management.loading')}
+                                    </div>
+                                ) : (campaignsByAccount[selectedAccountId] || []).length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('service_management.campaigns_empty')}
+                                    </p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {campaignsByAccount[selectedAccountId].map((campaign) => (
+                                            <div
+                                                key={campaign.id}
+                                                className={`rounded border p-3 space-y-2 cursor-pointer transition-colors ${
+                                                    selectedCampaign?.id === campaign.id
+                                                        ? 'border-primary bg-primary/5'
+                                                        : 'hover:bg-muted/50'
+                                                }`}
+                                                onClick={() => loadCampaignDetail(campaign)}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-sm">
+                                                            {campaign.name || campaign.campaign_id}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                            ID: {campaign.campaign_id}
+                                                        </p>
+                                                    </div>
+                                                    <Badge variant="outline" className="ml-2">
+                                                        {campaign.effective_status}
+                                                    </Badge>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground space-y-1">
+                                                    {campaign.objective && (
+                                                        <div>
+                                                            <span className="font-medium">{t('service_management.objective')}:</span>{' '}
+                                                            {campaign.objective}
+                                                        </div>
+                                                    )}
+                                                    {campaign.daily_budget && (
+                                                        <div>
+                                                            <span className="font-medium">{t('service_management.daily_budget')}:</span>{' '}
+                                                            {campaign.daily_budget}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <span className="font-medium">{t('service_management.start_time')}:</span>{' '}
+                                                        {campaign.start_time
+                                                            ? new Date(campaign.start_time).toLocaleString()
+                                                            : '--'}
+                                                    </div>
+                                                    {campaign.stop_time && (
+                                                        <div>
+                                                            <span className="font-medium">{t('service_management.stop_time')}:</span>{' '}
+                                                            {new Date(campaign.stop_time).toLocaleString()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </ScrollArea>
+                        ) : (
+                            <div className="text-sm text-muted-foreground border rounded p-4">
+                                {t('service_management.select_account_hint')}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {selectedCampaign && (
+                    <div className="mt-6">
+                        <Separator className="mb-6" />
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center justify-between">
+                                    <span>{t('service_management.campaign_detail')}</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setSelectedCampaign(null);
+                                            setCampaignDetail(null);
+                                            setCampaignInsights([]);
+                                            setCampaignInsightsError(null);
+                                        }}
+                                    >
+                                        <ArrowLeft className="h-4 w-4 mr-2" />
+                                        {t('common.back')}
+                                    </Button>
+                                </CardTitle>
+                                <CardDescription>
+                                    {selectedCampaign.name || selectedCampaign.campaign_id}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {campaignDetailLoading ? (
+                                    <div className="flex items-center justify-center py-10">
+                                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                        {t('service_management.loading')}
+                                    </div>
+                                ) : campaignDetailError ? (
+                                    <Alert variant="destructive">
+                                        <AlertTitle>{t('service_management.campaign_detail_error')}</AlertTitle>
+                                        <AlertDescription>{campaignDetailError}</AlertDescription>
+                                    </Alert>
+                                ) : campaignDetail ? (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div className="p-4 bg-muted/50 rounded-lg">
+                                                <div className="text-sm text-muted-foreground">{t('service_management.today_spend')}</div>
+                                                <div className="lg:text-2xl text-lg font-bold mt-1">
+                                                    {formatCurrency(campaignDetail.today_spend)}
+                                                </div>
+                                            </div>
+                                            <div className="p-4 bg-muted/50 rounded-lg">
+                                                <div className="text-sm text-muted-foreground">{t('service_management.total_spend')}</div>
+                                                <div className="lg:text-2xl text-lg font-bold mt-1">
+                                                    {formatCurrency(campaignDetail.total_spend)}
+                                                </div>
+                                            </div>
+                                            <div className="p-4 bg-muted/50 rounded-lg">
+                                                <div className="text-sm text-muted-foreground">CPC</div>
+                                                <div className="lg:text-2xl text-lg font-bold mt-1">
+                                                    {formatCurrency(campaignDetail.cpc_avg)}
+                                                </div>
+                                            </div>
+                                            <div className="p-4 bg-muted/50 rounded-lg">
+                                                <div className="text-sm text-muted-foreground">ROAS</div>
+                                                <div className="lg:text-2xl text-lg font-bold mt-1">
+                                                    {(() => {
+                                                        const value = formatNumber(campaignDetail.roas_avg, {
+                                                            minimumFractionDigits: 2,
+                                                            maximumFractionDigits: 2,
+                                                        });
+                                                        return value === '--' ? value : `${value}x`;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {Object.entries(campaignDetail.insight || {}).map(([key, value]) => {
+                                                const percentNumber = parseNumber(value?.percent_change);
+                                                const percentText = formatPercentChange(value?.percent_change);
+                                                const PercentIcon = percentNumber === null ? null : percentNumber >= 0 ? TrendingUp : TrendingDown;
+                                                const percentColor =
+                                                    percentNumber === null
+                                                        ? 'text-muted-foreground'
+                                                        : percentNumber >= 0
+                                                            ? 'text-green-500'
+                                                            : 'text-red-500';
+
+                                                return (
+                                                    <Card key={key}>
+                                                        <CardHeader className="pb-3">
+                                                            <CardTitle className="text-base capitalize">{key}</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent className="space-y-2">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-sm text-muted-foreground">{t('service_management.today')}</span>
+                                                                <span className="font-semibold">{formatNumber(value?.today)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-sm text-muted-foreground">{t('service_management.total')}</span>
+                                                                <span className="font-semibold">{formatNumber(value?.total)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center pt-2 border-t">
+                                                                <span className="text-sm text-muted-foreground">{t('service_management.change')}</span>
+                                                                <div className="flex items-center gap-1">
+                                                                    {PercentIcon && <PercentIcon className={`h-4 w-4 ${percentColor}`} />}
+                                                                    <span className={`font-semibold ${percentColor}`}>{percentText}</span>
+                                                                </div>
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </CardContent>
+                        </Card>
+                        {renderSpendChart()}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderSpendChart = () => {
+        if (!selectedCampaign) return null;
+        const spendChangeNumber = parseNumber(campaignDetail?.insight?.spend?.percent_change);
+        const spendChangeText = formatPercentChange(campaignDetail?.insight?.spend?.percent_change);
+        const spendChangeColor =
+            spendChangeNumber === null
+                ? 'text-muted-foreground'
+                : spendChangeNumber >= 0
+                    ? 'text-green-600'
+                    : 'text-red-600';
+
+        return (
+            <Card className="mt-4">
+                <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <CardTitle>{t('service_management.spend_chart_title')}</CardTitle>
+                        <CardDescription className={spendChangeColor}>
+                            {spendChangeNumber === null
+                                ? t('service_management.spend_chart_no_change')
+                                : t('service_management.spend_chart_description', { percent: spendChangeText })}
+                        </CardDescription>
+                    </div>
+                    <Select
+                        value={insightPreset}
+                        onValueChange={(value) => handleInsightPresetChange(value as 'last_7d' | 'last_30d')}
+                        disabled={campaignInsightsLoading}
+                    >
+                        <SelectTrigger className="w-[140px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {insightPresetOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </CardHeader>
+                <CardContent>
+                    {campaignInsightsError && (
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertTitle>{t('service_management.campaign_insight_error')}</AlertTitle>
+                            <AlertDescription>{campaignInsightsError}</AlertDescription>
+                        </Alert>
+                    )}
+
+                    {campaignInsightsLoading ? (
+                        <div className="flex items-center justify-center py-10 text-muted-foreground">
+                            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                            {t('service_management.loading')}
+                        </div>
+                    ) : chartEntries.length === 0 ? (
+                        <div className="text-sm text-muted-foreground py-6">
+                            {t('service_management.spend_chart_empty')}
+                        </div>
+                    ) : (
+                        <ChartContainer className="h-64 w-full">
+                            <BarChart data={chartEntries} barCategoryGap="30%">
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis
+                                    dataKey="label"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickMargin={8}
+                                    tickFormatter={(value: string | number) =>
+                                        typeof value === 'string'
+                                            ? value.charAt(0).toUpperCase() + value.slice(1)
+                                            : String(value)
+                                    }
+                                    style={{ fontSize: '12px' }}
+                                />
+                                <ChartTooltip
+                                    labelFormatter={(label: string, payload?: any) => {
+                                        const tooltipLabel = payload?.[0]?.payload?.tooltipLabel;
+                                        return tooltipLabel ?? label;
+                                    }}
+                                    content={
+                                        <ChartTooltipContent
+                                            formatter={(value: ValueType | null | undefined) =>
+                                                typeof value === 'number' ? formatCurrency(value) : value ?? '--'
+                                            }
+                                        />
+                                    }
+                                />
+                                <Bar
+                                    dataKey="value"
+                                    name={t('service_management.spend_chart_series')}
+                                    fill="hsl(var(--primary))"
+                                    radius={[4, 4, 0, 0]}
+                                />
+                            </BarChart>
+                        </ChartContainer>
+                    )}
+                </CardContent>
+            </Card>
+        );
+    };
+
+    return (
+        <>
+            <Head title={t('menu.service_management')} />
+            <div className="space-y-6">
+                {!selectedService ? (
+                    <>
+                        <div>
+                            <h1 className="text-2xl font-semibold">{t('service_management.title')}</h1>
+                            <p className="text-muted-foreground">{t('service_management.subtitle')}</p>
+                        </div>
+                        {renderServiceList()}
+                        {services.length > 0 && <DataTablePagination paginator={paginator} />}
+                    </>
+                ) : (
+                    renderCampaignView()
+                )}
+            </div>
+        </>
+    );
+};
+
+ServiceManagementIndex.layout = (page: React.ReactNode) => (
+    <AppLayout breadcrumbs={[{ title: 'menu.service_management' }]} children={page} />
+);
+
+export default ServiceManagementIndex;
+

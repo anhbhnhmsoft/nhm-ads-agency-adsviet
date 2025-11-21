@@ -21,6 +21,10 @@ class ServiceUserRepository extends BaseRepository
             $query->where('user_id', $filters['user_id']);
         }
 
+        if (isset($filters['status'])) {
+            $query->where('status', (int) $filters['status']);
+        }
+
         if (isset($filters['is_active']) && $filters['is_active'] === true) {
             $query->where('disabled', false);
         }

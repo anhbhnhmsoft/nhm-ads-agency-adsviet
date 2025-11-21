@@ -546,4 +546,62 @@ class MetaBusinessService
         }
     }
 
+    // Lấy insights tổng hợp cho tất cả accounts (dùng cho dashboard)
+
+    public function getAccountsInsightsSummary(array $accountIds, string $datePreset = 'maximum'): ServiceReturn
+    {
+        try {
+            $totalSpend = 0.0;
+            $totalImpressions = 0;
+            $totalClicks = 0;
+            $totalConversions = 0;
+            $totalRoas = 0.0;
+            $roasCount = 0;
+
+            // Lấy insights cho từng account
+            foreach ($accountIds as $accountId) {
+                $result = $this->getAccountInsightsByCampaign(
+                    accountId: $accountId,
+                    datePreset: $datePreset,
+                    fields: ['spend', 'impressions', 'clicks', 'actions', 'purchase_roas']
+                );
+
+                if ($result->isSuccess()) {
+                    $data = $result->getData();
+                    foreach ($data['data'] ?? [] as $insight) {
+                        $totalSpend += (float) ($insight['spend'] ?? 0);
+                        $totalImpressions += (int) ($insight['impressions'] ?? 0);
+                        $totalClicks += (int) ($insight['clicks'] ?? 0);
+                        
+                        // Tính conversions từ actions
+                        foreach ($insight['actions'] ?? [] as $action) {
+                            $totalConversions += (int) ($action['value'] ?? 0);
+                        }
+
+                        // Tính ROAS từ purchase_roas
+                        if (isset($insight['purchase_roas']) && is_array($insight['purchase_roas'])) {
+                            foreach ($insight['purchase_roas'] as $roasItem) {
+                                if (isset($roasItem['value'])) {
+                                    $totalRoas += (float) $roasItem['value'];
+                                    $roasCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            $avgRoas = $roasCount > 0 ? ($totalRoas / $roasCount) : 0.0;
+
+            return ServiceReturn::success(data: [
+                'spend' => $totalSpend,
+                'impressions' => $totalImpressions,
+                'clicks' => $totalClicks,
+                'conversions' => $totalConversions,
+                'roas' => $avgRoas,
+            ]);
+        } catch (\Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
 }

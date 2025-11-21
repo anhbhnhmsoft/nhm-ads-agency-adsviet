@@ -20,38 +20,22 @@ class PlatformSettingController extends Controller
 
     public function index(Request $request)
     {
-        $perPage = ($request->query('per_page', 10));
-        $page = ($request->query('page', 1));
-        $filter = [
-            'platform' => $request->query('platform'),
-            'disabled' => $request->has('disabled') ? $request->query('disabled') : null,
-        ];
-        $filter = array_filter($filter, fn($v) => $v !== null && $v !== '');
-
-        $sortBy = $request->query('sort_by', 'id');
-        $direction = $request->query('direction', 'desc');
-
-        $result = $this->platformSettingService->list(new QueryListDTO(
-            perPage: $perPage,
-            page: $page,
-            filter: $filter,
-            sortBy: $sortBy,
-            sortDirection: $direction,
-        ));
-
-        if ($result->isError()) {
-            FlashMessage::error($result->getMessage());
-        }
-
-        $paginator = $result->getData();
         return $this->rendering(
             view: 'config/list-platform-settings',
             data: [
-                'paginator' => fn () => PlatformSettingListResource::collection($paginator),
                 'googleFields' => PlatformSettingFields::getGoogleFields(),
                 'metaFields' => PlatformSettingFields::getMetaFields(),
             ]
         );
+    }
+
+    public function getByPlatform(int $platform)
+    {
+        $result = $this->platformSettingService->findByPlatform($platform);
+        if ($result->isError()) {
+            return response()->json(['data' => null], 404);
+        }
+        return response()->json(['data' => new PlatformSettingListResource($result->getData())]);
     }
 
     public function store(Request $request): RedirectResponse

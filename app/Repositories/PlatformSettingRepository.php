@@ -65,6 +65,23 @@ class PlatformSettingRepository extends BaseRepository
         }
         return $query->update(['disabled' => true]);
     }
+
+    public function findActiveByPlatform(int $platform): ?PlatformSetting
+    {
+        return $this->model()
+            ->where('platform', $platform)
+            ->where('disabled', false)
+            ->orderBy('id', 'desc')
+            ->first();
+    }
+
+    public function findByPlatform(int $platform): ?PlatformSetting
+    {
+        return $this->model()
+            ->where('platform', $platform)
+            ->orderBy('id', 'desc')
+            ->first();
+    }
 }
 
 
