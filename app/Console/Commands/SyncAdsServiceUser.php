@@ -26,16 +26,23 @@ class SyncAdsServiceUser extends Command
 
     public function handle()
     {
+        $totalFound = 0;
+        $totalDispatched = 0;
+
         $this->serviceUserRepository->query()
             ->with('package:id,platform')
             ->where('status', ServiceUserStatus::ACTIVE->value)
-            ->chunkById(100, function (Collection $serviceUsers) {
-                $serviceUsers->each(function (ServiceUser $serviceUser) {
+            ->chunkById(100, function (Collection $serviceUsers) use (&$totalFound, &$totalDispatched) {
+                $totalFound += $serviceUsers->count();
+                
+                $serviceUsers->each(function (ServiceUser $serviceUser) use (&$totalDispatched) {
                     // đối với từng service user, kiểm tra nền tảng và đẩy job tương ứng
                     // nếu là nền tảng Meta, đẩy job đồng bộ Meta
                     if ($serviceUser->package->platform === PlatformType::META->value) {
                         // Đẩy job đồng bộ Meta
                         \App\Jobs\MetaApi\SyncMetaJob::dispatch($serviceUser);
+                        $totalDispatched++;
+                        $this->info("✓ Đã dispatch job sync Meta cho ServiceUser ID: {$serviceUser->id}");
                     }
                     // Google Ads có thể thêm ở đây sau
                 });

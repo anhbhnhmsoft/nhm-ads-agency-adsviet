@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { useTranslation } from 'react-i18next';
 import { useForm, router, usePage } from '@inertiajs/react';
@@ -82,6 +82,30 @@ const WalletIndex = ({
             },
         });
     };
+
+    // Polling để tự động reload khi có pending_deposit
+    const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    useEffect(() => {
+        // Chỉ polling khi có pending_deposit và không phải admin
+        if (pending_deposit && !isAdmin) {
+            pollingIntervalRef.current = setInterval(() => {
+                router.reload({ 
+                    only: ['pending_deposit', 'wallet'],
+                });
+            }, 5000); // Poll mỗi 5 giây
+        } else {
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+            }
+        }
+
+        return () => {
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+            }
+        };
+    }, [pending_deposit, isAdmin]);
 
     return (
         <div>

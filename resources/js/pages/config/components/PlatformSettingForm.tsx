@@ -17,6 +17,7 @@ export type FieldConfig = {
 type Props = {
   data: { platform: number; config: Record<string, any>; disabled: boolean };
   setData: (key: string, value: any) => void;
+  onPlatformChange?: (platform: number) => void;
   processing: boolean;
   errors: Record<string, string>;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
@@ -24,7 +25,7 @@ type Props = {
   metaFields: FieldConfig[];
 };
 
-export default function PlatformSettingForm({ data, setData, processing, errors, onSubmit, googleFields, metaFields }: Props) {
+export default function PlatformSettingForm({ data, setData, onPlatformChange, processing, errors, onSubmit, googleFields, metaFields }: Props) {
   const { t } = useTranslation();
   
   const currentFields = useMemo(() => {
@@ -129,9 +130,10 @@ export default function PlatformSettingForm({ data, setData, processing, errors,
           className="border rounded-md h-9 px-3"
           value={data.platform}
           onChange={(e) => {
-            setData('platform', Number(e.target.value));
-            // Reset config khi đổi platform
-            setData('config', {});
+            const newPlatform = Number(e.target.value);
+            setData('platform', newPlatform);
+            // Gọi callback để parent load data
+            onPlatformChange?.(newPlatform);
           }}
           required
         >

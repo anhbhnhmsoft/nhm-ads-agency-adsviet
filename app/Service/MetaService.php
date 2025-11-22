@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\User\UserRole;
 use App\Common\Helper;
 use App\Core\Cache\CacheKey;
@@ -15,6 +16,7 @@ use App\Repositories\MetaAccountRepository;
 use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\MetaAdsCampaignRepository;
 use App\Repositories\ServiceUserRepository;
+use App\Repositories\WalletRepository;
 use Carbon\Carbon;
 use FacebookAds\Object\Values\AdDatePresetValues;
 use Illuminate\Database\Eloquent\Collection;
@@ -32,6 +34,7 @@ class MetaService
         protected MetaAdsCampaignRepository $metaAdsCampaignRepository,
         protected ServiceUserRepository     $serviceUserRepository,
         protected MetaAdsAccountInsightRepository $metaAdsAccountInsightRepository,
+        protected WalletRepository          $walletRepository,
     )
     {
     }
@@ -688,5 +691,234 @@ class MetaService
             }
         }
         return $roas;
+    }
+    // Lấy dữ liệu dashboard cho agency và customer
+
+    public function getDashboardData(): ServiceReturn
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            // Chỉ cho phép agency và customer
+            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            // 1. Service Users (của user này)
+            $serviceUsers = $this->serviceUserRepository->query()
+                ->where('user_id', $user->id)
+                ->where('status', ServiceUserStatus::ACTIVE->value)
+                ->with(['package', 'metaAccount'])
+                ->get();
+
+            // 2. Meta Accounts
+            $metaAccounts = $this->metaAccountRepository->query()
+                ->whereIn('service_user_id', $serviceUsers->pluck('id'))
+                ->get();
+
+            $totalAccounts = $metaAccounts->count();
+            $activeAccounts = $metaAccounts->where('account_status', 1)->count();
+            $pausedAccounts = $totalAccounts - $activeAccounts;
+
+            // 3. Lấy insights từ Meta API (tái sử dụng getAccountInsightsByCampaign)
+            $accountIds = $metaAccounts->pluck('account_id')->toArray();
+            
+            if (empty($accountIds)) {
+                // Nếu không có account, trả về dữ liệu rỗng
+                $totalSpend = 0.0;
+                $todaySpend = 0.0;
+                $totalImpressions = 0;
+                $totalClicks = 0;
+                $totalConversions = 0;
+                $avgRoas = 0.0;
+                $spendPercentChange = 0.0;
+                $todaySpendPercentChange = 0.0;
+                $impressionsPercentChange = 0.0;
+                $clicksPercentChange = 0.0;
+                $conversionsPercentChange = 0.0;
+            } else {
+                // Lấy tổng spend (maximum) - tổng từ đầu đến giờ
+                $totalResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'maximum');
+                $totalSpend = 0.0;
+                $totalImpressions = 0;
+                $totalClicks = 0;
+                $totalConversions = 0;
+                $avgRoas = 0.0;
+                
+                if ($totalResult->isSuccess()) {
+                    $totalData = $totalResult->getData();
+                    $totalSpend = (float) ($totalData['spend'] ?? 0);
+                    $totalImpressions = (int) ($totalData['impressions'] ?? 0);
+                    $totalClicks = (int) ($totalData['clicks'] ?? 0);
+                    $totalConversions = (int) ($totalData['conversions'] ?? 0);
+                    $avgRoas = (float) ($totalData['roas'] ?? 0);
+                }
+
+                // Lấy spend hôm nay
+                $todayResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'today');
+                $todaySpend = 0.0;
+                
+                if ($todayResult->isSuccess()) {
+                    $todayData = $todayResult->getData();
+                    $todaySpend = (float) ($todayData['spend'] ?? 0);
+                }
+
+                // Lấy dữ liệu hôm qua để tính percent change cho "Chi tiêu hôm nay"
+                $yesterdayResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'yesterday');
+                $yesterdaySpend = 0.0;
+                
+                if ($yesterdayResult->isSuccess()) {
+                    $yesterdayData = $yesterdayResult->getData();
+                    $yesterdaySpend = (float) ($yesterdayData['spend'] ?? 0);
+                }
+
+                // Lấy dữ liệu last_30d để tính percent change cho "Tổng chỉ tiêu"
+                // So sánh last_30d vs previous 30 days (last_60d - last_30d)
+                $last30dResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'last_30d');
+                $last30dSpend = 0.0;
+                $last30dImpressions = 0;
+                $last30dClicks = 0;
+                $last30dConversions = 0;
+                
+                if ($last30dResult->isSuccess()) {
+                    $last30dData = $last30dResult->getData();
+                    $last30dSpend = (float) ($last30dData['spend'] ?? 0);
+                    $last30dImpressions = (int) ($last30dData['impressions'] ?? 0);
+                    $last30dClicks = (int) ($last30dData['clicks'] ?? 0);
+                    $last30dConversions = (int) ($last30dData['conversions'] ?? 0);
+                }
+
+                // Lấy dữ liệu last_60d để tính previous 30 days (last_60d - last_30d)
+                // Nếu không có last_60d, dùng last_28d và previous 28 days
+                $last60dResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'last_90d');
+                $previous30dSpend = 0.0;
+                $previous30dImpressions = 0;
+                $previous30dClicks = 0;
+                $previous30dConversions = 0;
+                
+                if ($last60dResult->isSuccess()) {
+                    $last60dData = $last60dResult->getData();
+                    // Previous 30 days = last_90d - last_30d
+                    $previous30dSpend = (float) ($last60dData['spend'] ?? 0) - $last30dSpend;
+                    $previous30dImpressions = (int) ($last60dData['impressions'] ?? 0) - $last30dImpressions;
+                    $previous30dClicks = (int) ($last60dData['clicks'] ?? 0) - $last30dClicks;
+                    $previous30dConversions = (int) ($last60dData['conversions'] ?? 0) - $last30dConversions;
+                }
+
+                // 4. Tính percent change thực tế
+                // "Tổng chỉ tiêu": So sánh last_30d vs previous 30 days
+                $spendPercentChange = Helper::calculatePercentageChange($previous30dSpend, $last30dSpend);
+                $impressionsPercentChange = Helper::calculatePercentageChange($previous30dImpressions, $last30dImpressions);
+                $clicksPercentChange = Helper::calculatePercentageChange($previous30dClicks, $last30dClicks);
+                $conversionsPercentChange = Helper::calculatePercentageChange($previous30dConversions, $last30dConversions);
+                
+                // "Chi tiêu hôm nay": So sánh ngày hôm qua với hôm nay
+                $todaySpendPercentChange = Helper::calculatePercentageChange($yesterdaySpend, $todaySpend);
+            }
+
+            // 5. Tính metrics
+            $avgCpc = $totalClicks > 0 ? ($totalSpend / $totalClicks) : 0.0;
+            $avgCpm = $totalImpressions > 0 ? (($totalSpend / $totalImpressions) * 1000) : 0.0;
+            $conversionRate = $totalClicks > 0 ? (($totalConversions / $totalClicks) * 100) : 0.0;
+
+            // 6. 
+            $totalBudget = (float) $serviceUsers->sum('budget') ?? 0.0;
+            $budgetUsed = $todaySpend;
+            $budgetRemaining = max(0, $totalBudget - $budgetUsed);
+            $budgetUsagePercent = $totalBudget > 0 ? (($budgetUsed / $totalBudget) * 100) : 0.0;
+
+            // 7. Cảnh báo lỗi
+            $criticalErrors = 0;
+            $accountsWithErrors = 0;
+            foreach ($metaAccounts as $account) {
+                if ($account->account_status != 1) {
+                    $accountsWithErrors++;
+                    $criticalErrors++;
+                }
+            }
+
+            // 8. số dư ví
+            $wallet = $this->walletRepository->findByUserId($user->id);
+            $walletBalance = $wallet ? (float) $wallet->balance : 0.0;
+
+            $data = [
+                'wallet' => [
+                    'balance' => number_format($walletBalance, 2, '.', ''),
+                ],
+                'overview' => [
+                    'total_accounts' => $totalAccounts,
+                    'active_accounts' => $activeAccounts,
+                    'paused_accounts' => $pausedAccounts,
+                    'total_spend' => number_format($totalSpend, 2, '.', ''),
+                    'today_spend' => number_format($todaySpend, 2, '.', ''),
+                    'total_services' => $serviceUsers->count(),
+                    'available_services' => $serviceUsers->count(),
+                    'critical_alerts' => $criticalErrors,
+                    'accounts_with_errors' => $accountsWithErrors,
+                ],
+                'metrics' => [
+                    'total_spend' => [
+                        'value' => number_format($totalSpend, 2, '.', ''),
+                        'percent_change' => $spendPercentChange,
+                    ],
+                    'today_spend' => [
+                        'value' => number_format($todaySpend, 2, '.', ''),
+                        'percent_change' => $todaySpendPercentChange,
+                    ],
+                    'total_impressions' => [
+                        'value' => $this->formatNumber($totalImpressions),
+                        'percent_change' => $impressionsPercentChange,
+                    ],
+                    'total_clicks' => [
+                        'value' => $this->formatNumber($totalClicks),
+                        'percent_change' => $clicksPercentChange,
+                    ],
+                    'total_conversions' => [
+                        'value' => $totalConversions,
+                        'percent_change' => $conversionsPercentChange,
+                    ],
+                    'active_accounts' => [
+                        'active' => $activeAccounts,
+                        'total' => $totalAccounts,
+                    ],
+                ],
+                'performance' => [
+                    'conversion_rate' => number_format($conversionRate, 2, '.', ''),
+                    'avg_cpc' => number_format($avgCpc, 2, '.', ''),
+                    'avg_roas' => number_format($avgRoas, 1, '.', ''),
+                ],
+                'budget' => [
+                    'total' => number_format($totalBudget, 2, '.', ''),
+                    'used' => number_format($budgetUsed, 2, '.', ''),
+                    'remaining' => number_format($budgetRemaining, 2, '.', ''),
+                    'usage_percent' => number_format($budgetUsagePercent, 2, '.', ''),
+                ],
+                'alerts' => [
+                    'critical_errors' => $criticalErrors,
+                    'accounts_with_errors' => $accountsWithErrors,
+                ],
+            ];
+
+            return ServiceReturn::success(data: $data);
+        } catch (\Exception $e) {
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Format số với K, M suffix
+     */
+    private function formatNumber(int $number): string
+    {
+        if ($number >= 1000000) {
+            return number_format($number / 1000000, 1, '.', '') . 'M';
+        }
+        if ($number >= 1000) {
+            return number_format($number / 1000, 1, '.', '') . 'K';
+        }
+        return (string) $number;
     }
 }

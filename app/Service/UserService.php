@@ -24,6 +24,26 @@ class UserService
     {
     }
 
+    public function getCustomerSummaryForDashboard(): ServiceReturn
+    {
+        try {
+            $baseQuery = $this->userRepository->query()->where('role', UserRole::CUSTOMER->value);
+            $totalCustomers = (clone $baseQuery)->count();
+            $activeCustomers = (clone $baseQuery)->where('disabled', false)->count();
+
+            return ServiceReturn::success(data: [
+                'total_customers' => $totalCustomers,
+                'active_customers' => $activeCustomers,
+            ]);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'Lỗi khi lấy thống kê khách hàng UserService@getCustomerSummaryForDashboard: '.$exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     /**
      * Lấy danh sách nhân viên có phân trang
      * Chỉ cho phép lấy danh sách nhân viên system

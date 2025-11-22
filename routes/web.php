@@ -5,12 +5,14 @@ use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServicePackageController;
 use App\Http\Controllers\ServiceOrderController;
+use App\Http\Controllers\ServiceManagementController;
 use App\Http\Controllers\NowPaymentsWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PlatformSettingController;
 use App\Http\Controllers\ServicePurchaseController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\WalletTransactionController;
+use App\Http\Controllers\API\MetaController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -61,6 +63,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
 
     Route::prefix('/platform-settings')->group(function (){
         Route::get('/', [PlatformSettingController::class, 'index'])->name('platform_settings_index');
+        Route::get('/platform/{platform}', [PlatformSettingController::class, 'getByPlatform'])->name('platform_settings_get_by_platform');
         Route::post('/', [PlatformSettingController::class, 'store'])->name('platform_settings_store');
         Route::put('/{id}', [PlatformSettingController::class, 'update'])->name('platform_settings_update');
         Route::post('/{id}/toggle', [PlatformSettingController::class, 'toggle'])->name('platform_settings_toggle');
@@ -112,5 +115,16 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/{id}/approve', [ServiceOrderController::class, 'approve'])->name('service_orders_approve');
         Route::post('/{id}/cancel', [ServiceOrderController::class, 'cancel'])->name('service_orders_cancel');
         Route::put('/{id}/config', [ServiceOrderController::class, 'updateConfig'])->name('service_orders_update_config');
+    });
+
+    Route::prefix('/service-management')->group(function () {
+        Route::get('/', [ServiceManagementController::class, 'index'])->name('service_management_index');
+    });
+
+    Route::prefix('/meta')->group(function () {
+        Route::get('/{serviceUserId}/accounts', [MetaController::class, 'getAdsAccount'])->name('meta_get_accounts');
+        Route::get('/{serviceUserId}/{accountId}/campaigns', [MetaController::class, 'getCampaigns'])->name('meta_get_campaigns');
+        Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [MetaController::class, 'detailCampaign'])->name('meta_detail_campaign');
+        Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [MetaController::class, 'getCampaignInsights'])->name('meta_detail_campaign_insight');
     });
 });

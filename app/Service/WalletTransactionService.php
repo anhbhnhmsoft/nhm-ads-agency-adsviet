@@ -195,6 +195,105 @@ class WalletTransactionService
         }
     }
 
+    public function getPendingTransactionsSummary(int $limit = 10): ServiceReturn
+    {
+        try {
+            $baseQuery = $this->transactionRepository->query()
+                ->with(['wallet.user'])
+                ->where('status', WalletTransactionStatus::PENDING->value)
+                ->orderByDesc('created_at');
+
+            $pendingCount = (clone $baseQuery)->count();
+
+            $typeLabels = WalletTransactionType::getOptions();
+            $statusLabels = WalletTransactionStatus::getOptions();
+
+            $transactions = (clone $baseQuery)
+                ->limit($limit)
+                ->get()
+                ->map(function ($transaction) use ($typeLabels, $statusLabels) {
+                    $walletUser = $transaction->wallet?->user;
+
+                    return [
+                        'id' => (string) $transaction->id,
+                        'amount' => (float) $transaction->amount,
+                        'type' => $transaction->type,
+                        'type_label' => $typeLabels[$transaction->type] ?? $typeLabels[WalletTransactionType::UNKNOWN->value],
+                        'status' => $transaction->status,
+                        'status_label' => $statusLabels[$transaction->status] ?? $statusLabels[WalletTransactionStatus::UNKNOWN->value],
+                        'customer_id' => $walletUser?->id,
+                        'customer_name' => $transaction->customer_name ?? $walletUser?->name,
+                        'customer_email' => $transaction->customer_email ?? $walletUser?->username,
+                        'description' => $transaction->description,
+                        'network' => $transaction->network,
+                        'created_at' => optional($transaction->created_at)?->toIso8601String(),
+                        'withdraw_info' => $transaction->withdraw_info,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            return ServiceReturn::success(data: [
+                'pending_transactions' => $pendingCount,
+                'pending_transactions_list' => $transactions,
+            ]);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'WalletTransactionService@getPendingTransactionsSummary error: '.$exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    public function getPendingTransactionsPaginated(QueryListDTO $queryListDTO): ServiceReturn
+    {
+        try {
+            $query = $this->transactionRepository->query()
+                ->with(['wallet.user'])
+                ->where('status', WalletTransactionStatus::PENDING->value)
+                ->orderByDesc('created_at');
+
+            $typeLabels = WalletTransactionType::getOptions();
+            $statusLabels = WalletTransactionStatus::getOptions();
+
+            $paginator = $query
+                ->paginate(
+                    $queryListDTO->perPage,
+                    ['*'],
+                    'page',
+                    $queryListDTO->page
+                )
+                ->through(function ($transaction) use ($typeLabels, $statusLabels) {
+                    $walletUser = $transaction->wallet?->user;
+
+                    return [
+                        'id' => (string) $transaction->id,
+                        'amount' => (float) $transaction->amount,
+                        'type' => $transaction->type,
+                        'type_label' => $typeLabels[$transaction->type] ?? $typeLabels[WalletTransactionType::UNKNOWN->value],
+                        'status' => $transaction->status,
+                        'status_label' => $statusLabels[$transaction->status] ?? $statusLabels[WalletTransactionStatus::UNKNOWN->value],
+                        'customer_id' => $walletUser?->id,
+                        'customer_name' => $transaction->customer_name ?? $walletUser?->name,
+                        'customer_email' => $transaction->customer_email ?? $walletUser?->username,
+                        'description' => $transaction->description,
+                        'network' => $transaction->network,
+                        'created_at' => optional($transaction->created_at)?->toIso8601String(),
+                        'withdraw_info' => $transaction->withdraw_info,
+                    ];
+                });
+
+            return ServiceReturn::success(data: $paginator);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'WalletTransactionService@getPendingTransactionsPaginated error: '.$exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     // Lấy lệnh nạp đang chờ xử lý của wallet (chưa hết hạn)
     // Trả về null nếu không có hoặc đã hết hạn
     public function getPendingDepositForWallet(int $walletId): ?array

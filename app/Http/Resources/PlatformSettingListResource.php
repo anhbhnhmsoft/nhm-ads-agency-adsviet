@@ -16,10 +16,10 @@ class PlatformSettingListResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => (int)$this->id,
-            'platform' => (int)$this->platform,
-            'config' => (array)$this->config,
-            'disabled' => (bool)$this->disabled,
+            'id' => (string) $this->id,
+            'platform' => (int) $this->platform,
+            'config' => (array) $this->config,
+            'disabled' => (bool) $this->disabled,
         ];
     }
 }

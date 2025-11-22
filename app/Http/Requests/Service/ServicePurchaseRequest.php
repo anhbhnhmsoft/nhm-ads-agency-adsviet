@@ -16,6 +16,8 @@ class ServicePurchaseRequest extends FormRequest
         return [
             'package_id' => ['required', 'string'],
             'top_up_amount' => ['nullable', 'numeric', 'min:0'],
+            'meta_email' => ['nullable', 'string', 'email', 'max:255'],
+            'display_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 

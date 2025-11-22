@@ -122,6 +122,23 @@ class PlatformSettingService
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
+
+    public function findByPlatform(int $platform): ServiceReturn
+    {
+        try {
+            $setting = $this->platformSettingRepository->findByPlatform($platform);
+            if (!$setting) {
+                return ServiceReturn::error(message: __('common_error.data_not_found'));
+            }
+            return ServiceReturn::success(data: $setting);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'Lỗi khi lấy cấu hình nền tảng PlatformSettingService@findByPlatform: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
 }
 
 

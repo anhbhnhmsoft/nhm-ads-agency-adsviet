@@ -37,7 +37,7 @@ export default function AuthLayout({
 
     return (
         <ThemeProvider defaultTheme={"light"}>
-            <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-blue-100 p-6 md:p-10">
+            <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-blue-100 p-3 md:p-10">
                 <div className="flex w-full max-w-md flex-col gap-6">
                     <div className="flex flex-col gap-2 items-center justify-center">
                         <Shield className="w-12 h-12 text-blue-500" />
@@ -46,7 +46,7 @@ export default function AuthLayout({
                     </div>
                     <div className="flex flex-col gap-6">
                         <Card className="rounded-xl">
-                            <CardContent className="px-10 py-8">
+                            <CardContent className="px-8 py-7">
                                 {children}
                             </CardContent>
                         </Card>
