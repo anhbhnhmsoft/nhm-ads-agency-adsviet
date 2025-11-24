@@ -201,4 +201,16 @@ class UserRepository extends BaseRepository
             ->orderBy('name')
             ->get(['id', 'name', 'username']);
     }
+
+    public function countTotalCustomers(): int
+    {
+        return $this->queryUser()->count();
+    }
+
+    public function countActiveCustomers(): int
+    {
+        return $this->queryUser()
+            ->where('disabled', false)
+            ->count();
+    }
 }

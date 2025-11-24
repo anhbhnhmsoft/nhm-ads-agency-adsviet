@@ -7,6 +7,7 @@ use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Repositories\PlatformSettingRepository;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 class PlatformSettingService
 {
@@ -43,25 +44,28 @@ class PlatformSettingService
     public function create(array $data): ServiceReturn
     {
         try {
-            $config = $data['config'] ?? [];
-            $platform = (int) $data['platform'];
+            return DB::transaction(function () use ($data) {
+                $config = $data['config'] ?? [];
+                $platform = (int) $data['platform'];
+                $disabled = (bool) ($data['disabled'] ?? false);
 
-            $payload = [
-                'platform' => $platform,
-                'config' => $config,
-                'disabled' => (bool) ($data['disabled'] ?? false),
-            ];
-            $created = $this->platformSettingRepository->create($payload);
-            
-            // Nếu disabled false vô hiệu hóa các config khác cùng platform
-            if ((bool) $data['disabled'] === false) {
-                $affected = $this->platformSettingRepository->deactivateOthersByPlatform($created->platform, (string)$created->id);
-                $message = $affected > 0
-                    ? __('Cấu hình đã được kích hoạt. Các cấu hình khác cùng nền tảng đã được vô hiệu hóa và có thể ảnh hưởng tới user client đang dùng.')
-                    : __('Cấu hình đã được kích hoạt.');
-                return ServiceReturn::success(message: $message);
-            }
-            return ServiceReturn::success(message: __('Đã tạo cấu hình ở trạng thái vô hiệu hóa.')); 
+                $payload = [
+                    'platform' => $platform,
+                    'config' => $config,
+                    'disabled' => $disabled,
+                ];
+                $created = $this->platformSettingRepository->create($payload);
+                
+                // Nếu disabled false vô hiệu hóa các config khác cùng platform
+                if (!$disabled) {
+                    $affected = $this->platformSettingRepository->deactivateOthersByPlatform($created->platform, (string)$created->id);
+                    $message = $affected > 0
+                        ? __('platform_setting.activated_with_deactivation')
+                        : __('platform_setting.activated');
+                    return ServiceReturn::success(message: $message);
+                }
+                return ServiceReturn::success(message: __('platform_setting.created_disabled')); 
+            });
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'Lỗi khi tạo cấu hình nền tảng PlatformSettingService@create: ' . $e->getMessage(),
@@ -110,7 +114,7 @@ class PlatformSettingService
                 // Kích hoạt sau đó vô hiệu hóa các cấu hình khác cùng platform
                 $affected = $this->platformSettingRepository->deactivateOthersByPlatform($setting->platform, $id);
                 if ($affected > 0) {
-                    $message = __('Đã kích hoạt cấu hình và vô hiệu hóa các cấu hình khác cùng nền tảng. Lưu ý: thay đổi này ảnh hưởng tới toàn bộ user client sử dụng nền tảng này.');
+                    $message = __('platform_setting.toggled_activated_with_deactivation');
                 }
             }
             return ServiceReturn::success(message: $message);

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { cn } from '@/lib/utils';
 import useCheckRole from '@/hooks/use-check-role';
@@ -23,14 +24,14 @@ import {
     Users,
     Wallet,
 } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { WalletTransaction } from '@/pages/wallet/types/type';
 import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransactions, DashboardData } from './types';
 
 const breadcrumbs: IBreadcrumbItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Trang chủ',
         href: dashboard().url,
     },
 ];
@@ -40,9 +41,10 @@ type Props = {
     adminDashboardData?: AdminDashboardData | null;
     adminPendingTransactions?: AdminPendingTransactions | null;
     dashboardError?: string | null;
+    selectedPlatform?: string; // 'meta' hoặc 'google_ads'
 };
 
-export default function Index({ dashboardData, adminDashboardData, adminPendingTransactions, dashboardError }: Props) {
+export default function Index({ dashboardData, adminDashboardData, adminPendingTransactions, dashboardError, selectedPlatform = 'meta' }: Props) {
     const { t } = useTranslation();
     const { props } = usePage();
     const authUser = useMemo(() => {
@@ -54,7 +56,13 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
     }, [props.auth]);
     const checkRole = useCheckRole(authUser);
     const [showBalance, setShowBalance] = useState(true);
+    const [platform, setPlatform] = useState<string>(selectedPlatform);
     const [approveLoadingId, setApproveLoadingId] = useState<string | null>(null);
+    
+    // Đồng bộ platform state với props khi selectedPlatform thay đổi
+    useEffect(() => {
+        setPlatform(selectedPlatform);
+    }, [selectedPlatform]);
     const [cancelLoadingId, setCancelLoadingId] = useState<string | null>(null);
     const [showWithdrawInfo, setShowWithdrawInfo] = useState(false);
     const [selectedWithdrawInfo, setSelectedWithdrawInfo] = useState<{
@@ -88,6 +96,15 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
     ) => {
         setSelectedWithdrawInfo(info ?? null);
         setShowWithdrawInfo(true);
+    };
+
+    const handlePlatformChange = (value: string) => {
+        setPlatform(value);
+        // Reload dashboard với platform mới
+        router.get(dashboard().url, { platform: value }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const isAgencyOrCustomer = checkRole([_UserRole.AGENCY, _UserRole.CUSTOMER]);
@@ -360,7 +377,26 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         </div>
                     </CardContent>
                 </Card>
-
+{isAgencyOrCustomer && (
+                            <div className="mt-4 pt-4 border-t">
+                                <Label className="text-sm text-muted-foreground mb-2 block">
+                                    {t('dashboard.select_platform', { defaultValue: 'Chọn nền tảng' })}
+                                </Label>
+                                <Select value={platform} onValueChange={handlePlatformChange}>
+                                    <SelectTrigger className="w-full sm:w-[200px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="meta">
+                                            {t('dashboard.platform_meta', { defaultValue: 'Meta Ads' })}
+                                        </SelectItem>
+                                        <SelectItem value="google_ads">
+                                            {t('dashboard.platform_google_ads', { defaultValue: 'Google Ads' })}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {/* Tất cả tài khoản */}
                     <Card>

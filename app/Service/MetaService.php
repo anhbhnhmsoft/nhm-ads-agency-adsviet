@@ -692,6 +692,118 @@ class MetaService
         }
         return $roas;
     }
+    
+    // Lấy insights tổng hợp từ database
+    protected function getAccountsInsightsSummaryFromDatabase(array $metaAccountIds, string $datePreset = 'maximum'): ServiceReturn
+    {
+        try {
+            if (empty($metaAccountIds)) {
+                return ServiceReturn::success(data: [
+                    'spend' => 0.0,
+                    'impressions' => 0,
+                    'clicks' => 0,
+                    'conversions' => 0,
+                    'roas' => 0.0,
+                ]);
+            }
+
+            $query = $this->metaAdsAccountInsightRepository->query()
+                ->whereIn('meta_account_id', $metaAccountIds);
+
+            // Convert date preset thành date range
+            $dateRange = $this->convertDatePresetToRange($datePreset);
+            if ($dateRange) {
+                if ($dateRange['start']) {
+                    $query->where('date', '>=', $dateRange['start']);
+                }
+                if ($dateRange['end']) {
+                    $query->where('date', '<=', $dateRange['end']);
+                }
+            }
+
+            $insights = $query->get();
+
+            // Aggregate metrics
+            $totalSpend = 0.0;
+            $totalImpressions = 0;
+            $totalClicks = 0;
+            $totalConversions = 0;
+            $totalRoas = 0.0;
+            $roasCount = 0;
+
+            foreach ($insights as $insight) {
+                // Sum spend
+                $totalSpend += (float) ($insight->spend ?? 0);
+                
+                // Sum impressions
+                $totalImpressions += (int) ($insight->impressions ?? 0);
+                
+                // Sum clicks
+                $totalClicks += (int) ($insight->clicks ?? 0);
+                
+                // Tính conversions từ actions (JSON)
+                if ($insight->actions && is_array($insight->actions)) {
+                    foreach ($insight->actions as $action) {
+                        if (isset($action['value'])) {
+                            $totalConversions += (int) $action['value'];
+                        }
+                    }
+                }
+                
+                // Tính ROAS từ purchase_roas
+                if ($insight->purchase_roas) {
+                    $roasValue = (float) $insight->purchase_roas;
+                    if ($roasValue > 0) {
+                        $totalRoas += $roasValue;
+                        $roasCount++;
+                    }
+                }
+            }
+
+            $avgRoas = $roasCount > 0 ? ($totalRoas / $roasCount) : 0.0;
+
+            return ServiceReturn::success(data: [
+                'spend' => $totalSpend,
+                'impressions' => $totalImpressions,
+                'clicks' => $totalClicks,
+                'conversions' => $totalConversions,
+                'roas' => $avgRoas,
+            ]);
+        } catch (\Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    protected function convertDatePresetToRange(string $datePreset): ?array
+    {
+        $today = Carbon::today();
+        
+        return match ($datePreset) {
+            'maximum' => null,
+            'today' => [
+                'start' => $today,
+                'end' => $today,
+            ],
+            'yesterday' => [
+                'start' => $today->copy()->subDay(),
+                'end' => $today->copy()->subDay(),
+            ],
+            'last_7d' => [
+                'start' => $today->copy()->subDays(7),
+                'end' => $today,
+            ],
+            'last_30d' => [
+                'start' => $today->copy()->subDays(30),
+                'end' => $today,
+            ],
+            'last_90d' => [
+                'start' => $today->copy()->subDays(90),
+                'end' => $today,
+            ],
+            default => null,
+        };
+    }
+
     // Lấy dữ liệu dashboard cho agency và customer
 
     public function getDashboardData(): ServiceReturn
@@ -714,19 +826,22 @@ class MetaService
                 ->with(['package', 'metaAccount'])
                 ->get();
 
-            // 2. Meta Accounts
+            $metaServiceUsers = $serviceUsers->filter(function ($serviceUser) {
+                return $serviceUser->package->platform === PlatformType::META->value;
+            });
+            
             $metaAccounts = $this->metaAccountRepository->query()
-                ->whereIn('service_user_id', $serviceUsers->pluck('id'))
+                ->whereIn('service_user_id', $metaServiceUsers->pluck('id'))
                 ->get();
 
             $totalAccounts = $metaAccounts->count();
             $activeAccounts = $metaAccounts->where('account_status', 1)->count();
             $pausedAccounts = $totalAccounts - $activeAccounts;
 
-            // 3. Lấy insights từ Meta API (tái sử dụng getAccountInsightsByCampaign)
-            $accountIds = $metaAccounts->pluck('account_id')->toArray();
+            // 3. Lấy insights từ DATABASE
+            $metaAccountIds = $metaAccounts->pluck('id')->toArray();
             
-            if (empty($accountIds)) {
+            if (empty($metaAccountIds)) {
                 // Nếu không có account, trả về dữ liệu rỗng
                 $totalSpend = 0.0;
                 $todaySpend = 0.0;
@@ -741,7 +856,7 @@ class MetaService
                 $conversionsPercentChange = 0.0;
             } else {
                 // Lấy tổng spend (maximum) - tổng từ đầu đến giờ
-                $totalResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'maximum');
+                $totalResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'maximum');
                 $totalSpend = 0.0;
                 $totalImpressions = 0;
                 $totalClicks = 0;
@@ -758,7 +873,7 @@ class MetaService
                 }
 
                 // Lấy spend hôm nay
-                $todayResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'today');
+                $todayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'today');
                 $todaySpend = 0.0;
                 
                 if ($todayResult->isSuccess()) {
@@ -767,7 +882,7 @@ class MetaService
                 }
 
                 // Lấy dữ liệu hôm qua để tính percent change cho "Chi tiêu hôm nay"
-                $yesterdayResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'yesterday');
+                $yesterdayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'yesterday');
                 $yesterdaySpend = 0.0;
                 
                 if ($yesterdayResult->isSuccess()) {
@@ -776,8 +891,8 @@ class MetaService
                 }
 
                 // Lấy dữ liệu last_30d để tính percent change cho "Tổng chỉ tiêu"
-                // So sánh last_30d vs previous 30 days (last_60d - last_30d)
-                $last30dResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'last_30d');
+                // So sánh last_30d vs previous 30 days (last_90d - last_30d)
+                $last30dResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'last_30d');
                 $last30dSpend = 0.0;
                 $last30dImpressions = 0;
                 $last30dClicks = 0;
@@ -791,21 +906,20 @@ class MetaService
                     $last30dConversions = (int) ($last30dData['conversions'] ?? 0);
                 }
 
-                // Lấy dữ liệu last_60d để tính previous 30 days (last_60d - last_30d)
-                // Nếu không có last_60d, dùng last_28d và previous 28 days
-                $last60dResult = $this->metaBusinessService->getAccountsInsightsSummary($accountIds, 'last_90d');
+                // Lấy dữ liệu last_90d để tính previous 30 days (last_90d - last_30d)
+                $last90dResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'last_90d');
                 $previous30dSpend = 0.0;
                 $previous30dImpressions = 0;
                 $previous30dClicks = 0;
                 $previous30dConversions = 0;
                 
-                if ($last60dResult->isSuccess()) {
-                    $last60dData = $last60dResult->getData();
+                if ($last90dResult->isSuccess()) {
+                    $last90dData = $last90dResult->getData();
                     // Previous 30 days = last_90d - last_30d
-                    $previous30dSpend = (float) ($last60dData['spend'] ?? 0) - $last30dSpend;
-                    $previous30dImpressions = (int) ($last60dData['impressions'] ?? 0) - $last30dImpressions;
-                    $previous30dClicks = (int) ($last60dData['clicks'] ?? 0) - $last30dClicks;
-                    $previous30dConversions = (int) ($last60dData['conversions'] ?? 0) - $last30dConversions;
+                    $previous30dSpend = (float) ($last90dData['spend'] ?? 0) - $last30dSpend;
+                    $previous30dImpressions = (int) ($last90dData['impressions'] ?? 0) - $last30dImpressions;
+                    $previous30dClicks = (int) ($last90dData['clicks'] ?? 0) - $last30dClicks;
+                    $previous30dConversions = (int) ($last90dData['conversions'] ?? 0) - $last30dConversions;
                 }
 
                 // 4. Tính percent change thực tế
