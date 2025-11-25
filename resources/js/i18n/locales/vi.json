@@ -428,9 +428,9 @@
         "edit_config_description": "Cập nhật thông tin Meta hoặc bổ sung Business Manager ID cho đơn dịch vụ."
     },
     "dashboard": {
-        "title": "Dashboard",
-        "coming_soon": "Dashboard đang được phát triển cho vai trò này.",
-        "wallet_balance": "USDT Wallet Balance",
+        "title": "Trang chủ",
+        "coming_soon": "Đang phát triển tính năng này",
+        "wallet_balance": "Số dư ví USDT",
         "deposit_usdt": "Nạp USDT",
         "transactions": "Giao dịch",
         "all_accounts": "Tất cả tài khoản",
@@ -467,6 +467,9 @@
         "admin_no_transactions": "Chưa có giao dịch nào",
         "admin_transaction_customer": "Khách hàng",
         "admin_transaction_amount": "Số tiền",
-        "admin_transaction_time": "Thời gian"
+        "admin_transaction_time": "Thời gian",
+        "select_platform": "Chọn nền tảng",
+        "platform_meta": "Meta Ads",
+        "platform_google_ads": "Google Ads"
     }
 }

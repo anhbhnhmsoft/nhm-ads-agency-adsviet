@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Common\Constants\Platform\PlatformSettingFields;
 use App\Core\FlashMessage;
-use App\Core\QueryListDTO;
 use App\Core\Controller;
+use App\Http\Requests\PlatformSetting\PlatformSettingStoreRequest;
+use App\Http\Requests\PlatformSetting\PlatformSettingUpdateRequest;
+use App\Http\Requests\PlatformSetting\PlatformSettingToggleRequest;
 use App\Service\PlatformSettingService;
 use App\Http\Resources\PlatformSettingListResource;
 use Illuminate\Http\RedirectResponse;
@@ -38,32 +40,20 @@ class PlatformSettingController extends Controller
         return response()->json(['data' => new PlatformSettingListResource($result->getData())]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(PlatformSettingStoreRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'platform' => ['required', 'integer'],
-            'config' => ['nullable', 'array'],
-            'disabled' => ['nullable', 'boolean'],
-        ]);
-
-        $result = $this->platformSettingService->create($data);
+        $result = $this->platformSettingService->create($request->validated());
         if ($result->isSuccess()) {
-            FlashMessage::success(__('common_success.create_success'));
+            FlashMessage::success($result->getMessage() ?? __('common_success.create_success'));
         } else {
             FlashMessage::error($result->getMessage());
         }
         return redirect()->back();
     }
 
-    public function update(string $id, Request $request): RedirectResponse
+    public function update(string $id, PlatformSettingUpdateRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'platform' => ['nullable', 'integer'],
-            'config' => ['nullable', 'array'],
-            'disabled' => ['nullable', 'boolean'],
-        ]);
-
-        $result = $this->platformSettingService->update($id, $data);
+        $result = $this->platformSettingService->update($id, $request->validated());
         if ($result->isSuccess()) {
             FlashMessage::success(__('common_success.update_success'));
         } else {
@@ -72,14 +62,11 @@ class PlatformSettingController extends Controller
         return redirect()->back();
     }
 
-    public function toggle(string $id, Request $request): RedirectResponse
+    public function toggle(string $id, PlatformSettingToggleRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'disabled' => ['required', 'boolean'],
-        ]);
-        $result = $this->platformSettingService->toggleDisabled($id, $validated['disabled']);
+        $result = $this->platformSettingService->toggleDisabled($id, $request->validated()['disabled']);
         if ($result->isSuccess()) {
-            FlashMessage::success(__('common_success.update_success'));
+            FlashMessage::success($result->getMessage() ?? __('common_success.update_success'));
         } else {
             FlashMessage::error($result->getMessage());
         }

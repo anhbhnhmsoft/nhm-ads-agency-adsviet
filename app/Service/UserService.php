@@ -24,12 +24,16 @@ class UserService
     {
     }
 
+    /**
+     * Lấy thống kê khách hàng cho dashboard
+     * 
+     * @return ServiceReturn
+     */
     public function getCustomerSummaryForDashboard(): ServiceReturn
     {
         try {
-            $baseQuery = $this->userRepository->query()->where('role', UserRole::CUSTOMER->value);
-            $totalCustomers = (clone $baseQuery)->count();
-            $activeCustomers = (clone $baseQuery)->where('disabled', false)->count();
+            $totalCustomers = $this->userRepository->countTotalCustomers();
+            $activeCustomers = $this->userRepository->countActiveCustomers();
 
             return ServiceReturn::success(data: [
                 'total_customers' => $totalCustomers,
