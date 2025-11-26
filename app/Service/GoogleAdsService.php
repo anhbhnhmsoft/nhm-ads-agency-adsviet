@@ -34,12 +34,15 @@ use Illuminate\Support\Str;
 
 class GoogleAdsService
 {
+    private ?array $platformConfig = null;
+
     public function __construct(
         protected ServiceUserRepository $serviceUserRepository,
         protected GoogleAccountRepository $googleAccountRepository,
         protected GoogleAdsAccountInsightRepository $googleAdsAccountInsightRepository,
         protected GoogleAdsCampaignRepository $googleAdsCampaignRepository,
         protected WalletRepository $walletRepository,
+        protected PlatformSettingService $platformSettingService,
     ) {
     }
 
@@ -339,12 +342,13 @@ class GoogleAdsService
             $config = $serviceUser->config_account ?? [];
             $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
             
+            $platformConfig = $this->getPlatformConfig();
             Logging::error(
                 message: 'GoogleAdsService@syncGoogleAccounts missing customer ids',
                 context: [
                     'service_user_id' => $serviceUser->id,
                     'manager_id' => $managerId,
-                    'has_oauth_config' => !empty(config('googleads.client_id')) && !empty(config('googleads.client_secret')) && !empty(config('googleads.refresh_token')),
+                    'has_oauth_config' => !empty($platformConfig['client_id']) && !empty($platformConfig['client_secret']) && !empty($platformConfig['refresh_token']),
                     'config_account' => $config,
                 ]
             );
@@ -743,45 +747,115 @@ GAQL;
     }
 
     /**
+     * Lấy cấu hình Google Ads từ database (platform_settings)
+     * Fallback về .env nếu không tìm thấy trong database
+     * @return array
+     * @throws \RuntimeException
+     */
+    protected function getPlatformConfig(): array
+    {
+        // Cache config trong request để tránh query nhiều lần
+        if ($this->platformConfig !== null) {
+            return $this->platformConfig;
+        }
+
+        try {
+            // Ưu tiên lấy từ database
+            $platformSetting = $this->platformSettingService->findPlatformActive(
+                platform: PlatformType::GOOGLE->value
+            );
+
+            if ($platformSetting->isSuccess()) {
+                $platformData = $platformSetting->getData();
+                $config = $platformData->config ?? [];
+
+                // Validate config từ database
+                if (!empty($config['developer_token']) && 
+                    !empty($config['client_id']) && 
+                    !empty($config['client_secret']) && 
+                    !empty($config['refresh_token'])) {
+                    $this->platformConfig = [
+                        'developer_token' => $config['developer_token'],
+                        'client_id' => $config['client_id'],
+                        'client_secret' => $config['client_secret'],
+                        'refresh_token' => $config['refresh_token'],
+                        'login_customer_id' => $config['login_customer_id'] ?? null,
+                        'linked_customer_id' => $config['linked_customer_id'] ?? null,
+                        'customer_ids' => $config['customer_ids'] ?? null,
+                    ];
+                    return $this->platformConfig;
+                }
+            }
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'GoogleAdsService@getPlatformConfig: Failed to get config from database, falling back to .env',
+                context: [
+                    'error' => $e->getMessage(),
+                ],
+                exception: $e
+            );
+        }
+
+        // Fallback về .env nếu không tìm thấy trong database hoặc config không đầy đủ
+        $this->platformConfig = [
+            'developer_token' => config('googleads.developer_token'),
+            'client_id' => config('googleads.client_id'),
+            'client_secret' => config('googleads.client_secret'),
+            'refresh_token' => config('googleads.refresh_token'),
+            'login_customer_id' => config('googleads.login_customer_id'),
+            'linked_customer_id' => config('googleads.linked_customer_id'),
+            'customer_ids' => null,
+        ];
+
+        return $this->platformConfig;
+    }
+
+    /**
      * Khởi tạo Google Ads Client từ cấu hình hệ thống
+     * Ưu tiên lấy từ database (platform_settings), fallback về .env
      */
     protected function buildGoogleAdsClient(?string $loginCustomerId = null, ?string $linkedCustomerId = null): GoogleAdsClient
     {
-        $clientId = config('googleads.client_id');
-        $clientSecret = config('googleads.client_secret');
-        $refreshToken = config('googleads.refresh_token');
-        $developerToken = config('googleads.developer_token');
+        $config = $this->getPlatformConfig();
+
+        $clientId = $config['client_id'];
+        $clientSecret = $config['client_secret'];
+        $refreshToken = $config['refresh_token'];
+        $developerToken = $config['developer_token'];
 
         // Validate OAuth credentials
         if (empty($clientId) || empty($clientSecret) || empty($refreshToken)) {
             $missing = [];
-            if (empty($clientId)) $missing[] = 'GOOGLE_ADS_CLIENT_ID';
-            if (empty($clientSecret)) $missing[] = 'GOOGLE_ADS_CLIENT_SECRET';
-            if (empty($refreshToken)) $missing[] = 'GOOGLE_ADS_REFRESH_TOKEN';
+            if (empty($clientId)) $missing[] = 'client_id';
+            if (empty($clientSecret)) $missing[] = 'client_secret';
+            if (empty($refreshToken)) $missing[] = 'refresh_token';
             
             Logging::error(
-                message: 'GoogleAdsService@buildGoogleAdsClient: Missing OAuth credentials in .env',
+                message: 'GoogleAdsService@buildGoogleAdsClient: Missing OAuth credentials',
                 context: [
                     'missing_credentials' => $missing,
                     'has_client_id' => !empty($clientId),
                     'has_client_secret' => !empty($clientSecret),
                     'has_refresh_token' => !empty($refreshToken),
+                    'source' => 'database_or_env',
                 ]
             );
             
             throw new \RuntimeException(
-                'Thiếu thông tin xác thực OAuth trong .env: ' . implode(', ', $missing) . '. ' .
-                'Vui lòng kiểm tra lại file .env và đảm bảo các biến môi trường đã được cấu hình đúng.'
+                'Thiếu thông tin xác thực OAuth: ' . implode(', ', $missing) . '. ' .
+                'Vui lòng cấu hình trong "Cấu hình nền tảng" hoặc kiểm tra lại file .env.'
             );
         }
 
         if (empty($developerToken)) {
             Logging::error(
-                message: 'GoogleAdsService@buildGoogleAdsClient: Missing developer token in .env',
-                context: []
+                message: 'GoogleAdsService@buildGoogleAdsClient: Missing developer token',
+                context: [
+                    'source' => 'database_or_env',
+                ]
             );
             throw new \RuntimeException(
-                'Thiếu GOOGLE_ADS_DEVELOPER_TOKEN trong .env. Vui lòng kiểm tra lại file .env.'
+                'Thiếu Developer Token. Vui lòng cấu hình trong "Cấu hình nền tảng" hoặc kiểm tra lại file .env.'
             );
         }
 
@@ -796,11 +870,12 @@ GAQL;
                 ->withDeveloperToken($developerToken)
                 ->withOAuth2Credential($oAuthCredential);
 
-            if ($loginCustomerId = $loginCustomerId ?? config('googleads.login_customer_id')) {
+            // Ưu tiên loginCustomerId từ parameter, sau đó từ config, cuối cùng từ .env
+            if ($loginCustomerId = $loginCustomerId ?? $config['login_customer_id']) {
                 $builder = $builder->withLoginCustomerId($loginCustomerId);
             }
 
-            if ($linkedCustomerId = $linkedCustomerId ?? config('googleads.linked_customer_id')) {
+            if ($linkedCustomerId = $linkedCustomerId ?? $config['linked_customer_id']) {
                 $builder = $builder->withLinkedCustomerId($linkedCustomerId);
             }
 
@@ -815,6 +890,7 @@ GAQL;
                     'has_client_secret' => !empty($clientSecret),
                     'has_refresh_token' => !empty($refreshToken),
                     'has_developer_token' => !empty($developerToken),
+                    'source' => 'database_or_env',
                 ],
                 exception: $exception
             );
@@ -826,7 +902,7 @@ GAQL;
                     'Lỗi xác thực OAuth với Google Ads API. ' .
                     'Có thể do: (1) Client ID/Secret không đúng, (2) Refresh token không hợp lệ hoặc đã hết hạn, ' .
                     '(3) OAuth credentials chưa được cấu hình đúng trong Google Cloud Console. ' .
-                    'Vui lòng kiểm tra lại credentials trong .env và tạo lại refresh token nếu cần. ' .
+                    'Vui lòng kiểm tra lại credentials trong "Cấu hình nền tảng" hoặc .env và tạo lại refresh token nếu cần. ' .
                     'Chi tiết lỗi: ' . $exception->getMessage()
                 );
             }
@@ -976,7 +1052,10 @@ GAQL;
         if ($id) {
             return preg_replace('/[^0-9]/', '', (string) $id);
         }
-        return config('googleads.login_customer_id');
+        
+        // Lấy từ platform config (database hoặc .env)
+        $platformConfig = $this->getPlatformConfig();
+        return $platformConfig['login_customer_id'];
     }
 
     protected function mapStatusToInt(?string $status): int

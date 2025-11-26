@@ -2,8 +2,6 @@
 
 namespace App\Service;
 
-use App\Common\Constants\Wallet\WalletTransactionStatus;
-use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;

@@ -3,8 +3,6 @@
 namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
-use App\Core\Cache\CacheKey;
-use App\Core\Cache\Caching;
 use App\Core\ServiceReturn;
 use Exception;
 use FacebookAds\Api;
@@ -22,8 +20,8 @@ use FacebookAds\Object\Values\AdsInsightsDatePresetValues;
  */
 class MetaBusinessService
 {
-    private ?Api $api;
-    private ?array $config = [];
+    private ?Api $api = null;
+    private ?array $config = null;
 
     public function __construct(
         protected PlatformSettingService $platformSettingService,
@@ -36,7 +34,7 @@ class MetaBusinessService
      */
     public function initApi(): void
     {
-        if ($this->api !== null) {
+        if ($this->api instanceof Api) {
             return;
         }
 
@@ -51,15 +49,9 @@ class MetaBusinessService
         if (empty($config)) {
             throw new Exception('Meta Business config is empty');
         }
-        if (empty($config['app_id']) || empty($config['app_secret']) || empty($config['access_token']) || empty($config['business_manager_id'])) {
+        if (empty($config['app_id']) || empty($config['app_secret']) || empty($config['access_token'])) {
             throw new Exception('Meta Business config is not complete');
         }
-        Caching::setCache(
-            key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
-            value: $config,
-            uniqueKey: PlatformType::META->value,
-            expire: 60 * 24 // 1 ngày
-        );
         Api::init(
             app_id: $config['app_id'],
             app_secret: $config['app_secret'],

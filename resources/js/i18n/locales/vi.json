@@ -429,9 +429,9 @@
             "bm_id_placeholder": "Nhập Business Manager ID"
         },
         "admin_form_title": "Xác nhận đơn dịch vụ",
-        "admin_form_description": "Nhập đầy đủ thông tin Meta để kích hoạt tài khoản dịch vụ cho khách hàng.",
+        "admin_form_description": "Nhập đầy đủ thông tin để kích hoạt tài khoản dịch vụ cho khách hàng.",
         "edit_config_title": "Chỉnh sửa cấu hình tài khoản",
-        "edit_config_description": "Cập nhật thông tin Meta hoặc bổ sung Business Manager ID cho đơn dịch vụ."
+        "edit_config_description": "Cập nhật thông tin hoặc bổ sung cho đơn dịch vụ."
     },
     "dashboard": {
         "title": "Trang chủ",
