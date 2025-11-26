@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\User\UserRole;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
@@ -79,13 +80,21 @@ class ServiceUserService
                 $currentConfig = [];
             }
 
-            $serviceUser->config_account = array_merge($currentConfig, [
+            $platform = $serviceUser->package->platform ?? null;
+
+            $newConfig = array_merge($currentConfig, [
                 'meta_email' => $config['meta_email'] ?? ($currentConfig['meta_email'] ?? ''),
                 'display_name' => $config['display_name'] ?? ($currentConfig['display_name'] ?? ''),
                 'bm_id' => $config['bm_id'] ?? ($currentConfig['bm_id'] ?? ''),
                 'uid' => $config['uid'] ?? ($currentConfig['uid'] ?? null),
                 'account_name' => $config['account_name'] ?? ($currentConfig['account_name'] ?? null),
             ]);
+
+            if ($platform === PlatformType::GOOGLE->value) {
+                $newConfig['google_manager_id'] = $config['bm_id'] ?? ($currentConfig['google_manager_id'] ?? null);
+            }
+
+            $serviceUser->config_account = $newConfig;
             $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value;
             $serviceUser->save();
 

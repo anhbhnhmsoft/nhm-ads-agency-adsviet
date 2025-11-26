@@ -63,5 +63,12 @@ class ServiceUser extends Model
         return $this->hasMany(MetaAdsCampaign::class, 'service_user_id');
     }
 
-
+    /**
+     * Danh sách tài khoản Google Ads liên kết với service user
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function googleAccounts()
+    {
+        return $this->hasMany(GoogleAccount::class, 'service_user_id');
+    }
 }

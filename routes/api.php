@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CommonController;
+use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
 use App\Http\Controllers\API\ServiceController;
 use App\Http\Controllers\API\WalletController;
@@ -45,6 +46,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [MetaController::class, 'detailCampaign']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [MetaController::class, 'getCampaignInsights']);
         Route::get('/test', [MetaController::class, 'test']); // để test
+    });
+
+    Route::prefix('google-ads')->group(function () {
+        Route::get('/{serviceUserId}/accounts', [GoogleAdsController::class, 'getAdsAccount']);
+        Route::get('/{serviceUserId}/{accountId}/campaigns', [GoogleAdsController::class, 'getCampaigns']);
+        Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [GoogleAdsController::class, 'detailCampaign']);
+        Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [GoogleAdsController::class, 'getCampaignInsights']);
     });
 
     Route::prefix('wallet')->group(function () {

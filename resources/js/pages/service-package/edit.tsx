@@ -30,6 +30,7 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
     const { form, submit } = useFormEditServicePackage(service_package.id, service_package);
 
     const { data, setData, processing, errors } = form;
+    const isPlatformEditable = false;
 
     /**
      * Lấy danh sách Features dựa trên Platform
@@ -110,36 +111,48 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
                 {/* Platform */}
                 <div className="flex flex-col gap-2">
                     <Label>{t('service_packages.platform')}</Label>
-                    <Select
-                        value={data.platform.toString()}
-                        onValueChange={(value) => {
-                            const numericValue = Number(value);
-                            const val = numericValue as _PlatformType;
-                            setData('platform', val);
-                            setData('features', []);
-                        }}
-                        required
-                    >
-                        <SelectTrigger>
-                            <SelectValue
-                                placeholder={t('service_packages.platform')}
-                            />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                <SelectItem
-                                    value={_PlatformType.META.toString()}
-                                >
-                                    Meta
-                                </SelectItem>
-                                <SelectItem
-                                    value={_PlatformType.GOOGLE.toString()}
-                                >
-                                    Google
-                                </SelectItem>
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
+                    {isPlatformEditable ? (
+                        <Select
+                            value={data.platform.toString()}
+                            onValueChange={(value) => {
+                                const numericValue = Number(value);
+                                const val = numericValue as _PlatformType;
+                                setData('platform', val);
+                                setData('features', []);
+                            }}
+                            required
+                        >
+                            <SelectTrigger>
+                                <SelectValue
+                                    placeholder={t('service_packages.platform')}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem
+                                        value={_PlatformType.META.toString()}
+                                    >
+                                        Meta
+                                    </SelectItem>
+                                    <SelectItem
+                                        value={_PlatformType.GOOGLE.toString()}
+                                    >
+                                        Google
+                                    </SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        <Input
+                            value={
+                                data.platform === _PlatformType.META
+                                    ? 'Meta'
+                                    : 'Google'
+                            }
+                            disabled
+                            readOnly
+                        />
+                    )}
                     {errors.platform && (
                         <span className="text-sm text-red-500">
                             {errors.platform}
@@ -255,7 +268,7 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
                 </div>
 
                 {/* Disabled */}
-                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-[[aria-checked=true]]:border-red-600 has-[[aria-checked=true]]:bg-red-50">
+                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-aria-checked:border-red-600 has-aria-checked:bg-red-50">
                     <Checkbox
                         disabled={false}
                         checked={data.disabled}
@@ -285,7 +298,7 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
                     if (feature.type === 'boolean') {
                         return (
                             <div key={feature.key} className={'flex flex-col gap-2'}>
-                                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50">
+                                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-aria-checked:border-blue-600 has-aria-checked:bg-blue-50">
                                     <Checkbox
                                         id={feature.key}
                                         disabled={false}

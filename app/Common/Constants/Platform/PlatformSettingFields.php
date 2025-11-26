@@ -47,14 +47,6 @@ class PlatformSettingFields
                 'placeholder' => __('platform.fields.login_customer_id.placeholder'),
                 'description' => __('platform.fields.login_customer_id.description'),
             ],
-            [
-                'key' => 'customer_ids',
-                'label' => __('platform.fields.customer_ids.label'),
-                'type' => 'textarea',
-                'required' => false,
-                'placeholder' => __('platform.fields.customer_ids.placeholder'),
-                'description' => __('platform.fields.customer_ids.description'),
-            ],
         ];
     }
 

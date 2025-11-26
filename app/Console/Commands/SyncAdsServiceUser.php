@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
+use App\Jobs\GoogleAds\SyncGoogleServiceUserJob;
+use App\Jobs\MetaApi\SyncMetaJob;
 use App\Models\ServiceUser;
 use App\Repositories\ServiceUserRepository;
 use App\Service\MetaBusinessService;
@@ -39,12 +41,16 @@ class SyncAdsServiceUser extends Command
                     // đối với từng service user, kiểm tra nền tảng và đẩy job tương ứng
                     // nếu là nền tảng Meta, đẩy job đồng bộ Meta
                     if ($serviceUser->package->platform === PlatformType::META->value) {
-                        // Đẩy job đồng bộ Meta
-                        \App\Jobs\MetaApi\SyncMetaJob::dispatch($serviceUser);
+                        SyncMetaJob::dispatch($serviceUser);
                         $totalDispatched++;
                         $this->info("✓ Đã dispatch job sync Meta cho ServiceUser ID: {$serviceUser->id}");
                     }
-                    // Google Ads có thể thêm ở đây sau
+
+                    if ($serviceUser->package->platform === PlatformType::GOOGLE->value) {
+                        SyncGoogleServiceUserJob::dispatch($serviceUser);
+                        $totalDispatched++;
+                        $this->info("✓ Đã dispatch job sync Google Ads cho ServiceUser ID: {$serviceUser->id}");
+                    }
                 });
             });
 

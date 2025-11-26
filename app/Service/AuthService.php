@@ -632,7 +632,7 @@ class AuthService
         if ($user->disabled) {
             return ServiceReturn::error(message: __('common_error.permission_error'));
         }
-        if (!in_array($roles, $user->role)) {
+        if (!in_array($user->role, $roles)) {
             return ServiceReturn::error(message: __('common_error.permission_error'));
         }
         return ServiceReturn::success();

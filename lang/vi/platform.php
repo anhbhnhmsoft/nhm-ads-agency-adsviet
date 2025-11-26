@@ -59,6 +59,11 @@ return [
             'description' => 'Danh sách Ad Account IDs được quản lý (để trống nếu tất cả)',
         ],
     ],
+    'validation' => [
+        'field_required' => 'Trường :field là bắt buộc.',
+        'field_string' => 'Trường :field phải là chuỗi.',
+        'field_array' => 'Trường :field phải là mảng.',
+    ],
 ];
 
 
