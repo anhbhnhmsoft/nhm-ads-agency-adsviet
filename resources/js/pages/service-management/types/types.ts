@@ -11,6 +11,20 @@ export type MetaAccount = {
     last_synced_at?: string | null;
 };
 
+export type GoogleAccount = {
+    id: string;
+    account_id: string;
+    account_name?: string | null;
+    account_status?: number | null;
+    currency?: string | null;
+    customer_manager_id?: string | null;
+    time_zone?: string | null;
+    primary_email?: string | null;
+    last_synced_at?: string | null;
+};
+
+export type AdAccount = MetaAccount | GoogleAccount;
+
 export type MetaCampaign = {
     id: string;
     campaign_id: string;
@@ -22,7 +36,26 @@ export type MetaCampaign = {
     budget_remaining?: string | null;
     start_time?: string | null;
     stop_time?: string | null;
+    total_spend?: string | null;
+    today_spend?: string | null;
 };
+
+export type GoogleAdsCampaign = {
+    id: string;
+    campaign_id: string;
+    name?: string | null;
+    status?: string | null;
+    effective_status?: string | null;
+    objective?: string | null;
+    daily_budget?: string | null;
+    budget_remaining?: string | null;
+    start_time?: string | null;
+    stop_time?: string | null;
+    total_spend?: string | null;
+    today_spend?: string | null;
+};
+
+export type Campaign = MetaCampaign | GoogleAdsCampaign;
 
 type MetricValue = {
     today: number | string | null;
@@ -62,13 +95,17 @@ export type CampaignDetail = {
 };
 
 export type CampaignDailyInsight = {
-    date_start?: string;
-    date_stop?: string;
+    date_start?: string; // Meta Ads
+    date_stop?: string; // Meta Ads
+    date?: string; // Google Ads (format: Y-m-d)
     spend?: string | number | null;
     impressions?: number | null;
     clicks?: number | null;
     cpc?: number | null;
     cpm?: number | null;
+    conversions?: number | null;
+    ctr?: number | null;
+    roas?: number | null;
 };
 
 export type ServiceManagementHook = {

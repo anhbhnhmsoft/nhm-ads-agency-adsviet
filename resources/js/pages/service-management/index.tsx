@@ -3,11 +3,16 @@ import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import type { ServiceOrder, ServiceOrderPagination } from '@/pages/service-order/types/type';
 import type {
+    AdAccount,
     MetaAccount,
+    GoogleAccount,
     MetaCampaign,
+    GoogleAdsCampaign,
+    Campaign,
     CampaignDetail,
     CampaignDailyInsight,
 } from '@/pages/service-management/types/types';
+import { _PlatformType } from '@/lib/types/constants';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,15 +37,15 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
     const services = paginator?.data ?? [];
 
     const [selectedService, setSelectedService] = useState<ServiceOrder | null>(null);
-    const [accounts, setAccounts] = useState<MetaAccount[]>([]);
+    const [accounts, setAccounts] = useState<AdAccount[]>([]);
     const [accountsLoading, setAccountsLoading] = useState(false);
     const [accountsError, setAccountsError] = useState<string | null>(null);
 
-    const [campaignsByAccount, setCampaignsByAccount] = useState<Record<string, MetaCampaign[]>>({});
+    const [campaignsByAccount, setCampaignsByAccount] = useState<Record<string, Campaign[]>>({});
     const [campaignLoadingId, setCampaignLoadingId] = useState<string | null>(null);
     const [campaignError, setCampaignError] = useState<string | null>(null);
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-    const [selectedCampaign, setSelectedCampaign] = useState<MetaCampaign | null>(null);
+    const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
     const [campaignDetail, setCampaignDetail] = useState<CampaignDetail | null>(null);
     const [campaignDetailLoading, setCampaignDetailLoading] = useState(false);
     const [campaignDetailError, setCampaignDetailError] = useState<string | null>(null);
@@ -112,21 +117,33 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
         }
         return campaignInsights.map((item, index) => {
             const value = parseNumber(item.spend) ?? 0;
-            const date = item.date_start ? new Date(item.date_start) : null;
+            // Hỗ trợ cả date_start (Meta Ads) và date (Google Ads)
+            const dateString = item.date_start || item.date || null;
+            const date = dateString ? new Date(dateString) : null;
+            
+            // Label hiển thị trên x-axis: format ngắn gọn "dd/MM" để không bị vỡ
             const label = date
-                ? date.toLocaleDateString('vi-VN', { weekday: 'short' })
+                ? date.toLocaleDateString('vi-VN', {
+                      day: '2-digit',
+                      month: '2-digit',
+                  })
                 : `#${index + 1}`;
+            
+            // Tooltip hiển thị đầy đủ: "Thứ Hai, 15/11/2025"
             const tooltipLabel = date
                 ? date.toLocaleDateString('vi-VN', {
                       weekday: 'long',
                       day: '2-digit',
                       month: '2-digit',
+                      year: 'numeric',
                   })
                 : label;
+            
             return {
                 label,
                 value,
                 tooltipLabel,
+                date: date, // Lưu date object để có thể dùng sau nếu cần
             };
         });
     }, [campaignInsights]);
@@ -162,16 +179,28 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
         setAccounts([]);
         setCampaignsByAccount({});
         setSelectedAccountId(null);
-        await loadAccounts(service.id);
+        await loadAccounts(service);
     };
 
-    const loadAccounts = async (serviceId: string) => {
+    const loadAccounts = async (service: ServiceOrder) => {
         setAccountsLoading(true);
         setAccountsError(null);
         try {
-            const response = await axios.get(`/meta/${serviceId}/accounts`, { params: { per_page: 20 } });
+            const platform = service.package?.platform;
+            const apiPath = platform === _PlatformType.META 
+                ? `/meta/${service.id}/accounts`
+                : platform === _PlatformType.GOOGLE
+                ? `/google-ads/${service.id}/accounts`
+                : null;
+            
+            if (!apiPath) {
+                setAccountsError(t('service_management.unsupported_platform'));
+                return;
+            }
+            
+            const response = await axios.get(apiPath, { params: { per_page: 20 } });
             const items = extractData(response.data?.data);
-            setAccounts(items as MetaAccount[]);
+            setAccounts(items as AdAccount[]);
         } catch (error: any) {
             setAccountsError(error?.response?.data?.message || t('service_management.accounts_error'));
         } finally {
@@ -179,21 +208,31 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
         }
     };
 
-    const loadCampaigns = async (account: MetaAccount) => {
+    const loadCampaigns = async (account: AdAccount) => {
         if (!selectedService) return;
+        
+        const platform = selectedService.package?.platform;
         setSelectedAccountId(account.id);
         setCampaignError(null);
         setCampaignLoadingId(account.id);
         setSelectedCampaign(null);
         setCampaignDetail(null);
+        
         try {
-            const response = await axios.get(`/meta/${selectedService.id}/${account.id}/campaigns`, {
+            let apiPath: string;
+            if (platform === _PlatformType.GOOGLE) {
+                apiPath = `/google-ads/${selectedService.id}/${account.id}/campaigns`;
+            } else {
+                apiPath = `/meta/${selectedService.id}/${account.id}/campaigns`;
+            }
+            
+            const response = await axios.get(apiPath, {
                 params: { per_page: 25 },
             });
             const items = extractData(response.data?.data);
             setCampaignsByAccount((prev) => ({
                 ...prev,
-                [account.id]: items as MetaCampaign[],
+                [account.id]: items,
             }));
         } catch (error: any) {
             setCampaignError(error?.response?.data?.message || t('service_management.campaigns_error'));
@@ -202,15 +241,17 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
         }
     };
 
-    const loadCampaignInsights = async (campaign: MetaCampaign, preset: 'last_7d' | 'last_30d') => {
+    const loadCampaignInsights = async (campaign: Campaign, preset: 'last_7d' | 'last_30d') => {
         if (!selectedService) return;
+        const platform = selectedService.package?.platform;
         setCampaignInsightsLoading(true);
         setCampaignInsightsError(null);
         try {
-            const response = await axios.get(
-                `/meta/${selectedService.id}/${campaign.id}/detail-campaign-insight`,
-                { params: { date_preset: preset } }
-            );
+            const apiPath = platform === _PlatformType.GOOGLE
+                ? `/google-ads/${selectedService.id}/${campaign.id}/detail-campaign-insight`
+                : `/meta/${selectedService.id}/${campaign.id}/detail-campaign-insight`;
+            
+            const response = await axios.get(apiPath, { params: { date_preset: preset } });
             const payload = response.data?.data;
             const rawItems: any[] = Array.isArray(payload?.data)
                 ? (payload.data as any[])
@@ -228,15 +269,20 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
         }
     };
 
-    const loadCampaignDetail = async (campaign: MetaCampaign) => {
+    const loadCampaignDetail = async (campaign: Campaign) => {
         if (!selectedService) return;
+        const platform = selectedService.package?.platform;
         setSelectedCampaign(campaign);
         setCampaignInsights([]);
         setCampaignInsightsError(null);
         setCampaignDetailLoading(true);
         setCampaignDetailError(null);
         try {
-            const response = await axios.get(`/meta/${selectedService.id}/${campaign.id}/detail-campaign`);
+            const apiPath = platform === _PlatformType.GOOGLE
+                ? `/google-ads/${selectedService.id}/${campaign.id}/detail-campaign`
+                : `/meta/${selectedService.id}/${campaign.id}/detail-campaign`;
+            
+            const response = await axios.get(apiPath);
             if (response.data?.data) {
                 setCampaignDetail(response.data.data as CampaignDetail);
             }
@@ -316,7 +362,7 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                     <span className="font-medium text-foreground">
                                         {t('service_management.total_budget')}:
                                     </span>{' '}
-                                    {service.budget || 0} USDT
+                                    {formatCurrency(service.budget || 0)}
                                 </div>
                                 <div>
                                     <span className="font-medium text-foreground">
@@ -419,9 +465,19 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                                         <span className="font-medium">{t('service_management.currency')}:</span> {account.currency}
                                                     </div>
                                                 )}
-                                                {account.balance && (
+                                                {'balance' in account && account.balance && (
                                                     <div>
                                                         <span className="font-medium">{t('service_management.balance')}:</span> {account.balance}
+                                                    </div>
+                                                )}
+                                                {'time_zone' in account && account.time_zone && (
+                                                    <div>
+                                                        <span className="font-medium">{t('service_management.time_zone')}:</span> {account.time_zone}
+                                                    </div>
+                                                )}
+                                                {'primary_email' in account && account.primary_email && (
+                                                    <div>
+                                                        <span className="font-medium">{t('service_management.primary_email')}:</span> {account.primary_email}
                                                     </div>
                                                 )}
                                             </div>
@@ -489,17 +545,22 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                                             {campaign.daily_budget}
                                                         </div>
                                                     )}
-                                                    <div>
-                                                        <span className="font-medium">{t('service_management.start_time')}:</span>{' '}
-                                                        {campaign.start_time
-                                                            ? new Date(campaign.start_time).toLocaleString()
-                                                            : '--'}
-                                                    </div>
-                                                    {campaign.stop_time && (
-                                                        <div>
-                                                            <span className="font-medium">{t('service_management.stop_time')}:</span>{' '}
-                                                            {new Date(campaign.stop_time).toLocaleString()}
-                                                        </div>
+                                                    {/* Ẩn start_time và stop_time cho Google Ads */}
+                                                    {selectedService?.package?.platform !== _PlatformType.GOOGLE && (
+                                                        <>
+                                                            <div>
+                                                                <span className="font-medium">{t('service_management.start_time')}:</span>{' '}
+                                                                {campaign.start_time
+                                                                    ? new Date(campaign.start_time).toLocaleString()
+                                                                    : '--'}
+                                                            </div>
+                                                            {campaign.stop_time && (
+                                                                <div>
+                                                                    <span className="font-medium">{t('service_management.stop_time')}:</span>{' '}
+                                                                    {new Date(campaign.stop_time).toLocaleString()}
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>
@@ -700,12 +761,10 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                     tickLine={false}
                                     axisLine={false}
                                     tickMargin={8}
-                                    tickFormatter={(value: string | number) =>
-                                        typeof value === 'string'
-                                            ? value.charAt(0).toUpperCase() + value.slice(1)
-                                            : String(value)
-                                    }
-                                    style={{ fontSize: '12px' }}
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={60}
+                                    style={{ fontSize: '11px' }}
                                 />
                                 <ChartTooltip
                                     labelFormatter={(label: string, payload?: any) => {

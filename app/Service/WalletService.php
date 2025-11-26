@@ -258,7 +258,8 @@ class WalletService
                 $wallet = $result->getData();
             }
 
-            $transactions = $wallet->transactions()
+            $transactions = $this->transactionRepository
+                ->filterForWallet($wallet->id, [])
                 ->with('wallet.user')
                 ->latest('created_at')
                 ->limit(20)

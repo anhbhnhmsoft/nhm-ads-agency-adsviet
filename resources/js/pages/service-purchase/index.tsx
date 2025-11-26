@@ -286,8 +286,14 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
         const platformInfo = getPlatformInfo(selectedPackage.platform);
         const topUpError = topUpAmount ? validateTopUpAmount(topUpAmount) : null;
         const { serviceFee, totalCost, openFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount);
+        const minTopUpAmount = Number(selectedPackage.range_min_top_up || '0');
         const hasInsufficientBalance = wallet_balance < totalCost;
-        const isMetaPlatform = selectedPackage.platform === _PlatformType.META;
+        const showAccountInfo =
+            selectedPackage.platform === _PlatformType.META || selectedPackage.platform === _PlatformType.GOOGLE;
+        const accountInfoTitle =
+            selectedPackage.platform === _PlatformType.META
+                ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
+                : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' });
 
         return (
             <Card className="max-w-2xl mx-auto">
@@ -329,10 +335,10 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                         </div>
                     </div>
 
-                    {/* Meta Account Info - Only for Meta platform */}
-                    {isMetaPlatform && (
+                    {/* Account Info (Meta / Google) */}
+                    {showAccountInfo && (
                         <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                            <div className="font-medium text-gray-800">{t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })}</div>
+                            <div className="font-medium text-gray-800">{accountInfoTitle}</div>
                             <div className="space-y-2">
                                 <Label htmlFor="metaEmail">
                                     {t('service_purchase.meta_email')}:
@@ -390,7 +396,12 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            {t('service_purchase.top_up_amount_note')}
+                            {t('service_purchase.top_up_amount_note')}, 
+                            {minTopUpAmount > 0
+                                ? t('service_purchase.min_top_up_hint', {
+                                      amount: formatUSD(minTopUpAmount),
+                                  })
+                                : t('service_purchase.top_up_amount_note')}
                         </p>
                     </div>
 

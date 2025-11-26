@@ -107,7 +107,7 @@
         "view_campaigns": "Xem chiến dịch",
         "dialog_title": "Chiến dịch quảng cáo",
         "dialog_platform": "Nền tảng: {{platform}}",
-        "meta_email": "Email Meta",
+        "meta_email": "Email Tài khoản",
         "display_name": "Tên hiển thị",
         "bm_id": "Business Manager ID",
         "accounts": "Tài khoản quảng cáo",
@@ -142,7 +142,11 @@
         "spend_chart_preset_30d": "30 ngày",
         "spend_chart_empty": "Chưa có dữ liệu biểu đồ.",
         "campaign_insight_error": "Không thể tải biểu đồ chi tiêu.",
-        "spend_chart_series": "Chi tiêu"
+        "spend_chart_series": "Chi tiêu",
+        "unsupported_platform": "Nền tảng không được hỗ trợ.",
+        "google_ads_campaigns_not_available": "Tính năng chiến dịch Google Ads đang được phát triển.",
+        "time_zone": "Múi giờ",
+        "primary_email": "Email chính"
     },
     "auth": {
         "components": {
@@ -343,6 +347,7 @@
         "top_up_amount": "Số tiền top-up (USDT)",
         "optional": "Tùy chọn",
         "top_up_amount_note": "Chỉ được nhập số tiền chẵn (không nhập số lẻ)",
+        "min_top_up_hint": "Số tiền top-up tối thiểu: {{amount}}",
         "customer_notes": "Ghi chú của khách hàng",
         "customer_notes_placeholder": "Ghi chú thêm về đơn hàng...",
         "calculate_fee": "Tính phí",
@@ -361,7 +366,8 @@
         "search_placeholder": "Tìm kiếm dịch vụ...",
         "no_services_found": "Không tìm thấy dịch vụ nào",
         "meta_account_info": "Thông tin tài khoản Meta",
-        "meta_email": "Email Meta",
+        "google_account_info": "Thông tin tài khoản Google",
+        "meta_email": "Email Tài Khoản",
         "display_name": "Tên hiển thị",
         "display_name_placeholder": "Nhập tên hiển thị",
         "feature_labels": {

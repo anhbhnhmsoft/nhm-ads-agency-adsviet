@@ -51,6 +51,8 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
         setBmId,
         openDialogForOrder,
         handleSubmitApprove,
+        formErrors,
+        processing: approveProcessing,
     } = useServiceOrderAdminDialog();
 
     const {
@@ -276,6 +278,9 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                         onChange={(e) => setMetaEmail(e.target.value)}
                                         placeholder={t('service_orders.form.meta_email_placeholder')}
                                     />
+                                    {formErrors.meta_email && (
+                                        <p className="text-xs text-red-500">{formErrors.meta_email}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="display_name">{t('service_purchase.display_name')}</Label>
@@ -285,6 +290,9 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                         onChange={(e) => setDisplayName(e.target.value)}
                                         placeholder={t('service_orders.form.display_name_placeholder')}
                                     />
+                                    {formErrors.display_name && (
+                                        <p className="text-xs text-red-500">{formErrors.display_name}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="bm_id">BM ID</Label>
@@ -294,6 +302,9 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                         onChange={(e) => setBmId(e.target.value)}
                                         placeholder={t('service_orders.form.bm_id_placeholder')}
                                     />
+                                    {formErrors.bm_id && (
+                                        <p className="text-xs text-red-500">{formErrors.bm_id}</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -301,7 +312,9 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                                     {t('common.back')}
                                 </Button>
-                                <Button onClick={handleSubmitApprove}>{t('common.confirm')}</Button>
+                                <Button onClick={handleSubmitApprove} disabled={approveProcessing}>
+                                    {approveProcessing ? t('common.processing') : t('common.confirm')}
+                                </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>

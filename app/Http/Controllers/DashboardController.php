@@ -6,6 +6,7 @@ use App\Common\Constants\User\UserRole;
 use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
+use App\Service\GoogleAdsService;
 use App\Service\MetaService;
 use App\Service\UserService;
 use App\Service\WalletTransactionService;
@@ -16,6 +17,7 @@ class DashboardController extends Controller
 {
     public function __construct(
         protected MetaService $metaService,
+        protected GoogleAdsService $googleAdsService,
         protected UserService $userService,
         protected WalletTransactionService $walletTransactionService,
     ) {
@@ -90,12 +92,10 @@ class DashboardController extends Controller
 
     protected function getDashboardDataByPlatform(string $platform): ServiceReturn
     {
-        // chưa có google ads
         if ($platform === 'google_ads') {
-            return ServiceReturn::error(message: __('dashboard.google_ads_not_available'));
+            return $this->googleAdsService->getDashboardData();
         }
 
-        // Lấy data từ Meta Service
         return $this->metaService->getDashboardData();
     }
 

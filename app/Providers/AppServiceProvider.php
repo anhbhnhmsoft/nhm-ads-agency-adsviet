@@ -6,6 +6,9 @@ use App\Common\Constants\User\GatePermission;
 use App\Common\Constants\User\UserRole;
 use App\Models\User;
 use App\Repositories\ConfigRepository;
+use App\Repositories\GoogleAccountRepository;
+use App\Repositories\GoogleAdsAccountInsightRepository;
+use App\Repositories\GoogleAdsCampaignRepository;
 use App\Repositories\MetaAccountRepository;
 use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\MetaAdsCampaignRepository;
@@ -20,6 +23,7 @@ use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\NotificationRepository;
 use App\Repositories\UserRepository;
 use App\Service\AuthService;
+use App\Service\GoogleAdsService;
 use App\Service\MailService;
 use App\Service\MetaBusinessService;
 use App\Service\MetaService;
@@ -82,6 +86,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(MetaAccountRepository::class);
         $this->app->bind(MetaAdsCampaignRepository::class);
         $this->app->bind(MetaAdsAccountInsightRepository::class);
+        $this->app->bind(GoogleAccountRepository::class);
+        $this->app->bind(GoogleAdsAccountInsightRepository::class);
+        $this->app->bind(GoogleAdsCampaignRepository::class);
     }
 
     /**
@@ -106,6 +113,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ServiceUserService::class);
         $this->app->singleton(MetaBusinessService::class);
         $this->app->bind(MetaService::class);
+        $this->app->bind(GoogleAdsService::class);
     }
 
      /**

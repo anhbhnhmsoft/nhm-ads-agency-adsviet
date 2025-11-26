@@ -1,59 +1,59 @@
 import { useCallback, useState } from 'react';
-import { router } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import type { ServiceOrder } from '@/pages/service-order/types/type';
 import { service_orders_approve } from '@/routes';
 
 export const useServiceOrderAdminDialog = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
-    const [metaEmail, setMetaEmail] = useState('');
-    const [displayName, setDisplayName] = useState('');
-    const [bmId, setBmId] = useState('');
+    const form = useForm({
+        meta_email: '',
+        display_name: '',
+        bm_id: '',
+    });
 
     const openDialogForOrder = useCallback((order: ServiceOrder) => {
         const config = order.config_account || {};
         setSelectedOrder(order);
-        setMetaEmail((config.meta_email as string) || '');
-        setDisplayName((config.display_name as string) || '');
-        setBmId((config.bm_id as string) || '');
+        form.setData({
+            meta_email: (config.meta_email as string) || '',
+            display_name: (config.display_name as string) || '',
+            bm_id: (config.bm_id as string) || '',
+        });
+        form.clearErrors();
         setDialogOpen(true);
-    }, []);
+    }, [form]);
 
     const handleSubmitApprove = useCallback(() => {
         if (!selectedOrder) return;
-        if (!metaEmail || !displayName || !bmId) {
-            return;
-        }
 
-        router.post(
+        form.post(
             service_orders_approve({ id: selectedOrder.id }).url,
-            {
-                meta_email: metaEmail,
-                display_name: displayName,
-                bm_id: bmId,
-            },
             {
                 preserveScroll: true,
                 onSuccess: () => {
                     setDialogOpen(false);
                     setSelectedOrder(null);
+                    form.reset();
+                    form.clearErrors();
                 },
             },
         );
-    }, [bmId, displayName, metaEmail, selectedOrder]);
+    }, [form, selectedOrder]);
 
     return {
         dialogOpen,
         setDialogOpen,
-        metaEmail,
-        setMetaEmail,
-        displayName,
-        setDisplayName,
-        bmId,
-        setBmId,
+        metaEmail: form.data.meta_email,
+        setMetaEmail: (value: string) => form.setData('meta_email', value),
+        displayName: form.data.display_name,
+        setDisplayName: (value: string) => form.setData('display_name', value),
+        bmId: form.data.bm_id,
+        setBmId: (value: string) => form.setData('bm_id', value),
+        formErrors: form.errors,
+        processing: form.processing,
         openDialogForOrder,
         handleSubmitApprove,
     };
 };
-
 
