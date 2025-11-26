@@ -166,43 +166,4 @@ class AuthController extends Controller
         }
     }
 
-    public function sendWhatsappOtp(SendWhatsappOtpRequest $request)
-    {
-        $phone = $request->input('phone');
-        // Lưu phone tạm thời vào session để gắn với OTP (vì bảng user_otp không có cột phone)
-        Session::put('register_whatsapp_phone', $phone);
-
-        $result = $this->otpService->generateOtp(Otp::VERIFY);
-        if ($result->isError()) {
-            return response()->json(['success' => false, 'message' => $result->getMessage()], 422);
-        }
-
-        $code = $result->getData()['code'] ?? null;
-        // TODO: tích hợp gửi template WhatsApp tại đây. Hiện tạm thời log để kiểm thử
-        Logging::web('Send WhatsApp OTP', ['phone' => $phone, 'code' => $code]);
-
-        return response()->json(['success' => true]);
-    }
-
-    public function verifyWhatsappOtp(VerifyWhatsappOtpRequest $request)
-    {
-        $otp = $request->input('otp');
-        $result = $this->otpService->verifyOtp($otp, Otp::VERIFY);
-        if ($result->isError()) {
-            return response()->json(['success' => false, 'message' => $result->getMessage()], 422);
-        }
-
-        $phone = Session::get('register_whatsapp_phone');
-        if (!$phone) {
-            return response()->json(['success' => false, 'message' => __('auth.register.validation.otp_invalid')], 422);
-        }
-
-        // Đánh dấu đã xác thực WhatsApp để sang bước register-new-user
-        Session::put('register_social', [
-            'type' => 'whatsapp',
-            'data' => ['phone' => $phone],
-        ]);
-
-        return response()->json(['success' => true]);
-    }
 }

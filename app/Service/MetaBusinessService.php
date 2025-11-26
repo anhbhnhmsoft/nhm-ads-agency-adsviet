@@ -2,7 +2,11 @@
 
 namespace App\Service;
 
+use App\Common\Constants\Platform\PlatformType;
+use App\Core\Cache\CacheKey;
+use App\Core\Cache\Caching;
 use App\Core\ServiceReturn;
+use Exception;
 use FacebookAds\Api;
 use FacebookAds\Object\Values\AdDatePresetValues;
 use FacebookAds\Object\Values\AdsInsightsDatePresetValues;
@@ -19,15 +23,49 @@ use FacebookAds\Object\Values\AdsInsightsDatePresetValues;
 class MetaBusinessService
 {
     private ?Api $api;
+    private ?array $config = [];
 
-    public function __construct()
+    public function __construct(
+        protected PlatformSettingService $platformSettingService,
+    )
     {
-        // tạm thời khởi tạo API ở đây, về sau refactor lại
-        Api::init(
-            app_id: env('META_APP_ID'),
-            app_secret: env('META_APP_SECRET'),
-            access_token: env('META_ACCESS_TOKEN'),
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function initApi(): void
+    {
+        if ($this->api !== null) {
+            return;
+        }
+
+        $platformSetting = $this->platformSettingService->findPlatformActive(
+            platform: PlatformType::META->value
         );
+        if ($platformSetting->isError()) {
+            throw new Exception($platformSetting->getMessage());
+        }
+        $platformData = $platformSetting->getData();
+        $config = $platformData->config;
+        if (empty($config)) {
+            throw new Exception('Meta Business config is empty');
+        }
+        if (empty($config['app_id']) || empty($config['app_secret']) || empty($config['access_token']) || empty($config['business_manager_id'])) {
+            throw new Exception('Meta Business config is not complete');
+        }
+        Caching::setCache(
+            key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
+            value: $config,
+            uniqueKey: PlatformType::META->value,
+            expire: 60 * 24 // 1 ngày
+        );
+        Api::init(
+            app_id: $config['app_id'],
+            app_secret: $config['app_secret'],
+            access_token: $config['access_token'],
+        );
+        $this->config = $config;
         $this->api = Api::instance();
     }
 
@@ -37,7 +75,7 @@ class MetaBusinessService
      */
     public function getIdPrimaryBM(): string
     {
-        return "1537217683931546"; // Tạm thời fix cứng business id
+        return $this->config['business_manager_id'] ?? '';
     }
 
     /**
@@ -47,10 +85,11 @@ class MetaBusinessService
     public function getMe(): ServiceReturn
     {
         try {
+            $this->initApi();
             $response = $this->api->call('/me')
                 ->getContent();
             return ServiceReturn::success(data: $response);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -62,6 +101,7 @@ class MetaBusinessService
     public function getPrimaryBusiness(): ServiceReturn
     {
         try {
+            $this->initApi();
             $idPrimaryBM = $this->getIdPrimaryBM();
             $response = $this->api->call(
                 '/' . $idPrimaryBM,
@@ -71,7 +111,7 @@ class MetaBusinessService
                 ]
             )->getContent();
             return ServiceReturn::success(data: $response);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
 
@@ -86,6 +126,7 @@ class MetaBusinessService
     public function createBM(string $userId, array $params): ServiceReturn
     {
         try {
+            $this->initApi();
             $response = $this->api->call(
                 '/' . $userId . '/businesses',
                 'POST',
@@ -96,7 +137,7 @@ class MetaBusinessService
                 ]
             )->getContent();
             return ServiceReturn::success(data: $response);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -108,6 +149,7 @@ class MetaBusinessService
     public function getSelfBMs(): ServiceReturn
     {
         try {
+            $this->initApi();
             $response = $this->api->call(
                 '/me/businesses',
                 'GET',
@@ -116,7 +158,7 @@ class MetaBusinessService
                 ]
             )->getContent();
             return ServiceReturn::success(data: $response);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -130,6 +172,7 @@ class MetaBusinessService
     public function createAdsAccount(string $BmId, array $params): ServiceReturn
     {
         try {
+            $this->initApi();
             $response = $this->api->call(
                 '/' . $BmId . '/adaccount',
                 'POST',
@@ -144,7 +187,7 @@ class MetaBusinessService
                 ]
             )->getContent();
             return ServiceReturn::success(data: $response);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -160,6 +203,7 @@ class MetaBusinessService
     public function getOwnerAdsAccountPaginated(string $bmId, int $limit = 25, ?string $after = null, ?string $before = null): ServiceReturn
     {
         try {
+            $this->initApi();
             $endpoint = "/{$bmId}/owned_ad_accounts";
             $params = [
                 'fields' => 'id,account_id,name',
@@ -181,7 +225,7 @@ class MetaBusinessService
             // Frontend sẽ dùng 'paging.cursors.after' để gọi trang tiếp theo
             return ServiceReturn::success(data: $response);
 
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -194,6 +238,7 @@ class MetaBusinessService
     public function getDetailAdsAccount(string $accountId): ServiceReturn
     {
         try {
+            $this->initApi();
             // Danh sách các trường (fields) cần lấy
             $fields = [
                 'id',
@@ -218,7 +263,7 @@ class MetaBusinessService
 
             return ServiceReturn::success(data: $response);
 
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -234,6 +279,7 @@ class MetaBusinessService
     public function getCampaignsPaginated(string $accountId, int $limit = 25, ?string $after = null, ?string $before = null): ServiceReturn
     {
         try {
+            $this->initApi();
             // Các trường (fields) cơ bản của một chiến dịch
             $fields = [
                 'id',
@@ -269,7 +315,7 @@ class MetaBusinessService
             // Trả về cả 'data' và 'paging' cho frontend xử lý
             return ServiceReturn::success(data: $response);
 
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -283,6 +329,7 @@ class MetaBusinessService
     public function getAccountDailyInsights(string $accountId): ServiceReturn
     {
         try {
+            $this->initApi();
             // Các trường cần lấy để lưu vào DB
             $fields = [
                 // 1. Cơ bản
@@ -326,7 +373,7 @@ class MetaBusinessService
 
             return ServiceReturn::success(data: $response);
 
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -341,6 +388,7 @@ class MetaBusinessService
     public function getAccountInsightsByCampaign(string $accountId, string $datePreset, array $fields = []): ServiceReturn
     {
         try {
+            $this->initApi();
             // Nếu không truyền fields, dùng mặc định
             if (empty($fields)) {
                 $fields = [
@@ -369,7 +417,7 @@ class MetaBusinessService
 
             return ServiceReturn::success(data: $response);
 
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -383,6 +431,7 @@ class MetaBusinessService
     {
 
         try {
+            $this->initApi();
             $fields = [
                 'id',
                 'name',
@@ -408,7 +457,7 @@ class MetaBusinessService
                 ]
             )->getContent();
             return ServiceReturn::success(data: $response);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -422,6 +471,7 @@ class MetaBusinessService
     public function getCampaignInsights(string $campaignId, string $datePreset = 'maximum'): ServiceReturn
     {
         try {
+            $this->initApi();
             $fields = [
                 'spend',         // -> Chi tiêu
                 'impressions',   // -> Lượt hiển thị
@@ -447,7 +497,7 @@ class MetaBusinessService
             // API sẽ tự động trả về dữ liệu đã tính toán %
             return ServiceReturn::success(data: $response);
 
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
@@ -471,6 +521,7 @@ class MetaBusinessService
             return ServiceReturn::error(message: __('meta.error.date_preset_invalid'));
         }
         try {
+            $this->initApi();
             $fields = [
                 'spend',         // -> Chi tiêu
                 'impressions',   // -> Lượt hiển thị
@@ -541,7 +592,7 @@ class MetaBusinessService
                 $result[] = $mergedPoint;
             }
             return ServiceReturn::success(data: $result);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }

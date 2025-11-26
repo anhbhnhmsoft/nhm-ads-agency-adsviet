@@ -2,6 +2,8 @@
 
 namespace App\Service;
 
+use App\Core\Cache\CacheKey;
+use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
@@ -55,7 +57,7 @@ class PlatformSettingService
                     'disabled' => $disabled,
                 ];
                 $created = $this->platformSettingRepository->create($payload);
-                
+
                 // Nếu disabled false vô hiệu hóa các config khác cùng platform
                 if (!$disabled) {
                     $affected = $this->platformSettingRepository->deactivateOthersByPlatform($created->platform, (string)$created->id);
@@ -64,9 +66,10 @@ class PlatformSettingService
                         : __('platform_setting.activated');
                     return ServiceReturn::success(message: $message);
                 }
-                return ServiceReturn::success(message: __('platform_setting.created_disabled')); 
+                return ServiceReturn::success(message: __('platform_setting.created_disabled'));
             });
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e) {
             Logging::error(
                 message: 'Lỗi khi tạo cấu hình nền tảng PlatformSettingService@create: ' . $e->getMessage(),
                 exception: $e
@@ -88,6 +91,11 @@ class PlatformSettingService
                 'disabled' => isset($data['disabled']) ? (bool) $data['disabled'] : $setting->disabled,
             ];
             $setting->update($payload);
+            // Xóa cache
+            Caching::clearCache(
+                key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
+                uniqueKey: $setting->platform,
+            );
             return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error(
@@ -117,6 +125,11 @@ class PlatformSettingService
                     $message = __('platform_setting.toggled_activated_with_deactivation');
                 }
             }
+            // Xóa cache
+            Caching::clearCache(
+                key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
+                uniqueKey: $setting->platform,
+            );
             return ServiceReturn::success(message: $message);
         } catch (\Throwable $e) {
             Logging::error(
@@ -138,6 +151,40 @@ class PlatformSettingService
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'Lỗi khi lấy cấu hình nền tảng PlatformSettingService@findByPlatform: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Lấy cấu hình nền tảng đang hoạt động theo platform
+     * @param int $platform
+     * @return ServiceReturn
+     */
+    public function findPlatformActive(int $platform): ServiceReturn
+    {
+        try {
+            $setting = Caching::getCache(
+                key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
+                uniqueKey: $platform,
+            );
+            if (!$setting) {
+                $setting = $this->platformSettingRepository->findActiveByPlatform($platform);
+                if (!$setting) {
+                    return ServiceReturn::error(message: __('common_error.data_not_found'));
+                }
+                Caching::setCache(
+                    key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
+                    value: $setting,
+                    uniqueKey: $platform,
+                    expire: 60 * 24 // cache 1 ngày
+                );
+            }
+            return ServiceReturn::success(data: $setting);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'Lỗi khi lấy cấu hình nền tảng PlatformSettingService@findPlatformActive: ' . $e->getMessage(),
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
