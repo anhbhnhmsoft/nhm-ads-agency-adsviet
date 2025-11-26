@@ -538,14 +538,14 @@ class AuthService
                     'need_register' => true,
                 ]);
             }
-            
+
             if ($user->disabled) {
                 return ServiceReturn::error(message: __('auth.login.validation.user_disabled'));
             }
 
             Auth::guard('web')->login($user, true);
             request()->session()->regenerate();
-            
+
             return ServiceReturn::success(data: [
                 'need_register' => false,
             ]);
@@ -576,7 +576,7 @@ class AuthService
             if (!$userRefer) {
                 return ServiceReturn::error(message: __('common_validation.refer_code.invalid'));
             }
-            
+
             $register = [
                 'name' => $data['name'],
                 'username' => $data['username'],
@@ -616,6 +616,26 @@ class AuthService
             DB::rollBack();
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
+    }
+
+    /**
+     * Kiểm tra quyền truy cập của user
+     * @param array $roles
+     * @return ServiceReturn
+     */
+    public function checkAccess(array $roles): ServiceReturn
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return ServiceReturn::error(message: __('common_error.permission_error'));
+        }
+        if ($user->disabled) {
+            return ServiceReturn::error(message: __('common_error.permission_error'));
+        }
+        if (!in_array($roles, $user->role)) {
+            return ServiceReturn::error(message: __('common_error.permission_error'));
+        }
+        return ServiceReturn::success();
     }
 
     /**

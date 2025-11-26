@@ -25,6 +25,22 @@ class WalletService
     ) {
     }
 
+    public function myWallet(): ServiceReturn
+    {
+        $user = Auth::user();
+        $result = $this->findByUserId($user->id);
+        // Nếu wallet chưa tồn tại, tự động tạo ví mới
+        if (!$result->isSuccess()) {
+            $createResult = $this->createForUser($user->id);
+            if (!$createResult->isSuccess()) {
+                return $createResult;
+            }
+            $wallet = $createResult->getData();
+        } else {
+            $wallet = $result->getData();
+        }
+        return ServiceReturn::success(data: $wallet);
+    }
     public function createForUser(int $userId, ?string $password = null): ServiceReturn
     {
         try {
@@ -129,7 +145,7 @@ class WalletService
         if (!$actor) {
             return ServiceReturn::error(message: __('common_error.permission_denied'));
         }
-        
+
         // Chỉ cho phép user đổi mật khẩu ví của chính mình
         if ((int) $actor->id !== (int) $userId) {
             Logging::web('WalletService@changePassword permission denied', [
@@ -211,7 +227,7 @@ class WalletService
             return ServiceReturn::error(message: __('Số dư không đủ'));
         }
         $wallet->update(['balance' => (float)$wallet->balance - $amount]);
-        
+
         return ServiceReturn::success();
     }
 

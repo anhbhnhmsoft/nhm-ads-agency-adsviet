@@ -21,7 +21,8 @@ class UserWallet extends Model
         'password',
     ];
     protected $casts = [
-        'user_id' => 'integer',
+        'id' => 'string',
+        'user_id' => 'string',
         'balance' => 'decimal:8',
         'status' => 'integer',
     ];

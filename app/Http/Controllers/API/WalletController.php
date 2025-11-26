@@ -15,7 +15,7 @@ use App\Service\NowPaymentsService;
 use App\Service\WalletService;
 use App\Service\WalletTransactionService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use App\Http\Resources\WalletItemResource;
 
 class WalletController extends Controller
 {
@@ -27,15 +27,14 @@ class WalletController extends Controller
     ) {
     }
 
-    public function me(Request $request): JsonResponse
+    public function me(): JsonResponse
     {
-        $user = $request->user();
-        if (!$user) {
-            return RestResponse::error(message: __('common_error.permission_denied'), status: 401);
+        $result = $this->walletService->myWallet();
+        if ($result->isError()){
+            return RestResponse::error(message: $result->getMessage());
         }
-
-        $result = $this->walletService->getWalletForUser((int) $user->id);
-        return $this->handleServiceReturn($result);
+        $data = $result->getData();
+        return RestResponse::success(data: new WalletItemResource($data));
     }
 
     public function changePassword(WalletChangePasswordRequest $request): JsonResponse
@@ -159,7 +158,7 @@ class WalletController extends Controller
     }
 
     public function TopUp(){
-        
+
     }
 
 
