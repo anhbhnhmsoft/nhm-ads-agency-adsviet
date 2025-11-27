@@ -124,7 +124,7 @@ class ServiceController extends Controller
     {
         $platform = Helper::getValidatedPlatform($request->string('platform', 'meta')->toString());
         if ($platform === 'google_ads') {
-//            $result = $this->googleAdsService->getReportData();
+            $result = $this->googleAdsService->getReportData();
         }else{
             $result = $this->metaService->getReportData();
         }
@@ -154,7 +154,7 @@ class ServiceController extends Controller
 
         $platform = Helper::getValidatedPlatform($request->string('platform', 'meta')->toString());
         if ($platform === 'google_ads') {
-//            $result = $this->googleAdsService->getReportInsightData($validate->getData()['date_preset']);
+            $result = $this->googleAdsService->getReportInsights($validate->getData()['date_preset']);
         }else{
             $result = $this->metaService->getReportInsights($validate->getData()['date_preset']);
         }
