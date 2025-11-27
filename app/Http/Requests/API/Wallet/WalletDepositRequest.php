@@ -14,7 +14,7 @@ class WalletDepositRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => ['required', 'numeric', 'gt:0'],
+            'amount' => ['required', 'numeric', 'gte:10'],
             'network' => ['required', 'string', 'in:BEP20,TRC20'],
         ];
     }

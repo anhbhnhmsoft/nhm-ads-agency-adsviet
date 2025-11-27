@@ -1,4 +1,5 @@
 <?php
+
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CommonController;
 use App\Http\Controllers\API\GoogleAdsController;
@@ -37,7 +38,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('service')->group(function () {
         Route::get('service-owner', [ServiceController::class, 'serviceOwner']);
         Route::get('package', [ServiceController::class, 'package']);
-       Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
+        Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
+        Route::get('dashboard', [ServiceController::class, 'dashboard']);
     });
 
     Route::prefix('meta')->group(function () {
@@ -59,10 +61,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('me', [WalletController::class, 'me']);
         Route::get('transactions', [WalletController::class, 'transactions']);
         Route::post('deposit', [WalletController::class, 'deposit']) // API nạp tiền
-            ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
+        ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
+        Route::get('check-deposit', [WalletController::class, 'checkDeposit']);
         Route::post('change-password', [WalletController::class, 'changePassword'])->middleware('throttle:5,1');
         Route::post('withdraw', [WalletController::class, 'withdraw']) // API rút tiền
-            ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
+        ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
     });
 
 });

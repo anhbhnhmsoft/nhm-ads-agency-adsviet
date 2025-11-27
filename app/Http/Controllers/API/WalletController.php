@@ -7,7 +7,6 @@ use App\Core\QueryListDTO;
 use App\Core\RestResponse;
 use App\Http\Requests\API\Wallet\WalletChangePasswordRequest;
 use App\Http\Requests\API\Wallet\WalletDepositRequest;
-use App\Http\Requests\API\Wallet\WalletTransactionsRequest;
 use App\Http\Requests\API\Wallet\WalletWithdrawRequest;
 use App\Http\Resources\WalletTransactionResource;
 use App\Service\ConfigService;
@@ -16,7 +15,7 @@ use App\Service\WalletService;
 use App\Service\WalletTransactionService;
 use Illuminate\Http\JsonResponse;
 use App\Http\Resources\WalletItemResource;
-
+use Illuminate\Http\Request;
 class WalletController extends Controller
 {
     public function __construct(
@@ -53,6 +52,11 @@ class WalletController extends Controller
         return $this->handleServiceReturn($result, __('wallet.flash.wallet_password_changed'));
     }
 
+    /**
+     * API Nạp tiền vào ví
+     * @param WalletDepositRequest $request
+     * @return JsonResponse
+     */
     public function deposit(WalletDepositRequest $request): JsonResponse
     {
         $user = $request->user();
@@ -113,15 +117,38 @@ class WalletController extends Controller
         }
 
         $transaction = $createResult->getData();
-        $transactionArray = $transaction->toArray();
-        $transactionArray['id'] = (string) $transaction->id;
-        $transactionArray['wallet_id'] = (string) $transaction->wallet_id;
 
         return RestResponse::success(
             data: [
-                'transaction' => $transactionArray,
+                'transaction_id' => (string) $transaction->id,
+                'pay_address' => (string)$transaction->pay_address,
+                'expires_at' => $expiresAt->toIso8601String(),
             ],
             message: __('wallet.flash.deposit_created')
+        );
+    }
+
+    /**
+     * API Kiểm tra nạp tiền
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function checkDeposit(Request $request): JsonResponse
+    {
+        $transactionId = $request->get('transaction_id') ?? null;
+        if (empty($transactionId)) {
+            return RestResponse::error(message: __('common_error.wallet_missing_transaction_id'), status: 400);
+        }
+        $result = $this->walletTransactionService->checkDepositStatus($transactionId);
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage(), status: 400);
+        }
+        $isSuccess = $result->getData();
+        return RestResponse::success(
+            data: [
+                'is_success' => $isSuccess,
+            ],
+            message: __('wallet.flash.deposit_checked')
         );
     }
 
@@ -157,11 +184,6 @@ class WalletController extends Controller
         );
     }
 
-    public function TopUp(){
-
-    }
-
-
     private function handleServiceReturn($serviceReturn, ?string $successMessage = null): JsonResponse
     {
         if (!$serviceReturn->isSuccess()) {
@@ -174,38 +196,16 @@ class WalletController extends Controller
         );
     }
 
-    public function transactions(WalletTransactionsRequest $request): JsonResponse
+    public function transactions(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if (!$user) {
-            return RestResponse::error(message: __('common_error.permission_denied'), status: 401);
-        }
-
-        $data = $request->validated();
-        $targetUserId = isset($data['user_id']) ? (int) $data['user_id'] : (int) $user->id;
-
-        if ($targetUserId !== (int) $user->id && !$this->walletService->canViewWallet($user, $targetUserId)) {
-            return RestResponse::error(message: __('common_error.permission_denied'), status: 403);
-        }
-
-        $queryListDTO = new QueryListDTO(
-            perPage: $data['per_page'] ?? 20,
-            page: $data['page'] ?? 1,
-            filter: [
-                'id' => $data['id'] ?? null,
-                'type' => $data['type'] ?? null,
-                'status' => $data['status'] ?? null,
-                'network' => $data['network'] ?? null,
-            ],
-            sortBy: 'created_at',
-            sortDirection: 'desc',
-        );
-
-        $result = $this->walletService->getTransactionsForUser($targetUserId, $queryListDTO);
-        if ($result->isError()) {
-            return RestResponse::error(message: $result->getMessage(), status: 400);
-        }
-
+        $params = $this->extractQueryPagination($request);
+        $result = $this->walletService->getTransactionsForUser(new QueryListDTO(
+            perPage: $params->get('per_page'),
+            page: $params->get('page'),
+            filter: $params->get('filter'),
+            sortBy: $params->get('sort_by'),
+            sortDirection: $params->get('direction'),
+        ));
         return RestResponse::success(
             data: WalletTransactionResource::collection($result->getData())->response()->getData()
         );

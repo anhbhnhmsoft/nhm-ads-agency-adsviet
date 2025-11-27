@@ -14,6 +14,7 @@ class WalletItemResource extends JsonResource
             'user_id' => $this->user_id,
             'balance' => $this->balance,
             'status' => $this->status,
+            'has_password' => $this->has_password,
         ];
     }
 }

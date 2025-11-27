@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Core\BaseRepository;
 use App\Models\UserWalletTransaction;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserWalletTransactionRepository extends BaseRepository
 {
@@ -48,6 +49,39 @@ class UserWalletTransactionRepository extends BaseRepository
             $query->where('network', $filters['network']);
         }
 
+        return $query;
+    }
+
+    public function queryFilter(Builder $query,array $filters = []): Builder
+    {
+        if (!empty($filters['id'])) {
+            $query->where('id', $filters['id']);
+        }
+        if (!empty($filters['wallet_id'])) {
+            $query->where('wallet_id', $filters['wallet_id']);
+        }
+        if (!empty($filters['type'])) {
+            $query->where('type', (int) $filters['type']);
+        }
+        if (!empty($filters['status'])) {
+            $query->where('status', (int) $filters['status']);
+        }
+        if (!empty($filters['network'])) {
+            $query->where('network', $filters['network']);
+        }
+
+        return $query;
+    }
+
+    public function sortQuery(Builder $query, string $column, string $direction = 'desc'): Builder
+    {
+        if (!in_array($direction, ['asc', 'desc'])) {
+            $direction = 'desc';
+        }
+        if (empty($column)) {
+            $column = 'created_at';
+        }
+        $query->orderBy($column, $direction);
         return $query;
     }
 }
