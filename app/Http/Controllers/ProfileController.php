@@ -8,9 +8,11 @@ use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Core\Logging;
 use App\Http\Requests\Profile\ChangePasswordRequest;
+use App\Http\Requests\Profile\ConnectTelegramRequest;
 use App\Http\Requests\Profile\ProfileUpdateRequest;
 use App\Http\Requests\Profile\VerifyEmailOtpRequest;
 use App\Models\User;
+use App\Service\AuthService;
 use App\Service\MailService;
 use App\Service\OtpService;
 use App\Service\UserService;
@@ -21,6 +23,7 @@ class ProfileController extends Controller
 {
     public function __construct(
         protected UserService $userService,
+        protected AuthService $authService,
         protected MailService $mailService,
         protected OtpService $otpService,
     ) {
@@ -43,8 +46,29 @@ class ProfileController extends Controller
                     'whatsapp_id' => $user->whatsapp_id,
                     'email_verified_at' => $user->email_verified_at,
                 ],
+                    'telegram' => [
+                        'bot_id' => config('services.telegram.bot_id'),
+                        'callback_url' => route('profile', absolute: true),
+                    ],
             ],
         );
+    }
+
+    public function connectTelegram(ConnectTelegramRequest $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $result = $this->authService->verifyHashTelegram($request->validated());
+        if ($result->isError()) {
+            FlashMessage::error($result->getMessage());
+            return back()->withInput();
+        }
+
+        $user->telegram_id = (string) $request->validated('id');
+        $user->save();
+
+        FlashMessage::success(__('profile.telegram_connect_success'));
+        return redirect()->route('profile');
     }
 
     public function update(ProfileUpdateRequest $request): RedirectResponse
