@@ -130,6 +130,9 @@
         "telegram_connection": "Telegram",
         "telegram_not_connected": "Kết nối Telegram để nhận cảnh báo và sử dụng đăng nhập nhanh.",
         "telegram_connected": "Đã kết nối với Telegram ID {{id}}.",
+        "telegram_connect_button": "Kết nối Telegram",
+        "telegram_connecting": "Đang kết nối...",
+        "telegram_connect_unavailable": "Chưa cấu hình Telegram OAuth.",
         "whatsapp_connection": "WhatsApp",
         "whatsapp_not_connected": "Chưa liên kết WhatsApp.",
         "whatsapp_connected": "Đang sử dụng WhatsApp ID {{id}}."

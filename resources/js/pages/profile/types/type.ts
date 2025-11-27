@@ -9,6 +9,20 @@ export type ProfileUser = Pick<
 
 export type ProfilePageProps = {
     user: ProfileUser;
+    telegram: {
+        bot_id?: string | null;
+        callback_url: string;
+    };
+};
+
+export type TelegramAuthData = {
+    id: string;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    photo_url?: string;
+    auth_date: number;
+    hash: string;
 };
 
 export type EmailStatus = {

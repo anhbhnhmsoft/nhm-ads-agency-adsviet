@@ -19,5 +19,7 @@ return [
     'current_password_incorrect' => 'Mật khẩu hiện tại không đúng.',
     'new_password_same_as_current' => 'Mật khẩu mới không được trùng với mật khẩu hiện tại.',
     'password_changed_success' => 'Đổi mật khẩu thành công.',
+    'telegram_connect_success' => 'Kết nối Telegram thành công.',
+    'telegram_connect_failed' => 'Không thể kết nối Telegram. Vui lòng thử lại.',
 ];
 
