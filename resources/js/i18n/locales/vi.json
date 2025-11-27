@@ -495,7 +495,7 @@
         "today_spend": "Chi tiêu hôm nay",
         "today_spend_label": "Chỉ tiêu Hôm nay",
         "services": "Dịch vụ",
-        "available_services": "Dịch vụ có sẵn",
+        "available_services": "CPM trung bình",
         "critical_alerts": "Cảnh báo nghiêm trọng",
         "total_errors": "tổng lỗi",
         "real_time_metrics": "Metrics thời gian thực",
