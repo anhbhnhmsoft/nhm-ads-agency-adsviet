@@ -17,15 +17,12 @@ export type TelegramUser = {
     hash: string;
 }
 
-export type WhatsAppUser = object; // TODO: Define WhatsAppUser type
-
-
 export type RegisterNewUserRequest = {
     role: _UserRole.CUSTOMER | _UserRole.AGENCY;
     name: string;
     username: string;
     password: string;
     refer_code:string;
-    type: 'telegram' | 'whatsapp';
-    phone?: string;
+    type: 'telegram' | 'gmail';
+    email?: string;
 }

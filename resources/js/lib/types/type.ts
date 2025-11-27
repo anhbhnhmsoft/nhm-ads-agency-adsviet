@@ -10,7 +10,11 @@ export interface IUser {
     id: number;
     name: string;
     username: string;
+    email?: string | null;
+    email_verified_at?: string | null;
     phone: string | null;
+    telegram_id?: string | null;
+    whatsapp_id?: string | null;
     disabled: boolean;
     referral_code: string;
     role: _UserRole;

@@ -19,9 +19,20 @@ return [
         'string' => 'Mật khẩu không hợp lệ.',
         'min' => 'Mật khẩu phải có ít nhất :min ký tự.',
     ],
+    'current_password' => [
+        'required' => 'Mật khẩu hiện tại là bắt buộc.',
+        'string' => 'Mật khẩu hiện tại không hợp lệ.',
+    ],
+    'new_password' => [
+        'required' => 'Mật khẩu mới là bắt buộc.',
+        'string' => 'Mật khẩu mới không hợp lệ.',
+        'min' => 'Mật khẩu mới phải có ít nhất :min ký tự.',
+        'confirmed' => 'Xác nhận mật khẩu mới không khớp.',
+    ],
     'phone' => [
         'string' => 'Số điện thoại không hợp lệ.',
         'max' => 'Số điện thoại không được vượt quá :max ký tự.',
+        'unique' => 'Số điện thoại đã tồn tại, vui lòng chọn số khác.',
     ],
     'email' => [
         'required' => 'Email là bắt buộc.',

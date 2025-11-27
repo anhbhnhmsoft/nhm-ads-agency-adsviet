@@ -5,14 +5,14 @@ import { useState, ReactNode } from 'react';
 import TelegramButton from './components/TelegramButton';
 import AuthLayout from '@/layouts/auth-layout';
 import { useTranslation } from 'react-i18next';
-import WhatsAppRegisterContainer from './components/WhatsAppRegisterContainer/WhatsAppRegisterContainer';
+import GmailRegisterContainer from './components/GmailRegisterContainer/GmailRegisterContainer';
 
 interface RegisterProps {
   bot_username: string;
 }
 
 const RegisterScreen = ({ bot_username }: RegisterProps) => {
-  const [method, setMethod] = useState<'telegram' | 'whatsapp' | null>(null);
+  const [method, setMethod] = useState<'telegram' | 'gmail' | null>(null);
   const { t } = useTranslation();
 
   return (
@@ -34,11 +34,11 @@ const RegisterScreen = ({ bot_username }: RegisterProps) => {
                 </Button>
                 <Button
                   type="button"
-                  variant={method === 'whatsapp' ? 'default' : 'outline'}
-                  onClick={() => setMethod('whatsapp')}
+                  variant={method === 'gmail' ? 'default' : 'outline'}
+                  onClick={() => setMethod('gmail')}
                   className="flex-1 text-lg py-6"
                 >
-                  {t('common.whatsapp')}
+                  {t('common.gmail')}
                 </Button>
               </div>
 
@@ -48,9 +48,9 @@ const RegisterScreen = ({ bot_username }: RegisterProps) => {
                   <p className="text-xs text-gray-500 mt-2">{t('auth.register.telegram_help')}</p>
                 </div>
               )}
-              {method === 'whatsapp' && (
+              {method === 'gmail' && (
                 <div className="mt-4">
-                  <WhatsAppRegisterContainer />
+                  <GmailRegisterContainer />
                 </div>
               )}
             </CardContent>

@@ -16,7 +16,6 @@ use App\Repositories\ServicePackageRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\UserDeviceRepository;
 use App\Repositories\PlatformSettingRepository;
-use App\Repositories\UserOtpRepository;
 use App\Repositories\UserReferralRepository;
 use App\Repositories\WalletRepository;
 use App\Repositories\UserWalletTransactionRepository;
@@ -27,6 +26,7 @@ use App\Service\GoogleAdsService;
 use App\Service\MailService;
 use App\Service\MetaBusinessService;
 use App\Service\MetaService;
+use App\Service\OtpService;
 use App\Service\ServicePackageService;
 use App\Service\ServicePurchaseService;
 use App\Service\ServiceUserService;
@@ -74,7 +74,6 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(ConfigRepository::class);
         $this->app->bind(UserRepository::class);
-        $this->app->bind(UserOtpRepository::class);
         $this->app->bind(UserDeviceRepository::class);
         $this->app->bind(UserReferralRepository::class);
         $this->app->bind(PlatformSettingRepository::class);
@@ -108,6 +107,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(WalletTransactionService::class);
         $this->app->bind(NotificationService::class);
         $this->app->bind(MailService::class);
+        $this->app->bind(OtpService::class);
         $this->app->bind(ServicePackageService::class);
         $this->app->bind(ServicePurchaseService::class);
         $this->app->bind(ServiceUserService::class);

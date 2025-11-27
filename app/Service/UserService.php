@@ -376,4 +376,63 @@ class UserService
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
+
+    public function updateProfile(User $user, array $data): ServiceReturn
+    {
+        try {
+            $payload = [
+                'name' => $data['name'],
+                'username' => $data['username'],
+                'phone' => $data['phone'] ?? null,
+                'email' => $data['email'] ?? null,
+            ];
+
+            $emailChanged = false;
+            if (array_key_exists('email', $payload) && $payload['email'] !== $user->email) {
+                $emailChanged = !empty($payload['email']);
+                $payload['email_verified_at'] = null;
+            }
+
+            $user->update($payload);
+            $user->refresh();
+
+            return ServiceReturn::success(data: [
+                'user' => $user,
+                'email_changed' => $emailChanged,
+            ]);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'Lỗi khi cập nhật thông tin cá nhân UserService@updateProfile: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Đổi mật khẩu
+    public function changePassword(User $user, string $currentPassword, string $newPassword): ServiceReturn
+    {
+        try {
+            // Kiểm tra mật khẩu hiện tại
+            if (!Hash::check($currentPassword, $user->password)) {
+                return ServiceReturn::error(message: __('profile.current_password_incorrect'));
+            }
+
+            // Kiểm tra mật khẩu mới không được trùng mật khẩu cũ
+            if (Hash::check($newPassword, $user->password)) {
+                return ServiceReturn::error(message: __('profile.new_password_same_as_current'));
+            }
+
+            $user->password = Hash::make($newPassword);
+            $user->save();
+
+            return ServiceReturn::success(data: $user->refresh());
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'Lỗi khi đổi mật khẩu UserService@changePassword: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
 }

@@ -2,55 +2,94 @@
 
 namespace App\Service;
 
-use App\Core\ServiceReturn;
-use App\Repositories\UserOtpRepository;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use App\Common\Constants\Otp\Otp;
+use App\Core\Cache\CacheKey;
+use App\Core\Cache\Caching;
+use App\Core\ServiceReturn;
+use Carbon\Carbon;
 
 class OtpService
 {
-    public function __construct(
-        protected UserOtpRepository $userOtpRepository,
-    ) {
-    }
-
-    //Hàm tạo mã OTP gầm 6 số
-    public function generateOtp(Otp $type = Otp::VERIFY): ServiceReturn
+    public function generateOtp(string $userId, Otp $type, int $expireMinutes = 5): ServiceReturn
     {
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = Carbon::now()->addMinutes(5);
-
         try {
-            $this->userOtpRepository->create([
-                'user_id' => null,
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $expiresAt = Carbon::now()->addMinutes($expireMinutes);
+
+            // Xác định cache key dựa trên type
+            $cacheKeyEnum = $this->getCacheKeyEnum($type);
+
+            // Xóa OTP cũ nếu có
+            Caching::clearCache($cacheKeyEnum, $userId);
+
+            // Lưu OTP vào cache
+            Caching::setCache(
+                key: $cacheKeyEnum,
+                value: [
+                    'code' => $code,
+                    'user_id' => $userId,
+                    'type' => $type->value,
+                    'expires_at' => $expiresAt->toDateTimeString(),
+                ],
+                uniqueKey: $userId,
+                expire: $expireMinutes
+            );
+
+            return ServiceReturn::success(data: [
                 'code' => $code,
-                'type' => $type->value,
-                'expires_at' => $expiresAt,
+                'expires_at' => $expiresAt->toDateTimeString(),
+                'expire_minutes' => $expireMinutes,
             ]);
-            return ServiceReturn::success(data: ['code' => $code, 'expires_at' => $expiresAt->toDateTimeString()]);
         } catch (\Throwable $e) {
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 
-    //Kiểm tra mã OTP
-    public function verifyOtp(string $code, Otp $type = Otp::VERIFY): ServiceReturn
+    /**
+     * Xác minh mã OTP từ cache
+     * @param string $userId
+     * @param string $code
+     * @param Otp $type
+     * @return ServiceReturn
+     */
+    public function verifyOtp(string $userId, string $code, Otp $type): ServiceReturn
     {
-        $now = Carbon::now();
-        $otp = DB::table('user_otp')
-            ->where('code', $code)
-            ->where('type', $type->value)
-            ->where('expires_at', '>=', $now)
-            ->orderByDesc('id')
-            ->first();
+        try {
+            $cacheKeyEnum = $this->getCacheKeyEnum($type);
+            $otpData = Caching::getCache($cacheKeyEnum, $userId);
 
-        if (!$otp) {
-            return ServiceReturn::error(message: __('auth.register.validation.otp_invalid'));
+            if (!$otpData) {
+                return ServiceReturn::error(message: __('auth.register.validation.otp_invalid'));
+            }
+
+            // Kiểm tra mã OTP có đúng không
+            if ($otpData['code'] !== $code) {
+                return ServiceReturn::error(message: __('auth.register.validation.otp_invalid'));
+            }
+
+            // Kiểm tra OTP đã hết hạn chưa
+            $expiresAt = Carbon::parse($otpData['expires_at']);
+            if (Carbon::now()->gt($expiresAt)) {
+                Caching::clearCache($cacheKeyEnum, $userId);
+                return ServiceReturn::error(message: __('auth.register.validation.otp_invalid'));
+            }
+
+            // Xóa OTP sau khi verify thành công
+            Caching::clearCache($cacheKeyEnum, $userId);
+
+            return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            return ServiceReturn::error(message: __('common_error.server_error'));
         }
+    }
 
-        DB::table('user_otp')->where('id', $otp->id)->delete();
-
-        return ServiceReturn::success();
+    // Lấy CacheKey enum dựa trên Otp type
+    private function getCacheKeyEnum(Otp $type): CacheKey
+    {
+        return match ($type) {
+            Otp::EMAIL_VERIFICATION => CacheKey::CACHE_OTP_EMAIL_VERIFICATION,
+            Otp::FORGOT_PASSWORD => CacheKey::CACHE_FORGOT_PASSWORD,
+            default => CacheKey::CACHE_EMAIL_REGISTER, // Fallback
+        };
     }
 }

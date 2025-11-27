@@ -10,24 +10,21 @@ use App\Core\Cache\CacheKey;
 use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
-use App\Mail\VerifyEmailRegister;
 use App\Models\User;
 use App\Repositories\UserDeviceRepository;
-use App\Repositories\UserOtpRepository;
 use App\Repositories\UserReferralRepository;
 use App\Repositories\UserRepository;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthService
 {
     public function __construct(
         protected UserRepository         $userRepository,
-        protected UserOtpRepository      $userOtpRepository,
         protected UserDeviceRepository   $userDeviceRepository,
         protected UserReferralRepository $userReferralRepository,
     )
@@ -316,7 +313,7 @@ class AuthService
             if (isset($user)) {
                 if ($forApi) {
                     $user->currentAccessToken()?->delete();
-                }
+                    }
                 else {
                     Auth::guard('web')->logout();
                 }
@@ -363,6 +360,10 @@ class AuthService
                 'telegram_id' => $telegramData['id'],
             ];
             $user = $this->userRepository->create($register);
+            if (!$user instanceof User) {
+                DB::rollBack();
+                return ServiceReturn::error(message: __('common_error.server_error'));
+            }
 
             // Tạo mới user referral
             $this->userReferralRepository->create([
@@ -586,12 +587,23 @@ class AuthService
                 'referral_code' => Helper::generateReferCodeUser(UserRole::from($data['role'])),
             ];
 
+            if (!empty($data['email'])) {
+                $register['email'] = $data['email'];
+                if (($data['type'] ?? null) === 'gmail') {
+                    $register['email_verified_at'] = now();
+                }
+            }
+
             // Thêm telegram_id nếu có
             if (isset($data['telegram_id'])) {
                 $register['telegram_id'] = $data['telegram_id'];
             }
 
             $user = $this->userRepository->create($register);
+            if (!$user instanceof User || !$user instanceof AuthenticatableContract) {
+                DB::rollBack();
+                return ServiceReturn::error(message: __('common_error.server_error'));
+            }
 
             // Tạo mới user referral
             $this->userReferralRepository->create([

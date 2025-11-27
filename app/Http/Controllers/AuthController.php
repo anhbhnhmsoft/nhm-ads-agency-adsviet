@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Common\Constants\Otp\Otp;
+use App\Common\Constants\CommonConstant;
 use App\Core\Controller;
 use App\Core\FlashMessage;
+use App\Http\Requests\Auth\RegisterEmailOtpRequest;
+use App\Http\Requests\Auth\VerifyRegisterEmailOtpRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterUserRequest;
-use App\Http\Requests\SendWhatsappOtpRequest;
-use App\Http\Requests\VerifyWhatsappOtpRequest;
-use App\Core\Logging;
 use App\Service\AuthService;
+use App\Service\MailService;
 use App\Service\OtpService;
 use App\Service\WalletService;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +27,7 @@ class AuthController extends Controller
         protected AuthService $authService,
         protected OtpService $otpService,
         protected WalletService $walletService,
+        protected MailService $mailService,
     )
     {
     }
@@ -103,6 +104,67 @@ class AuthController extends Controller
         }
     }
 
+    public function sendRegisterEmailOtp(RegisterEmailOtpRequest $request): RedirectResponse
+    {
+        $email = $request->validated('email');
+        $otp = (string) rand(100000, 999999);
+        $expireMin = CommonConstant::OTP_EXPIRE_MIN;
+
+        session()->put('register_email_otp', [
+            'email' => $email,
+            'otp' => $otp,
+            'expired_at' => now()->addMinutes($expireMin),
+        ]);
+
+        $mailResult = $this->mailService->sendVerifyRegister(
+            email: $email,
+            username: $email,
+            otp: $otp,
+            expireMin: $expireMin,
+        );
+
+        if ($mailResult->isError()) {
+            FlashMessage::error(__('auth.register.email_otp_failed'));
+            return back()->withInput();
+        }
+
+        FlashMessage::success(__('auth.register.email_otp_sent', ['email' => $email]));
+        return back()->withInput();
+    }
+
+    public function verifyRegisterEmailOtp(VerifyRegisterEmailOtpRequest $request): RedirectResponse
+    {
+        $payload = session()->get('register_email_otp');
+        $email = $request->validated('email');
+        $otp = $request->validated('otp');
+
+        if (!$payload || ($payload['email'] ?? null) !== $email) {
+            FlashMessage::error(__('auth.register.email_otp_mismatch'));
+            return back()->withInput();
+        }
+
+        if (!isset($payload['expired_at']) || now()->greaterThan($payload['expired_at'])) {
+            FlashMessage::error(__('auth.register.email_otp_expired'));
+            return back()->withInput();
+        }
+
+        if (($payload['otp'] ?? null) !== $otp) {
+            FlashMessage::error(__('auth.register.email_otp_invalid'));
+            return back()->withInput();
+        }
+
+        Session::put('register_social', [
+            'type' => 'gmail',
+            'data' => [
+                'email' => $email,
+            ],
+        ]);
+
+        session()->forget('register_email_otp');
+
+        return redirect()->route('auth_register_new_user_screen');
+    }
+
     /**
      * Handle register new user screen
      * @return \Inertia\Response|RedirectResponse
@@ -147,10 +209,14 @@ class AuthController extends Controller
             // merger telegram data with register data
             $form['type'] = 'telegram';
             $form['telegram_id'] = $registerSocialData['id'];
+        } elseif ($registerSocial['type'] === 'gmail') {
+            $form['type'] = 'gmail';
+            $form['email'] = $registerSocialData['email'] ?? null;
         }
 
         $result = $this->authService->handleRegisterNewUser($form);
         if ($result->isSuccess()) {
+            Session::forget('register_social');
             $userId = Auth::id();
             if ($userId) {
                 $walletResult = $this->walletService->createForUser($userId);

@@ -1,7 +1,7 @@
 import AuthLayout from '@/layouts/auth-layout';
 import CustomerRoleCard from '@/pages/auth/components/CustomerRoleCard';
 import { useFormRegister } from '@/pages/auth/hooks/use-form';
-import { TelegramUser, WhatsAppUser } from '@/pages/auth/types/types';
+import { TelegramUser } from '@/pages/auth/types/types';
 import { Head } from '@inertiajs/react';
 import { ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,8 +13,8 @@ import { Button } from '@/components/ui/button';
 
 type Props = {
     social_data: {
-        type: 'telegram' | 'whatsapp';
-        data: TelegramUser | WhatsAppUser;
+        type: 'telegram' | 'gmail';
+        data: TelegramUser | { email?: string };
     };
 };
 
@@ -26,13 +26,17 @@ const RegisterNewUser = ({ social_data }: Props) => {
     const { data, setData, processing, errors } = form;
 
     useEffect(() => {
-        // telegram
         if (social_data.type === 'telegram') {
             const user = social_data.data as TelegramUser;
             setData('type', 'telegram');
-            setData('name', user.first_name + ' ' + user.last_name);
+            setData('name', `${user.first_name} ${user.last_name ?? ''}`.trim());
         }
-    }, [social_data]);
+        if (social_data.type === 'gmail') {
+            const gmailData = social_data.data as { email?: string };
+            setData('type', 'gmail');
+            setData('email', gmailData.email ?? '');
+        }
+    }, [social_data, setData]);
 
     return (
         <div>
@@ -83,6 +87,21 @@ const RegisterNewUser = ({ social_data }: Props) => {
                         />
                         <InputError message={errors.username} />
                     </div>
+
+                    {data.type === 'gmail' && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="email">
+                                {t('common.email')}
+                            </Label>
+                            <Input
+                                id="email"
+                                value={data.email}
+                                readOnly
+                                disabled
+                                type="email"
+                            />
+                        </div>
+                    )}
 
                     <div className="grid gap-2">
                         <div className="flex items-center">
