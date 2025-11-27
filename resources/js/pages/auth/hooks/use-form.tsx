@@ -30,43 +30,16 @@ export const useFormRegister = () => {
         username: '',
         password: '',
         type: 'telegram',
-        refer_code: ''
-    });
-
-    const handleSubmit = (e: MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault();
-        form.post(auth_register_new_user().url);
-    };
-    return {
-        form,
-        handleSubmit,
-    };
-};
-
-export const useFormRegisterWhatsapp = (phone: string) => {
-    const form = useForm<RegisterNewUserRequest>({
-        role: _UserRole.CUSTOMER,
-        name: '',
-        username: '',
-        password: '',
-        type: 'whatsapp',
         refer_code: '',
-        phone: '',
+        email: '',
     });
 
     const handleSubmit = (e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         form.post(auth_register_new_user().url);
     };
-
-    const handleSubmitForm = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        form.post(auth_register_new_user().url);
-    };
-
     return {
         form,
         handleSubmit,
-        handleSubmitForm,
     };
 };

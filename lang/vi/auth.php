@@ -23,6 +23,11 @@ return [
     ],
     'register' => [
         'success' => 'Đăng ký thành công. Vui lòng kiểm tra email để xác thực mã OTP.',
+        'email_otp_sent' => 'Đã gửi mã xác minh tới :email.',
+        'email_otp_failed' => 'Không thể gửi mã xác minh. Vui lòng thử lại sau.',
+        'email_otp_invalid' => 'Mã xác minh không hợp lệ.',
+        'email_otp_expired' => 'Mã xác minh đã hết hạn.',
+        'email_otp_mismatch' => 'Email không khớp với yêu cầu xác minh.',
         'validation' => [
             'role_required' => 'Vui lòng chọn vai trò.',
             'role_in' => 'Vai trò không hợp lệ.',

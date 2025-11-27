@@ -3,6 +3,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CommonController;
 use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
+use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\ServiceController;
 use App\Http\Controllers\API\WalletController;
 use App\Http\Middleware\VerifyTelegramIp;
@@ -33,7 +34,11 @@ Route::prefix('auth')->middleware('throttle:5,1')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('profile', [AuthController::class, 'getProfile']);
+        // API change password
+        Route::put('/change-password', [ProfileController::class, 'changePassword'])
+            ->middleware('throttle:5,1');
     });
+
     Route::prefix('service')->group(function () {
         Route::get('service-owner', [ServiceController::class, 'serviceOwner']);
         Route::get('package', [ServiceController::class, 'package']);

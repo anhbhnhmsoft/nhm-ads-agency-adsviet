@@ -249,6 +249,73 @@
     - softDeletes
     - timestamps
 
+# bảng google_accounts
+    # note
+    - lưu trữ thông tin tài khoản Google Ads cho từng service user (nền tảng Google)
+    # quan hệ
+    - n-1 với bảng service_users qua service_user_id
+    - 1-n với bảng google_ads_account_insights và google_ads_campaigns qua google_account_id
+    # cấu trúc
+    - id (int, primary key, auto-increment)
+    - service_user_id (int, foreign key to service_users.id, onDelete cascade, not null)
+    - account_id (varchar, index, not null) -- ID tài khoản Google Ads
+    - account_name (varchar, not null) -- tên tài khoản
+    - account_status (smallint, not null, default 0) -- trạng thái tài khoản
+    - currency (varchar, nullable) -- loại tiền tệ
+    - customer_manager_id (varchar, nullable) -- ID MCC quản lý
+    - time_zone (varchar, nullable) -- múi giờ
+    - primary_email (varchar, nullable) -- email chính
+    - last_synced_at (timestamp, nullable) -- thời gian đồng bộ cuối
+    - softDeletes
+    - timestamps
+
+# bảng google_ads_account_insights
+    # note
+    - lưu trữ dữ liệu insight hằng ngày của từng tài khoản Google Ads
+    # quan hệ
+    - n-1 với bảng service_users qua service_user_id
+    - n-1 với bảng google_accounts qua google_account_id
+    # cấu trúc
+    - id (int, primary key, auto-increment)
+    - service_user_id (int, foreign key to service_users.id, onDelete cascade, not null)
+    - google_account_id (int, foreign key to google_accounts.id, onDelete cascade, not null)
+    - date (date, index, not null) -- ngày thống kê
+    - spend (varchar, nullable) -- chi tiêu
+    - impressions (varchar, nullable) -- lượt hiển thị
+    - clicks (varchar, nullable) -- lượt click
+    - conversions (varchar, nullable) -- số chuyển đổi
+    - ctr (varchar, nullable) -- tỷ lệ click
+    - cpc (varchar, nullable) -- chi phí mỗi click
+    - cpm (varchar, nullable) -- chi phí mỗi 1000 hiển thị
+    - conversion_actions (json, nullable) -- chi tiết hành động chuyển đổi
+    - roas (varchar, nullable) -- ROAS
+    - last_synced_at (timestamp, nullable) -- thời gian đồng bộ cuối
+    - softDeletes
+    - timestamps
+
+# bảng google_ads_campaigns
+    # note
+    - lưu trữ chiến dịch Google Ads đồng bộ từ các tài khoản con
+    # quan hệ
+    - n-1 với bảng service_users qua service_user_id
+    - n-1 với bảng google_accounts qua google_account_id
+    # cấu trúc
+    - id (int, primary key, auto-increment)
+    - service_user_id (int, foreign key to service_users.id, onDelete cascade, not null)
+    - google_account_id (int, foreign key to google_accounts.id, onDelete cascade, not null)
+    - campaign_id (varchar, index, not null) -- ID chiến dịch Google Ads
+    - name (varchar, not null) -- tên chiến dịch
+    - status (varchar, nullable) -- trạng thái cấu hình
+    - effective_status (varchar, nullable) -- trạng thái thực tế
+    - objective (varchar, nullable) -- mục tiêu chiến dịch
+    - daily_budget (varchar, nullable) -- ngân sách/ngày
+    - budget_remaining (varchar, nullable) -- ngân sách còn lại
+    - start_time (timestamp, nullable) -- thời gian bắt đầu
+    - stop_time (timestamp, nullable) -- thời gian kết thúc
+    - last_synced_at (timestamp, nullable) -- thời gian đồng bộ cuối
+    - softDeletes
+    - timestamps
+
 
 # bảng service_user_transaction_logs
     # note

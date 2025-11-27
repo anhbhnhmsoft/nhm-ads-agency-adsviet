@@ -39,6 +39,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
     const { t } = useTranslation();
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
     const [topUpAmount, setTopUpAmount] = useState<string>('');
+    const [budget, setBudget] = useState<string>('');
     const [showCalculator, setShowCalculator] = useState(false);
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [metaEmail, setMetaEmail] = useState<string>('');
@@ -122,6 +123,19 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
         return null;
     };
 
+    // Validate budget
+    const validateBudget = (amount: string) => {
+        if (!amount) return null;
+        const numAmount = parseCurrencyInput(amount);
+        if (numAmount <= 0) {
+            return t('service_purchase.budget_invalid');
+        }
+        if (numAmount > 50) {
+            return t('service_purchase.budget_max_exceeded', { max: 50 });
+        }
+        return null;
+    };
+
     // Calculate total cost: open fee + top-up + service fee
     const calculateTotalCost = (pkg: ServicePackage, topUpAmountStr: string) => {
         const topUpNum = parseCurrencyInput(topUpAmountStr);
@@ -150,9 +164,18 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
             return;
         }
 
-        submitPurchase(selectedPackage.id, payloadTopUp, metaEmail, displayName, () => {
+        if (budget && validateBudget(budget)) {
+            alert(validateBudget(budget));
+            return;
+        }
+
+        const sanitizedBudget = normalizeCurrencyInput(budget);
+        const payloadBudget = sanitizedBudget ? sanitizedBudget : '0';
+
+        submitPurchase(selectedPackage.id, payloadTopUp, metaEmail, displayName, payloadBudget, () => {
             setSelectedPackage(null);
             setTopUpAmount('');
+            setBudget('');
             setShowCalculator(false);
             setMetaEmail('');
             setDisplayName('');
@@ -366,6 +389,33 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                         </div>
                     )}
 
+                    {/* Budget */}
+                    <div className="space-y-2">
+                        <Label htmlFor="budget">
+                            {t('service_purchase.budget')} ({t('service_purchase.required')})
+                        </Label>
+                        <Input
+                            id="budget"
+                            type="number"
+                            placeholder="0.00"
+                            value={budget}
+                            onChange={(e) => setBudget(e.target.value)}
+                            step="0.01"
+                            min="0"
+                            max="50"
+                            required
+                        />
+                        {budget && validateBudget(budget) && (
+                            <div className="flex items-center gap-2 text-red-600 text-sm">
+                                <AlertTriangle className="h-4 w-4" />
+                                {validateBudget(budget)}
+                            </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                            {t('service_purchase.budget_hint', { max: 50 })}
+                        </p>
+                    </div>
+
                     {/* Top-up Amount */}
                     <div className="space-y-2">
                         <Label htmlFor="topUpAmount">
@@ -452,7 +502,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                         className="w-full mb-3"
                         size="lg"
                         onClick={handlePurchase}
-                        disabled={hasInsufficientBalance || !!topUpError || purchaseForm.processing}
+                        disabled={hasInsufficientBalance || !!topUpError || !!validateBudget(budget) || !budget || purchaseForm.processing}
                     >
                         <ShoppingCart className="h-4 w-4 mr-2" />
                         {purchaseForm.processing

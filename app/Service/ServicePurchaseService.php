@@ -33,10 +33,11 @@ class ServicePurchaseService
         int $userId,
         string $packageId,
         float $topUpAmount = 0,
+        float $budget = 0,
         array $configAccount = []
     ): ServiceReturn {
         try {
-            return DB::transaction(function () use ($userId, $packageId, $topUpAmount, $configAccount) {
+            return DB::transaction(function () use ($userId, $packageId, $topUpAmount, $budget, $configAccount) {
                 $package = $this->servicePackageRepository->find($packageId);
                 if (!$package) {
                     return ServiceReturn::error(message: __('Gói dịch vụ không tồn tại'));
@@ -77,7 +78,7 @@ class ServicePurchaseService
                     'user_id' => $userId,
                     'config_account' => $defaultConfig,
                     'status' => ServiceUserStatus::PENDING->value,
-                    'budget' => $topUpAmount,
+                    'budget' => max(0, $budget), //tránh âm
                     'description' => "Mua gói dịch vụ: {$package->name}",
                 ]);
 

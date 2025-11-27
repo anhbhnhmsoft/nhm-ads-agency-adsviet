@@ -5,6 +5,7 @@ import { service_purchase_purchase } from '@/routes';
 type ServicePurchaseFormData = {
     package_id: string;
     top_up_amount: string;
+    budget: string;
     meta_email?: string;
     display_name?: string;
 };
@@ -13,12 +14,14 @@ export const useServicePurchaseForm = () => {
     const form = useForm<ServicePurchaseFormData>({
         package_id: '',
         top_up_amount: '',
+        budget: '0',
     });
 
-    const submit = (packageId: string, topUpAmount: string, metaEmail?: string, displayName?: string, onSuccess?: () => void) => {
+    const submit = (packageId: string, topUpAmount: string, metaEmail?: string, displayName?: string, budget?: string, onSuccess?: () => void) => {
         const payload: ServicePurchaseFormData = {
             package_id: packageId,
             top_up_amount: topUpAmount,
+            budget: budget || '0',
             meta_email: metaEmail || '',
             display_name: displayName || '',
         };

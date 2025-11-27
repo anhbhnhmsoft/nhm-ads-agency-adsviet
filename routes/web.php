@@ -14,6 +14,7 @@ use App\Http\Controllers\WalletController;
 use App\Http\Controllers\WalletTransactionController;
 use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,8 @@ Route::middleware(['guest:web'])->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/login', [AuthController::class, 'handleLoginUsername'])->name('auth_login');
         Route::post('/start', [AuthController::class, 'handleLoginTelegram'])->name('auth_telegram');
+        Route::post('/register-email/send-otp', [AuthController::class, 'sendRegisterEmailOtp'])->name('auth_register_send_email_otp');
+        Route::post('/register-email/verify-otp', [AuthController::class, 'verifyRegisterEmailOtp'])->name('auth_register_verify_email_otp');
         Route::get('/register-new-user', [AuthController::class, 'registerNewUserScreen'])
             ->name('auth_register_new_user_screen');
         Route::post('/register-new-user', [AuthController::class, 'handleRegisterNewUser'])
@@ -39,6 +42,11 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::redirect('/', '/dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile_update');
+    Route::post('/profile/resend-email', [ProfileController::class, 'resendEmail'])->name('profile_resend_email');
+    Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp'])->name('profile_verify_email_otp');
+    Route::put('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile_change_password');
 
     Route::prefix('user')->group(function () {
         Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');
