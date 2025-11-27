@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Common\Constants\Google\GoogleCustomerStatus;
 use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\User\UserRole;
@@ -75,7 +76,9 @@ class GoogleAdsService
                 ->get();
 
             $totalAccounts = $googleAccounts->count();
-            $activeAccounts = $googleAccounts->where('account_status', 1)->count();
+            $activeAccounts = $googleAccounts
+                ->where('account_status', GoogleCustomerStatus::ENABLED->value)
+                ->count();
             $pausedAccounts = $totalAccounts - $activeAccounts;
 
             $googleAccountIds = $googleAccounts->pluck('id')->toArray();
@@ -336,9 +339,9 @@ class GoogleAdsService
         return (string) $number;
     }
 
-    public function syncGoogleAccounts(ServiceUser $serviceUser): void
+    public function syncGoogleAccounts(ServiceUser $serviceUser): ServiceReturn
     {
-        $customerIds = $this->extractGoogleCustomerIds($serviceUser);
+        try {$customerIds = $this->extractGoogleCustomerIds($serviceUser);
         if (empty($customerIds)) {
             $config = $serviceUser->config_account ?? [];
             $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
@@ -353,14 +356,25 @@ class GoogleAdsService
                     'config_account' => $config,
                 ]
             );
-            return;
-        }
+            returnServiceReturn::error(message: __('google_ads.error.missing_customer_ids'));
+            }
 
-        $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
-        $client = $this->buildGoogleAdsClient($loginCustomerId);
-        $googleAdsService = $client->getGoogleAdsServiceClient();
+            $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
+            if (empty($loginCustomerId)) {
+                Logging::error(
+                    message: 'GoogleAdsService@syncGoogleAccounts missing login customer id',
+                    context: [
+                        'service_user_id' => $serviceUser->id,
+                        'config_account' => $serviceUser->config_account,
+                    ]
+                );
+                return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
 
-        $query = <<<GAQL
+            $client = $this->buildGoogleAdsClient($loginCustomerId);
+            $googleAdsService = $client->getGoogleAdsServiceClient();
+
+            $query = <<<GAQL
 SELECT
   customer.id,
   customer.descriptive_name,
@@ -370,99 +384,144 @@ SELECT
 FROM customer
 GAQL;
 
-        foreach ($customerIds as $customerId) {
-            try {
-                $request = new SearchGoogleAdsStreamRequest([
-                    'customer_id' => (string) $customerId,
-                    'query' => $query,
-                ]);
-                $stream = $googleAdsService->searchStream($request);
-                foreach ($stream->readAll() as $response) {
-                    foreach ($response->getResults() as $row) {
-                        $customer = $row->getCustomer();
-                        $accountId = $customer->getId() ?? $this->extractIdFromResource($customer->getResourceName());
-                        if (!$accountId) {
-                            continue;
+            foreach ($customerIds as $customerId) {
+                try {
+                    $request = new SearchGoogleAdsStreamRequest([
+                        'customer_id' => (string) $customerId,
+                        'query' => $query,
+                    ]);
+                    $stream = $googleAdsService->searchStream($request);
+                    foreach ($stream->readAll() as $response) {
+                        foreach ($response->getResults() as $row) {
+                            $customer = $row->getCustomer();
+                            $accountId = $customer->getId() ?? $this->extractIdFromResource($customer->getResourceName());
+                            if (!$accountId) {
+                                continue;
+                            }
+
+                            $this->googleAccountRepository->query()->updateOrCreate(
+                                [
+                                    'service_user_id' => $serviceUser->id,
+                                    'account_id' => (string) $accountId,
+                                ],
+                                [
+                                    'account_name' => $customer->getDescriptiveName(),
+                                    'account_status' => $this->mapStatusToInt($customer->getStatus()),
+                                    'currency' => $customer->getCurrencyCode(),
+                                    'customer_manager_id' => $loginCustomerId,
+                                    'time_zone' => $customer->getTimeZone(),
+                                    'last_synced_at' => now(),
+                                ]
+                            );
                         }
-
-                        $this->googleAccountRepository->query()->updateOrCreate(
-                            [
-                                'service_user_id' => $serviceUser->id,
-                                'account_id' => (string) $accountId,
-                            ],
-                            [
-                                'account_name' => $customer->getDescriptiveName(),
-                                'account_status' => $this->mapStatusToInt($customer->getStatus()),
-                                'currency' => $customer->getCurrencyCode(),
-                                'customer_manager_id' => $loginCustomerId,
-                                'time_zone' => $customer->getTimeZone(),
-                                'last_synced_at' => now(),
-                            ]
-                        );
                     }
+                } catch (GoogleAdsException|ApiException $exception) {
+                    Logging::error(
+                        message: 'GoogleAdsService@syncGoogleAccounts failed',
+                        context: [
+                            'service_user_id' => $serviceUser->id,
+                            'customer_id' => $customerId,
+                            'error' => $exception->getMessage(),
+                        ]
+                    );
                 }
-            } catch (GoogleAdsException|ApiException $exception) {
-                Logging::error(
-                    message: 'GoogleAdsService@syncGoogleAccounts failed',
-                    context: [
-                        'service_user_id' => $serviceUser->id,
-                        'customer_id' => $customerId,
-                        'error' => $exception->getMessage(),
-                    ]
-                );
             }
+
+            return ServiceReturn::success();
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'GoogleAdsService@syncGoogleAccounts unexpected error',
+                context: [
+                    'service_user_id' => $serviceUser->id,
+                    'error' => $exception->getMessage(),
+                ],
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('google_ads.error.sync_failed'));
         }
     }
 
-    public function syncGoogleCampaigns(ServiceUser $serviceUser): void
+    public function syncGoogleCampaigns(ServiceUser $serviceUser): ServiceReturn
     {
-        $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
-        $client = $this->buildGoogleAdsClient($loginCustomerId);
-        $googleAdsService = $client->getGoogleAdsServiceClient();
+        try {
+            $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
+            if (empty($loginCustomerId)) {
+                return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
 
-        $this->googleAccountRepository->query()
-            ->where('service_user_id', $serviceUser->id)
-            ->chunkById(10, function (Collection $accounts) use ($googleAdsService, $serviceUser) {
-                foreach ($accounts as $account) {
-                    $this->syncCampaignsForAccount($googleAdsService, $serviceUser, $account->id, $account->account_id);
-                }
-            });
+            $client = $this->buildGoogleAdsClient($loginCustomerId);
+            $googleAdsService = $client->getGoogleAdsServiceClient();
 
-        // Clear cache cho campaign details khi sync
-        $campaignIds = $this->googleAdsCampaignRepository->query()
-            ->where('service_user_id', $serviceUser->id)
-            ->pluck('id');
-        foreach ($campaignIds as $campaignId) {
-            Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_CAMPAIGN, (string) $campaignId);
+            $this->googleAccountRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->chunkById(10, function (Collection $accounts) use ($googleAdsService, $serviceUser) {
+                    foreach ($accounts as $account) {
+                        $this->syncCampaignsForAccount($googleAdsService, $serviceUser, $account->id, $account->account_id);
+                    }
+                });
+
+            $campaignIds = $this->googleAdsCampaignRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->pluck('id');
+            foreach ($campaignIds as $campaignId) {
+                Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_CAMPAIGN, (string) $campaignId);
+            }
+
+            return ServiceReturn::success();
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'GoogleAdsService@syncGoogleCampaigns failed',
+                context: [
+                    'service_user_id' => $serviceUser->id,
+                    'error' => $exception->getMessage(),
+                ],
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('google_ads.error.sync_failed'));
         }
     }
 
-    public function syncGoogleInsights(ServiceUser $serviceUser): void
+    public function syncGoogleInsights(ServiceUser $serviceUser): ServiceReturn
     {
-        $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
-        $client = $this->buildGoogleAdsClient($loginCustomerId);
-        $googleAdsService = $client->getGoogleAdsServiceClient();
+        try {
+            $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
+            if (empty($loginCustomerId)) {
+                return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
 
-        $this->googleAccountRepository->query()
-            ->where('service_user_id', $serviceUser->id)
-            ->chunkById(10, function (Collection $accounts) use ($googleAdsService, $serviceUser) {
-                foreach ($accounts as $account) {
-                    $this->syncInsightsForAccount($googleAdsService, $serviceUser, $account->id, $account->account_id);
-                }
-            });
+            $client = $this->buildGoogleAdsClient($loginCustomerId);
+            $googleAdsService = $client->getGoogleAdsServiceClient();
 
-        // Clear cache cho dashboard
-        Caching::clearCache(CacheKey::CACHE_GOOGLE_DASHBOARD, (string) $serviceUser->user_id);
+            $this->googleAccountRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->chunkById(10, function (Collection $accounts) use ($googleAdsService, $serviceUser) {
+                    foreach ($accounts as $account) {
+                        $this->syncInsightsForAccount($googleAdsService, $serviceUser, $account->id, $account->account_id);
+                    }
+                });
 
-        // Clear cache cho campaign details và insights khi sync insights (vì insights thay đổi)
-        $campaignIds = $this->googleAdsCampaignRepository->query()
-            ->where('service_user_id', $serviceUser->id)
-            ->pluck('id');
-        foreach ($campaignIds as $campaignId) {
-            Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_CAMPAIGN, (string) $campaignId);
-            // Clear cache cho cả 2 date presets
-            Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_INSIGHT, (string) $campaignId . 'last_7d');
-            Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_INSIGHT, (string) $campaignId . 'last_30d');
+            Caching::clearCache(CacheKey::CACHE_GOOGLE_DASHBOARD, (string) $serviceUser->user_id);
+
+            $campaignIds = $this->googleAdsCampaignRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->pluck('id');
+            foreach ($campaignIds as $campaignId) {
+                Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_CAMPAIGN, (string) $campaignId);
+                Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_INSIGHT, (string) $campaignId . 'last_7d');
+                Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_INSIGHT, (string) $campaignId . 'last_30d');
+            }
+
+            return ServiceReturn::success();
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'GoogleAdsService@syncGoogleInsights failed',
+                context: [
+                    'service_user_id' => $serviceUser->id,
+                    'error' => $exception->getMessage(),
+                ],
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('google_ads.error.sync_failed'));
         }
     }
 
@@ -1061,12 +1120,7 @@ GAQL;
 
     protected function mapStatusToInt(?string $status): int
     {
-        return match ($status) {
-            'ENABLED' => 1,
-            'PAUSED' => 2,
-            'REMOVED' => 3,
-            default => 0,
-        };
+        return GoogleCustomerStatus::fromApiStatus($status)->value;
     }
 
     /**

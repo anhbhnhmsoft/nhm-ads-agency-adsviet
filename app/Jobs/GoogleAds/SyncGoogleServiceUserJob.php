@@ -17,7 +17,7 @@ class SyncGoogleServiceUserJob implements ShouldQueue
     public function __construct(
         protected ServiceUser $serviceUser,
     ) {
-        $this->onQueue('meta-api');
+        $this->onQueue('google-api');
     }
 
     public function handle(GoogleAdsService $googleAdsService): void
