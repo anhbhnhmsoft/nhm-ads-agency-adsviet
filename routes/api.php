@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
         Route::get('dashboard', [ServiceController::class, 'dashboard']);
         Route::get('report', [ServiceController::class, 'report']);
+        Route::get('report-insight', [ServiceController::class, 'reportInsight']);
 
     });
 

@@ -22,6 +22,7 @@ use FacebookAds\Object\Values\AdDatePresetValues;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Service phục vụ các thao tác liên quan đến Meta (Facebook)
@@ -808,8 +809,11 @@ class MetaService
         };
     }
 
-    // Lấy dữ liệu dashboard cho agency và customer
-    public function getReportData()
+    /**
+     * Lấy dữ liệu report cho agency và customer
+     * @return ServiceReturn
+     */
+    public function getReportData(): ServiceReturn
     {
         try {
             $user = Auth::user();
@@ -865,6 +869,80 @@ class MetaService
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
+
+
+    public function getReportInsights(string $datePreset): ServiceReturn
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+            // Chỉ cho phép agency và customer
+            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+            // 1. Service Users (của user này)
+            $serviceUserIds = $this->serviceUserRepository->query()
+                ->where('user_id', $user->id)
+                ->where('status', ServiceUserStatus::ACTIVE->value)
+                ->whereHas('package', function ($query) {
+                    $query->where('platform', PlatformType::META->value);
+                })
+                ->pluck('id') // Chỉ lấy cột ID
+                ->toArray();
+
+            // Check nhanh: Nếu user không có gói dịch vụ nào thì trả về rỗng luôn
+            if (empty($serviceUserIds)) {
+                return ServiceReturn::success(data: [
+                    'total_spend_period' => 0,
+                    'chart' => []
+                ]);
+            }
+            // 2. Tính toán khoảng thời gian (StartDate - EndDate)
+            $endDate = Carbon::today();
+            $startDate = match ($datePreset) {
+                AdDatePresetValues::LAST_7D => Carbon::today()->subDays(6),
+                AdDatePresetValues::LAST_14D => Carbon::today()->subDays(13),
+                AdDatePresetValues::LAST_28D => Carbon::today()->subDays(27),
+                AdDatePresetValues::LAST_30D => Carbon::today()->subDays(29),
+                AdDatePresetValues::LAST_90D => Carbon::today()->subDays(89),
+                default => Carbon::today()->subDays(6),
+            };
+            $records = $this->metaAdsAccountInsightRepository->query()
+                ->whereIn('service_user_id', $serviceUserIds)
+                ->whereDate('date', '>=', $startDate)
+                ->whereDate('date', '<=', $endDate)
+                ->groupBy('date') // Group theo ngày (nó sẽ gộp spend của tất cả user trong ngày đó lại)
+                ->orderBy('date', 'ASC')
+                ->get([
+                    'date',
+                    DB::raw('SUM(spend::numeric) as total_spend')
+                ])
+                ->keyBy('date');
+
+            $chartData = [];
+            foreach ($records as $record) {
+                $record->total_spend = (float)$record->total_spend;
+                $chartData[] = [
+                    'value' => (float)$record->total_spend,
+                    'date' => $record->date->format('Y-m-d'),
+                ];
+            }
+            return ServiceReturn::success(data: [
+                'total_spend_period' => collect($chartData)->sum('value'),
+                'chart' => $chartData
+            ]);
+        }catch (\Exception $exception) {
+            Logging::error(
+                message: "Error get report insights from database: " . $exception->getMessage(),
+                exception: $exception,
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Lấy dữ liệu dashboard cho agency và customer
     public function getDashboardData(): ServiceReturn
     {
         try {
