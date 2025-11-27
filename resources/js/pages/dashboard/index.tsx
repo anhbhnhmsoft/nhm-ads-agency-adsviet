@@ -465,7 +465,6 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         <MetricCard
                             title={t('dashboard.total_spend')}
                             value={formatCurrency(dashboardData.metrics.total_spend.value)}
-                            percentChange={dashboardData.metrics.total_spend.percent_change}
                         />
                         <MetricCard
                             title={t('dashboard.today_spend')}
@@ -613,11 +612,13 @@ function AdminStatCard({ label, value, icon }: AdminStatCardProps) {
 type MetricCardProps = {
     title: string;
     value: string;
-    percentChange: number;
+    percentChange?: number;
 };
 
 function MetricCard({ title, value, percentChange }: MetricCardProps) {
-    const isPositive = percentChange >= 0;
+    const showTrend = typeof percentChange === 'number';
+    const safePercent = percentChange ?? 0;
+    const isPositive = safePercent >= 0;
     const Icon = isPositive ? TrendingUp : TrendingDown;
 
     return (
@@ -627,10 +628,12 @@ function MetricCard({ title, value, percentChange }: MetricCardProps) {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{value}</div>
-                <div className={`flex items-center gap-1 mt-1 text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                    <Icon className="h-4 w-4" />
-                    <span>{percentChange >= 0 ? '+' : ''}{percentChange.toFixed(1)}%</span>
-                </div>
+                {showTrend && (
+                    <div className={`flex items-center gap-1 mt-1 text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                        <Icon className="h-4 w-4" />
+                        <span>{safePercent >= 0 ? '+' : ''}{safePercent.toFixed(1)}%</span>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
