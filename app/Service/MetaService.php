@@ -58,6 +58,7 @@ class MetaService
                 return ServiceReturn::error(__('meta.error.service_user_platform_not_meta'));
             }
             // validate phân quyền
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             switch ($user->role) {
                 case UserRole::ADMIN->value:
@@ -850,14 +851,16 @@ class MetaService
                 return ServiceReturn::error(message: __('common_error.server_error'));
             }
             // Lấy spend của toàn account
-            $accountSpend = $metaAccounts->reduce(function ($carry, $account) {
+            $accountSpend = $metaAccounts->map(function ($account) {
                 $amountSpend = $account->amount_spent;
-                $carry[] = [
-                    'account_id' => $account->id,
+                return [
+                    'account_id' => (string) ($account->account_id ?? $account->id),
+                    'account_name' => $account->account_name
+                        ?? $account->name
+                        ?? (string) ($account->account_id ?? $account->id),
                     'amount_spent' => $amountSpend,
                 ];
-                return $carry;
-            },[]);
+            })->values()->toArray();
             return ServiceReturn::success(data: [
                 'total_spend' => $totalResult->getData()['spend'],
                 'today_spend' => $todayResult->getData()['spend'],

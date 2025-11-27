@@ -394,6 +394,7 @@ class GoogleAdsService
                 $total = $record ? (float) $record->total_spend : 0.0;
                 return [
                     'account_id' => $account->account_id,
+                    'account_name' => $account->account_name ?? $account->account_id,
                     'amount_spent' => $total,
                 ];
             })->values()->toArray();
