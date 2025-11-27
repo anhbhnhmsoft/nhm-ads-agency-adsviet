@@ -15,6 +15,7 @@ use App\Http\Controllers\WalletTransactionController;
 use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SpendReportController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -129,6 +130,10 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
 
     Route::prefix('/service-management')->group(function () {
         Route::get('/', [ServiceManagementController::class, 'index'])->name('service_management_index');
+    });
+
+    Route::prefix('/spend-report')->group(function () {
+        Route::get('/', [SpendReportController::class, 'index'])->name('spend_report_index');
     });
 
     Route::prefix('/meta')->group(function () {

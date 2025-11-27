@@ -103,7 +103,8 @@
       "service_orders": "Đơn dịch vụ",
       "service_orders_admin": "Quản lý đơn dịch vụ",
       "transactions": "Quản lý giao dịch",
-      "profile": "Thông tin cá nhân"
+      "profile": "Thông tin cá nhân",
+      "spend_report": "Báo cáo chi tiêu"
     },
     "profile": {
         "title": "Thông tin cá nhân",
@@ -484,6 +485,24 @@
         "admin_form_description": "Nhập đầy đủ thông tin để kích hoạt tài khoản dịch vụ cho khách hàng.",
         "edit_config_title": "Chỉnh sửa cấu hình tài khoản",
         "edit_config_description": "Cập nhật thông tin hoặc bổ sung cho đơn dịch vụ."
+    },
+    "spend_report": {
+        "title": "Báo cáo chi tiêu",
+        "subtitle": "Theo dõi chi tiêu quảng cáo của bạn",
+        "platform": "Nền tảng",
+        "total_spend": "Tổng chi tiêu",
+        "today_spend": "Chi tiêu hôm nay",
+        "chart_title": "Biểu đồ chi tiêu",
+        "vs_previous": "so với hôm qua",
+        "budget_allocation": "Phân bổ chi tiêu",
+        "unknown_account": "Tài khoản chưa xác định",
+        "no_chart_data": "Chưa có dữ liệu biểu đồ",
+        "no_allocation_data": "Chưa có dữ liệu phân bổ",
+        "preset_7d": "7 ngày qua",
+        "preset_14d": "14 ngày qua",
+        "preset_28d": "28 ngày qua",
+        "preset_30d": "30 ngày qua",
+        "preset_90d": "90 ngày qua"
     },
     "dashboard": {
         "title": "Trang chủ",

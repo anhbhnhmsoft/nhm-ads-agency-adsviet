@@ -13,6 +13,7 @@ import {
     service_purchase_index,
     service_orders_index,
     service_management_index,
+    spend_report_index,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -26,6 +27,7 @@ import {
     ShoppingCart,
     ClipboardList,
     KanbanSquare,
+    BarChart3,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -95,6 +97,14 @@ const useMenu = () => {
                     _UserRole.CUSTOMER,
                     _UserRole.AGENCY,
                 ]),
+            },
+            {
+                title: t('menu.spend_report'),
+                url: spend_report_index().url,
+                icon: <BarChart3 />,
+                is_menu: true,
+                active: isActive(spend_report_index()),
+                can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
             },
             {
                 title: t('menu.transactions'),
