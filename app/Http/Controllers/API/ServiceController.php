@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Common\Helper;
 use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Core\RestResponse;
 use App\Http\Requests\API\Service\ServicePurchaseApiRequest;
 use App\Http\Resources\ServiceOwnerResource;
 use App\Http\Resources\ServicePackageResource;
+use App\Service\GoogleAdsService;
+use App\Service\MetaService;
 use App\Service\ServicePackageService;
 use App\Service\ServicePurchaseService;
 use App\Service\ServiceUserService;
@@ -20,6 +23,8 @@ class ServiceController extends Controller
         protected ServicePackageService $servicePackageService,
         protected ServicePurchaseService $servicePurchaseService,
         protected ServiceUserService    $serviceUserService,
+        protected GoogleAdsService $googleAdsService,
+        protected MetaService $metaService,
     )
     {
     }
@@ -100,7 +105,30 @@ class ServiceController extends Controller
      */
     public function dashboard(Request $request): JsonResponse
     {
+        $platform = Helper::getValidatedPlatform($request->string('platform', 'meta')->toString());
+        if ($platform === 'google_ads') {
+            $result = $this->googleAdsService->getDashboardData();
+        }else{
+            $result = $this->metaService->getDashboardData();
+        }
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage(), status: 400);
+        }
+        return RestResponse::success(data: $result->getData());
+    }
 
+    public function report(Request $request): JsonResponse
+    {
+        $platform = Helper::getValidatedPlatform($request->string('platform', 'meta')->toString());
+        if ($platform === 'google_ads') {
+//            $result = $this->googleAdsService->getReportData();
+        }else{
+            $result = $this->metaService->getReportData();
+        }
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage(), status: 400);
+        }
+        return RestResponse::success(data: $result->getData());
     }
 
 }

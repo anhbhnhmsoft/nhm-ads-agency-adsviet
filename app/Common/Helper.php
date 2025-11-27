@@ -53,4 +53,15 @@ class Helper
         $change = (($current - $previous) / $previous) * 100;
         return round($change, 1);
     }
+
+    public static function getValidatedPlatform(?string $platform): string
+    {
+        $allowedPlatforms = ['meta', 'google_ads'];
+
+        if (in_array($platform, $allowedPlatforms)) {
+            return $platform;
+        }
+
+        return 'meta';
+    }
 }

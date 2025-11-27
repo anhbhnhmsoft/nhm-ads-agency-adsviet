@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Common\Constants\User\UserRole;
+use App\Common\Helper;
 use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
@@ -27,7 +28,7 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        
+
         // Nếu không có user, trả về dashboard rỗng
         if (!$user) {
             return $this->rendering('dashboard/index', []);
@@ -50,7 +51,7 @@ class DashboardController extends Controller
     protected function handleAgencyCustomerDashboard(Request $request)
     {
         // Lấy platform từ request
-        $platform = $this->getValidatedPlatform($request->input('platform', 'meta'));
+        $platform = Helper::getValidatedPlatform($request->string('platform', 'meta')->toString());
 
         // Lấy data từ service
         $result = $this->getDashboardDataByPlatform($platform);
@@ -97,17 +98,6 @@ class DashboardController extends Controller
         }
 
         return $this->metaService->getDashboardData();
-    }
-
-    protected function getValidatedPlatform(?string $platform): string
-    {
-        $allowedPlatforms = ['meta', 'google_ads'];
-        
-        if (in_array($platform, $allowedPlatforms)) {
-            return $platform;
-        }
-
-        return 'meta';
     }
 
     // Lấy thống kê khách hàng
