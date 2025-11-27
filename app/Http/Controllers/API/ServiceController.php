@@ -14,8 +14,11 @@ use App\Service\MetaService;
 use App\Service\ServicePackageService;
 use App\Service\ServicePurchaseService;
 use App\Service\ServiceUserService;
+use FacebookAds\Object\Values\AdDatePresetValues;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ServiceController extends Controller
 {
@@ -124,6 +127,36 @@ class ServiceController extends Controller
 //            $result = $this->googleAdsService->getReportData();
         }else{
             $result = $this->metaService->getReportData();
+        }
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage(), status: 400);
+        }
+        return RestResponse::success(data: $result->getData());
+    }
+
+    public function reportInsight(Request $request): JsonResponse
+    {
+        $validate = Validator::make($request->all(), [
+            'date_preset' => ['required', Rule::in([
+                AdDatePresetValues::LAST_7D,
+                AdDatePresetValues::LAST_14D,
+                AdDatePresetValues::LAST_30D,
+                AdDatePresetValues::LAST_28D,
+                AdDatePresetValues::LAST_90D
+            ])],
+        ],[
+            'date_preset.required' => __('meta.error.date_preset_invalid'),
+            'date_preset.in' => __('meta.error.date_preset_invalid'),
+        ]);
+        if ($validate->fails()) {
+            return RestResponse::error(message: $validate->errors()->first(), status: 400);
+        }
+
+        $platform = Helper::getValidatedPlatform($request->string('platform', 'meta')->toString());
+        if ($platform === 'google_ads') {
+//            $result = $this->googleAdsService->getReportInsightData($validate->getData()['date_preset']);
+        }else{
+            $result = $this->metaService->getReportInsights($validate->getData()['date_preset']);
         }
         if ($result->isError()) {
             return RestResponse::error(message: $result->getMessage(), status: 400);
