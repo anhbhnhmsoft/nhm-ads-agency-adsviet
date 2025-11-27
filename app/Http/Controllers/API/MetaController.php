@@ -135,9 +135,4 @@ class MetaController extends Controller
         $data = $result->getData();
         return RestResponse::success(data: $data);
     }
-
-    public function test()
-    {
-
-    }
 }

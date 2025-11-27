@@ -209,6 +209,7 @@ class GoogleAdsService
                     'conversion_rate' => number_format($conversionRate, 2, '.', ''),
                     'avg_cpc' => number_format($avgCpc, 2, '.', ''),
                     'avg_roas' => number_format($avgRoas, 1, '.', ''),
+                    'avg_cpm' => number_format($avgCpm, 2, '.', ''),
                 ],
                 'budget' => [
                     'total' => number_format($totalBudget, 2, '.', ''),
@@ -340,22 +341,22 @@ class GoogleAdsService
 
     public function syncGoogleAccounts(ServiceUser $serviceUser): ServiceReturn
     {
-        try {
-            $customerIds = $this->extractGoogleCustomerIds($serviceUser);
-            if (empty($customerIds)) {
-                $config = $serviceUser->config_account ?? [];
-                $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
-                $platformConfig = $this->getPlatformConfig();
-                Logging::error(
-                    message: 'GoogleAdsService@syncGoogleAccounts missing customer ids',
-                    context: [
-                        'service_user_id' => $serviceUser->id,
-                        'manager_id' => $managerId,
-                        'has_oauth_config' => !empty($platformConfig['client_id']) && !empty($platformConfig['client_secret']) && !empty($platformConfig['refresh_token']),
-                        'config_account' => $config,
-                    ]
-                );
-                return ServiceReturn::error(message: __('google_ads.error.missing_customer_ids'));
+        try {$customerIds = $this->extractGoogleCustomerIds($serviceUser);
+        if (empty($customerIds)) {
+            $config = $serviceUser->config_account ?? [];
+            $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
+
+            $platformConfig = $this->getPlatformConfig();
+            Logging::error(
+                message: 'GoogleAdsService@syncGoogleAccounts missing customer ids',
+                context: [
+                    'service_user_id' => $serviceUser->id,
+                    'manager_id' => $managerId,
+                    'has_oauth_config' => !empty($platformConfig['client_id']) && !empty($platformConfig['client_secret']) && !empty($platformConfig['refresh_token']),
+                    'config_account' => $config,
+                ]
+            );
+            returnServiceReturn::error(message: __('google_ads.error.missing_customer_ids'));
             }
 
             $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
@@ -548,7 +549,7 @@ GAQL;
                 'customer_id' => (string) $googleAccountId,
                 'query' => $query,
             ]);
-            
+
             $campaignCount = 0;
             $stream = $googleAdsService->searchStream($request);
             foreach ($stream->readAll() as $response) {
@@ -557,7 +558,7 @@ GAQL;
                     $campaignCount++;
                 }
             }
-            
+
             \Illuminate\Support\Facades\Log::info(
                 'GoogleAdsService@syncCampaignsForAccount: Successfully synced campaigns',
                 [
@@ -616,11 +617,11 @@ GAQL;
 
         $startDate = $campaign->getStartDate();
         $endDate = $campaign->getEndDate();
-        
+
         // Xử lý start_date và end_date (format: YYYYMMDD hoặc null)
         $startTime = null;
         $stopTime = null;
-        
+
         if ($startDate) {
             try {
                 // Google Ads API trả về start_date dạng string "YYYYMMDD" hoặc null
@@ -644,7 +645,7 @@ GAQL;
                 );
             }
         }
-        
+
         if ($endDate) {
             try {
                 // Google Ads API trả về end_date dạng string "YYYYMMDD" hoặc null
@@ -829,9 +830,9 @@ GAQL;
                 $config = $platformData->config ?? [];
 
                 // Validate config từ database
-                if (!empty($config['developer_token']) && 
-                    !empty($config['client_id']) && 
-                    !empty($config['client_secret']) && 
+                if (!empty($config['developer_token']) &&
+                    !empty($config['client_id']) &&
+                    !empty($config['client_secret']) &&
                     !empty($config['refresh_token'])) {
                     $this->platformConfig = [
                         'developer_token' => $config['developer_token'],
@@ -888,7 +889,7 @@ GAQL;
             if (empty($clientId)) $missing[] = 'client_id';
             if (empty($clientSecret)) $missing[] = 'client_secret';
             if (empty($refreshToken)) $missing[] = 'refresh_token';
-            
+
             Logging::error(
                 message: 'GoogleAdsService@buildGoogleAdsClient: Missing OAuth credentials',
                 context: [
@@ -899,7 +900,7 @@ GAQL;
                     'source' => 'database_or_env',
                 ]
             );
-            
+
             throw new \RuntimeException(
                 'Thiếu thông tin xác thực OAuth: ' . implode(', ', $missing) . '. ' .
                 'Vui lòng cấu hình trong "Cấu hình nền tảng" hoặc kiểm tra lại file .env.'
@@ -953,9 +954,9 @@ GAQL;
                 ],
                 exception: $exception
             );
-            
+
             // Nếu là lỗi OAuth, cung cấp hướng dẫn cụ thể
-            if (str_contains($exception->getMessage(), 'invalid_client') || 
+            if (str_contains($exception->getMessage(), 'invalid_client') ||
                 str_contains($exception->getMessage(), 'Unauthorized')) {
                 throw new \RuntimeException(
                     'Lỗi xác thực OAuth với Google Ads API. ' .
@@ -965,7 +966,7 @@ GAQL;
                     'Chi tiết lỗi: ' . $exception->getMessage()
                 );
             }
-            
+
             throw $exception;
         }
     }
@@ -1111,7 +1112,7 @@ GAQL;
         if ($id) {
             return preg_replace('/[^0-9]/', '', (string) $id);
         }
-        
+
         // Lấy từ platform config (database hoặc .env)
         $platformConfig = $this->getPlatformConfig();
         return $platformConfig['login_customer_id'];
@@ -1214,11 +1215,11 @@ GAQL;
 
             // Lấy insights từ database để tính spend
             $googleAccountIds = [$adsAccount->id];
-            
+
             // Maximum insights (tổng spend)
             $totalResult = $this->getAccountsInsightsSummaryFromDatabase($googleAccountIds, 'maximum');
             $totalSpend = $totalResult->isSuccess() ? (float) ($totalResult->getData()['spend'] ?? 0) : 0.0;
-            
+
             // Today insights
             $todayResult = $this->getAccountsInsightsSummaryFromDatabase($googleAccountIds, 'today');
             $todaySpend = $todayResult->isSuccess() ? (float) ($todayResult->getData()['spend'] ?? 0) : 0.0;
@@ -1342,7 +1343,7 @@ GAQL;
 
             // Lấy insights từ database (today, last_7d, maximum)
             $googleAccountIds = [$campaign->google_account_id];
-            
+
             // Today insights
             $insightsTodayResult = $this->getAccountsInsightsSummaryFromDatabase(
                 $googleAccountIds,

@@ -692,7 +692,7 @@ class MetaService
         }
         return $roas;
     }
-    
+
     // Lấy insights tổng hợp từ database
     protected function getAccountsInsightsSummaryFromDatabase(array $metaAccountIds, string $datePreset = 'maximum'): ServiceReturn
     {
@@ -734,13 +734,13 @@ class MetaService
             foreach ($insights as $insight) {
                 // Sum spend
                 $totalSpend += (float) ($insight->spend ?? 0);
-                
+
                 // Sum impressions
                 $totalImpressions += (int) ($insight->impressions ?? 0);
-                
+
                 // Sum clicks
                 $totalClicks += (int) ($insight->clicks ?? 0);
-                
+
                 // Tính conversions từ actions (JSON)
                 if ($insight->actions && is_array($insight->actions)) {
                     foreach ($insight->actions as $action) {
@@ -749,7 +749,7 @@ class MetaService
                         }
                     }
                 }
-                
+
                 // Tính ROAS từ purchase_roas
                 if ($insight->purchase_roas) {
                     $roasValue = (float) $insight->purchase_roas;
@@ -770,14 +770,18 @@ class MetaService
                 'roas' => $avgRoas,
             ]);
         } catch (\Exception $exception) {
-            return ServiceReturn::error(message: $exception->getMessage());
+            Logging::error(
+                message: "Error get accounts insights summary from database: " . $exception->getMessage(),
+                exception: $exception,
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 
     protected function convertDatePresetToRange(string $datePreset): ?array
     {
         $today = Carbon::today();
-        
+
         return match ($datePreset) {
             'maximum' => null,
             'today' => [
@@ -805,7 +809,62 @@ class MetaService
     }
 
     // Lấy dữ liệu dashboard cho agency và customer
+    public function getReportData()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+            // Chỉ cho phép agency và customer
+            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
 
+            // 1. Service Users (của user này)
+            $metaServiceUsers = $this->serviceUserRepository->query()
+                ->where('user_id', $user->id)
+                ->where('status', ServiceUserStatus::ACTIVE->value)
+                ->with(['package', 'metaAccount'])
+                ->whereHas('package', function ($query) {
+                    $query->where('platform', PlatformType::META->value);
+                })
+                ->get();
+
+            $metaAccounts = $this->metaAccountRepository->query()
+                ->whereIn('service_user_id', $metaServiceUsers->pluck('id'))
+                ->get();
+            $metaAccountIds = $metaAccounts->pluck('id')->toArray();
+            // 2. Lấy dữ liệu tổng thể
+            $totalResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'maximum');
+            if ($totalResult->isError()) {
+                return ServiceReturn::error(message: __('common_error.server_error'));
+            }
+            // 3. Lấy dữ liệu hôm nay
+            $todayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'today');
+            if ($todayResult->isError()) {
+                return ServiceReturn::error(message: __('common_error.server_error'));
+            }
+            // Lấy spend của toàn account
+            $accountSpend = $metaAccounts->reduce(function ($carry, $account) {
+                $amountSpend = $account->amount_spent;
+                $carry[] = [
+                    'account_id' => $account->id,
+                    'amount_spent' => $amountSpend,
+                ];
+                return $carry;
+            },[]);
+            return ServiceReturn::success(data: [
+                'total_spend' => $totalResult->getData()['spend'],
+                'today_spend' => $todayResult->getData()['spend'],
+                'account_spend' => $accountSpend,
+            ]);
+
+        }
+        catch (\Exception $exception) {
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
     public function getDashboardData(): ServiceReturn
     {
         try {
@@ -829,7 +888,7 @@ class MetaService
             $metaServiceUsers = $serviceUsers->filter(function ($serviceUser) {
                 return $serviceUser->package->platform === PlatformType::META->value;
             });
-            
+
             $metaAccounts = $this->metaAccountRepository->query()
                 ->whereIn('service_user_id', $metaServiceUsers->pluck('id'))
                 ->get();
@@ -840,7 +899,7 @@ class MetaService
 
             // 3. Lấy insights từ DATABASE
             $metaAccountIds = $metaAccounts->pluck('id')->toArray();
-            
+
             if (empty($metaAccountIds)) {
                 // Nếu không có account, trả về dữ liệu rỗng
                 $totalSpend = 0.0;
@@ -862,7 +921,7 @@ class MetaService
                 $totalClicks = 0;
                 $totalConversions = 0;
                 $avgRoas = 0.0;
-                
+
                 if ($totalResult->isSuccess()) {
                     $totalData = $totalResult->getData();
                     $totalSpend = (float) ($totalData['spend'] ?? 0);
@@ -875,7 +934,7 @@ class MetaService
                 // Lấy spend hôm nay
                 $todayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'today');
                 $todaySpend = 0.0;
-                
+
                 if ($todayResult->isSuccess()) {
                     $todayData = $todayResult->getData();
                     $todaySpend = (float) ($todayData['spend'] ?? 0);
@@ -884,7 +943,7 @@ class MetaService
                 // Lấy dữ liệu hôm qua để tính percent change cho "Chi tiêu hôm nay"
                 $yesterdayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'yesterday');
                 $yesterdaySpend = 0.0;
-                
+
                 if ($yesterdayResult->isSuccess()) {
                     $yesterdayData = $yesterdayResult->getData();
                     $yesterdaySpend = (float) ($yesterdayData['spend'] ?? 0);
@@ -897,7 +956,7 @@ class MetaService
                 $last30dImpressions = 0;
                 $last30dClicks = 0;
                 $last30dConversions = 0;
-                
+
                 if ($last30dResult->isSuccess()) {
                     $last30dData = $last30dResult->getData();
                     $last30dSpend = (float) ($last30dData['spend'] ?? 0);
@@ -912,7 +971,7 @@ class MetaService
                 $previous30dImpressions = 0;
                 $previous30dClicks = 0;
                 $previous30dConversions = 0;
-                
+
                 if ($last90dResult->isSuccess()) {
                     $last90dData = $last90dResult->getData();
                     // Previous 30 days = last_90d - last_30d
@@ -928,7 +987,7 @@ class MetaService
                 $impressionsPercentChange = Helper::calculatePercentageChange($previous30dImpressions, $last30dImpressions);
                 $clicksPercentChange = Helper::calculatePercentageChange($previous30dClicks, $last30dClicks);
                 $conversionsPercentChange = Helper::calculatePercentageChange($previous30dConversions, $last30dConversions);
-                
+
                 // "Chi tiêu hôm nay": So sánh ngày hôm qua với hôm nay
                 $todaySpendPercentChange = Helper::calculatePercentageChange($yesterdaySpend, $todaySpend);
             }
@@ -938,7 +997,7 @@ class MetaService
             $avgCpm = $totalImpressions > 0 ? (($totalSpend / $totalImpressions) * 1000) : 0.0;
             $conversionRate = $totalClicks > 0 ? (($totalConversions / $totalClicks) * 100) : 0.0;
 
-            // 6. 
+            // 6.
             $totalBudget = (float) $serviceUsers->sum('budget') ?? 0.0;
             $budgetUsed = $todaySpend;
             $budgetRemaining = max(0, $totalBudget - $budgetUsed);
@@ -1003,6 +1062,7 @@ class MetaService
                     'conversion_rate' => number_format($conversionRate, 2, '.', ''),
                     'avg_cpc' => number_format($avgCpc, 2, '.', ''),
                     'avg_roas' => number_format($avgRoas, 1, '.', ''),
+                    'avg_cpm' => number_format($avgCpm, 2, '.', ''),
                 ],
                 'budget' => [
                     'total' => number_format($totalBudget, 2, '.', ''),

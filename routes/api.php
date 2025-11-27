@@ -45,6 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('package', [ServiceController::class, 'package']);
         Route::post('register-package', [ServiceController::class, 'registerServicePackage']);
         Route::get('dashboard', [ServiceController::class, 'dashboard']);
+        Route::get('report', [ServiceController::class, 'report']);
+
     });
 
     Route::prefix('meta')->group(function () {
@@ -52,7 +54,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{serviceUserId}/{accountId}/campaigns', [MetaController::class, 'getCampaigns']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [MetaController::class, 'detailCampaign']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [MetaController::class, 'getCampaignInsights']);
-        Route::get('/test', [MetaController::class, 'test']); // để test
     });
 
     Route::prefix('google-ads')->group(function () {
