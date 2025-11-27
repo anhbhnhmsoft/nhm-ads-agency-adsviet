@@ -11,6 +11,7 @@ use App\Repositories\UserReferralRepository;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Common\Constants\Wallet\WalletStatus;
 use App\Common\Constants\User\UserRole;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
@@ -280,31 +281,44 @@ class WalletService
         }
     }
 
-    public function getTransactionsForUser(int $userId, QueryListDTO $queryListDTO): ServiceReturn
+    public function getTransactionsForUser(QueryListDTO $queryListDTO): ServiceReturn
     {
         try {
-            $wallet = $this->walletRepository->findByUserId($userId);
-            if (!$wallet) {
-                return ServiceReturn::error(message: __('common_error.data_not_found'));
-            }
 
-            $paginator = $this->transactionRepository
-                ->filterForWallet($wallet->id, $queryListDTO->filter ?? [])
-                ->orderBy($queryListDTO->sortBy ?? 'created_at', $queryListDTO->sortDirection ?? 'desc')
-                ->paginate(
-                    $queryListDTO->perPage,
-                    ['*'],
-                    'page',
-                    $queryListDTO->page
+            $user = Auth::user();
+            $filter = $queryListDTO->filter ?? [];
+            if (empty($user->wallet->id)){
+                // trả về rỗng nếu user chưa có ví
+                return ServiceReturn::success(
+                    data: new LengthAwarePaginator(
+                        items: [],
+                        total: 0,
+                        perPage: $queryListDTO->perPage,
+                        currentPage: $queryListDTO->page
+                    )
                 );
-
+            }
+            $filter['wallet_id'] = $user->wallet->id;
+            // khởi tạo query
+            $query = $this->transactionRepository->query();
+            $query = $this->transactionRepository->queryFilter($query, $filter);
+            $query = $this->transactionRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
+            $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
             return ServiceReturn::success(data: $paginator);
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'WalletService@getTransactionsForUser error: '.$e->getMessage(),
                 exception: $e
             );
-            return ServiceReturn::error(message: __('common_error.server_error'));
+            // Trả về paginator rỗng nếu có lỗi
+            return ServiceReturn::success(
+                data: new LengthAwarePaginator(
+                    items: [],
+                    total: 0,
+                    perPage: $queryListDTO->perPage,
+                    currentPage: $queryListDTO->page
+                )
+            );
         }
     }
 

@@ -32,6 +32,7 @@ return [
         'wallet_password_changed' => 'Đã đổi mật khẩu ví.',
         'topup_success' => 'Nạp tiền thành công.',
         'withdraw_success' => 'Rút tiền thành công.',
+        'deposit_checked' => 'Kiểm tra nạp tiền thành công.',
     ],
     'validation' => [
         'bank_name_required' => 'Vui lòng nhập tên ngân hàng hoặc ví điện tử',
@@ -40,6 +41,10 @@ return [
         'account_holder_max' => 'Tên chủ tài khoản không được vượt quá :max ký tự',
         'account_number_required' => 'Vui lòng nhập số tài khoản hoặc số điện thoại ví',
         'account_number_max' => 'Số tài khoản không được vượt quá :max ký tự',
+        'wallet_need_configured' => 'Vui lòng cấu hình ví trước khi rút tiền',
+        'transaction_invalid' => 'Giao dịch không hợp lệ',
+        'transaction_failed' => 'Giao dịch đã bị từ chối',
+        'transaction_expired' => 'Giao dịch đã hết hạn',
     ],
 ];
 

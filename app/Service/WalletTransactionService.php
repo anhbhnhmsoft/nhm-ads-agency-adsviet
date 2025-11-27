@@ -11,6 +11,7 @@ use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\WalletRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -509,6 +510,54 @@ class WalletTransactionService
         return $this->transactionRepository->query()->find($id);
     }
 
+
+    public function checkDepositStatus(string $transactionId): ServiceReturn
+    {
+        try {
+            $user = Auth::user();
+            $walletId = $user->wallet->id;
+            if (empty($walletId)){
+                return ServiceReturn::error(message: __('wallet.validation.wallet_need_configured'));
+            }
+            $transaction = $this->transactionRepository->query()
+                ->where('wallet_id', $walletId)
+                ->where('id', $transactionId)
+                ->first();
+            if (!$transaction) {
+                return ServiceReturn::error(message: __('wallet.validation.transaction_invalid'));
+            }
+
+            if (now()->greaterThanOrEqualTo($transaction->expires_at)) {
+                return ServiceReturn::error(message: __('wallet.validation.transaction_expired'));
+            }
+            // Kiểm tra là lệnh nạp tiền
+            if ((int) $transaction->type !== WalletTransactionType::DEPOSIT->value) {
+                return ServiceReturn::error(message: __('wallet.validation.transaction_invalid'));
+            }
+
+            // Kiểm tra trạng thái
+            if (in_array((int) $transaction->status, [
+                WalletTransactionStatus::REJECTED->value,
+                WalletTransactionStatus::CANCELLED->value,
+                WalletTransactionStatus::UNKNOWN->value,
+            ])) {
+                return ServiceReturn::error(message: __('wallet.validation.transaction_failed'));
+            }
+            // Kiểm tra trạng thái thành công
+            if ($transaction->status === WalletTransactionStatus::APPROVED->value) {
+                return ServiceReturn::success(data: true);
+            }
+            // không thì vẫn chưa được duyệt
+            return ServiceReturn::success(data: false);
+
+        }catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi khi kiểm tra trạng thái nạp tiền WalletTransactionService@checkDepositStatus: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
 }
 
 

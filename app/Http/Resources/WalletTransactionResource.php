@@ -18,10 +18,11 @@ class WalletTransactionResource extends JsonResource
     {
         return [
             'id' => (string) $this->id,
+            'wallet_id' => (string) $this->wallet_id,
             'amount' => (float) $this->amount,
             'type' => $this->type,
             'status' => $this->status,
-            'description' => $this->description,
+            'description' => (string)$this->description,
             'network' => $this->network,
             'txHash' => $this->tx_hash,
             'payment_id' => $this->payment_id,

@@ -93,5 +93,14 @@ class ServiceController extends Controller
         );
     }
 
+     /**
+     * Lấy thông tin dashboard của người dùng
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function dashboard(Request $request): JsonResponse
+    {
+
+    }
 
 }

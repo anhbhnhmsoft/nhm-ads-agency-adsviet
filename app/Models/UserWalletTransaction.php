@@ -30,7 +30,8 @@ class UserWalletTransaction extends Model
     ];
 
     protected $casts = [
-        'wallet_id' => 'integer',
+        'id' => 'string',
+        'wallet_id' => 'string',
         'amount' => 'decimal:8',
         'type' => 'integer',
         'status' => 'integer',
