@@ -854,6 +854,7 @@ class MetaService
                 $amountSpend = $account->amount_spent;
                 $carry[] = [
                     'account_id' => $account->id,
+                    'account_name' => $account->account_name,
                     'amount_spent' => $amountSpend,
                 ];
                 return $carry;
