@@ -254,7 +254,12 @@
         "authenticated_both": "Đã xác thực cả 2",
         "customer_info": "Thông tin khách hàng",
         "edit_customer": "Chỉnh sửa khách hàng",
-        "create_customer": "Tạo khách hàng"
+        "create_customer": "Tạo khách hàng",
+        "filter_manager": "Quản lý",
+        "filter_employee": "Nhân viên",
+        "select_employee_placeholder": "Chọn nhân viên...",
+        "manager_owner": "Thuộc quản lý",
+        "manager_relation": "{{employee}} thuộc {{manager}}"
     },
     "wallet": {
         "active": "Đang hoạt động",

@@ -19,7 +19,15 @@ export type EmployeeListQuery = BaseSearchRequest<{
 
 export type CustomerListQuery = BaseSearchRequest<{
     keyword?: string;
+    manager_id?: number | null;
+    employee_id?: number | null;
 }>
+
+export type UserOption = {
+    id: number;
+    name: string;
+    username: string;
+};
 
 export type CustomerListItem = {
     id: number;
@@ -33,6 +41,15 @@ export type CustomerListItem = {
     referral_code: string;
     wallet_balance?: number;
     wallet_status?: number;
+    owner?: {
+        id?: number;
+        username?: string;
+        role?: _UserRole;
+    } | null;
+    manager?: {
+        id?: number;
+        username?: string;
+    } | null;
 }
 export type CustomerListPagination = LaravelPaginator<CustomerListItem>;
 

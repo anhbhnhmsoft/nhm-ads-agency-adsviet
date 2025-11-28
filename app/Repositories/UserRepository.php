@@ -64,13 +64,6 @@ class UserRepository extends BaseRepository
             $query->where('id', '!=', $filters['exclude_user_id']);
         }
 
-        // Nếu có manager_id trả về từ service thì lấy employe của manager đó
-        if (!empty($filters['manager_id'])) {
-            $query->whereHas('referredBy', function ($q) use ($filters) {
-                $q->where('referrer_id', $filters['manager_id'])
-                    ->whereNull('deleted_at');
-            });
-        }
         return $query;
     }
 
@@ -164,6 +157,17 @@ class UserRepository extends BaseRepository
         }
         return $query->orderByDesc('id')
         ->get(['id','name','username','role','disabled','referral_code']);
+    }
+
+    public function getEmployeesByIds(array $ids): Collection
+    {
+        if (empty($ids)) {
+            return collect();
+        }
+
+        return $this->queryEmployees()
+            ->whereIn('id', $ids)
+            ->get(['id', 'name', 'username']);
     }
 
     public function findEmployeeById(string $id): ?User

@@ -5,17 +5,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { IBreadcrumbItem } from '@/lib/types/type';
-import { ticket_index, ticket_show, ticket_update_status } from '@/routes';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { ArrowLeft, User } from 'lucide-react';
+import { ticket_index, ticket_update_status } from '@/routes';
+import { Head, Link, useForm, usePage, usePoll } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { TicketDetailPageProps, Ticket, TicketStatus, TicketPriority } from './types/type';
+import type { TicketDetailPageProps, TicketStatus, TicketPriority } from './types/type';
 import { _TicketStatus, _TicketPriority } from './types/constants';
 import { TicketMessages } from './components/TicketMessages';
 import { SendMessageForm } from './components/SendMessageForm';
 import useCheckRole from '@/hooks/use-check-role';
 import { _UserRole } from '@/lib/types/constants';
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect } from 'react';
 
 const breadcrumbs: IBreadcrumbItem[] = [
     {
@@ -88,30 +88,32 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
     };
 
     // Polling để tự động reload messages khi có tin nhắn mới
-    const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const { start: startPolling, stop: stopPolling } = usePoll(
+        5000,
+        {
+            only: ['ticket'],
+        },
+        {
+            autoStart: false,
+        }
+    );
+
     useEffect(() => {
-        if (ticket) {
-            // Chỉ polling khi ticket chưa đóng
-            if (ticket.status !== _TicketStatus.CLOSED) {
-                pollingIntervalRef.current = setInterval(() => {
-                    router.reload({ 
-                        only: ['ticket'],
-                    });
-                }, 5000); // Poll mỗi 5 giây
-            } else {
-                if (pollingIntervalRef.current) {
-                    clearInterval(pollingIntervalRef.current);
-                    pollingIntervalRef.current = null;
-                }
-            }
+        if (!ticket) {
+            stopPolling();
+            return;
+        }
+
+        if (ticket.status !== _TicketStatus.CLOSED) {
+            startPolling();
+        } else {
+            stopPolling();
         }
 
         return () => {
-            if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-            }
+            stopPolling();
         };
-    }, [ticket?.id, ticket?.status]);
+    }, [ticket?.id, ticket?.status, startPolling, stopPolling]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
