@@ -858,6 +858,7 @@ class MetaService
                     'account_name' => $account->account_name
                         ?? $account->name
                         ?? (string) ($account->account_id ?? $account->id),
+                    'account_name' => $account->account_name,
                     'amount_spent' => $amountSpend,
                 ];
             })->values()->toArray();
