@@ -226,7 +226,9 @@
             "verify_code": "Xác minh",
             "verifying": "Đang kiểm tra…",
             "email_required": "Vui lòng nhập email!",
-            "otp_required": "Vui lòng nhập mã xác minh!"
+            "otp_required": "Vui lòng nhập mã xác minh!",
+            "back_to_login_prompt": "Đã có tài khoản?",
+            "back_to_login_link": "Quay lại đăng nhập"
         },
         "register_new_user": {
             "title": "Đăng ký tài khoản mới",
@@ -417,9 +419,9 @@
         "amount_too_high": "Số tiền quá cao",
         "budget": "Ngân sách (USD)",
         "required": "Bắt buộc",
-        "budget_hint": "Nhập ngân sách tối đa {{max}} USD",
+        "budget_hint": "Nhập ngân sách tối thiểu {{min}} USD",
         "budget_invalid": "Ngân sách không hợp lệ",
-        "budget_max_exceeded": "Ngân sách không được vượt quá {{max}} USD",
+        "budget_min_required": "Ngân sách phải đạt tối thiểu {{min}} USD",
         "order_summary": "Tóm tắt đơn hàng",
         "back_to_services": "Quay lại danh sách",
         "info_message": "Chọn dịch vụ phù hợp với nhu cầu của bạn. Thanh toán chỉ qua USDT.",
