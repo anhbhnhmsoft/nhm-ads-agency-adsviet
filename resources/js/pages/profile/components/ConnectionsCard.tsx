@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Mail, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ProfileUser, EmailStatus, TelegramStatus } from '../types/type';
@@ -8,6 +9,9 @@ type Props = {
     user: ProfileUser;
     emailStatus: EmailStatus;
     telegramStatus: TelegramStatus;
+    onTelegramConnect?: () => void;
+    canConnectTelegram?: boolean;
+    telegramConnecting?: boolean;
 };
 
 type ConnectionItemProps = {
@@ -16,9 +20,10 @@ type ConnectionItemProps = {
     status: string;
     variant: 'default' | 'secondary' | 'outline';
     description: string;
+    action?: React.ReactNode;
 };
 
-const ConnectionItem = ({ icon: Icon, title, status, variant, description }: ConnectionItemProps) => {
+const ConnectionItem = ({ icon: Icon, title, status, variant, description, action }: ConnectionItemProps) => {
     return (
         <div className="rounded-lg border p-4">
             <div className="flex items-center gap-3">
@@ -28,7 +33,10 @@ const ConnectionItem = ({ icon: Icon, title, status, variant, description }: Con
                 <div className="flex flex-1 flex-col gap-1">
                     <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-medium">{title}</span>
-                        <Badge variant={variant}>{status}</Badge>
+                        <div className="flex items-center gap-2">
+                            {action}
+                            <Badge variant={variant}>{status}</Badge>
+                        </div>
                     </div>
                     <p className="text-xs text-muted-foreground">{description}</p>
                 </div>
@@ -37,8 +45,16 @@ const ConnectionItem = ({ icon: Icon, title, status, variant, description }: Con
     );
 };
 
-const ConnectionsCard = ({ user, emailStatus, telegramStatus }: Props) => {
+const ConnectionsCard = ({
+    user,
+    emailStatus,
+    telegramStatus,
+    onTelegramConnect,
+    canConnectTelegram = false,
+    telegramConnecting = false,
+}: Props) => {
     const { t } = useTranslation();
+    const isTelegramConnected = Boolean(user.telegram_id);
 
     return (
         <Card>
@@ -60,7 +76,22 @@ const ConnectionsCard = ({ user, emailStatus, telegramStatus }: Props) => {
                     status={telegramStatus.label}
                     variant={telegramStatus.variant}
                     description={telegramStatus.description}
+                    action={
+                        !isTelegramConnected && onTelegramConnect ? (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={onTelegramConnect}
+                                disabled={!canConnectTelegram || telegramConnecting}
+                            >
+                                {telegramConnecting ? t('profile.telegram_connecting') : t('profile.telegram_connect_button')}
+                            </Button>
+                        ) : undefined
+                    }
                 />
+                {!isTelegramConnected && !canConnectTelegram && (
+                    <p className="text-xs text-muted-foreground">{t('profile.telegram_connect_unavailable')}</p>
+                )}
             </CardContent>
         </Card>
     );

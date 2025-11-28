@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class GoogleAdsService
@@ -327,6 +328,165 @@ class GoogleAdsService
         };
     }
 
+    // Lấy dữ liệu báo cáo tổng hợp cho dịch vụ Google Ads
+    public function getReportData(): ServiceReturn
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            $serviceUsers = $this->serviceUserRepository->query()
+                ->where('user_id', $user->id)
+                ->where('status', ServiceUserStatus::ACTIVE->value)
+                ->with('package')
+                ->get();
+
+            $googleServiceUsers = $serviceUsers->filter(function ($serviceUser) {
+                return $serviceUser->package->platform === PlatformType::GOOGLE->value;
+            });
+
+            if ($googleServiceUsers->isEmpty()) {
+                return ServiceReturn::success(data: [
+                    'total_spend' => 0,
+                    'today_spend' => 0,
+                    'account_spend' => [],
+                ]);
+            }
+
+            $googleAccounts = $this->googleAccountRepository->query()
+                ->whereIn('service_user_id', $googleServiceUsers->pluck('id'))
+                ->get();
+
+            $googleAccountIds = $googleAccounts->pluck('id')->toArray();
+            if (empty($googleAccountIds)) {
+                return ServiceReturn::success(data: [
+                    'total_spend' => 0,
+                    'today_spend' => 0,
+                    'account_spend' => [],
+                ]);
+            }
+
+            $totalResult = $this->getAccountsInsightsSummaryFromDatabase($googleAccountIds, 'maximum');
+            if ($totalResult->isError()) {
+                return ServiceReturn::error(message: $totalResult->getMessage());
+            }
+
+            $todayResult = $this->getAccountsInsightsSummaryFromDatabase($googleAccountIds, 'today');
+            if ($todayResult->isError()) {
+                return ServiceReturn::error(message: $todayResult->getMessage());
+            }
+
+            $spendByAccount = $this->googleAdsAccountInsightRepository->query()
+                ->whereIn('google_account_id', $googleAccountIds)
+                ->select('google_account_id', DB::raw('SUM(spend::numeric) as total_spend'))
+                ->groupBy('google_account_id')
+                ->get()
+                ->keyBy('google_account_id');
+
+            $accountSpend = $googleAccounts->map(function ($account) use ($spendByAccount) {
+                $record = $spendByAccount->get($account->id);
+                $total = $record ? (float) $record->total_spend : 0.0;
+                return [
+                    'account_id' => $account->account_id,
+                    'account_name' => $account->account_name ?? $account->account_id,
+                    'amount_spent' => $total,
+                ];
+            })->values()->toArray();
+
+            return ServiceReturn::success(data: [
+                'total_spend' => $totalResult->getData()['spend'] ?? 0,
+                'today_spend' => $todayResult->getData()['spend'] ?? 0,
+                'account_spend' => $accountSpend,
+            ]);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'GoogleAdsService@getReportData error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Lấy dữ liệu biểu đồ báo cáo theo khoảng thời gian
+     */
+    public function getReportInsights(string $datePreset): ServiceReturn
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            $serviceUserIds = $this->serviceUserRepository->query()
+                ->where('user_id', $user->id)
+                ->where('status', ServiceUserStatus::ACTIVE->value)
+                ->whereHas('package', function ($query) {
+                    $query->where('platform', PlatformType::GOOGLE->value);
+                })
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($serviceUserIds)) {
+                return ServiceReturn::success(data: [
+                    'total_spend_period' => 0,
+                    'chart' => [],
+                ]);
+            }
+
+            $endDate = Carbon::today();
+            $startDate = match ($datePreset) {
+                'last_7d' => Carbon::today()->subDays(6),
+                'last_14d' => Carbon::today()->subDays(13),
+                'last_28d' => Carbon::today()->subDays(27),
+                'last_30d' => Carbon::today()->subDays(29),
+                'last_90d' => Carbon::today()->subDays(89),
+                default => Carbon::today()->subDays(6),
+            };
+
+            $records = $this->googleAdsAccountInsightRepository->query()
+                ->whereIn('service_user_id', $serviceUserIds)
+                ->whereDate('date', '>=', $startDate)
+                ->whereDate('date', '<=', $endDate)
+                ->groupBy('date')
+                ->orderBy('date', 'ASC')
+                ->get([
+                    'date',
+                    DB::raw('SUM(spend::numeric) as total_spend'),
+                ])
+                ->keyBy('date');
+
+            $chartData = [];
+            foreach ($records as $record) {
+                $chartData[] = [
+                    'value' => (float) $record->total_spend,
+                    'date' => $record->date->format('Y-m-d'),
+                ];
+            }
+
+            return ServiceReturn::success(data: [
+                'total_spend_period' => collect($chartData)->sum('value'),
+                'chart' => $chartData,
+            ]);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'GoogleAdsService@getReportInsights error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     private function formatNumber(int $number): string
     {
         if ($number >= 1000000) {
@@ -341,22 +501,24 @@ class GoogleAdsService
 
     public function syncGoogleAccounts(ServiceUser $serviceUser): ServiceReturn
     {
-        try {$customerIds = $this->extractGoogleCustomerIds($serviceUser);
-        if (empty($customerIds)) {
-            $config = $serviceUser->config_account ?? [];
-            $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
+        try {
+            $customerIds = $this->extractGoogleCustomerIds($serviceUser);
+            if (empty($customerIds)) {
+                $config = $serviceUser->config_account ?? [];
+                $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
+                $platformConfig = $this->getPlatformConfig();
 
-            $platformConfig = $this->getPlatformConfig();
-            Logging::error(
-                message: 'GoogleAdsService@syncGoogleAccounts missing customer ids',
-                context: [
-                    'service_user_id' => $serviceUser->id,
-                    'manager_id' => $managerId,
-                    'has_oauth_config' => !empty($platformConfig['client_id']) && !empty($platformConfig['client_secret']) && !empty($platformConfig['refresh_token']),
-                    'config_account' => $config,
-                ]
-            );
-            returnServiceReturn::error(message: __('google_ads.error.missing_customer_ids'));
+                Logging::error(
+                    message: 'GoogleAdsService@syncGoogleAccounts missing customer ids',
+                    context: [
+                        'service_user_id' => $serviceUser->id,
+                        'manager_id' => $managerId,
+                        'has_oauth_config' => !empty($platformConfig['client_id']) && !empty($platformConfig['client_secret']) && !empty($platformConfig['refresh_token']),
+                        'config_account' => $config,
+                    ]
+                );
+
+                return ServiceReturn::error(message: __('google_ads.error.missing_customer_ids'));
             }
 
             $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
@@ -422,7 +584,8 @@ GAQL;
                             'service_user_id' => $serviceUser->id,
                             'customer_id' => $customerId,
                             'error' => $exception->getMessage(),
-                        ]
+                        ],
+                        exception: $exception
                     );
                 }
             }
