@@ -20,6 +20,20 @@ class Ticket extends Model
         'assigned_to',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'id' => 'string',
+            'user_id' => 'string',
+            'assigned_to' => 'string',
+            'status' => 'integer',
+            'priority' => 'integer',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+            'deleted_at' => 'datetime',
+        ];
+    }
+
     // Relationships
     public function user()
     {

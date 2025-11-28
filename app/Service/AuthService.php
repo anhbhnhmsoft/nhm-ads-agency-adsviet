@@ -50,9 +50,12 @@ class AuthService
             if (!$user || !Hash::check($data['password'], $user->password)) {
                 return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
             }
-            // Nếu customer không có telegram hoặc whatsapp id thì phải kiểm tra xem đã xác thực email chưa
+            // Nếu customer/agency không có telegram và whatsapp thì bắt buộc phải xác thực email trước khi đăng nhập
+            $isCustomerRole = in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value]);
             if (
-                (!empty($user->telegram_id) || !empty($user->whatsapp_id))
+                $isCustomerRole
+                && empty($user->telegram_id)
+                && empty($user->whatsapp_id)
                 && empty($user->email_verified_at)
             ) {
                 return ServiceReturn::error(message: __('auth.login.validation.email_not_verified'));

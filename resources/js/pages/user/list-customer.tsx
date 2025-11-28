@@ -6,6 +6,8 @@ import ListCustomerSearchForm from '@/pages/user/components/list-customer-search
 import {
     CustomerListItem,
     CustomerListPagination,
+    CustomerListQuery,
+    UserOption,
 } from '@/pages/user/types/type';
 import { user_destroy, user_edit, user_list, user_toggle_disable } from '@/routes';
 import { ColumnDef } from '@tanstack/react-table';
@@ -19,14 +21,28 @@ import UserInfoDialog from '@/pages/user/components/UserInfoDialog';
 
 type Props = {
     paginator: CustomerListPagination;
+    managers?: UserOption[];
+    employees?: UserOption[];
+    filters?: CustomerListQuery['filter'];
+    canFilterManager?: boolean;
+    canFilterEmployee?: boolean;
 };
-const ListCustomer = ({ paginator }: Props) => {
+
+const ListCustomer = ({
+    paginator,
+    managers = [],
+    employees = [],
+    filters,
+    canFilterManager = false,
+    canFilterEmployee = false,
+}: Props) => {
     const { t } = useTranslation();
     const { props } = usePage();
     const checkRole = useCheckRole(props.auth as any);
     const isAdmin = checkRole([_UserRole.ADMIN]);
     const [selectedUser, setSelectedUser] = useState<CustomerListItem | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const managerFilterId = filters?.manager_id ?? null;
 
     const actionCell = useActionCell<CustomerListItem>({
         canDelete: isAdmin,
@@ -67,6 +83,34 @@ const ListCustomer = ({ paginator }: Props) => {
             {
                 accessorKey: 'username',
                 header: t('common.username'),
+            },
+            {
+                id: 'managed_by',
+                header: t('user.manager_owner', { defaultValue: 'Thuộc quản lý' }),
+                cell: ({ row }) => {
+                    const owner = row.original.owner;
+                    const manager = row.original.manager;
+
+                    if (managerFilterId && owner?.role === _UserRole.EMPLOYEE && manager?.username) {
+                        return t('user.manager_relation', {
+                            employee: owner.username,
+                            manager: manager.username,
+                        });
+                    }
+
+                    if (owner?.username) {
+                        return owner.username;
+                    }
+
+                    if (manager?.username) {
+                        return manager.username;
+                    }
+
+                    return '-';
+                },
+                meta: {
+                    cellClassName: 'min-w-[180px]',
+                },
             },
             {
                 accessorKey: 'phone',
@@ -134,12 +178,18 @@ const ListCustomer = ({ paginator }: Props) => {
                 }
             }
         ],
-        [t, actionCell],
+        [t, actionCell, managerFilterId],
     );
 
     return (
         <>
-            <ListCustomerSearchForm />
+            <ListCustomerSearchForm
+                managers={managers}
+                employees={employees}
+                initialFilter={filters}
+                showManagerSelect={canFilterManager}
+                showEmployeeSelect={canFilterEmployee}
+            />
             <Separator className={'my-4'} />
             <DataTable columns={columns} paginator={paginator} />
             <UserInfoDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} user={selectedUser} />

@@ -37,4 +37,37 @@ class TelegramService
     {
 
     }
+
+    /**
+     * Gửi thông báo đến Telegram group/channel hoặc user
+     */
+    public function sendNotification(string $chatId, string $message): ServiceReturn
+    {
+        try {
+            $this->bot->sendMessage([
+                'chat_id' => $chatId,
+                'text' => $message,
+                'parse_mode' => 'HTML',
+            ]);
+            return ServiceReturn::success();
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'Error TelegramService@sendNotification: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('ticket.telegram_notification_failed'));
+        }
+    }
+
+    /**
+     * Gửi thông báo ticket mới đến nhiều chat IDs
+     */
+    public function sendTicketNotification(array $chatIds, string $message): void
+    {
+        foreach ($chatIds as $chatId) {
+            if (!empty($chatId)) {
+                $this->sendNotification($chatId, $message);
+            }
+        }
+    }
 }
