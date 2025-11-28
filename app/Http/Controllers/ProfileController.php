@@ -56,19 +56,33 @@ class ProfileController extends Controller
 
     public function connectTelegram(ConnectTelegramRequest $request): RedirectResponse
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
+            $validated = $request->validated();
 
-        $result = $this->authService->verifyHashTelegram($request->validated());
-        if ($result->isError()) {
-            FlashMessage::error($result->getMessage());
+            $result = $this->authService->verifyHashTelegram($validated);
+            if ($result->isError()) {
+                Logging::web('ProfileController@connectTelegram: Hash verification failed', [
+                    'error' => $result->getMessage(),
+                ]);
+                FlashMessage::error($result->getMessage());
+                return back()->withInput();
+            }
+
+            $user->telegram_id = (string) $validated['id'];
+            $user->save();
+
+
+            FlashMessage::success(__('profile.telegram_connect_success'));
+            return redirect()->route('profile');
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'ProfileController@connectTelegram error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            FlashMessage::error(__('common_error.server_error'));
             return back()->withInput();
         }
-
-        $user->telegram_id = (string) $request->validated('id');
-        $user->save();
-
-        FlashMessage::success(__('profile.telegram_connect_success'));
-        return redirect()->route('profile');
     }
 
     public function update(ProfileUpdateRequest $request): RedirectResponse

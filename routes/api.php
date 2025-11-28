@@ -6,6 +6,7 @@ use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\ServiceController;
+use App\Http\Controllers\API\TicketController;
 use App\Http\Controllers\API\WalletController;
 use App\Http\Middleware\VerifyTelegramIp;
 use Illuminate\Support\Facades\Route;
@@ -73,6 +74,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('change-password', [WalletController::class, 'changePassword'])->middleware('throttle:5,1');
         Route::post('withdraw', [WalletController::class, 'withdraw']) // API rút tiền
         ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
+    });
+
+    Route::prefix('tickets')->group(function () {
+        Route::get('/', [TicketController::class, 'index']);
+        Route::get('/{id}', [TicketController::class, 'show']);
+        Route::post('/', [TicketController::class, 'store']);
+        Route::post('/{id}/message', [TicketController::class, 'addMessage']);
+        Route::put('/{id}/status', [TicketController::class, 'updateStatus']);
     });
 
 });

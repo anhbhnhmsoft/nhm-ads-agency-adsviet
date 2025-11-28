@@ -19,6 +19,19 @@ class TicketConversation extends Model
         'reply_side',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'id' => 'string',
+            'ticket_id' => 'string',
+            'user_id' => 'string',
+            'reply_side' => 'integer',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+            'deleted_at' => 'datetime',
+        ];
+    }
+
     public function ticket()
     {
         return $this->belongsTo(Ticket::class, 'ticket_id');

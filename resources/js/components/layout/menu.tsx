@@ -14,6 +14,7 @@ import {
     service_orders_index,
     service_management_index,
     spend_report_index,
+    ticket_index,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -28,6 +29,7 @@ import {
     ClipboardList,
     KanbanSquare,
     BarChart3,
+    MessageSquare,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -113,6 +115,22 @@ const useMenu = () => {
                 is_menu: true,
                 active: isActive('/transactions'),
                 can_show: checkRole([_UserRole.ADMIN, _UserRole.CUSTOMER, _UserRole.AGENCY, _UserRole.EMPLOYEE, _UserRole.MANAGER]),
+            },
+            {
+                title: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE])
+                    ? t('menu.support_customer')
+                    : t('menu.support'),
+                url: ticket_index().url,
+                icon: <MessageSquare />,
+                is_menu: true,
+                active: isActive(ticket_index()),
+                can_show: checkRole([
+                    _UserRole.ADMIN,
+                    _UserRole.MANAGER,
+                    _UserRole.EMPLOYEE,
+                    _UserRole.CUSTOMER,
+                    _UserRole.AGENCY,
+                ]),
             },
             {
                 title: t('menu.user'),

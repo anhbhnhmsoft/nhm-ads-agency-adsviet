@@ -21,6 +21,8 @@ use App\Repositories\WalletRepository;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\NotificationRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\TicketRepository;
+use App\Repositories\TicketConversationRepository;
 use App\Service\AuthService;
 use App\Service\GoogleAdsService;
 use App\Service\MailService;
@@ -39,6 +41,7 @@ use App\Service\PlatformSettingService;
 use App\Service\WalletService;
 use App\Service\WalletTransactionService;
 use App\Service\NotificationService;
+use App\Service\TicketService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -88,6 +91,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(GoogleAccountRepository::class);
         $this->app->bind(GoogleAdsAccountInsightRepository::class);
         $this->app->bind(GoogleAdsCampaignRepository::class);
+        $this->app->bind(TicketRepository::class);
+        $this->app->bind(TicketConversationRepository::class);
     }
 
     /**
@@ -114,6 +119,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(MetaBusinessService::class);
         $this->app->bind(MetaService::class);
         $this->app->bind(GoogleAdsService::class);
+        $this->app->bind(TicketService::class);
     }
 
      /**

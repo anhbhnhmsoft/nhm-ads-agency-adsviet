@@ -16,6 +16,7 @@ use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SpendReportController;
+use App\Http\Controllers\TicketController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -134,6 +135,14 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
 
     Route::prefix('/spend-report')->group(function () {
         Route::get('/', [SpendReportController::class, 'index'])->name('spend_report_index');
+    });
+
+    Route::prefix('/tickets')->group(function () {
+        Route::get('/', [TicketController::class, 'index'])->name('ticket_index');
+        Route::get('/{id}', [TicketController::class, 'show'])->name('ticket_show');
+        Route::post('/', [TicketController::class, 'store'])->name('ticket_store');
+        Route::post('/{id}/message', [TicketController::class, 'addMessage'])->name('ticket_add_message');
+        Route::put('/{id}/status', [TicketController::class, 'updateStatus'])->name('ticket_update_status');
     });
 
     Route::prefix('/meta')->group(function () {

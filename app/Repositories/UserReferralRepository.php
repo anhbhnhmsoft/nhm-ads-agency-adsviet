@@ -65,4 +65,39 @@ class UserReferralRepository extends BaseRepository
 
         return false;
     }
+
+    /**
+     * Lấy referrer của user (Manager hoặc Employee quản lý user này)
+     */
+    public function getReferrerByReferredId(int $referredId): ?UserReferral
+    {
+        return $this->query()
+            ->where('referred_id', $referredId)
+            ->whereNull('deleted_at')
+            ->with(['referrer' => function ($query) {
+                $query->select('id', 'name', 'username', 'role', 'telegram_id');
+            }])
+            ->first();
+    }
+
+    /**
+     * Lấy tất cả referrer chain (nếu Employee quản lý Customer, thì cần cả Manager của Employee)
+     */
+    public function getReferrerChain(int $referredId): array
+    {
+        $referrers = [];
+        $currentReferredId = $referredId;
+
+        // Tìm tối đa 2 cấp: Employee -> Manager
+        for ($i = 0; $i < 2; $i++) {
+            $referral = $this->getReferrerByReferredId($currentReferredId);
+            if (!$referral || !$referral->referrer) {
+                break;
+            }
+            $referrers[] = $referral->referrer;
+            $currentReferredId = $referral->referrer_id;
+        }
+
+        return $referrers;
+    }
 }
