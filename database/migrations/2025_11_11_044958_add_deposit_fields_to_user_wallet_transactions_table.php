@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('user_wallet_transactions', function (Blueprint $table) {
-            $table->string('network')->nullable()->after('description')->comment('Mạng nạp (BEP20/TRC20)');
             $table->string('tx_hash')->nullable()->after('network')->comment('Hash giao dịch on-chain (nếu có)');
             $table->string('customer_name')->nullable()->after('tx_hash');
             $table->string('customer_email')->nullable()->after('customer_name');
@@ -30,7 +29,6 @@ return new class extends Migration
     {
         Schema::table('user_wallet_transactions', function (Blueprint $table) {
             $table->dropColumn([
-                'network',
                 'tx_hash',
                 'customer_name',
                 'customer_email',
