@@ -1,11 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import TextLink from '@/components/text-link';
 import { Head } from '@inertiajs/react';
 import { useState, ReactNode } from 'react';
 import TelegramButton from './components/TelegramButton';
 import AuthLayout from '@/layouts/auth-layout';
 import { useTranslation } from 'react-i18next';
 import GmailRegisterContainer from './components/GmailRegisterContainer/GmailRegisterContainer';
+import { login } from '@/routes';
 
 interface RegisterProps {
   bot_username: string;
@@ -53,6 +55,12 @@ const RegisterScreen = ({ bot_username }: RegisterProps) => {
                   <GmailRegisterContainer />
                 </div>
               )}
+              <div className="text-center text-sm text-muted-foreground">
+                {t('auth.register.back_to_login_prompt')}{' '}
+                <TextLink href={login().url}>
+                  {t('auth.register.back_to_login_link')}
+                </TextLink>
+              </div>
             </CardContent>
     </>
   );
