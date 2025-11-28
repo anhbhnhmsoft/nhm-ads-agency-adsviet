@@ -104,7 +104,9 @@
       "service_orders_admin": "Quản lý đơn dịch vụ",
       "transactions": "Quản lý giao dịch",
       "profile": "Thông tin cá nhân",
-      "spend_report": "Báo cáo chi tiêu"
+      "spend_report": "Báo cáo chi tiêu",
+      "support": "Hỗ trợ",
+      "support_customer": "Hỗ trợ khách hàng"
     },
     "profile": {
         "title": "Thông tin cá nhân",
@@ -224,7 +226,9 @@
             "verify_code": "Xác minh",
             "verifying": "Đang kiểm tra…",
             "email_required": "Vui lòng nhập email!",
-            "otp_required": "Vui lòng nhập mã xác minh!"
+            "otp_required": "Vui lòng nhập mã xác minh!",
+            "back_to_login_prompt": "Đã có tài khoản?",
+            "back_to_login_link": "Quay lại đăng nhập"
         },
         "register_new_user": {
             "title": "Đăng ký tài khoản mới",
@@ -252,7 +256,12 @@
         "authenticated_both": "Đã xác thực cả 2",
         "customer_info": "Thông tin khách hàng",
         "edit_customer": "Chỉnh sửa khách hàng",
-        "create_customer": "Tạo khách hàng"
+        "create_customer": "Tạo khách hàng",
+        "filter_manager": "Quản lý",
+        "filter_employee": "Nhân viên",
+        "select_employee_placeholder": "Chọn nhân viên...",
+        "manager_owner": "Thuộc quản lý",
+        "manager_relation": "{{employee}} thuộc {{manager}}"
     },
     "wallet": {
         "active": "Đang hoạt động",
@@ -410,9 +419,9 @@
         "amount_too_high": "Số tiền quá cao",
         "budget": "Ngân sách (USD)",
         "required": "Bắt buộc",
-        "budget_hint": "Nhập ngân sách tối đa {{max}} USD",
+        "budget_hint": "Nhập ngân sách tối thiểu {{min}} USD",
         "budget_invalid": "Ngân sách không hợp lệ",
-        "budget_max_exceeded": "Ngân sách không được vượt quá {{max}} USD",
+        "budget_min_required": "Ngân sách phải đạt tối thiểu {{min}} USD",
         "order_summary": "Tóm tắt đơn hàng",
         "back_to_services": "Quay lại danh sách",
         "info_message": "Chọn dịch vụ phù hợp với nhu cầu của bạn. Thanh toán chỉ qua USDT.",
@@ -485,6 +494,48 @@
         "admin_form_description": "Nhập đầy đủ thông tin để kích hoạt tài khoản dịch vụ cho khách hàng.",
         "edit_config_title": "Chỉnh sửa cấu hình tài khoản",
         "edit_config_description": "Cập nhật thông tin hoặc bổ sung cho đơn dịch vụ."
+    },
+    "ticket": {
+        "title": "Hỗ trợ",
+        "list": "Danh sách yêu cầu hỗ trợ",
+        "create": "Tạo yêu cầu hỗ trợ",
+        "create_description": "Mô tả vấn đề của bạn để nhận được hỗ trợ",
+        "detail": "Chi tiết yêu cầu hỗ trợ",
+        "subject": "Chủ đề",
+        "subject_placeholder": "Nhập chủ đề...",
+        "description": "Mô tả",
+        "description_placeholder": "Mô tả chi tiết vấn đề của bạn...",
+        "priority_label": "Mức độ ưu tiên",
+        "status_label": "Trạng thái",
+        "created_by": "Người tạo",
+        "assigned_to": "Người xử lý",
+        "created_at": "Ngày tạo",
+        "updated_at": "Cập nhật lần cuối",
+        "messages": "Tin nhắn",
+        "add_message": "Thêm tin nhắn",
+        "message_placeholder": "Nhập tin nhắn của bạn...",
+        "send": "Gửi",
+        "update_status": "Cập nhật trạng thái",
+        "no_tickets": "Chưa có yêu cầu hỗ trợ nào",
+        "no_messages": "Chưa có tin nhắn nào",
+        "status": {
+            "pending": "Chờ xử lý",
+            "open": "Đang mở",
+            "in_progress": "Đang xử lý",
+            "resolved": "Đã giải quyết",
+            "closed": "Đã đóng"
+        },
+        "priority": {
+            "low": "Thấp",
+            "medium": "Trung bình",
+            "high": "Cao",
+            "urgent": "Khẩn cấp"
+        },
+        "reply_side": {
+            "customer": "Khách hàng",
+            "staff": "Nhân viên",
+            "system": "Hệ thống"
+        }
     },
     "spend_report": {
         "title": "Báo cáo chi tiêu",

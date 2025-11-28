@@ -37,12 +37,14 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'username' => ['required', 'string', 'max:255'],
-            'password' => [new PasswordRule],
+            'password' => ['required', 'string'],
             'remember' => 'boolean',
         ], [
             'username.required' => __('common_validation.username.required'),
             'username.string' => __('common_validation.username.string'),
             'username.max' => __('common_validation.username.max', ['max' => 255]),
+            'password.required' => __('common_validation.password.required'),
+            'password.string' => __('common_validation.password.string'),
         ]);
 
         if ($validator->fails()) {

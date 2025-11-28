@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Common\Constants\User\UserRole;
 use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Core\QueryListDTO;
@@ -27,6 +28,7 @@ class UserController extends Controller
     public function listCustomer(Request $request)
     {
         $data = [];
+        $authUser = $request->user();
         
         // Xử lý wallet nếu có wallet_user_id trong query
         if ($request->has('wallet_user_id')) {
@@ -48,8 +50,32 @@ class UserController extends Controller
             sortDirection: $params->get('direction'),
         ));
         $paginator = $result->getData();
-        
+
+        $managers = [];
+        $employees = [];
+        $canFilterManager = false;
+        $canFilterEmployee = false;
+
+        if ($authUser && $authUser->role === UserRole::ADMIN->value) {
+            $canFilterManager = true;
+            $canFilterEmployee = true;
+            $managersResult = $this->userService->getManagers();
+            $employeesResult = $this->userService->getEmployeesSimple();
+            $managers = $managersResult->isSuccess() ? $managersResult->getData() : [];
+            $employees = $employeesResult->isSuccess() ? $employeesResult->getData() : [];
+        } elseif ($authUser && $authUser->role === UserRole::MANAGER->value) {
+            $canFilterEmployee = true;
+            $employeesResult = $this->userService->getEmployeesAssignedToManager((int) $authUser->id);
+            $employees = $employeesResult->isSuccess() ? $employeesResult->getData() : [];
+        }
+
         $data['paginator'] = fn () => ListCustomerResource::collection($paginator);
+        $data['managers'] = $managers;
+        $data['employees'] = $employees;
+        $data['filters'] = $params->get('filter') ?? [];
+        $data['canFilterManager'] = $canFilterManager;
+        $data['canFilterEmployee'] = $canFilterEmployee;
+        $data['filters'] = $params->get('filter') ?? [];
 
         return $this->rendering(
             view: 'user/list-customer',

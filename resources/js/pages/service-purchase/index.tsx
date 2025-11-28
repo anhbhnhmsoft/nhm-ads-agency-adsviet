@@ -130,8 +130,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
         if (numAmount <= 0) {
             return t('service_purchase.budget_invalid');
         }
-        if (numAmount > 50) {
-            return t('service_purchase.budget_max_exceeded', { max: 50 });
+        if (numAmount < 50) {
+            return t('service_purchase.budget_min_required', { min: 50 });
         }
         return null;
     };
@@ -412,7 +412,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            {t('service_purchase.budget_hint', { max: 50 })}
+                            {t('service_purchase.budget_hint', { min: 50 })}
                         </p>
                     </div>
 

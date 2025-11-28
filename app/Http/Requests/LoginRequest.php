@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\PasswordRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class LoginRequest extends FormRequest
@@ -16,7 +15,7 @@ class LoginRequest extends FormRequest
     {
         return [
             'username' => ['required', 'string', 'max:255'],
-            'password' => [new PasswordRule],
+            'password' => ['required', 'string'],
             'role' => ['required', 'in:admin,user'],
         ];
     }
@@ -27,6 +26,8 @@ class LoginRequest extends FormRequest
             'username.required' => __('common_validation.username.required'),
             'username.string' => __('common_validation.username.string'),
             'username.max' => __('common_validation.username.max', ['max' => 255]),
+            'password.required' => __('common_validation.password.required'),
+            'password.string' => __('common_validation.password.string'),
             'role.required' => __('auth.login.role.required'),
             'role.in' => __('auth.login.role.in'),
         ];

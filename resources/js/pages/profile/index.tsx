@@ -42,20 +42,56 @@ const ProfilePage = ({ user, telegram }: ProfilePageProps) => {
     useEffect(() => {
         const marker = '#tgAuthResult=';
         const href = window.location.href;
+        
         if (!href.includes(marker)) {
             return;
         }
+        
         const fragment = href.split(marker)[1];
         if (!fragment) {
+            console.warn('Telegram OAuth: Fragment is empty');
             return;
         }
+        
         try {
-            const base64 = fragment.replace(/-/g, '+').replace(/_/g, '/');
+            // Decode base64url
+            let base64 = fragment.replace(/-/g, '+').replace(/_/g, '/');
+            // Add padding if needed
+            while (base64.length % 4) {
+                base64 += '=';
+            }
+            
             const decoded = atob(base64);
             const data: TelegramAuthData = JSON.parse(decoded);
+            
+            // Validate required fields
+            if (!data.id || !data.auth_date || !data.hash) {
+                console.error('Telegram OAuth: Missing required fields', data);
+                window.location.hash = '';
+                return;
+            }
+            
+            // Convert id to string as required by backend
+            const payload = {
+                ...data,
+                id: String(data.id),
+            };
+            
+            console.log('Telegram OAuth: Parsed data', payload);
             setTelegramConnecting(true);
-            router.post(profile_connect_telegram().url, data, {
+            
+            router.post(profile_connect_telegram().url, payload, {
                 preserveScroll: true,
+                onSuccess: () => {
+                    console.log('Telegram OAuth: Connection successful');
+                    setTelegramConnecting(false);
+                    window.location.hash = '';
+                },
+                onError: (errors) => {
+                    console.error('Telegram OAuth: Connection failed', errors);
+                    setTelegramConnecting(false);
+                    window.location.hash = '';
+                },
                 onFinish: () => {
                     setTelegramConnecting(false);
                     window.location.hash = '';

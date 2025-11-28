@@ -94,34 +94,70 @@ class UserService
     public function getListCustomerPagination(QueryListDTO $queryListDTO): ServiceReturn
     {
         try {
-            $filter = $queryListDTO->filter ?? [];
+            $filter = $this->normalizeCustomerFilter($queryListDTO->filter ?? []);
             $filter['roles'] = [
                 UserRole::CUSTOMER->value,
                 UserRole::AGENCY->value,
             ];
+
+            // Lọc theo manager/employee được chọn từ bộ lọc
+            if (!empty($filter['manager_id'])) {
+                $managerId = (int) $filter['manager_id'];
+                $employeeIds = $this->userReferralRepository->getAssignedEmployeeIds($managerId);
+                $filter['referrer_ids'] = array_values(array_unique(array_merge(
+                    $filter['referrer_ids'] ?? [],
+                    [$managerId],
+                    $employeeIds
+                )));
+                Logging::web('UserService@getListCustomerPagination: manager filter applied', [
+                    'manager_id' => $managerId,
+                    'employee_ids' => $employeeIds,
+                    'referrer_ids' => $filter['referrer_ids'],
+                ]);
+            }
+
+            $hasEmployeeFilter = false;
+
+            if (!empty($filter['employee_id'])) {
+                $employeeId = (int) $filter['employee_id'];
+                $filter['referrer_ids'] = [$employeeId];
+                $hasEmployeeFilter = true;
+            }
 
             // Phân quyền hiển thị danh sách khách hàng theo vai trò người dùng hiện tại
             $currentUser = Auth::user();
             if ($currentUser) {
                 switch ($currentUser->role) {
                     case UserRole::MANAGER->value:
-                        // Manager: xem khách hàng do mình quản lý + khách hàng do nhân viên của mình quản lý
                         $employeeIds = $this->userReferralRepository
                             ->getAssignedEmployeeIds((int)$currentUser->id);
-                        $filter['referrer_ids'] = array_values(array_unique(array_merge([$currentUser->id], $employeeIds)));
+
+                        if ($hasEmployeeFilter) {
+                            // Đã lọc theo nhân viên cụ thể nên chỉ giữ nguyên referrer_ids hiện có
+                            $filter['referrer_ids'] = $filter['referrer_ids'] ?? [];
+                        } else {
+                            $filter['referrer_ids'] = array_values(array_unique(array_merge(
+                                $filter['referrer_ids'] ?? [],
+                                [$currentUser->id],
+                                $employeeIds
+                            )));
+                        }
                         break;
                     case UserRole::EMPLOYEE->value:
-                        // Employee: chỉ xem khách hàng do chính mình quản lý
                         $filter['referrer_ids'] = [$currentUser->id];
                         break;
                     case UserRole::AGENCY->value:
-                        // Agency: chỉ xem khách hàng do mình quản lý, và không hiển thị bản thân
                         $filter['referrer_ids'] = [$currentUser->id];
                         $filter['exclude_user_id'] = $currentUser->id;
                         break;
                 }
             }
+
             $query = $this->userRepository->filterQuery($filter);
+            $query->with([
+                'wallet',
+                'referredBy.referrer.referredBy.referrer',
+            ]);
             $query = $this->userRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
             return ServiceReturn::success(data: $paginator);
@@ -130,7 +166,6 @@ class UserService
                 message: 'Lỗi khi lấy danh sách khách hàng UserService@getListCustomerPagination: ' . $exception->getMessage(),
                 exception: $exception
             );
-            // trả về paginator rỗng khi có lỗi
             return ServiceReturn::success(
                 data: new LengthAwarePaginator(
                     items: [],
@@ -140,6 +175,46 @@ class UserService
                 )
             );
         }
+    }
+
+    protected function normalizeCustomerFilter(array $filter): array
+    {
+        if (isset($filter['manager_id'])) {
+            $filter['manager_id'] = $this->normalizeFilterId($filter['manager_id']);
+            if ($filter['manager_id'] === null) {
+                unset($filter['manager_id']);
+            }
+        }
+
+        if (isset($filter['employee_id'])) {
+            $filter['employee_id'] = $this->normalizeFilterId($filter['employee_id']);
+            if ($filter['employee_id'] === null) {
+                unset($filter['employee_id']);
+            }
+        }
+
+        return $filter;
+    }
+
+    protected function normalizeFilterId(mixed $value): ?int
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $value = trim($value);
+            if ($value === '' || strtolower($value) === 'null' || strtolower($value) === 'undefined') {
+                return null;
+            }
+        }
+
+        if (is_numeric($value)) {
+            $intValue = (int) $value;
+            return $intValue > 0 ? $intValue : null;
+        }
+
+        return null;
     }
 
     public function createEmployee(array $data): ServiceReturn
@@ -340,6 +415,46 @@ class UserService
             return ServiceReturn::success(data: $result->toArray());
         } catch (\Throwable $e) {
             Logging::error(message: 'Lỗi khi lấy danh sách employees UserService@getEmployeesForAssignment: ' . $e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    public function getEmployeesSimple(): ServiceReturn
+    {
+        try {
+            $employees = $this->userRepository->getEmployees();
+            return ServiceReturn::success(
+                data: $employees->map(fn($emp) => [
+                    'id' => $emp->id,
+                    'name' => $emp->name,
+                    'username' => $emp->username,
+                ])->toArray()
+            );
+        } catch (\Throwable $e) {
+            Logging::error(message: 'Lỗi khi lấy danh sách employees UserService@getEmployeesSimple: ' . $e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    public function getEmployeesAssignedToManager(int $managerId): ServiceReturn
+    {
+        try {
+            $employeeIds = $this->userReferralRepository->getAssignedEmployeeIds($managerId);
+            if (empty($employeeIds)) {
+                return ServiceReturn::success(data: []);
+            }
+
+            $employees = $this->userRepository->getEmployeesByIds($employeeIds);
+
+            return ServiceReturn::success(
+                data: $employees->map(fn ($emp) => [
+                    'id' => $emp->id,
+                    'name' => $emp->name,
+                    'username' => $emp->username,
+                ])->toArray()
+            );
+        } catch (\Throwable $e) {
+            Logging::error(message: 'Lỗi khi lấy nhân viên theo manager UserService@getEmployeesAssignedToManager: ' . $e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
