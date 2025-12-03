@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Info } from 'lucide-react';
 
-type MinimalRow = { id: number; disabled?: boolean };
+type MinimalRow = { id: string; disabled?: boolean };
 
 type UseActionCellParams<T extends MinimalRow> = {
     onToggle?: (row: T) => void;

@@ -9,18 +9,116 @@ use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\WalletRepository;
+use App\Repositories\UserRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Service\UserAlertService;
+use App\Service\MailService;
+use App\Models\User;
+use App\Models\UserWalletTransaction;
 
 class WalletTransactionService
 {
     public function __construct(
         protected UserWalletTransactionRepository $transactionRepository,
         protected WalletRepository $walletRepository,
+        protected UserAlertService $userAlertService,
+        protected MailService $mailService,
+        protected UserRepository $userRepository,
     ) {
+    }
+
+    /**
+     * Gửi thông báo cho user khi có giao dịch ví mới được tạo
+     */
+    private function notifyTransaction(UserWalletTransaction $transaction, ?string $userId = null): void
+    {
+        try {
+            $transaction->loadMissing('wallet.user');
+            $wallet = $transaction->wallet;
+            $user = $wallet?->user;
+
+            if (!$user) {
+                return;
+            }
+
+            $amount = (float) $transaction->amount;
+            $amountFormatted = number_format($amount, 2);
+
+            $typeOptions = WalletTransactionType::getOptions();
+            $typeLabel = $typeOptions[$transaction->type] ?? $typeOptions[WalletTransactionType::UNKNOWN->value];
+
+            $sign = $amount >= 0 ? '+' : '';
+            $lines = [
+                __('wallet.notifications.title', ['type' => $typeLabel]),
+                __('wallet.notifications.amount', ['amount' => $sign.$amountFormatted]),
+            ];
+            $description = (string) ($transaction->description ?? '');
+            if ($description !== '') {
+                $lines[] = __('wallet.notifications.description', ['description' => $description]);
+            }
+            $message = implode("\n", $lines);
+            $description = (string) ($transaction->description ?? '');
+
+            $this->userAlertService->sendPlainText(
+                $user,
+                $message,
+                function (MailService $mailService, User $u) use ($typeLabel, $amount, $description) {
+                    return $mailService->sendWalletTransactionAlert(
+                        email: $u->email,
+                        username: $u->name ?? $u->username,
+                        typeLabel: $typeLabel,
+                        amount: $amount,
+                        description: $description ?: null,
+                    );
+                }
+            );
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'WalletTransactionService@notifyTransaction error: '.$e->getMessage(),
+                exception: $e
+            );
+        }
+    }
+
+    private function notifyAdminsDeposit(UserWalletTransaction $transaction, string $stage): void
+    {
+        try {
+            $transaction->loadMissing('wallet.user');
+            $customer = $transaction->wallet?->user;
+            if (!$customer) {
+                return;
+            }
+
+            $admins = $this->userRepository->getActiveAdminsWithEmail();
+            if ($admins->isEmpty()) {
+                return;
+            }
+
+            $typeLabel = __('wallet.transaction_type.deposit');
+            $amount = abs((float) $transaction->amount);
+            $description = $transaction->description ?? null;
+
+            foreach ($admins as $admin) {
+                $this->mailService->sendAdminWalletTransactionAlert(
+                    email: $admin->email,
+                    adminName: $admin->name ?? $admin->username,
+                    customerName: $customer->name ?? $customer->username,
+                    typeLabel: $typeLabel,
+                    amount: $amount,
+                    stage: $stage,
+                    description: $description
+                );
+            }
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'WalletTransactionService@notifyAdminsDeposit error: '.$e->getMessage(),
+                exception: $e
+            );
+        }
     }
 
     // Tạo lệnh nạp tiền (DEPOSIT) cho user
@@ -29,7 +127,7 @@ class WalletTransactionService
         try {
             $wallet = $this->walletRepository->findByUserId($userId);
             if (!$wallet) {
-                return ServiceReturn::error(message: __('Ví không tồn tại'));
+                return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
             }
 
             $transaction = $this->transactionRepository->create([
@@ -37,7 +135,7 @@ class WalletTransactionService
                 'amount' => $amount,
                 'type' => WalletTransactionType::DEPOSIT->value,
                 'status' => WalletTransactionStatus::PENDING->value,
-                'description' => 'User tạo lệnh nạp tiền',
+                'description' => __('wallet.transaction_description.deposit_created'),
                 'network' => $network,
                 'deposit_address' => $depositAddress,
                 'customer_name' => $customerName,
@@ -45,6 +143,10 @@ class WalletTransactionService
                 'pay_address' => $payAddress,
                 'expires_at' => $expiresAt,
             ]);
+
+            // Gửi thông báo cho user & admin
+            $this->notifyTransaction($transaction, $wallet->user?->id);
+            $this->notifyAdminsDeposit($transaction, 'created');
 
             return ServiceReturn::success(data: $transaction);
         } catch (QueryException $e) {
@@ -60,19 +162,19 @@ class WalletTransactionService
             return DB::transaction(function () use ($userId, $amount, $withdrawInfo, $walletPassword) {
                 $wallet = $this->walletRepository->findByUserId($userId);
                 if (!$wallet) {
-                    return ServiceReturn::error(message: __('Ví không tồn tại'));
+                    return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
                 }
 
                 // Kiểm tra mật khẩu ví nếu có đặt
                 if (!empty($wallet->password)) {
                     if (empty($walletPassword) || !Hash::check($walletPassword, $wallet->password)) {
-                        return ServiceReturn::error(message: __('Mật khẩu ví không chính xác'));
+                        return ServiceReturn::error(message: __('wallet.error.wallet_password_invalid'));
                     }
                 }
 
                 // Kiểm tra số dư
                 if ((float) $wallet->balance < $amount) {
-                    return ServiceReturn::error(message: __('Số dư không đủ'));
+                    return ServiceReturn::error(message: __('wallet.error.wallet_balance_not_enough'));
                 }
 
                 // Trừ tiền ngay khi tạo lệnh
@@ -85,9 +187,12 @@ class WalletTransactionService
                     'amount' => -$amount,
                     'type' => WalletTransactionType::WITHDRAW->value,
                     'status' => WalletTransactionStatus::PENDING->value,
-                    'description' => 'User tạo lệnh rút tiền',
+                    'description' => __('wallet.transaction_description.withdraw_created'),
                     'withdraw_info' => $withdrawInfo,
                 ]);
+
+                // Gửi thông báo cho user
+                $this->notifyTransaction($transaction, $wallet->user?->id);
 
                 return ServiceReturn::success(data: $transaction);
             });
@@ -116,7 +221,7 @@ class WalletTransactionService
     public function approveDeposit(int $transactionId, ?string $txHash = null): ServiceReturn
     {
         try {
-            return DB::transaction(function () use ($transactionId, $txHash) {
+            $result = DB::transaction(function () use ($transactionId, $txHash) {
                 $transaction = $this->transactionRepository->query()->find($transactionId);
                 if (!$transaction) {
                     return ServiceReturn::error(message: __('Giao dịch không tồn tại'));
@@ -128,7 +233,7 @@ class WalletTransactionService
                 // Cập nhập số dư cho user
                 $wallet = $this->walletRepository->query()->find($transaction->wallet_id);
                 if (!$wallet) {
-                    return ServiceReturn::error(message: __('Ví không tồn tại'));
+                    return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
                 }
                 $newBalance = (float) $wallet->balance + (float) $transaction->amount;
                 $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
@@ -137,11 +242,25 @@ class WalletTransactionService
                 $this->transactionRepository->updateById($transactionId, [
                     'status' => WalletTransactionStatus::APPROVED->value,
                     'tx_hash' => $txHash,
-                    'description' => 'Admin duyệt nạp tiền',
+                    'description' => __('wallet.transaction_description.deposit_approved'),
                 ]);
 
-                return ServiceReturn::success();
+                $transaction->status = WalletTransactionStatus::APPROVED->value;
+                $transaction->tx_hash = $txHash;
+
+                return ServiceReturn::success(data: $transaction);
             });
+
+            if ($result->isSuccess()) {
+                $transaction = $result->getData();
+                if ($transaction instanceof UserWalletTransaction) {
+                    $this->notifyTransaction($transaction, $transaction->wallet?->user?->id);
+                    $this->notifyAdminsDeposit($transaction, 'approved');
+                }
+                return ServiceReturn::success();
+            }
+
+            return $result;
         } catch (\Throwable $e) {
             Logging::error('WalletTransactionService@approveDeposit error: '.$e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
@@ -170,7 +289,7 @@ class WalletTransactionService
             $this->transactionRepository->updateById($transactionId, [
                 'status' => WalletTransactionStatus::COMPLETED->value,
                 'tx_hash' => $txHash,
-                'description' => 'Admin duyệt và đã chuyển tiền rút',
+                'description' => __('wallet.transaction_description.withdraw_completed'),
             ]);
 
             return ServiceReturn::success();
@@ -357,7 +476,7 @@ class WalletTransactionService
             // Cập nhật trạng thái thành CANCELLED
             $this->transactionRepository->updateById($transactionId, [
                 'status' => WalletTransactionStatus::CANCELLED->value,
-                'description' => 'User hủy lệnh nạp từ màn hình chờ',
+                'description' => __('wallet.transaction_description.deposit_cancelled_user'),
             ]);
 
             return ServiceReturn::success();
@@ -401,7 +520,7 @@ class WalletTransactionService
                 // Cập nhật trạng thái thành CANCELLED
                 $this->transactionRepository->updateById($transactionId, [
                     'status' => WalletTransactionStatus::CANCELLED->value,
-                    'description' => 'User hủy lệnh rút tiền',
+                'description' => __('wallet.transaction_description.withdraw_cancelled_user'),
                 ]);
 
                 return ServiceReturn::success();
@@ -443,7 +562,7 @@ class WalletTransactionService
                 // Cập nhật trạng thái thành CANCELLED
                 $this->transactionRepository->updateById($transactionId, [
                     'status' => WalletTransactionStatus::CANCELLED->value,
-                    'description' => 'Admin hủy lệnh rút tiền',
+                'description' => __('wallet.transaction_description.withdraw_cancelled_admin'),
                 ]);
 
                 return ServiceReturn::success();

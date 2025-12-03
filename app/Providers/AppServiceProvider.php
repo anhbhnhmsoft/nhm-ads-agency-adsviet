@@ -42,6 +42,8 @@ use App\Service\WalletService;
 use App\Service\WalletTransactionService;
 use App\Service\NotificationService;
 use App\Service\TicketService;
+use App\Service\WalletNotificationService;
+use App\Service\UserAlertService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -120,6 +122,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(MetaService::class);
         $this->app->bind(GoogleAdsService::class);
         $this->app->bind(TicketService::class);
+        $this->app->bind(WalletNotificationService::class);
+        $this->app->bind(UserAlertService::class);
     }
 
      /**

@@ -17,8 +17,9 @@ class UserReferral extends Model
     ];
 
     protected $casts = [
-        'referrer_id' => 'integer',
-        'referred_id' => 'integer',
+        'id' => 'string',
+        'referrer_id' => 'string',
+        'referred_id' => 'string',
     ];
 
     // Relationships

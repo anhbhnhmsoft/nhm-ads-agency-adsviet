@@ -131,6 +131,16 @@ class UserRepository extends BaseRepository
             ->first();
     }
 
+    public function getActiveAdminsWithEmail(): Collection
+    {
+        return $this->query()
+            ->where('role', UserRole::ADMIN->value)
+            ->where('disabled', false)
+            ->whereNotNull('email')
+            ->whereNotNull('email_verified_at')
+            ->get();
+    }
+
     public function queryEmployees(): Builder
     {
         return $this->model()

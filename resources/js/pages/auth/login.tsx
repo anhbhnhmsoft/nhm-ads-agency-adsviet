@@ -9,23 +9,22 @@ import AuthLayout from '@/layouts/auth-layout';
 import RoleSystemCard from '@/pages/auth/components/RoleSystemCard';
 import { useFormLogin } from '@/pages/auth/hooks/use-form';
 import { Head } from '@inertiajs/react';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TelegramButton from '@/pages/auth/components/TelegramButton';
 import { register } from '@/routes';
+import { Eye, EyeOff } from 'lucide-react';
 
 type Props = {
     bot_username: string;
 };
 
-
-
 const Login = ({ bot_username }: Props) => {
     const { t } = useTranslation();
-
     const { form, handleSubmit } = useFormLogin();
-
     const { data, setData, processing, errors } = form;
+
+    const [showPassword, setShowPassword] = useState(false);
 
     return (
         <>
@@ -61,19 +60,34 @@ const Login = ({ bot_username }: Props) => {
                                 {t('common.password')}
                             </Label>
                         </div>
-                        <Input
-                            id="password"
-                            value={data.password}
-                            onChange={(e) =>
-                                setData('password', e.target.value)
-                            }
-                            type="password"
-                            name="password"
-                            required
-                            tabIndex={2}
-                            autoComplete="current-password"
-                            placeholder={t('common.password')}
-                        />
+                        <div className="relative">
+                            <Input
+                                id="password"
+                                value={data.password}
+                                onChange={(e) =>
+                                    setData('password', e.target.value)
+                                }
+                                type={showPassword ? "text" : "password"}
+                                name="password"
+                                required
+                                tabIndex={2}
+                                autoComplete="current-password"
+                                placeholder={t('common.password')}
+                            />
+                            <button
+                                type="button"
+                                tabIndex={-1}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 flex items-center"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="w-5 h-5" />
+                                ) : (
+                                    <Eye className="w-5 h-5" />
+                                )}
+                            </button>
+                        </div>
                         <InputError message={errors.password} />
                     </div>
 

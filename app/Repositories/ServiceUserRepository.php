@@ -28,6 +28,13 @@ class ServiceUserRepository extends BaseRepository
         if (isset($filters['is_active']) && $filters['is_active'] === true) {
             $query->where('disabled', false);
         }
+
+        if (!empty($filters['platform'])) {
+            $query->whereHas('package', function ($packageQuery) use ($filters) {
+                $packageQuery->where('platform', (int) $filters['platform']);
+            });
+        }
+
         return $query;
     }
 

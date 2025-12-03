@@ -11,6 +11,7 @@ import type {
     Campaign,
     CampaignDetail,
     CampaignDailyInsight,
+    StatusSeverity,
 } from '@/pages/service-management/types/types';
 import { _PlatformType } from '@/lib/types/constants';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Radio, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
@@ -301,6 +303,78 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
         }
     };
 
+    const getBadgeClassName = (severity?: StatusSeverity | null) => {
+        switch (severity) {
+            case 'success':
+                return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+            case 'warning':
+                return 'bg-amber-50 text-amber-700 border border-amber-100';
+            case 'error':
+                return 'bg-red-50 text-red-700 border border-red-100';
+            default:
+                return 'bg-muted text-foreground border border-transparent';
+        }
+    };
+
+    const getTextSeverityClassName = (severity?: StatusSeverity | null) => {
+        switch (severity) {
+            case 'success':
+                return 'text-emerald-600';
+            case 'warning':
+                return 'text-amber-600';
+            case 'error':
+                return 'text-red-600';
+            default:
+                return 'text-muted-foreground';
+        }
+    };
+
+    const renderStatusBadge = (label?: string | null, severity?: StatusSeverity | null) => {
+        if (!label) {
+            return null;
+        }
+        return (
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getBadgeClassName(severity)}`}>
+                {label}
+            </span>
+        );
+    };
+
+    const accountIssueSummary = useMemo(() => {
+        return accounts.reduce(
+            (acc, item) => {
+                if (item.status_severity === 'error') {
+                    acc.error += 1;
+                } else if (item.status_severity === 'warning') {
+                    acc.warning += 1;
+                }
+                return acc;
+            },
+            { error: 0, warning: 0 }
+        );
+    }, [accounts]);
+
+    const campaignsOfSelectedAccount = useMemo(() => {
+        if (!selectedAccountId) {
+            return [] as Campaign[];
+        }
+        return campaignsByAccount[selectedAccountId] || [];
+    }, [selectedAccountId, campaignsByAccount]);
+
+    const campaignIssueSummary = useMemo(() => {
+        return campaignsOfSelectedAccount.reduce(
+            (acc, item) => {
+                if (item.status_severity === 'error') {
+                    acc.error += 1;
+                } else if (item.status_severity === 'warning') {
+                    acc.warning += 1;
+                }
+                return acc;
+            },
+            { error: 0, warning: 0 }
+        );
+    }, [campaignsOfSelectedAccount]);
+
     const renderConfigInfo = (service: ServiceOrder) => {
         const config = service.config_account || {};
         return (
@@ -384,6 +458,88 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
     const renderCampaignView = () => {
         if (!selectedService) return null;
 
+        const issueCampaigns = campaignsOfSelectedAccount.filter(
+            (campaign) => campaign.status_severity && campaign.status_severity !== 'success'
+        );
+
+        const renderCampaignList = (list: Campaign[]) => {
+            if (!list.length) {
+                return (
+                    <p className="text-sm text-muted-foreground">
+                        {t('service_management.campaigns_empty')}
+                    </p>
+                );
+            }
+
+            return (
+                <div className="space-y-3">
+                    {list.map((campaign) => {
+                        const campaignBadge = renderStatusBadge(
+                            campaign.status_label ?? campaign.effective_status,
+                            campaign.status_severity
+                        );
+                        return (
+                        <div
+                            key={campaign.id}
+                            className={`rounded border p-3 space-y-2 cursor-pointer transition-colors ${
+                                selectedCampaign?.id === campaign.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                            }`}
+                            onClick={() => loadCampaignDetail(campaign)}
+                        >
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-sm">{campaign.name || campaign.campaign_id}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">ID: {campaign.campaign_id}</p>
+                                    {campaignBadge && <div className="mt-2">{campaignBadge}</div>}
+                                </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground space-y-1">
+                                {campaign.objective && (
+                                    <div>
+                                        <span className="font-medium">{t('service_management.objective')}:</span> {campaign.objective}
+                                    </div>
+                                )}
+                                {campaign.daily_budget && (
+                                    <div>
+                                        <span className="font-medium">{t('service_management.daily_budget')}:</span> {campaign.daily_budget}
+                                    </div>
+                                )}
+                                {selectedService?.package?.platform !== _PlatformType.GOOGLE && (
+                                    <>
+                                        <div>
+                                            <span className="font-medium">{t('service_management.start_time')}:</span>{' '}
+                                            {campaign.start_time ? new Date(campaign.start_time).toLocaleString() : '--'}
+                                        </div>
+                                        {campaign.stop_time && (
+                                            <div>
+                                                <span className="font-medium">{t('service_management.stop_time')}:</span>{' '}
+                                                {new Date(campaign.stop_time).toLocaleString()}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                            {campaign.status_severity && campaign.status_severity !== 'success' && (
+                                <p className={`text-xs mt-1 ${getTextSeverityClassName(campaign.status_severity)}`}>
+                                    {t('service_management.campaign_issue_hint')}
+                                </p>
+                            )}
+                        </div>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        const accountAlertDescriptionKey =
+            accountIssueSummary.error > 0
+                ? 'service_management.account_issue_description_full'
+                : 'service_management.account_issue_description_warning';
+
+        const showCampaignWarningOnly = campaignIssueSummary.error === 0 && campaignIssueSummary.warning > 0;
+        const accountAlertVariant: 'default' | 'destructive' = accountIssueSummary.error ? 'destructive' : 'default';
+        const accountAlertClassName = accountIssueSummary.error ? undefined : 'border-amber-200 bg-amber-50 text-amber-800';
+
         return (
             <div className="space-y-6">
                 <div className="sm:flex items-center justify-between">
@@ -409,6 +565,18 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                     </Alert>
                 )}
 
+                {(accountIssueSummary.error > 0 || accountIssueSummary.warning > 0) && (
+                    <Alert variant={accountAlertVariant} className={accountAlertClassName}>
+                        <AlertTitle>{t('service_management.account_issue_title')}</AlertTitle>
+                        <AlertDescription>
+                            {t(accountAlertDescriptionKey, {
+                                error: accountIssueSummary.error,
+                                warning: accountIssueSummary.warning,
+                            })}
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-3">
                         <h3 className="font-semibold flex items-center gap-2">
@@ -427,62 +595,82 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                 </p>
                             ) : (
                                 <div className="space-y-3">
-                                    {accounts.map((account) => (
-                                        <div
-                                            key={account.id}
-                                            className={`rounded border p-3 cursor-pointer transition-colors ${
-                                                selectedAccountId === account.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
-                                            }`}
-                                            onClick={() => loadCampaigns(account)}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-semibold text-sm">
-                                                        {account.account_name || account.account_id}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        ID: {account.account_id}
-                                                    </p>
+                                    {accounts.map((account) => {
+                                        const accountBadge = renderStatusBadge(account.status_label, account.status_severity);
+                                        return (
+                                            <div
+                                                key={account.id}
+                                                className={`rounded border p-3 cursor-pointer transition-colors ${
+                                                    selectedAccountId === account.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                                                }`}
+                                                onClick={() => loadCampaigns(account)}
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-sm">
+                                                            {account.account_name || account.account_id}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                            ID: {account.account_id}
+                                                        </p>
+                                                        {accountBadge && <div className="mt-2">{accountBadge}</div>}
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            loadCampaigns(account);
+                                                        }}
+                                                        disabled={campaignLoadingId === account.id}
+                                                    >
+                                                        {campaignLoadingId === account.id && (
+                                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                        )}
+                                                        {t('service_management.load_campaigns')}
+                                                    </Button>
                                                 </div>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        loadCampaigns(account);
-                                                    }}
-                                                    disabled={campaignLoadingId === account.id}
-                                                >
-                                                    {campaignLoadingId === account.id && (
-                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                                                    {account.currency && (
+                                                        <div>
+                                                            <span className="font-medium">{t('service_management.currency')}:</span> {account.currency}
+                                                        </div>
                                                     )}
-                                                    {t('service_management.load_campaigns')}
-                                                </Button>
+                                                    {'balance' in account && account.balance && (
+                                                        <div>
+                                                            <span className="font-medium">{t('service_management.balance')}:</span> {account.balance}
+                                                        </div>
+                                                    )}
+                                                    {'time_zone' in account && account.time_zone && (
+                                                        <div>
+                                                            <span className="font-medium">{t('service_management.time_zone')}:</span> {account.time_zone}
+                                                        </div>
+                                                    )}
+                                                    {'primary_email' in account && account.primary_email && (
+                                                        <div>
+                                                            <span className="font-medium">{t('service_management.primary_email')}:</span> {account.primary_email}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {'balance_exhausted' in account && account.balance_exhausted && (
+                                                    <Alert variant="destructive" className="mt-2 py-2">
+                                                        <AlertDescription className="text-xs">
+                                                            {t('service_management.balance_exhausted_warning')}
+                                                        </AlertDescription>
+                                                    </Alert>
+                                                )}
+                                                {(account.disable_reason || account.status_message) && (
+                                                    <p
+                                                        className={`text-xs mt-2 ${getTextSeverityClassName(
+                                                            account.disable_reason_severity || account.status_severity
+                                                        )}`}
+                                                    >
+                                                        {account.disable_reason || account.status_message}
+                                                    </p>
+                                                )}
                                             </div>
-                                            <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                                                {account.currency && (
-                                                    <div>
-                                                        <span className="font-medium">{t('service_management.currency')}:</span> {account.currency}
-                                                    </div>
-                                                )}
-                                                {'balance' in account && account.balance && (
-                                                    <div>
-                                                        <span className="font-medium">{t('service_management.balance')}:</span> {account.balance}
-                                                    </div>
-                                                )}
-                                                {'time_zone' in account && account.time_zone && (
-                                                    <div>
-                                                        <span className="font-medium">{t('service_management.time_zone')}:</span> {account.time_zone}
-                                                    </div>
-                                                )}
-                                                {'primary_email' in account && account.primary_email && (
-                                                    <div>
-                                                        <span className="font-medium">{t('service_management.primary_email')}:</span> {account.primary_email}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </ScrollArea>
@@ -497,77 +685,61 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                             </Alert>
                         )}
                         {selectedAccountId ? (
-                            <ScrollArea className="h-[400px] border rounded p-3">
-                                {campaignLoadingId === selectedAccountId ? (
-                                    <div className="flex items-center justify-center py-10 text-muted-foreground">
-                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        {t('service_management.loading')}
-                                    </div>
-                                ) : (campaignsByAccount[selectedAccountId] || []).length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        {t('service_management.campaigns_empty')}
-                                    </p>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {campaignsByAccount[selectedAccountId].map((campaign) => (
-                                            <div
-                                                key={campaign.id}
-                                                className={`rounded border p-3 space-y-2 cursor-pointer transition-colors ${
-                                                    selectedCampaign?.id === campaign.id
-                                                        ? 'border-primary bg-primary/5'
-                                                        : 'hover:bg-muted/50'
-                                                }`}
-                                                onClick={() => loadCampaignDetail(campaign)}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-semibold text-sm">
-                                                            {campaign.name || campaign.campaign_id}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground mt-1">
-                                                            ID: {campaign.campaign_id}
-                                                        </p>
-                                                    </div>
-                                                    <Badge variant="outline" className="ml-2">
-                                                        {campaign.effective_status}
-                                                    </Badge>
-                                                </div>
-                                                <div className="text-xs text-muted-foreground space-y-1">
-                                                    {campaign.objective && (
-                                                        <div>
-                                                            <span className="font-medium">{t('service_management.objective')}:</span>{' '}
-                                                            {campaign.objective}
-                                                        </div>
-                                                    )}
-                                                    {campaign.daily_budget && (
-                                                        <div>
-                                                            <span className="font-medium">{t('service_management.daily_budget')}:</span>{' '}
-                                                            {campaign.daily_budget}
-                                                        </div>
-                                                    )}
-                                                    {/* Ẩn start_time và stop_time cho Google Ads */}
-                                                    {selectedService?.package?.platform !== _PlatformType.GOOGLE && (
-                                                        <>
-                                                            <div>
-                                                                <span className="font-medium">{t('service_management.start_time')}:</span>{' '}
-                                                                {campaign.start_time
-                                                                    ? new Date(campaign.start_time).toLocaleString()
-                                                                    : '--'}
-                                                            </div>
-                                                            {campaign.stop_time && (
-                                                                <div>
-                                                                    <span className="font-medium">{t('service_management.stop_time')}:</span>{' '}
-                                                                    {new Date(campaign.stop_time).toLocaleString()}
-                                                                </div>
-                                                            )}
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </ScrollArea>
+                            campaignLoadingId === selectedAccountId ? (
+                                <div className="h-[400px] border rounded p-3 flex items-center justify-center text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    {t('service_management.loading')}
+                                </div>
+                            ) : (
+                                <>
+                                    {campaignIssueSummary.error > 0 && (
+                                        <Alert variant="destructive">
+                                            <AlertTitle>{t('service_management.campaign_issue_title')}</AlertTitle>
+                                            <AlertDescription>
+                                                {t('service_management.campaign_issue_description', {
+                                                    error: campaignIssueSummary.error,
+                                                })}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    {showCampaignWarningOnly && (
+                                        <Alert variant="default" className="border-amber-200 bg-amber-50 text-amber-800">
+                                            <AlertTitle>{t('service_management.campaign_issue_warning_title')}</AlertTitle>
+                                            <AlertDescription>
+                                                {t('service_management.campaign_issue_warning_description', {
+                                                    warning: campaignIssueSummary.warning,
+                                                })}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    <Tabs defaultValue="all">
+                                        <TabsList className="grid grid-cols-2">
+                                            <TabsTrigger value="all">
+                                                {t('service_management.campaign_tab_all', { count: campaignsOfSelectedAccount.length })}
+                                            </TabsTrigger>
+                                            <TabsTrigger value="issues" disabled={!issueCampaigns.length}>
+                                                {t('service_management.campaign_tab_issue', { count: issueCampaigns.length })}
+                                            </TabsTrigger>
+                                        </TabsList>
+                                        <TabsContent value="all">
+                                            <ScrollArea className="h-[360px] border rounded p-3">
+                                                {renderCampaignList(campaignsOfSelectedAccount)}
+                                            </ScrollArea>
+                                        </TabsContent>
+                                        <TabsContent value="issues">
+                                            <ScrollArea className="h-[360px] border rounded p-3">
+                                                {issueCampaigns.length ? (
+                                                    renderCampaignList(issueCampaigns)
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {t('service_management.campaign_issue_empty')}
+                                                    </p>
+                                                )}
+                                            </ScrollArea>
+                                        </TabsContent>
+                                    </Tabs>
+                                </>
+                            )
                         ) : (
                             <div className="text-sm text-muted-foreground border rounded p-4">
                                 {t('service_management.select_account_hint')}

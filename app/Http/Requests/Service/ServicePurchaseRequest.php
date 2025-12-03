@@ -25,12 +25,15 @@ class ServicePurchaseRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'package_id.required' => __('Vui lòng chọn gói dịch vụ'),
-            'top_up_amount.numeric' => __('Số tiền top-up không hợp lệ'),
-            'top_up_amount.min' => __('Số tiền top-up phải lớn hơn hoặc bằng 0'),
-            'budget.required' => __('Ngân sách là bắt buộc'),
-            'budget.numeric' => __('Ngân sách phải là số'),
-            'budget.min' => __('Ngân sách phải đạt tối thiểu 50 USD'),
+            'package_id.required' => __('services.validation.package_required'),
+            'top_up_amount.numeric' => __('services.validation.top_up_numeric'),
+            'top_up_amount.min' => __('services.validation.top_up_min'),
+            'budget.required' => __('services.validation.budget_required'),
+            'budget.numeric' => __('services.validation.budget_numeric'),
+            'budget.min' => __('services.validation.budget_min', ['min' => 50]),
+            'meta_email.email' => __('services.validation.meta_email_email'),
+            'meta_email.max' => __('services.validation.meta_email_max', ['max' => 255]),
+            'display_name.max' => __('services.validation.display_name_max', ['max' => 255]),
         ];
     }
 }

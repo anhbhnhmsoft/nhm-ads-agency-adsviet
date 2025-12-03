@@ -185,12 +185,13 @@
     - account_id (varchar, index, not null) -- ID tài khoản Meta Ads
     - account_name (varchar, not null) -- Tên tài khoản Meta Ads
     - account_status (smallint, not null, default 0) -- Trạng thái tài khoản (trong enum MetaAdsAccountStatus)
+    - disable_reason (varchar, nullable) -- Lý do tài khoản bị vô hiệu hóa/tạm dừng từ Meta
     - spend_cap (varchar, nullable) -- Giới hạn chi tiêu
     - amount_spent (varchar, nullable) -- Tổng số tiền đã chi tiêu
     - balance (varchar, nullable) -- Số dư tài khoản Meta Ads
     - currency (varchar, nullable) -- Tiền tệ tài khoản Meta Ads
     - created_time (timestamp, nullable) -- Thời gian tạo tài khoản
-    - is_prepay_account (boolean, not null, default false) -- Là tài khoản trả trước hay không
+    - is_prepay_account (boolean, not null, default false) -- Là tài kh  oản trả trước hay không
     - timezone_id (int, nullable) -- Mã múi giờ (VD: 1)
     - timezone_name (varchar, nullable) -- Mã múi giờ (VD: "America/Creston")
     - last_synced_at (timestamp, nullable) -- Thời gian đồng bộ cuối cùng
@@ -262,6 +263,8 @@
     - account_name (varchar, not null) -- tên tài khoản
     - account_status (smallint, not null, default 0) -- trạng thái tài khoản
     - currency (varchar, nullable) -- loại tiền tệ
+    - balance (decimal(18, 2), nullable) -- số dư tài khoản Google Ads (lưu ý: Google Ads API không trả về balance trực tiếp từ customer resource)
+    - balance_exhausted (boolean, not null, default false) -- đánh dấu tài khoản đã hết số dư (cần cập nhật thủ công hoặc qua command)
     - customer_manager_id (varchar, nullable) -- ID MCC quản lý
     - time_zone (varchar, nullable) -- múi giờ
     - primary_email (varchar, nullable) -- email chính

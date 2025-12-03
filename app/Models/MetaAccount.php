@@ -18,6 +18,7 @@ class MetaAccount extends Model
         'account_id',
         'account_name',
         'account_status',
+        'disable_reason',
         'spend_cap',
         'amount_spent',
         'balance',
@@ -32,6 +33,7 @@ class MetaAccount extends Model
     protected $casts = [
         'id' => 'string',
         'service_user_id' => 'string',
+        'account_status' => 'integer',
     ];
 
     // Relationships

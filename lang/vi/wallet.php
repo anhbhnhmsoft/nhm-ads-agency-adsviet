@@ -46,6 +46,28 @@ return [
         'transaction_failed' => 'Giao dịch đã bị từ chối',
         'transaction_expired' => 'Giao dịch đã hết hạn',
     ],
+    'telegram' => [
+        'low_balance' => "⚠️ Ví của bạn chỉ còn :balance USDT (ngưỡng cảnh báo :threshold USDT).\nVui lòng nạp thêm để tránh gián đoạn dịch vụ.",
+    ],
+    'notifications' => [
+        'title' => '🔔 :type',
+        'amount' => 'Số tiền: :amount USDT',
+        'description' => 'Mô tả: :description',
+    ],
+    'transaction_description' => [
+        'deposit_created' => 'Đã tạo lệnh nạp tiền',
+        'withdraw_created' => 'User tạo lệnh rút tiền',
+        'deposit_approved' => 'Admin duyệt nạp tiền',
+        'withdraw_completed' => 'Admin duyệt và đã chuyển tiền rút',
+        'deposit_cancelled_user' => 'User hủy lệnh nạp từ màn hình chờ',
+        'withdraw_cancelled_user' => 'User hủy lệnh rút tiền',
+        'withdraw_cancelled_admin' => 'Admin hủy lệnh rút tiền',
+    ],
+    'error' => [
+        'wallet_not_found' => 'Ví không tồn tại',
+        'wallet_password_invalid' => 'Mật khẩu ví không chính xác',
+        'wallet_balance_not_enough' => 'Số dư không đủ',
+    ],
 ];
 
 

@@ -40,7 +40,7 @@ class WalletService
         }
         return ServiceReturn::success(data: $wallet);
     }
-    public function createForUser(int $userId, ?string $password = null): ServiceReturn
+    public function createForUser(string $userId, ?string $password = null): ServiceReturn
     {
         try {
             $exists = $this->walletRepository->findByUserId($userId);
@@ -63,7 +63,7 @@ class WalletService
         }
     }
 
-    public function create(int $userId, ?string $password = null): ServiceReturn
+    public function create(string $userId, ?string $password = null): ServiceReturn
     {
         $actor = Auth::user();
         if (!$actor) {
@@ -76,7 +76,7 @@ class WalletService
         return $this->createForUser($userId, $password);
     }
 
-    public function findByUserId(int $userId): ServiceReturn
+    public function findByUserId(string $userId): ServiceReturn
     {
         $wallet = $this->walletRepository->findByUserId($userId);
         if (!$wallet) {
@@ -85,7 +85,7 @@ class WalletService
         return ServiceReturn::success(data: $wallet);
     }
 
-    public function lock(int $userId): ServiceReturn
+    public function lock(string $userId): ServiceReturn
     {
         $actor = Auth::user();
         if (!$actor) {
@@ -101,7 +101,7 @@ class WalletService
         return ServiceReturn::success();
     }
 
-    public function unlock(int $userId): ServiceReturn
+    public function unlock(string $userId): ServiceReturn
     {
         $actor = Auth::user();
         if (!$actor) {
@@ -117,7 +117,7 @@ class WalletService
         return ServiceReturn::success();
     }
 
-    public function resetPassword(int $userId, string $newPassword): ServiceReturn
+    public function resetPassword(string $userId, string $newPassword): ServiceReturn
     {
         $actor = Auth::user();
         if (!$actor) {
@@ -138,7 +138,7 @@ class WalletService
      * Nếu ví chưa có mật khẩu, không cần current_password
      * Nếu ví đã có mật khẩu, cần verify current_password
      */
-    public function changePassword(int $userId, ?string $currentPassword, string $newPassword): ServiceReturn
+    public function changePassword(string $userId, ?string $currentPassword, string $newPassword): ServiceReturn
     {
         $actor = Auth::user();
         if (!$actor) {
@@ -146,7 +146,7 @@ class WalletService
         }
 
         // Chỉ cho phép user đổi mật khẩu ví của chính mình
-        if ((int) $actor->id !== (int) $userId) {
+        if ((string) $actor->id !== (string) $userId) {
             Logging::web('WalletService@changePassword permission denied', [
                 'actor_id' => $actor->id,
                 'target_id' => $userId,
@@ -180,7 +180,7 @@ class WalletService
         return ServiceReturn::success();
     }
 
-    public function topUp(int $userId, float $amount): ServiceReturn
+    public function topUp(string $userId, float $amount): ServiceReturn
     {
         $actor = Auth::user();
         if (!$actor) {
@@ -200,7 +200,7 @@ class WalletService
         return ServiceReturn::success();
     }
 
-    public function withdraw(int $userId, float $amount, ?string $walletPassword = null): ServiceReturn
+    public function withdraw(string $userId, float $amount, ?string $walletPassword = null): ServiceReturn
     {
         $actor = Auth::user();
         if (!$actor) {
@@ -230,10 +230,10 @@ class WalletService
         return ServiceReturn::success();
     }
 
-    public function getWalletForUser(int $targetUserId): ServiceReturn
+    public function getWalletForUser(string $targetUserId): ServiceReturn
     {
         try {
-            $targetId = (int) $targetUserId;
+            $targetId = (string) $targetUserId;
             $actor = Auth::user();
             if (!$actor) {
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
@@ -322,32 +322,32 @@ class WalletService
         }
     }
 
-    private function canPerformAction(User $actor, int $targetUserId): bool
+    private function canPerformAction(User $actor, string $targetUserId): bool
     {
         $role = $actor->role;
         if ($role === UserRole::ADMIN->value) {
             return true;
         }
         if ($role === UserRole::CUSTOMER->value || $role === UserRole::AGENCY->value) {
-            return (int) $actor->id === $targetUserId;
+            return (string) $actor->id === (string) $targetUserId;
         }
         if ($role === UserRole::EMPLOYEE->value || $role === UserRole::MANAGER->value) {
             return $this->userReferralRepository
                 ->query()
-                ->where('referrer_id', (int) $actor->id)
-                ->where('referred_id', $targetUserId)
+                ->where('referrer_id', (string) $actor->id)
+                ->where('referred_id', (string) $targetUserId)
                 ->exists();
         }
         return false;
     }
 
-    public function canViewWallet(User $actor, int $targetUserId): bool
+    public function canViewWallet(User $actor, string $targetUserId): bool
     {
         return $this->canPerformAction($actor, $targetUserId);
     }
 
     // Lấy danh sách wallet IDs của các user được quản lý bởi referrer
-    public function getWalletIdsForManagedUsers(int $referrerId): array
+    public function getWalletIdsForManagedUsers(string $referrerId): array
     {
         $walletIds = [];
 
@@ -359,7 +359,7 @@ class WalletService
 
         // Lấy wallet của các user được quản lý
         $managedUserIds = $this->userReferralRepository->query()
-            ->where('referrer_id', $referrerId)
+            ->where('referrer_id', (string) $referrerId)
             ->pluck('referred_id')
             ->toArray();
 
@@ -376,7 +376,7 @@ class WalletService
 
     // Lấy wallet ID theo user ID
 
-    public function getWalletIdByUserId(int $userId): ?int
+    public function getWalletIdByUserId(string $userId): ?string
     {
         $wallet = $this->walletRepository->findByUserId($userId);
         return $wallet ? $wallet->id : null;

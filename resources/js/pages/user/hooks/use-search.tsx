@@ -32,12 +32,11 @@ const defaultCustomerFilter: CustomerListQuery['filter'] = {
     employee_id: null,
 };
 
-const parseNumberOrNull = (value?: number | string | null) => {
+const parseStringOrNull = (value?: number | string | null) => {
     if (value === undefined || value === null || value === '' || value === 'null') {
         return null;
     }
-    const parsed = Number(value);
-    return Number.isNaN(parsed) ? null : parsed;
+    return String(value);
 };
 
 export const useSearchCustomerList = (initial?: CustomerListQuery['filter']) => {
@@ -48,8 +47,8 @@ export const useSearchCustomerList = (initial?: CustomerListQuery['filter']) => 
         if (initial && Object.keys(initial).length > 0) {
             setQuery({
                 keyword: initial.keyword ?? '',
-                manager_id: parseNumberOrNull(initial.manager_id),
-                employee_id: parseNumberOrNull(initial.employee_id),
+                manager_id: parseStringOrNull(initial.manager_id),
+                employee_id: parseStringOrNull(initial.employee_id),
             });
         } else {
             setQuery({ ...defaultCustomerFilter });
@@ -61,10 +60,10 @@ export const useSearchCustomerList = (initial?: CustomerListQuery['filter']) => 
         if (query.keyword) {
             payload.keyword = query.keyword;
         }
-        if (typeof query.manager_id === 'number' && query.manager_id > 0) {
+        if (query.manager_id && query.manager_id !== 'all') {
             payload.manager_id = query.manager_id;
         }
-        if (typeof query.employee_id === 'number' && query.employee_id > 0) {
+        if (query.employee_id && query.employee_id !== 'all') {
             payload.employee_id = query.employee_id;
         }
         return payload;

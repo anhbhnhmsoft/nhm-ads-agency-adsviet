@@ -2,6 +2,12 @@
 
 return [
     'validation' => [
+        'package_required' => 'Vui lòng chọn gói dịch vụ',
+        'top_up_numeric' => 'Số tiền top-up không hợp lệ',
+        'top_up_min' => 'Số tiền top-up phải lớn hơn hoặc bằng 0',
+        'budget_required' => 'Ngân sách là bắt buộc',
+        'budget_numeric' => 'Ngân sách phải là số',
+        'budget_min' => 'Ngân sách phải đạt tối thiểu :min USD',
         'name_invalid' => 'Tên gói dịch vụ không được để trống',
         'description_invalid' => 'Mô tả gói dịch vụ không được để trống',
         'platform_invalid' => 'Nền tảng không hợp lệ',
@@ -12,10 +18,13 @@ return [
         'set_up_time_invalid' => 'Thời gian thiết lập không hợp lệ',
         'disabled_invalid' => 'Trạng thái không hợp lệ',
         'service_package_invalid' => 'Gói dịch vụ không hợp lệ',
+        'meta_email_required' => 'Vui lòng nhập Email Meta',
         'meta_email_email' => 'Email Meta không hợp lệ',
         'meta_email_max' => 'Email Meta không được vượt quá :max ký tự',
+        'display_name_required' => 'Vui lòng nhập tên hiển thị',
         'display_name_string' => 'Tên hiển thị phải là chuỗi',
         'display_name_max' => 'Tên hiển thị không được vượt quá :max ký tự',
+        'bm_id_required' => 'Vui lòng nhập Business Manager ID',
         'bm_id_string' => 'Business Manager ID phải là chuỗi',
         'bm_id_max' => 'Business Manager ID không được vượt quá :max ký tự',
     ],

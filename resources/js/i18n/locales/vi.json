@@ -195,7 +195,19 @@
         "unsupported_platform": "Nền tảng không được hỗ trợ.",
         "google_ads_campaigns_not_available": "Tính năng chiến dịch Google Ads đang được phát triển.",
         "time_zone": "Múi giờ",
-        "primary_email": "Email chính"
+        "primary_email": "Email chính",
+        "balance_exhausted_warning": "⚠️ Số dư tài khoản đã cạn kiệt. Vui lòng nạp thêm tiền vào tài khoản Google Ads để tiếp tục chạy quảng cáo.",
+        "account_issue_title": "Phát hiện tài khoản gặp sự cố",
+        "account_issue_description_full": "{{error}} tài khoản lỗi, {{warning}} tài khoản cần chú ý.",
+        "account_issue_description_warning": "{{warning}} tài khoản cần được theo dõi thêm.",
+        "campaign_issue_title": "Chiến dịch bị dừng hoặc lỗi",
+        "campaign_issue_description": "{{error}} chiến dịch đã bị nền tảng dừng. Kiểm tra ngay.",
+        "campaign_issue_warning_title": "Chiến dịch cần chú ý",
+        "campaign_issue_warning_description": "{{warning}} chiến dịch đang tạm dừng hoặc hạn chế.",
+        "campaign_tab_all": "Tất cả ({{count}})",
+        "campaign_tab_issue": "Có vấn đề ({{count}})",
+        "campaign_issue_empty": "Không có chiến dịch gặp vấn đề.",
+        "campaign_issue_hint": "Kiểm tra lại ngân sách, trạng thái phê duyệt hoặc cảnh báo từ nền tảng."
     },
     "auth": {
         "components": {
@@ -273,7 +285,7 @@
         "lock": "Khóa ví",
         "info": "Thông tin ví",
         "unlock": "Mở khóa ví",
-        "reset_password": "Đặt lại mật khẩu",
+        "reset_password": "Đặt lại mật khẩu ví",
         "password": "Mật khẩu ví",
         "new_password": "Mật khẩu mới",
         "amount": "Số tiền",
@@ -464,6 +476,7 @@
             "referral": "Người giới thiệu",
             "account_info": "Thông tin tài khoản",
             "platform": "Nền tảng",
+            "budget": "Ngân sách",
             "status": "Trạng thái đơn",
             "availability": "Trạng thái sử dụng",
             "created_at": "Thời gian tạo",

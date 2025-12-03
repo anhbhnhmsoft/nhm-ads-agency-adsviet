@@ -237,6 +237,7 @@ class MetaBusinessService
                 'account_id',       // -> Account's ID
                 'name',             // -> Account's Name
                 'account_status',   // -> Account's status (Trả về số 1, 2, ...)
+                'disable_reason',   // -> Lý do tài khoản bị disable
                 'spend_cap',        // -> Limit (và Hidden Limit)
                 'balance',          // -> Balance (Số dư hiện tại, thường là nợ)
                 'currency',         // -> Currency (VD: "USD")

@@ -154,6 +154,22 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                 cell: ({ row }) => row.original.package?.platform_label || '-',
             },
             {
+                id: 'budget',
+                header: t('service_orders.table.budget'),
+                meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+                cell: ({ row }) => {
+                    const budget = row.original.budget;
+                    if (!budget) {
+                        return <span className="text-xs text-muted-foreground">-</span>;
+                    }
+                    const budgetValue = parseFloat(budget);
+                    if (Number.isNaN(budgetValue)) {
+                        return <span className="text-xs text-muted-foreground">-</span>;
+                    }
+                    return <span className="text-xs font-medium">{budgetValue.toFixed(2)} USD</span>;
+                },
+            },
+            {
                 id: 'status',
                 header: t('service_orders.table.status'),
                 meta: { headerClassName: 'text-center', cellClassName: 'text-center' },

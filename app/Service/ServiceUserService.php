@@ -18,6 +18,8 @@ use App\Repositories\ServiceUserRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\WalletRepository;
+use App\Service\UserAlertService;
+use App\Service\MailService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +32,9 @@ class ServiceUserService
         protected ServicePackageRepository $servicePackageRepository,
         protected UserRepository           $userRepository,
         protected WalletRepository         $walletRepository,
-        protected UserWalletTransactionRepository $walletTransactionRepository
+        protected UserWalletTransactionRepository $walletTransactionRepository,
+        protected UserAlertService         $userAlertService,
+        protected MailService              $mailService,
     )
     {
     }
@@ -97,6 +101,8 @@ class ServiceUserService
             $serviceUser->config_account = $newConfig;
             $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value;
             $serviceUser->save();
+
+            $this->notifyServiceStatus($serviceUser, 'activated');
 
             return ServiceReturn::success(data: $serviceUser);
         } catch (\Throwable $e) {
@@ -170,6 +176,8 @@ class ServiceUserService
                 $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::FAILED->value;
                 $serviceUser->save();
 
+                $this->notifyServiceStatus($serviceUser, $isPending ? 'cancelled' : 'failed');
+
                 return ServiceReturn::success(data: $serviceUser);
             });
         } catch (\Throwable $e) {
@@ -178,6 +186,40 @@ class ServiceUserService
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    private function notifyServiceStatus(ServiceUser $serviceUser, string $statusKey): void
+    {
+        try {
+            $serviceUser->loadMissing(['user', 'package']);
+            $user = $serviceUser->user;
+            if (!$user) {
+                return;
+            }
+
+            $packageName = $serviceUser->package?->name ?? __('service_user.notifications.unknown_package');
+            $message = __('service_user.notifications.' . $statusKey, [
+                'package' => $packageName,
+            ]);
+
+            $this->userAlertService->sendPlainText(
+                $user,
+                $message,
+                function (MailService $mailService, \App\Models\User $u) use ($packageName, $statusKey) {
+                    return $mailService->sendServiceUserStatusAlert(
+                        email: $u->email,
+                        username: $u->name ?? $u->username,
+                        packageName: $packageName,
+                        statusKey: $statusKey,
+                    );
+                }
+            );
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'ServiceUserService@notifyServiceStatus error: '.$e->getMessage(),
+                exception: $e
+            );
         }
     }
 

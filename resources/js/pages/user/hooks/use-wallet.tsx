@@ -3,7 +3,7 @@ import { router, usePage } from '@inertiajs/react';
 import { user_list } from '@/routes';
 import type { WalletData } from '@/pages/user/types/type';
 
-export function useWallet(userId: number | null | undefined, enabled: boolean = true) {
+export function useWallet(userId: string | null | undefined, enabled: boolean = true) {
     const { props } = usePage();
     const [wallet, setWallet] = useState<WalletData | null>(null);
     const [loading, setLoading] = useState(false);
