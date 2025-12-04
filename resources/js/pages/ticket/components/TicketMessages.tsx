@@ -4,30 +4,38 @@ import { useTranslation } from 'react-i18next';
 import type { TicketConversation, TicketReplySide } from '../types/type';
 import { _TicketReplySide } from '../types/constants';
 import { MessageSquare, User } from 'lucide-react';
-// Helper function to format relative time
-const formatRelativeTime = (date: string): string => {
+
+// Helper function to format relative time, respecting current locale
+const formatRelativeTime = (date: string, locale: string): string => {
     const now = new Date();
     const messageDate = new Date(date);
-    const diffInSeconds = Math.floor((now.getTime() - messageDate.getTime()) / 1000);
+    const diffInSeconds = Math.round((messageDate.getTime() - now.getTime()) / 1000);
+    const formatter = new Intl.RelativeTimeFormat(locale || 'en', { numeric: 'auto' });
 
-    if (diffInSeconds < 60) {
-        return 'vừa xong';
-    } else if (diffInSeconds < 3600) {
-        const minutes = Math.floor(diffInSeconds / 60);
-        return `${minutes} phút trước`;
-    } else if (diffInSeconds < 86400) {
-        const hours = Math.floor(diffInSeconds / 3600);
-        return `${hours} giờ trước`;
-    } else if (diffInSeconds < 604800) {
-        const days = Math.floor(diffInSeconds / 86400);
-        return `${days} ngày trước`;
-    } else {
-        return messageDate.toLocaleDateString('vi-VN', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        });
+    if (Math.abs(diffInSeconds) < 60) {
+        return formatter.format(diffInSeconds, 'second');
     }
+
+    const diffInMinutes = Math.round(diffInSeconds / 60);
+    if (Math.abs(diffInMinutes) < 60) {
+        return formatter.format(diffInMinutes, 'minute');
+    }
+
+    const diffInHours = Math.round(diffInMinutes / 60);
+    if (Math.abs(diffInHours) < 24) {
+        return formatter.format(diffInHours, 'hour');
+    }
+
+    const diffInDays = Math.round(diffInHours / 24);
+    if (Math.abs(diffInDays) < 7) {
+        return formatter.format(diffInDays, 'day');
+    }
+
+    return messageDate.toLocaleDateString(locale || 'en', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
 };
 
 interface TicketMessagesProps {
@@ -35,7 +43,7 @@ interface TicketMessagesProps {
 }
 
 export function TicketMessages({ conversations }: TicketMessagesProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
 
     if (!conversations || conversations.length === 0) {
         return (
@@ -75,7 +83,7 @@ export function TicketMessages({ conversations }: TicketMessagesProps) {
                                                 : t('ticket.reply_side.staff')}
                                         </Badge>
                                         <span className="text-sm text-muted-foreground">
-                                            {formatRelativeTime(conversation.created_at)}
+                                            {formatRelativeTime(conversation.created_at, i18n.language)}
                                         </span>
                                     </div>
                                     <p className="whitespace-pre-wrap text-sm">{conversation.message}</p>

@@ -202,6 +202,183 @@ class WalletTransactionService
         }
     }
 
+    /**
+     * Tạo lệnh cập nhật ngân sách chiến dịch (CAMPAIGN_BUDGET_UPDATE)
+     * - Logic gần giống rút tiền: trừ tiền ngay, admin sẽ xử lý thủ công trên Google/Meta
+     */
+    public function createCampaignBudgetUpdateOrder(
+        int $userId,
+        float $amount,
+        ?string $walletPassword = null,
+        ?int $platformType = null,
+        ?string $campaignName = null,
+        ?string $accountName = null
+    ): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($userId, $amount, $walletPassword, $platformType, $campaignName, $accountName) {
+                $wallet = $this->walletRepository->findByUserId($userId);
+                if (!$wallet) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
+                }
+
+                // Kiểm tra mật khẩu ví nếu có đặt
+                if (!empty($wallet->password)) {
+                    if (empty($walletPassword) || !Hash::check($walletPassword, $wallet->password)) {
+                        return ServiceReturn::error(message: __('wallet.error.wallet_password_invalid'));
+                    }
+                }
+
+                // Kiểm tra số dư
+                if ((float) $wallet->balance < $amount) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_balance_not_enough'));
+                }
+
+                // Trừ tiền ngay khi tạo lệnh
+                $newBalance = (float) $wallet->balance - $amount;
+                $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
+
+                // Xác định loại transaction theo platform
+                $type = WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_GOOGLE;
+                if ($platformType === \App\Common\Constants\Platform\PlatformType::META->value) {
+                    $type = WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_META;
+                }
+
+                // Mô tả chi tiết nếu có campaign/account
+                $description = __('wallet.transaction_description.campaign_budget_update_created');
+                if ($campaignName || $accountName) {
+                    $description = __('wallet.transaction_description.campaign_budget_update_detail', [
+                        'campaign' => $campaignName ?: '-',
+                        'account' => $accountName ?: '-',
+                    ]);
+                }
+
+                // Tạo transaction với status PENDING
+                $transaction = $this->transactionRepository->create([
+                    'wallet_id' => $wallet->id,
+                    'amount' => -$amount,
+                    'type' => $type->value,
+                    'status' => WalletTransactionStatus::PENDING->value,
+                    'description' => $description,
+                ]);
+
+                // Gửi thông báo cho user
+                $this->notifyTransaction($transaction, $wallet->user?->id);
+
+                return ServiceReturn::success(data: $transaction);
+            });
+        } catch (QueryException $e) {
+            Logging::error('WalletTransactionService@createCampaignBudgetUpdateOrder error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Tạo lệnh tạm dừng chiến dịch (CAMPAIGN_PAUSE)
+     * - Không trừ tiền, chỉ tạo transaction để admin biết và xử lý thủ công
+     */
+    public function createCampaignPauseOrder(
+        int $userId,
+        ?int $platformType = null,
+        ?string $campaignName = null,
+        ?string $accountName = null
+    ): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($userId, $platformType, $campaignName, $accountName) {
+                $wallet = $this->walletRepository->findByUserId($userId);
+                if (!$wallet) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
+                }
+
+                // Xác định loại transaction theo platform
+                $type = WalletTransactionType::CAMPAIGN_PAUSE_GOOGLE;
+                if ($platformType === \App\Common\Constants\Platform\PlatformType::META->value) {
+                    $type = WalletTransactionType::CAMPAIGN_PAUSE_META;
+                }
+
+                // Mô tả chi tiết nếu có campaign/account
+                $description = __('wallet.transaction_description.campaign_pause_created');
+                if ($campaignName || $accountName) {
+                    $description = __('wallet.transaction_description.campaign_pause_detail', [
+                        'campaign' => $campaignName ?: '-',
+                        'account' => $accountName ?: '-',
+                    ]);
+                }
+
+                // Tạo transaction với status PENDING (không trừ tiền, amount = 0)
+                $transaction = $this->transactionRepository->create([
+                    'wallet_id' => $wallet->id,
+                    'amount' => 0, // Không trừ tiền
+                    'type' => $type->value,
+                    'status' => WalletTransactionStatus::PENDING->value,
+                    'description' => $description,
+                ]);
+
+                // Gửi thông báo cho user
+                $this->notifyTransaction($transaction, $wallet->user?->id);
+
+                return ServiceReturn::success(data: $transaction);
+            });
+        } catch (QueryException $e) {
+            Logging::error('WalletTransactionService@createCampaignPauseOrder error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Tạo lệnh kết thúc chiến dịch (CAMPAIGN_END)
+     * - Không trừ tiền, chỉ tạo transaction để admin biết và xử lý thủ công
+     */
+    public function createCampaignEndOrder(
+        int $userId,
+        ?int $platformType = null,
+        ?string $campaignName = null,
+        ?string $accountName = null
+    ): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($userId, $platformType, $campaignName, $accountName) {
+                $wallet = $this->walletRepository->findByUserId($userId);
+                if (!$wallet) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
+                }
+
+                // Xác định loại transaction theo platform
+                $type = WalletTransactionType::CAMPAIGN_END_GOOGLE;
+                if ($platformType === \App\Common\Constants\Platform\PlatformType::META->value) {
+                    $type = WalletTransactionType::CAMPAIGN_END_META;
+                }
+
+                // Mô tả chi tiết nếu có campaign/account
+                $description = __('wallet.transaction_description.campaign_end_created');
+                if ($campaignName || $accountName) {
+                    $description = __('wallet.transaction_description.campaign_end_detail', [
+                        'campaign' => $campaignName ?: '-',
+                        'account' => $accountName ?: '-',
+                    ]);
+                }
+
+                // Tạo transaction với status PENDING (không trừ tiền, amount = 0)
+                $transaction = $this->transactionRepository->create([
+                    'wallet_id' => $wallet->id,
+                    'amount' => 0, // Không trừ tiền
+                    'type' => $type->value,
+                    'status' => WalletTransactionStatus::PENDING->value,
+                    'description' => $description,
+                ]);
+
+                // Gửi thông báo cho user
+                $this->notifyTransaction($transaction, $wallet->user?->id);
+
+                return ServiceReturn::success(data: $transaction);
+            });
+        } catch (QueryException $e) {
+            Logging::error('WalletTransactionService@createCampaignEndOrder error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     //Tìm giao dịch theo payment_id của NowPayments
     public function findByPaymentId(string $paymentId): ServiceReturn
     {
@@ -562,13 +739,146 @@ class WalletTransactionService
                 // Cập nhật trạng thái thành CANCELLED
                 $this->transactionRepository->updateById($transactionId, [
                     'status' => WalletTransactionStatus::CANCELLED->value,
-                'description' => __('wallet.transaction_description.withdraw_cancelled_admin'),
+                    'description' => __('wallet.transaction_description.withdraw_cancelled_admin'),
                 ]);
 
                 return ServiceReturn::success();
             });
         } catch (\Throwable $e) {
             Logging::error('WalletTransactionService@cancelWithdrawByAdmin error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Admin hủy lệnh cập nhật ngân sách chiến dịch và hoàn lại tiền
+    public function cancelCampaignBudgetUpdateByAdmin(string|int $transactionId): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($transactionId) {
+                $transaction = $this->transactionRepository->query()->find($transactionId);
+                if (!$transaction) {
+                    return ServiceReturn::error(message: __('Giao dịch không tồn tại'));
+                }
+
+                // Kiểm tra là lệnh cập nhật ngân sách chiến dịch
+                if (!in_array(
+                    (int) $transaction->type,
+                    [
+                        WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_GOOGLE->value,
+                        WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_META->value,
+                    ],
+                    true
+                )) {
+                    return ServiceReturn::error(message: __('Không phải lệnh cập nhật ngân sách chiến dịch'));
+                }
+
+                // Kiểm tra trạng thái PENDING
+                if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
+                    return ServiceReturn::error(message: __('Giao dịch không ở trạng thái chờ'));
+                }
+
+                // Hoàn lại tiền vào ví
+                $wallet = $this->walletRepository->query()->find($transaction->wallet_id);
+                if ($wallet) {
+                    $refundAmount = abs((float) $transaction->amount);
+                    $newBalance = (float) $wallet->balance + $refundAmount;
+                    $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
+                }
+
+                // Cập nhật trạng thái thành CANCELLED
+                $this->transactionRepository->updateById($transactionId, [
+                    'status' => WalletTransactionStatus::CANCELLED->value,
+                    'description' => __('wallet.transaction_description.campaign_budget_update_cancelled_admin'),
+                ]);
+
+                return ServiceReturn::success();
+            });
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@cancelCampaignBudgetUpdateByAdmin error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Admin hủy lệnh tạm dừng chiến dịch (không cần hoàn tiền vì amount = 0)
+    public function cancelCampaignPauseByAdmin(string|int $transactionId): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($transactionId) {
+                $transaction = $this->transactionRepository->query()->find($transactionId);
+                if (!$transaction) {
+                    return ServiceReturn::error(message: __('Giao dịch không tồn tại'));
+                }
+
+                // Kiểm tra là lệnh tạm dừng chiến dịch
+                if (!in_array(
+                    (int) $transaction->type,
+                    [
+                        WalletTransactionType::CAMPAIGN_PAUSE_GOOGLE->value,
+                        WalletTransactionType::CAMPAIGN_PAUSE_META->value,
+                    ],
+                    true
+                )) {
+                    return ServiceReturn::error(message: __('Không phải lệnh tạm dừng chiến dịch'));
+                }
+
+                // Kiểm tra trạng thái PENDING
+                if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
+                    return ServiceReturn::error(message: __('Giao dịch không ở trạng thái chờ'));
+                }
+
+                // Không cần hoàn tiền vì amount = 0
+                // Chỉ cập nhật trạng thái thành CANCELLED
+                $this->transactionRepository->updateById($transactionId, [
+                    'status' => WalletTransactionStatus::CANCELLED->value,
+                    'description' => __('wallet.transaction_description.campaign_pause_cancelled_admin'),
+                ]);
+
+                return ServiceReturn::success();
+            });
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@cancelCampaignPauseByAdmin error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Admin hủy lệnh kết thúc chiến dịch (không cần hoàn tiền vì amount = 0)
+    public function cancelCampaignEndByAdmin(string|int $transactionId): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($transactionId) {
+                $transaction = $this->transactionRepository->query()->find($transactionId);
+                if (!$transaction) {
+                    return ServiceReturn::error(message: __('Giao dịch không tồn tại'));
+                }
+
+                // Kiểm tra là lệnh kết thúc chiến dịch
+                if (!in_array(
+                    (int) $transaction->type,
+                    [
+                        WalletTransactionType::CAMPAIGN_END_GOOGLE->value,
+                        WalletTransactionType::CAMPAIGN_END_META->value,
+                    ],
+                    true
+                )) {
+                    return ServiceReturn::error(message: __('Không phải lệnh kết thúc chiến dịch'));
+                }
+
+                // Kiểm tra trạng thái PENDING
+                if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
+                    return ServiceReturn::error(message: __('Giao dịch không ở trạng thái chờ'));
+                }
+
+                // Không cần hoàn tiền vì amount = 0
+                // Chỉ cập nhật trạng thái thành CANCELLED
+                $this->transactionRepository->updateById($transactionId, [
+                    'status' => WalletTransactionStatus::CANCELLED->value,
+                    'description' => __('wallet.transaction_description.campaign_end_cancelled_admin'),
+                ]);
+
+                return ServiceReturn::success();
+            });
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@cancelCampaignEndByAdmin error: '.$e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }

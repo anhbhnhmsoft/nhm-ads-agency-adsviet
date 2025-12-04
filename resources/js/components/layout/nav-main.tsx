@@ -26,7 +26,7 @@ export function NavMain() {
                                 {item.is_menu ? (
                                     <>
                                         {/*Nếu có sub-menu*/}
-                                        {item.items && Array.isArray(item.items) && item.items.length > 0 ? (
+                                        {item.items && Array.isArray(item.items) && item.items.filter((subItem) => subItem.can_show !== false).length > 0 ? (
                                             <>
                                                 <Collapsible key={item.title} asChild defaultOpen={item.active} className="group/collapsible">
                                                     <SidebarMenuItem>
@@ -39,15 +39,17 @@ export function NavMain() {
                                                         </CollapsibleTrigger>
                                                         <CollapsibleContent>
                                                             <SidebarMenuSub>
-                                                                {item.items.map((subItem) => (
-                                                                    <SidebarMenuSubItem key={subItem.title}>
-                                                                        <SidebarMenuSubButton asChild isActive={subItem.active}>
-                                                                            <Link href={subItem.url}>
-                                                                                <span>{subItem.title}</span>
-                                                                            </Link>
-                                                                        </SidebarMenuSubButton>
-                                                                    </SidebarMenuSubItem>
-                                                                ))}
+                                                                {item.items
+                                                                    .filter((subItem) => subItem.can_show !== false)
+                                                                    .map((subItem) => (
+                                                                        <SidebarMenuSubItem key={subItem.title}>
+                                                                            <SidebarMenuSubButton asChild isActive={subItem.active}>
+                                                                                <Link href={subItem.url}>
+                                                                                    <span>{subItem.title}</span>
+                                                                                </Link>
+                                                                            </SidebarMenuSubButton>
+                                                                        </SidebarMenuSubItem>
+                                                                    ))}
                                                             </SidebarMenuSub>
                                                         </CollapsibleContent>
                                                     </SidebarMenuItem>

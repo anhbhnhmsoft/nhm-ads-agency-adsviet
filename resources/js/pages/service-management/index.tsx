@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import type { ServiceOrder, ServiceOrderPagination } from '@/pages/service-order/types/type';
 import type {
@@ -13,7 +13,8 @@ import type {
     CampaignDailyInsight,
     StatusSeverity,
 } from '@/pages/service-management/types/types';
-import { _PlatformType } from '@/lib/types/constants';
+import { _PlatformType, _UserRole } from '@/lib/types/constants';
+import type { IUser } from '@/lib/types/type';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,11 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { wallet_campaign_budget_update, wallet_campaign_pause, wallet_campaign_end, wallet_me_json } from '@/routes';
 
 type Props = {
     paginator: ServiceOrderPagination;
@@ -36,6 +42,14 @@ type Props = {
 
 const ServiceManagementIndex = ({ paginator }: Props) => {
     const { t } = useTranslation();
+    const { props } = usePage();
+    const authUser = useMemo(() => {
+        const authProp = props.auth as { user?: IUser | null } | IUser | null | undefined;
+        if (authProp && typeof authProp === 'object' && 'user' in authProp) {
+            return authProp.user ?? null;
+        }
+        return (authProp as IUser | null) ?? null;
+    }, [props.auth]);
     const services = paginator?.data ?? [];
 
     const [selectedService, setSelectedService] = useState<ServiceOrder | null>(null);
@@ -55,6 +69,23 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
     const [campaignInsights, setCampaignInsights] = useState<CampaignDailyInsight[]>([]);
     const [campaignInsightsLoading, setCampaignInsightsLoading] = useState(false);
     const [campaignInsightsError, setCampaignInsightsError] = useState<string | null>(null);
+
+    // State cho dialog cập nhật ngân sách
+    const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+    const [budgetAmount, setBudgetAmount] = useState('');
+    const [budgetWalletPassword, setBudgetWalletPassword] = useState('');
+    const [budgetSubmitting, setBudgetSubmitting] = useState(false);
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
+    const [walletBalanceLoading, setWalletBalanceLoading] = useState(false);
+
+    // State cho dialog tạm dừng/kết thúc chiến dịch
+    const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
+    const [pauseSubmitting, setPauseSubmitting] = useState(false);
+    const [endDialogOpen, setEndDialogOpen] = useState(false);
+    const [endSubmitting, setEndSubmitting] = useState(false);
+    const currentUserRole = authUser?.role;
+    const isAgencyOrCustomer =
+        currentUserRole === _UserRole.AGENCY || currentUserRole === _UserRole.CUSTOMER;
 
     const parseNumber = (value: number | string | null | undefined): number | null => {
         if (typeof value === 'number') {
@@ -583,7 +614,7 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                             <Radio className="h-4 w-4 text-primary" />
                             {t('service_management.accounts')}
                         </h3>
-                        <ScrollArea className="h-[400px] rounded border p-3">
+                        <ScrollArea className="h-[400px] rounded-xl border bg-white/90 p-4 shadow-sm">
                             {accountsLoading ? (
                                 <div className="flex items-center justify-center py-10 text-muted-foreground">
                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -600,8 +631,10 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                         return (
                                             <div
                                                 key={account.id}
-                                                className={`rounded border p-3 cursor-pointer transition-colors ${
-                                                    selectedAccountId === account.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                                                className={`rounded-xl border bg-white p-4 shadow-sm cursor-pointer transition-colors ${
+                                                    selectedAccountId === account.id
+                                                        ? 'border-primary ring-2 ring-primary/30'
+                                                        : 'hover:border-primary/40'
                                                 }`}
                                                 onClick={() => loadCampaigns(account)}
                                             >
@@ -686,7 +719,7 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                         )}
                         {selectedAccountId ? (
                             campaignLoadingId === selectedAccountId ? (
-                                <div className="h-[400px] border rounded p-3 flex items-center justify-center text-muted-foreground">
+                                <div className="h-[400px] border rounded-xl bg-white p-4 flex items-center justify-center text-muted-foreground shadow-sm">
                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                     {t('service_management.loading')}
                                 </div>
@@ -712,7 +745,7 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                             </AlertDescription>
                                         </Alert>
                                     )}
-                                    <Tabs defaultValue="all">
+                                    <Tabs defaultValue="all" className="bg-white rounded-xl border shadow-sm p-4">
                                         <TabsList className="grid grid-cols-2">
                                             <TabsTrigger value="all">
                                                 {t('service_management.campaign_tab_all', { count: campaignsOfSelectedAccount.length })}
@@ -722,12 +755,12 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                             </TabsTrigger>
                                         </TabsList>
                                         <TabsContent value="all">
-                                            <ScrollArea className="h-[360px] border rounded p-3">
+                                            <ScrollArea className="h-[360px] border rounded-xl bg-white p-3 shadow-inner">
                                                 {renderCampaignList(campaignsOfSelectedAccount)}
                                             </ScrollArea>
                                         </TabsContent>
                                         <TabsContent value="issues">
-                                            <ScrollArea className="h-[360px] border rounded p-3">
+                                            <ScrollArea className="h-[360px] border rounded-xl bg-white p-3 shadow-inner">
                                                 {issueCampaigns.length ? (
                                                     renderCampaignList(issueCampaigns)
                                                 ) : (
@@ -741,7 +774,7 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                 </>
                             )
                         ) : (
-                            <div className="text-sm text-muted-foreground border rounded p-4">
+                            <div className="text-sm text-muted-foreground border rounded-xl bg-white/80 p-4 shadow-sm">
                                 {t('service_management.select_account_hint')}
                             </div>
                         )}
@@ -857,11 +890,324 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                                 );
                                             })}
                                         </div>
+
+                                        {/* Hành động chiến dịch */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                                            <Button
+                                                variant="outline"
+                                                className="h-11 rounded-full px-8"
+                                                onClick={() => setPauseDialogOpen(true)}
+                                            >
+                                                {t('service_management.campaign_pause')}
+                                            </Button>
+                                            <Button
+                                                variant="destructive"
+                                                className="h-11 rounded-full px-8"
+                                                onClick={() => setEndDialogOpen(true)}
+                                            >
+                                                {t('service_management.campaign_end')}
+                                            </Button>
+                                            <Button
+                                                className="h-11 rounded-full px-8"
+                                                variant="default"
+                                                onClick={async () => {
+                                                    setBudgetDialogOpen(true);
+
+                                                    // Chỉ lấy số dư ví cho role Agency/Customer
+                                                    if (isAgencyOrCustomer && walletBalance === null && !walletBalanceLoading) {
+                                                        try {
+                                                            setWalletBalanceLoading(true);
+                                                            const response = await axios.get(wallet_me_json().url);
+                                                            const balance = response?.data?.data?.balance;
+                                                            setWalletBalance(
+                                                                typeof balance === 'number'
+                                                                    ? balance
+                                                                    : parseNumber(balance)
+                                                            );
+                                                        } catch (e) {
+                                                            // Nếu lỗi thì vẫn cho mở dialog, chỉ không hiển thị số dư
+                                                            setWalletBalance(null);
+                                                        } finally {
+                                                            setWalletBalanceLoading(false);
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                {t('service_management.campaign_update_budget')}
+                                            </Button>
+                                        </div>
                                     </div>
                                 ) : null}
                             </CardContent>
                         </Card>
                         {renderSpendChart()}
+
+                        {/* Dialog cập nhật ngân sách */}
+                        <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>{t('service_management.campaign_update_budget')}</DialogTitle>
+                                    <DialogDescription>
+                                        {t('service_management.campaign_update_budget_description')}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 pt-2">
+                                    {isAgencyOrCustomer && (walletBalanceLoading || walletBalance !== null) && (
+                                        <div className="text-sm text-muted-foreground">
+                                            {walletBalanceLoading
+                                                ? t('service_management.campaign_update_budget_wallet_balance_loading')
+                                                : walletBalance !== null
+                                                    ? t('service_management.campaign_update_budget_wallet_balance', {
+                                                        balance: walletBalance.toLocaleString(undefined, {
+                                                            minimumFractionDigits: 2,
+                                                            maximumFractionDigits: 2,
+                                                        }),
+                                                    })
+                                                    : t('service_management.campaign_update_budget_wallet_balance_error')}
+                                        </div>
+                                    )}
+                                    <div className="space-y-1">
+                                        <Label htmlFor="budget-amount">
+                                            {t('service_management.campaign_update_budget_amount_label')}
+                                        </Label>
+                                        <Input
+                                            id="budget-amount"
+                                            type="number"
+                                            min={0}
+                                            step="0.01"
+                                            value={budgetAmount}
+                                            onChange={(e) => setBudgetAmount(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="budget-wallet-password">
+                                            {t('service_management.campaign_update_budget_wallet_password_label')}
+                                        </Label>
+                                        <Input
+                                            id="budget-wallet-password"
+                                            type="password"
+                                            value={budgetWalletPassword}
+                                            onChange={(e) => setBudgetWalletPassword(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <DialogFooter className="pt-4">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            if (!budgetSubmitting) {
+                                                setBudgetDialogOpen(false);
+                                            }
+                                        }}
+                                    >
+                                        {t('common.cancel')}
+                                    </Button>
+                                    <Button
+                                        onClick={async () => {
+                                            if (!budgetAmount || Number(budgetAmount) <= 0) {
+                                                toast.error(t('common_validation.amount_required') || 'Amount is invalid');
+                                                return;
+                                            }
+
+                                            try {
+                                                setBudgetSubmitting(true);
+                                                const platformType = selectedService?.package?.platform ?? null;
+                                                const campaignName =
+                                                    campaignDetail?.name ||
+                                                    selectedCampaign?.name ||
+                                                    selectedCampaign?.campaign_id ||
+                                                    '';
+
+                                                let accountName: string | null = null;
+                                                if (selectedAccountId) {
+                                                    const account = accounts.find((acc) => acc.id === selectedAccountId);
+                                                    accountName =
+                                                        (account as any)?.account_name ||
+                                                        (account as any)?.account_id ||
+                                                        null;
+                                                }
+
+                                                await axios.post(wallet_campaign_budget_update().url, {
+                                                    amount: Number(budgetAmount),
+                                                    wallet_password: budgetWalletPassword || undefined,
+                                                    platform_type: platformType,
+                                                    campaign_name: campaignName,
+                                                    account_name: accountName,
+                                                });
+
+                                                toast.success(
+                                                    t('service_management.campaign_update_budget_success')
+                                                );
+                                                setBudgetDialogOpen(false);
+                                                setBudgetAmount('');
+                                                setBudgetWalletPassword('');
+                                            } catch (error: any) {
+                                                const message =
+                                                    error?.response?.data?.message ||
+                                                    t('service_management.campaign_update_budget_insufficient_balance');
+                                                toast.error(message);
+                                            } finally {
+                                                setBudgetSubmitting(false);
+                                            }
+                                        }}
+                                        disabled={budgetSubmitting}
+                                    >
+                                        {budgetSubmitting
+                                            ? t('common.processing')
+                                            : t('service_management.campaign_update_budget_submit')}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
+                        {/* Dialog Tạm dừng chiến dịch */}
+                        <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>{t('service_management.campaign_pause')}</DialogTitle>
+                                    <DialogDescription>
+                                        {t('service_management.campaign_pause_description')}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <Alert>
+                                        <AlertDescription>
+                                            {t('service_management.campaign_pause_warning')}
+                                        </AlertDescription>
+                                    </Alert>
+                                </div>
+                                <DialogFooter>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            if (!pauseSubmitting) {
+                                                setPauseDialogOpen(false);
+                                            }
+                                        }}
+                                    >
+                                        {t('common.cancel')}
+                                    </Button>
+                                    <Button
+                                        onClick={async () => {
+                                            try {
+                                                setPauseSubmitting(true);
+                                                const platformType = selectedService?.package?.platform ?? null;
+                                                const campaignName =
+                                                    campaignDetail?.name ||
+                                                    selectedCampaign?.name ||
+                                                    selectedCampaign?.campaign_id ||
+                                                    '';
+
+                                                let accountName: string | null = null;
+                                                if (selectedAccountId) {
+                                                    const account = accounts.find((acc) => acc.id === selectedAccountId);
+                                                    accountName =
+                                                        (account as any)?.account_name ||
+                                                        (account as any)?.account_id ||
+                                                        null;
+                                                }
+
+                                                await axios.post(wallet_campaign_pause().url, {
+                                                    platform_type: platformType,
+                                                    campaign_name: campaignName,
+                                                    account_name: accountName,
+                                                });
+
+                                                toast.success(t('service_management.campaign_pause_success'));
+                                                setPauseDialogOpen(false);
+                                            } catch (error: any) {
+                                                const message =
+                                                    error?.response?.data?.message ||
+                                                    t('service_management.campaign_pause_error');
+                                                toast.error(message);
+                                            } finally {
+                                                setPauseSubmitting(false);
+                                            }
+                                        }}
+                                        disabled={pauseSubmitting}
+                                    >
+                                        {pauseSubmitting
+                                            ? t('common.processing')
+                                            : t('service_management.campaign_pause_confirm')}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
+                        {/* Dialog Kết thúc chiến dịch */}
+                        <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>{t('service_management.campaign_end')}</DialogTitle>
+                                    <DialogDescription>
+                                        {t('service_management.campaign_end_description')}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <Alert variant="destructive">
+                                        <AlertDescription>
+                                            {t('service_management.campaign_end_warning')}
+                                        </AlertDescription>
+                                    </Alert>
+                                </div>
+                                <DialogFooter>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            if (!endSubmitting) {
+                                                setEndDialogOpen(false);
+                                            }
+                                        }}
+                                    >
+                                        {t('common.cancel')}
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        onClick={async () => {
+                                            try {
+                                                setEndSubmitting(true);
+                                                const platformType = selectedService?.package?.platform ?? null;
+                                                const campaignName =
+                                                    campaignDetail?.name ||
+                                                    selectedCampaign?.name ||
+                                                    selectedCampaign?.campaign_id ||
+                                                    '';
+
+                                                let accountName: string | null = null;
+                                                if (selectedAccountId) {
+                                                    const account = accounts.find((acc) => acc.id === selectedAccountId);
+                                                    accountName =
+                                                        (account as any)?.account_name ||
+                                                        (account as any)?.account_id ||
+                                                        null;
+                                                }
+
+                                                await axios.post(wallet_campaign_end().url, {
+                                                    platform_type: platformType,
+                                                    campaign_name: campaignName,
+                                                    account_name: accountName,
+                                                });
+
+                                                toast.success(t('service_management.campaign_end_success'));
+                                                setEndDialogOpen(false);
+                                            } catch (error: any) {
+                                                const message =
+                                                    error?.response?.data?.message ||
+                                                    t('service_management.campaign_end_error');
+                                                toast.error(message);
+                                            } finally {
+                                                setEndSubmitting(false);
+                                            }
+                                        }}
+                                        disabled={endSubmitting}
+                                    >
+                                        {endSubmitting
+                                            ? t('common.processing')
+                                            : t('service_management.campaign_end_confirm')}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 )}
             </div>

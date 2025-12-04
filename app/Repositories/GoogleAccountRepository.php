@@ -40,5 +40,30 @@ class GoogleAccountRepository extends BaseRepository
         $query->orderBy($column, $direction);
         return $query;
     }
+
+    /**
+     * Lấy danh sách Google Ads accounts có balance <= threshold
+     * @param float $threshold
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAccountsWithLowBalance(float $threshold): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->model()
+            ->newQuery()
+            ->with(['serviceUser.user'])
+            ->whereNotNull('balance')
+            ->where('balance', '<=', $threshold)
+            ->whereHas('serviceUser.user', function ($query) {
+                $query->where('disabled', false)
+                    ->where(function ($subQuery) {
+                        $subQuery->whereNotNull('telegram_id')
+                            ->orWhere(function ($emailQuery) {
+                                $emailQuery->whereNotNull('email')
+                                    ->whereNotNull('email_verified_at');
+                            });
+                    });
+            })
+            ->get();
+    }
 }
 

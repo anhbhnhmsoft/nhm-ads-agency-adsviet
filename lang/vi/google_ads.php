@@ -31,5 +31,8 @@ return [
         'suspended' => 'Google đã tạm khóa tài khoản của bạn. Vui lòng kiểm tra cảnh báo và xử lý.',
         'closed' => 'Tài khoản đã đóng và không thể tiếp tục chạy quảng cáo.',
     ],
+    'telegram' => [
+        'low_balance' => "⚠️ Cảnh báo số dư Google Ads thấp\n\nTài khoản \":accountName\" hiện chỉ còn :balance :currency (ngưỡng cảnh báo :threshold :currency).\nVui lòng nạp thêm tiền vào tài khoản Google Ads để tránh bị tạm dừng quảng cáo.",
+    ],
 ];
 

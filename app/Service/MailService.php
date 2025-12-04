@@ -10,6 +10,8 @@ use App\Mail\WalletLowBalanceAlert;
 use App\Mail\WalletTransactionAlert;
 use App\Mail\AdminWalletTransactionAlert;
 use App\Mail\ServiceUserStatusAlert;
+use App\Mail\GoogleAdsLowBalanceAlert;
+use App\Mail\MetaAdsLowBalanceAlert;
 use Illuminate\Support\Facades\Mail;
 
 class MailService
@@ -135,6 +137,50 @@ class MailService
                 'trace' => $exception->getTraceAsString(),
             ]);
             return ServiceReturn::error(message: 'Failed to send service user status email: ' . $exception->getMessage());
+        }
+    }
+
+    public function sendGoogleAdsLowBalanceAlert(string $email, string $username, string $accountName, float $balance, string $currency, float $threshold): ServiceReturn
+    {
+        try {
+            Mail::to($email)->queue(new GoogleAdsLowBalanceAlert(
+                username: $username,
+                accountName: $accountName,
+                balance: number_format($balance, 2),
+                currency: $currency,
+                threshold: number_format($threshold, 2),
+            ));
+
+            return ServiceReturn::success();
+        } catch (\Throwable $exception) {
+            Logging::error('MailService@sendGoogleAdsLowBalanceAlert: Failed to queue email', [
+                'email' => $email,
+                'error' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
+            ]);
+            return ServiceReturn::error(message: 'Failed to send Google Ads low balance email: ' . $exception->getMessage());
+        }
+    }
+
+    public function sendMetaAdsLowBalanceAlert(string $email, string $username, string $accountName, float $balance, string $currency, float $threshold): ServiceReturn
+    {
+        try {
+            Mail::to($email)->queue(new MetaAdsLowBalanceAlert(
+                username: $username,
+                accountName: $accountName,
+                balance: number_format($balance, 2),
+                currency: $currency,
+                threshold: number_format($threshold, 2),
+            ));
+
+            return ServiceReturn::success();
+        } catch (\Throwable $exception) {
+            Logging::error('MailService@sendMetaAdsLowBalanceAlert: Failed to queue email', [
+                'email' => $email,
+                'error' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
+            ]);
+            return ServiceReturn::error(message: 'Failed to send Meta Ads low balance email: ' . $exception->getMessage());
         }
     }
 }

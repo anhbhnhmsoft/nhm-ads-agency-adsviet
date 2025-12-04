@@ -39,4 +39,28 @@ class MetaAccountRepository extends BaseRepository
         $query->orderBy($column, $direction);
         return $query;
     }
+
+    /**
+     * Lấy danh sách Meta Ads accounts có dấu hiệu hết tiền
+     * - balance <= threshold
+     * - hoặc amount_spent >= spend_cap (đối với tài khoản dùng spend cap)
+     */
+    public function getAccountsWithLowBalance(float $threshold): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->model()
+            ->newQuery()
+            ->with(['serviceUser.user'])
+            ->where(function ($query) use ($threshold) {
+                $query->where(function ($balanceQuery) use ($threshold) {
+                    $balanceQuery->whereNotNull('balance')
+                        ->whereRaw('CAST(balance AS DECIMAL(20, 4)) <= ?', [$threshold]);
+                })->orWhere(function ($spendCapQuery) {
+                    $spendCapQuery->whereNotNull('spend_cap')
+                        ->whereRaw('CAST(spend_cap AS DECIMAL(20, 4)) > 0')
+                        ->whereNotNull('amount_spent')
+                        ->whereRaw('CAST(amount_spent AS DECIMAL(20, 4)) >= CAST(spend_cap AS DECIMAL(20, 4))');
+                });
+            })
+            ->get();
+    }
 }

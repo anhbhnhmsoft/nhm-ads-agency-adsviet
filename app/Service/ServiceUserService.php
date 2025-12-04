@@ -256,4 +256,24 @@ class ServiceUserService
         }
     }
 
+    public function deleteServiceUser(string $id): ServiceReturn
+    {
+        try {
+            $serviceUser = $this->serviceUserRepository->find($id);
+            if (!$serviceUser) {
+                return ServiceReturn::error(message: __('common_error.not_found'));
+            }
+
+            $serviceUser->delete();
+
+            return ServiceReturn::success(data: $serviceUser);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'ServiceUserService@deleteServiceUser error: '.$e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
 }

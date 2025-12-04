@@ -55,4 +55,7 @@ return [
         'archived' => 'Đã lưu trữ',
         'unknown' => 'Không xác định',
     ],
+    'telegram' => [
+        'low_balance' => "⚠️ Cảnh báo số dư Meta Ads thấp\n\nTài khoản \":accountName\" hiện chỉ còn :balance :currency (ngưỡng cảnh báo :threshold :currency).\nVui lòng nạp thêm tiền vào Meta Business để tránh bị tạm dừng quảng cáo.",
+    ],
 ];

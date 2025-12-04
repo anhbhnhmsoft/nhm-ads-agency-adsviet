@@ -1,0 +1,61 @@
+<?php
+
+return [
+    'error' => [
+        'service_not_found' => 'Service not found.',
+        'service_user_platform_not_meta' => 'This service is not a Meta Ads service.',
+        'account_not_found' => 'Ad account not found.',
+        'failed_to_fetch_campaigns' => 'Failed to load campaigns.',
+        'failed_to_fetch_campaign_detail' => 'Failed to load campaign detail.',
+        'campaign_not_found' => 'Campaign not found.',
+        'date_preset_invalid' => 'Invalid date range.',
+    ],
+    'account_status' => [
+        'active' => 'Active',
+        'disabled' => 'Disabled',
+        'unsettled' => 'Unsettled',
+        'pending_risk_review' => 'Pending risk review',
+        'pending_settlement' => 'Pending settlement',
+        'in_grace_period' => 'In grace period',
+        'pending_closure' => 'Pending closure',
+        'closed' => 'Closed',
+    ],
+    'account_status_messages' => [
+        'disabled' => 'Meta has disabled this account. Please contact support.',
+        'unsettled' => 'Account has unpaid invoices so campaigns were paused.',
+        'pending_risk_review' => 'Meta is reviewing potential risks on this account.',
+        'pending_settlement' => 'Payment is being processed. Please wait.',
+        'in_grace_period' => 'Account is in a grace period. Please pay before it is locked.',
+        'pending_closure' => 'Account is pending closure.',
+        'closed' => 'Account has been permanently closed.',
+    ],
+    'disable_reason' => [
+        'none' => 'Account is disabled but Meta did not provide details.',
+        'policy' => 'Disabled for violating Meta policies.',
+        'credit_card' => 'Disabled due to payment or credit card issues.',
+        'chargeback' => 'Disabled because of a payment chargeback.',
+        'risk_payment' => 'Disabled due to suspicious payment activity.',
+        'ads_integrity' => 'Disabled for ads integrity issues (spam, low quality, etc.).',
+        'business_integrity' => 'Disabled for business integrity issues with the Business Manager.',
+        'domain_verification' => 'Restricted because the domain is not verified.',
+        'other' => 'Disabled for other reasons.',
+    ],
+    'campaign_status' => [
+        'active' => 'Active',
+        'paused' => 'Paused',
+        'with_issues' => 'With issues',
+        'disapproved' => 'Disapproved',
+        'pending_review' => 'Pending review',
+        'in_grace_period' => 'In grace period',
+        'pending_settlement' => 'Pending settlement',
+        'in_process' => 'In process',
+        'pending_risk_review' => 'Pending risk review',
+        'deleted' => 'Deleted',
+        'archived' => 'Archived',
+        'unknown' => 'Unknown',
+    ],
+    'telegram' => [
+        'low_balance' => "⚠️ Meta Ads low balance alert\n\nAccount \":accountName\" only has :balance :currency (threshold :threshold :currency).\nPlease top up Meta Business to avoid interruptions.",
+    ],
+];
+

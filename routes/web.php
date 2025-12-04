@@ -6,7 +6,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServicePackageController;
 use App\Http\Controllers\ServiceOrderController;
 use App\Http\Controllers\ServiceManagementController;
-use App\Http\Controllers\NowPaymentsWebhookController;
+// use App\Http\Controllers\NowPaymentsWebhookController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PlatformSettingController;
 use App\Http\Controllers\ServicePurchaseController;
@@ -20,7 +21,9 @@ use App\Http\Controllers\TicketController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('nowpayments_webhook');
+// Route Webhook NowPayments tạm thời tắt vì chuyển sang duyệt nạp thủ công
+// Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('nowpayments_webhook');
+Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
 Route::middleware(['guest:web'])->group(function () {
     Route::get('/login', [AuthController::class, 'loginScreen'])->name('login');
@@ -88,6 +91,10 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
 
     Route::prefix('/wallets')->group(function(){
         Route::get('/', [WalletController::class, 'index'])->name('wallet_index');
+        Route::get('/me', [WalletController::class, 'me'])->name('wallet_me_json');
+        Route::post('/campaign-budget-update', [WalletController::class, 'campaignBudgetUpdate'])->name('wallet_campaign_budget_update');
+        Route::post('/campaign-pause', [WalletController::class, 'campaignPause'])->name('wallet_campaign_pause');
+        Route::post('/campaign-end', [WalletController::class, 'campaignEnd'])->name('wallet_campaign_end');
         Route::get('/min-amount/{network}', [WalletController::class, 'getMinimalAmount'])->name('wallet_min_amount');
         Route::post('/top-up', [WalletController::class, 'myTopUp'])->name('wallet_my_top_up');
         Route::post('/withdraw', [WalletController::class, 'myWithdraw'])->name('wallet_my_withdraw');
@@ -127,6 +134,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/{id}/approve', [ServiceOrderController::class, 'approve'])->name('service_orders_approve');
         Route::post('/{id}/cancel', [ServiceOrderController::class, 'cancel'])->name('service_orders_cancel');
         Route::put('/{id}/config', [ServiceOrderController::class, 'updateConfig'])->name('service_orders_update_config');
+        Route::delete('/{id}', [ServiceOrderController::class, 'destroy'])->name('service_orders_destroy');
     });
 
     Route::prefix('/service-management')->group(function () {

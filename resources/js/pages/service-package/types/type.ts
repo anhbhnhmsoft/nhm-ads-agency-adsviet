@@ -9,6 +9,11 @@ export type ServicePackageOption = {
 
 
 // TypeScript/JavaScript (Dùng cho Frontend hoặc Node.js)
+export type MonthlySpendingFeeItem = {
+    range: string;
+    fee_percent: string;
+};
+
 export type CreateServicePackageForm = {
     name: string;
     description: string | null;
@@ -22,6 +27,7 @@ export type CreateServicePackageForm = {
     top_up_fee: string;
     set_up_time: string;
     disabled: boolean;
+    monthly_spending_fee_structure: MonthlySpendingFeeItem[];
 };
 
 export type ServicePackageFeatureValue = {
@@ -40,6 +46,7 @@ export type ServicePackageItem = {
     disabled: boolean;
     description: string;
     range_min_top_up: string;
+    monthly_spending_fee_structure: MonthlySpendingFeeItem[];
 };
 
 export type ServicePackageListQuery = BaseSearchRequest<{

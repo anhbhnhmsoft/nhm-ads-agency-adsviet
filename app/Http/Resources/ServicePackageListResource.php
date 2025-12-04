@@ -20,6 +20,7 @@ class ServicePackageListResource extends JsonResource
             'description' => $this->description,
             'platform' => $this->platform,
             'features' => $this->features,
+            'monthly_spending_fee_structure' => $this->monthly_spending_fee_structure,
             'open_fee' => $this->open_fee,
             'top_up_fee' => $this->top_up_fee,
             'set_up_time' => $this->set_up_time,

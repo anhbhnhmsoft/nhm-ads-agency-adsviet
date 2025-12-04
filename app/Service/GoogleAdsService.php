@@ -511,6 +511,13 @@ class GoogleAdsService
     {
         try {
             $customerIds = $this->extractGoogleCustomerIds($serviceUser);
+            
+            Logging::web('GoogleAdsService@syncGoogleAccounts: Extracted customer IDs', [
+                'service_user_id' => $serviceUser->id,
+                'customer_ids_count' => count($customerIds),
+                'customer_ids' => $customerIds,
+            ]);
+            
             if (empty($customerIds)) {
                 $config = $serviceUser->config_account ?? [];
                 $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
@@ -554,6 +561,7 @@ SELECT
 FROM customer
 GAQL;
 
+            $syncedCount = 0;
             foreach ($customerIds as $customerId) {
                 try {
                     $request = new SearchGoogleAdsStreamRequest([
@@ -561,6 +569,7 @@ GAQL;
                         'query' => $query,
                     ]);
                     $stream = $googleAdsService->searchStream($request);
+                    $accountCount = 0;
                     foreach ($stream->readAll() as $response) {
                         foreach ($response->getResults() as $row) {
                             $customer = $row->getCustomer();
@@ -592,8 +601,16 @@ GAQL;
                                     'last_synced_at' => now(),
                                 ]
                             );
+                            $accountCount++;
+                            $syncedCount++;
                         }
                     }
+                    
+                    Logging::web('GoogleAdsService@syncGoogleAccounts: Synced customer', [
+                        'service_user_id' => $serviceUser->id,
+                        'customer_id' => $customerId,
+                        'accounts_synced' => $accountCount,
+                    ]);
                 } catch (GoogleAdsException|ApiException $exception) {
                     Logging::error(
                         message: 'GoogleAdsService@syncGoogleAccounts failed',
@@ -606,6 +623,12 @@ GAQL;
                     );
                 }
             }
+            
+            Logging::web('GoogleAdsService@syncGoogleAccounts: Completed', [
+                'service_user_id' => $serviceUser->id,
+                'total_customer_ids' => count($customerIds),
+                'total_accounts_synced' => $syncedCount,
+            ]);
 
             return ServiceReturn::success();
         } catch (\Throwable $exception) {
@@ -1210,9 +1233,12 @@ GAQL;
             $query = <<<GAQL
 SELECT
   customer_client.client_customer,
-  customer_client.manager
+  customer_client.manager,
+  customer_client.descriptive_name,
+  customer_client.status
 FROM customer_client
 WHERE customer_client.manager = FALSE
+  AND customer_client.status != 'CANCELED'
 GAQL;
 
             $request = new SearchGoogleAdsStreamRequest([
@@ -1221,25 +1247,24 @@ GAQL;
             ]);
 
             $customerIds = [];
+            $customerDetails = [];
             $stream = $googleAdsService->searchStream($request);
             foreach ($stream->readAll() as $response) {
                 /** @var GoogleAdsRow $row */
                 foreach ($response->getResults() as $row) {
-                    $clientCustomer = $row->getCustomerClient()?->getClientCustomer();
+                    $customerClient = $row->getCustomerClient();
+                    $clientCustomer = $customerClient?->getClientCustomer();
                     if ($clientCustomer) {
-                        $customerIds[] = $this->extractIdFromResource($clientCustomer);
+                        $customerId = $this->extractIdFromResource($clientCustomer);
+                        $customerIds[] = $customerId;
+                        $customerDetails[] = [
+                            'id' => $customerId,
+                            'name' => $customerClient->getDescriptiveName() ?? 'N/A',
+                            'status' => $customerClient->getStatus() ?? 'UNKNOWN',
+                        ];
                     }
                 }
             }
-
-            \Illuminate\Support\Facades\Log::info(
-                'GoogleAdsService@fetchCustomerIdsFromManager: Successfully fetched customer IDs',
-                [
-                    'service_user_id' => $serviceUser->id,
-                    'manager_id' => $managerId,
-                    'customer_count' => count($customerIds),
-                ]
-            );
 
             return array_values(array_filter($customerIds));
         } catch (\RuntimeException $exception) {
@@ -1494,14 +1519,26 @@ GAQL;
                     // Chỉ tính balance cho tài khoản trả trước (SPECIFIC_AMOUNT)
                     // Tài khoản trả sau (INFINITE) không có balance cố định
                     $limitTypeName = null;
-                    if ($limitType) {
-                        // Enum có thể có method getName() hoặc name property
-                        if (method_exists($limitType, 'getName')) {
-                            $limitTypeName = $limitType->getName();
-                        } elseif (method_exists($limitType, 'name')) {
-                            $limitTypeName = $limitType->name;
+                    if ($limitType !== null) {
+                        // Enum có thể là object, string, hoặc int
+                        if (is_object($limitType)) {
+                            if (method_exists($limitType, 'getName')) {
+                                $limitTypeName = $limitType->getName();
+                            } elseif (method_exists($limitType, 'name')) {
+                                $limitTypeName = $limitType->name;
+                            } elseif (property_exists($limitType, 'name')) {
+                                $limitTypeName = $limitType->name;
+                            }
                         } elseif (is_string($limitType)) {
                             $limitTypeName = $limitType;
+                        } elseif (is_int($limitType)) {
+                            // Nếu là int, có thể là enum value, map sang tên
+                            // Google Ads BudgetDeliveryMethod enum: SPECIFIC_AMOUNT = 1, INFINITE = 2
+                            $limitTypeName = match($limitType) {
+                                1 => 'SPECIFIC_AMOUNT',
+                                2 => 'INFINITE',
+                                default => null,
+                            };
                         }
                     }
 

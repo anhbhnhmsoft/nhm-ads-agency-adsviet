@@ -33,11 +33,13 @@ export type CustomerListItem = {
     id: string;
     name: string;
     username: string;
+    email?: string | null;
+    telegram_id?: string | null;
     phone: string | null;
     disabled: boolean;
     role: _UserRole;
     using_telegram: boolean;
-    using_whatsapp: boolean;
+    email_verified_at?: string | null;
     referral_code: string;
     wallet_balance?: number;
     wallet_status?: number;

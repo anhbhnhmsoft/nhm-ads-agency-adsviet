@@ -153,13 +153,54 @@ class UserService
                 }
             }
 
+            // Log filter trước khi query
+            Logging::web('UserService@getListCustomerPagination: Filter before query', [
+                'filter' => $filter,
+                'current_user_role' => $currentUser?->role,
+                'current_user_id' => $currentUser?->id,
+            ]);
+
             $query = $this->userRepository->filterQuery($filter);
             $query->with([
                 'wallet',
-                'referredBy.referrer.referredBy.referrer',
+                'referredBy' => function ($q) {
+                    $q->whereNull('deleted_at');
+                },
+                'referredBy.referrer' => function ($q) {
+                    $q->select('id', 'username', 'role');
+                },
+                'referredBy.referrer.referredBy' => function ($q) {
+                    $q->whereNull('deleted_at');
+                },
+                'referredBy.referrer.referredBy.referrer' => function ($q) {
+                    $q->select('id', 'username');
+                },
             ]);
             $query = $this->userRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
+            
+            // Log SQL query để debug
+            Logging::web('UserService@getListCustomerPagination: SQL Query', [
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings(),
+            ]);
+            
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
+            
+            // Log dữ liệu sau khi query
+            if ($paginator->count() > 0) {
+                $firstItem = $paginator->first();
+                Logging::web('UserService@getListCustomerPagination: First item data', [
+                    'user_id' => $firstItem->id,
+                    'user_name' => $firstItem->name,
+                    'has_referredBy' => $firstItem->relationLoaded('referredBy'),
+                    'referredBy_id' => $firstItem->referredBy?->id,
+                    'referredBy_referrer_id' => $firstItem->referredBy?->referrer_id,
+                    'referredBy_referrer_loaded' => $firstItem->referredBy?->relationLoaded('referrer'),
+                    'referredBy_referrer_id_value' => $firstItem->referredBy?->referrer?->id,
+                    'referredBy_referrer_username' => $firstItem->referredBy?->referrer?->username,
+                ]);
+            }
+            
             return ServiceReturn::success(data: $paginator);
         } catch (QueryException $exception) {
             Logging::error(

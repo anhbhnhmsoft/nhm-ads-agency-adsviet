@@ -30,6 +30,8 @@ import {
     KanbanSquare,
     BarChart3,
     MessageSquare,
+    CreditCard,
+    DollarSign,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +48,7 @@ const useMenu = () => {
     );
     const menu: IMenu[] = useMemo(() => {
         return [
+            // Trang chủ
             {
                 title: t('menu.dashboard'),
                 url: dashboard().url,
@@ -54,38 +57,7 @@ const useMenu = () => {
                 active: isActive(dashboard()),
                 can_show: true,
             },
-            {
-                title: t('menu.my_wallet'),
-                url: wallet_index().url,
-                icon: <Wallet />,
-                is_menu: true,
-                active: isActive(wallet_index()),
-                can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
-            },
-            {
-                title: t('menu.service_purchase'),
-                url: service_purchase_index().url,
-                icon: <ShoppingCart />,
-                is_menu: true,
-                active: isActive(service_purchase_index()),
-                can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
-            },
-            {
-                title: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE])
-                    ? t('menu.service_orders_admin')
-                    : t('menu.service_orders'),
-                url: service_orders_index().url,
-                icon: <ClipboardList />,
-                is_menu: true,
-                active: isActive(service_orders_index()),
-                can_show: checkRole([
-                    _UserRole.ADMIN,
-                    _UserRole.MANAGER,
-                    _UserRole.EMPLOYEE,
-                    _UserRole.CUSTOMER,
-                    _UserRole.AGENCY,
-                ]),
-            },
+            // Quản lý tài khoản
             {
                 title: t('menu.service_management'),
                 url: service_management_index().url,
@@ -100,22 +72,67 @@ const useMenu = () => {
                     _UserRole.AGENCY,
                 ]),
             },
+            // Quản lý tài chính (dropdown)
             {
-                title: t('menu.spend_report'),
-                url: spend_report_index().url,
-                icon: <BarChart3 />,
+                title: t('menu.financial_management'),
+                icon: <DollarSign />,
                 is_menu: true,
-                active: isActive(spend_report_index()),
+                active: isActive('/transactions') || 
+                        isActive(spend_report_index()) || 
+                        isActive(wallet_index()) || 
+                        isActive(service_orders_index()),
+                can_show: checkRole([
+                    _UserRole.ADMIN,
+                    _UserRole.MANAGER,
+                    _UserRole.EMPLOYEE,
+                    _UserRole.CUSTOMER,
+                    _UserRole.AGENCY,
+                ]),
+                items: [
+                    {
+                        title: t('menu.transactions'),
+                        url: '/transactions',
+                        active: isActive('/transactions'),
+                        can_show: checkRole([_UserRole.ADMIN, _UserRole.CUSTOMER, _UserRole.AGENCY, _UserRole.EMPLOYEE, _UserRole.MANAGER]),
+                    },
+                    {
+                        title: t('menu.spend_report'),
+                        url: spend_report_index().url,
+                        active: isActive(spend_report_index()),
+                        can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
+                    },
+                    {
+                        title: t('menu.my_wallet'),
+                        url: wallet_index().url,
+                        active: isActive(wallet_index()),
+                        can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
+                    },
+                    {
+                        title: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE])
+                            ? t('menu.service_orders_admin')
+                            : t('menu.service_orders'),
+                        url: service_orders_index().url,
+                        active: isActive(service_orders_index()),
+                        can_show: checkRole([
+                            _UserRole.ADMIN,
+                            _UserRole.MANAGER,
+                            _UserRole.EMPLOYEE,
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                ],
+            },
+            // Mua gói dịch vụ
+            {
+                title: t('menu.service_purchase'),
+                url: service_purchase_index().url,
+                icon: <ShoppingCart />,
+                is_menu: true,
+                active: isActive(service_purchase_index()),
                 can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
             },
-            {
-                title: t('menu.transactions'),
-                url: '/transactions',
-                icon: <Receipt />,
-                is_menu: true,
-                active: isActive('/transactions'),
-                can_show: checkRole([_UserRole.ADMIN, _UserRole.CUSTOMER, _UserRole.AGENCY, _UserRole.EMPLOYEE, _UserRole.MANAGER]),
-            },
+            // Hỗ trợ
             {
                 title: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE])
                     ? t('menu.support_customer')

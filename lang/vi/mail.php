@@ -41,4 +41,18 @@ return [
         'description' => 'Mô tả: :description',
         'thanks' => 'Trân trọng,',
     ],
+    'google_ads_low_balance' => [
+        'subject' => 'Cảnh báo số dư Google Ads thấp',
+        'greeting' => 'Xin chào :username,',
+        'description' => 'Tài khoản Google Ads ":accountName" của bạn hiện chỉ còn :balance :currency (ngưỡng cảnh báo là :threshold :currency).',
+        'action' => 'Vui lòng nạp thêm tiền vào tài khoản Google Ads để tránh bị tạm dừng quảng cáo.',
+        'thanks' => 'Trân trọng,',
+    ],
+    'meta_ads_low_balance' => [
+        'subject' => 'Cảnh báo số dư Meta Ads thấp',
+        'greeting' => 'Xin chào :username,',
+        'description' => 'Tài khoản Meta Ads ":accountName" của bạn hiện chỉ còn :balance :currency (ngưỡng cảnh báo là :threshold :currency).',
+        'action' => 'Vui lòng nạp thêm tiền vào Meta Business để tránh bị tạm dừng quảng cáo.',
+        'thanks' => 'Trân trọng,',
+    ],
 ];

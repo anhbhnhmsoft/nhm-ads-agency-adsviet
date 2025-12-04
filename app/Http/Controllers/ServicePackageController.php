@@ -73,9 +73,13 @@ class ServicePackageController extends Controller
         $validator = Validator::make($request->all(),
             [
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'max:255'],
+            // description: cho phép độ dài lớn, không giới hạn ở 255 ký tự nữa
+            'description' => ['required', 'string'],
             'platform' => ['required', Rule::in(PlatformType::getValues())],
             'features' => ['required', 'array'],
+            'monthly_spending_fee_structure' => ['nullable', 'array'],
+            'monthly_spending_fee_structure.*.range' => ['required_with:monthly_spending_fee_structure', 'string', 'max:255'],
+            'monthly_spending_fee_structure.*.fee_percent' => ['required_with:monthly_spending_fee_structure', 'string', 'max:50'],
             'open_fee' => ['required', 'numeric', 'min:0'],
             'range_min_top_up' => ['required', 'numeric', 'min:0'],
             'top_up_fee' => ['required', 'numeric', 'min:0'],
@@ -90,6 +94,11 @@ class ServicePackageController extends Controller
             'platform.required' => __('services.validation.platform_invalid'),
             'platform.in' => __('services.validation.platform_invalid'),
             'features.required' => __('services.validation.features_invalid'),
+            'monthly_spending_fee_structure.array' => __('services.validation.monthly_spending_fee_invalid'),
+            'monthly_spending_fee_structure.*.range.required_with' => __('services.validation.monthly_spending_fee_invalid'),
+            'monthly_spending_fee_structure.*.range.string' => __('services.validation.monthly_spending_fee_invalid'),
+            'monthly_spending_fee_structure.*.fee_percent.required_with' => __('services.validation.monthly_spending_fee_invalid'),
+            'monthly_spending_fee_structure.*.fee_percent.string' => __('services.validation.monthly_spending_fee_invalid'),
             'open_fee.required' => __('services.validation.open_fee_invalid'),
             'range_min_top_up.required' => __('services.validation.range_min_top_up_invalid'),
             'top_up_fee.required' => __('services.validation.top_up_fee_invalid'),
@@ -142,6 +151,7 @@ class ServicePackageController extends Controller
 
         // Lấy dữ liệu đã validate
         $form = $validator->validated();
+        $form = $this->prepareMonthlySpendingData($form);
 
         // Tạo service package
         $result = $this->servicePackageService->createServicePackage($form);
@@ -190,9 +200,12 @@ class ServicePackageController extends Controller
         $validator = Validator::make($request->all(),
             [
                 'name' => ['required', 'string', 'max:255'],
-                'description' => ['required', 'string', 'max:255'],
+                'description' => ['required', 'string'],
                 'platform' => ['required', Rule::in(PlatformType::getValues())],
                 'features' => ['required', 'array'],
+                'monthly_spending_fee_structure' => ['nullable', 'array'],
+                'monthly_spending_fee_structure.*.range' => ['required_with:monthly_spending_fee_structure', 'string', 'max:255'],
+                'monthly_spending_fee_structure.*.fee_percent' => ['required_with:monthly_spending_fee_structure', 'string', 'max:50'],
                 'open_fee' => ['required', 'numeric', 'min:0'],
                 'range_min_top_up' => ['required', 'numeric', 'min:0'],
                 'top_up_fee' => ['required', 'numeric', 'min:0'],
@@ -207,6 +220,11 @@ class ServicePackageController extends Controller
                 'platform.required' => __('services.validation.platform_invalid'),
                 'platform.in' => __('services.validation.platform_invalid'),
                 'features.required' => __('services.validation.features_invalid'),
+                'monthly_spending_fee_structure.array' => __('services.validation.monthly_spending_fee_invalid'),
+                'monthly_spending_fee_structure.*.range.required_with' => __('services.validation.monthly_spending_fee_invalid'),
+                'monthly_spending_fee_structure.*.range.string' => __('services.validation.monthly_spending_fee_invalid'),
+                'monthly_spending_fee_structure.*.fee_percent.required_with' => __('services.validation.monthly_spending_fee_invalid'),
+                'monthly_spending_fee_structure.*.fee_percent.string' => __('services.validation.monthly_spending_fee_invalid'),
                 'open_fee.required' => __('services.validation.open_fee_invalid'),
                 'open_fee.numeric' => __('services.validation.open_fee_invalid'),
                 'range_min_top_up.required' => __('services.validation.range_min_top_up_invalid'),
@@ -263,13 +281,14 @@ class ServicePackageController extends Controller
 
         // Lấy dữ liệu đã validate
         $form = $validator->validated();
+        $form = $this->prepareMonthlySpendingData($form);
 
         // Cập nhật service package
         $result = $this->servicePackageService->updateServicePackage($id, $form);
 
         // Xử lý kết quả
         if($result->isSuccess()){
-            FlashMessage::success(__('common_success.edit_success'));
+            FlashMessage::success(__('common_success.update_success'));
             return redirect()->route('service_packages_index');
         }else{
             FlashMessage::error($result->getMessage());
@@ -307,5 +326,26 @@ class ServicePackageController extends Controller
             FlashMessage::error($result->getMessage());
         }
         return redirect()->route('service_packages_index');
+    }
+
+    /**
+     * Chuẩn hóa dữ liệu cấu trúc phí theo mức chi tiêu hằng tháng
+     */
+    private function prepareMonthlySpendingData(array $form): array
+    {
+        $form['monthly_spending_fee_structure'] = collect($form['monthly_spending_fee_structure'] ?? [])
+            ->map(function ($row) {
+                return [
+                    'range' => trim((string) ($row['range'] ?? '')),
+                    'fee_percent' => trim((string) ($row['fee_percent'] ?? '')),
+                ];
+            })
+            ->filter(function ($row) {
+                return $row['range'] !== '' || $row['fee_percent'] !== '';
+            })
+            ->values()
+            ->all();
+
+        return $form;
     }
 }

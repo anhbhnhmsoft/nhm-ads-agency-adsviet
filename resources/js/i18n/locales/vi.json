@@ -12,6 +12,7 @@
         "role": "Vai trò",
         "phone": "Số điện thoại",
         "email": "Email",
+        "telegram_id": "ID Telegram",
         "created_at": "Ngày tạo",
         "updated_at": "Ngày cập nhật",
         "status": "Trạng thái",
@@ -32,6 +33,7 @@
         "gmail": "Gmail",
         "logout": "Đăng xuất",
         "social_authentication": "Xác thực xã hội",
+        "using_email": "Sử dụng Email",
         "using_telegram": "Sử dụng Telegram",
         "using_whatsapp": "Sử dụng WhatsApp",
         "help": "Hỗ trợ",
@@ -105,6 +107,7 @@
       "transactions": "Quản lý giao dịch",
       "profile": "Thông tin cá nhân",
       "spend_report": "Báo cáo chi tiêu",
+      "financial_management": "Quản lý tài chính",
       "support": "Hỗ trợ",
       "support_customer": "Hỗ trợ khách hàng"
     },
@@ -154,7 +157,7 @@
         "total_budget": "Ngân sách đã nạp",
         "topup_fee": "Phí top-up",
         "view_campaigns": "Xem chiến dịch",
-        "dialog_title": "Chiến dịch quảng cáo",
+        "dialog_title": "Tài khoản quảng cáo",
         "dialog_platform": "Nền tảng: {{platform}}",
         "meta_email": "Email Tài khoản",
         "display_name": "Tên hiển thị",
@@ -207,7 +210,29 @@
         "campaign_tab_all": "Tất cả ({{count}})",
         "campaign_tab_issue": "Có vấn đề ({{count}})",
         "campaign_issue_empty": "Không có chiến dịch gặp vấn đề.",
-        "campaign_issue_hint": "Kiểm tra lại ngân sách, trạng thái phê duyệt hoặc cảnh báo từ nền tảng."
+        "campaign_issue_hint": "Kiểm tra lại ngân sách, trạng thái phê duyệt hoặc cảnh báo từ nền tảng.",
+        "campaign_pause": "Tạm dừng",
+        "campaign_pause_description": "Tạo yêu cầu tạm dừng chiến dịch",
+        "campaign_pause_warning": "Bạn có chắc chắn muốn tạm dừng chiến dịch này? Chiến dịch sẽ tạm dừng phân phát quảng cáo sau khi admin duyệt yêu cầu.",
+        "campaign_pause_confirm": "Xác nhận tạm dừng",
+        "campaign_pause_success": "Đã tạo yêu cầu tạm dừng chiến dịch.",
+        "campaign_pause_error": "Không thể tạo yêu cầu tạm dừng chiến dịch.",
+        "campaign_end": "Kết thúc",
+        "campaign_end_description": "Tạo yêu cầu kết thúc chiến dịch",
+        "campaign_end_warning": "Bạn có chắc chắn muốn kết thúc chiến dịch này? Chiến dịch sẽ bị xóa vĩnh viễn sau khi admin duyệt yêu cầu. Hành động này không thể hoàn tác.",
+        "campaign_end_confirm": "Xác nhận kết thúc",
+        "campaign_end_success": "Đã tạo yêu cầu kết thúc chiến dịch.",
+        "campaign_end_error": "Không thể tạo yêu cầu kết thúc chiến dịch.",
+        "campaign_update_budget": "Cập nhật ngân sách",
+        "campaign_update_budget_description": "Tạo yêu cầu cập nhật ngân sách",
+        "campaign_update_budget_amount_label": "Số tiền muốn thêm vào ngân sách",
+        "campaign_update_budget_wallet_password_label": "Mật khẩu ví",
+        "campaign_update_budget_submit": "Gửi yêu cầu",
+        "campaign_update_budget_success": "Đã tạo yêu cầu cập nhật ngân sách chiến dịch.",
+        "campaign_update_budget_insufficient_balance": "Số dư ví không đủ để tạo yêu cầu này.",
+        "campaign_update_budget_wallet_balance": "Số dư ví hiện tại: {{balance}} USDT",
+        "campaign_update_budget_wallet_balance_loading": "Đang tải số dư ví...",
+        "campaign_update_budget_wallet_balance_error": "Không thể lấy số dư ví. Bạn vẫn có thể gửi yêu cầu như bình thường."
     },
     "auth": {
         "components": {
@@ -299,7 +324,13 @@
             "refund": "Hoàn tiền",
             "fee": "Phí",
             "cashback": "Hoàn tiền thưởng",
-            "service_purchase": "Mua dịch vụ"
+            "service_purchase": "Mua dịch vụ",
+            "campaign_budget_update_google": "Cập nhật ngân sách chiến dịch Google Ads",
+            "campaign_budget_update_meta": "Cập nhật ngân sách chiến dịch Meta Ads",
+            "campaign_pause_google": "Tạm dừng chiến dịch Google Ads",
+            "campaign_pause_meta": "Tạm dừng chiến dịch Meta Ads",
+            "campaign_end_google": "Kết thúc chiến dịch Google Ads",
+            "campaign_end_meta": "Kết thúc chiến dịch Meta Ads"
         },
         "transaction_status": {
             "unknown": "Không xác định",
@@ -308,6 +339,15 @@
             "rejected": "Từ chối",
             "completed": "Hoàn thành",
             "cancelled": "Đã hủy"
+        },
+        "transaction_description": {
+            "deposit_created": "Đã tạo lệnh nạp tiền",
+            "withdraw_created": "User tạo lệnh rút tiền",
+            "deposit_approved": "Admin duyệt nạp tiền",
+            "withdraw_completed": "Admin duyệt và đã chuyển tiền rút",
+            "deposit_cancelled_user": "User hủy lệnh nạp từ màn hình chờ",
+            "withdraw_cancelled_user": "User hủy lệnh rút tiền",
+            "withdraw_cancelled_admin": "Admin hủy lệnh rút tiền"
         }
     },
     "service_packages": {
@@ -330,7 +370,14 @@
         "disabled": "Khoá gói dịch vụ",
         "disabled_desc": "Nếu khóa gói dịch vụ, khách hàng không thể sử dụng gói dịch vụ này (LƯU Ý).",
         "toggle_desc": "Bạn có thể bật hoặc tắt.",
-        "meta_timezone_id_desc": "Hãy điền timezone id theo danh sách sau: https://developers.facebook.com/docs/marketing-api/reference/ad-account/timezone-ids/v24.0"
+        "meta_timezone_id_desc": "Hãy điền timezone id theo danh sách sau: https://developers.facebook.com/docs/marketing-api/reference/ad-account/timezone-ids/v24.0",
+        "monthly_spending_title": "Monthly Spending & Fee Structure",
+        "monthly_spending_description": "Điền biểu phí theo mức chi tiêu, dữ liệu sẽ hiển thị trong mô tả/dịch vụ.",
+        "monthly_spending_spending_label": "Monthly Spending",
+        "monthly_spending_fee_label": "Fee %",
+        "monthly_spending_add_row": "Thêm dòng",
+        "monthly_spending_remove_row": "Xóa",
+        "monthly_spending_reset_template": "Sử dụng mẫu mặc định"
     },
     "service_user": {
         "create_title": "Tạo dịch vụ người dùng",
@@ -434,6 +481,10 @@
         "budget_hint": "Nhập ngân sách tối thiểu {{min}} USD",
         "budget_invalid": "Ngân sách không hợp lệ",
         "budget_min_required": "Ngân sách phải đạt tối thiểu {{min}} USD",
+        "monthly_spending_title": "Monthly Spending & Fee Structure",
+        "monthly_spending_description": "Bảng phí tham khảo theo hạn mức chi tiêu hằng tháng.",
+        "monthly_spending_spending_label": "Monthly Spending",
+        "monthly_spending_fee_label": "Fee %",
         "order_summary": "Tóm tắt đơn hàng",
         "back_to_services": "Quay lại danh sách",
         "info_message": "Chọn dịch vụ phù hợp với nhu cầu của bạn. Thanh toán chỉ qua USDT.",
@@ -495,9 +546,11 @@
         "actions": {
             "approve": "Xác nhận",
             "cancel": "Hủy",
-            "edit": "Chỉnh sửa"
+            "edit": "Chỉnh sửa",
+            "delete": "Xóa"
         },
         "confirm_cancel": "Bạn có chắc muốn hủy đơn dịch vụ này?",
+        "confirm_delete": "Bạn có chắc chắn muốn xóa đơn dịch vụ này? Hành động này không thể hoàn tác.",
         "form": {
             "meta_email_placeholder": "Nhập email Meta",
             "display_name_placeholder": "Nhập tên hiển thị",
@@ -549,6 +602,14 @@
             "staff": "Nhân viên",
             "system": "Hệ thống"
         }
+    },
+    "config": {
+        "title": "Cấu hình địa chỉ ví",
+        "description": "Cấu hình địa chỉ ví để nhận tiền từ giao dịch crypto",
+        "bep20_wallet_address": "Địa chỉ ví BEP20",
+        "trc20_wallet_address": "Địa chỉ ví TRC20",
+        "bep20_placeholder": "Nhập địa chỉ ví Binance Smart Chain (BEP20)",
+        "trc20_placeholder": "Nhập địa chỉ ví Tron (TRC20)"
     },
     "spend_report": {
         "title": "Báo cáo chi tiêu",
@@ -603,8 +664,8 @@
         "admin_subtitle": "Chào mừng, {{name}} - {{role}}",
         "admin_total_customers": "Tổng khách hàng",
         "admin_active_customers": "KH hoạt động",
-        "admin_pending_transactions": "GD chờ duyệt",
-        "admin_pending_transactions_title": "GD chờ duyệt",
+        "admin_pending_transactions": "Giao Dịch chờ duyệt",
+        "admin_pending_transactions_title": "Giao Dịch chờ duyệt",
         "admin_no_transactions": "Chưa có giao dịch nào",
         "admin_transaction_customer": "Khách hàng",
         "admin_transaction_amount": "Số tiền",

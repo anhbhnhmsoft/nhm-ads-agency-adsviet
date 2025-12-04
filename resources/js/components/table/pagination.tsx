@@ -35,7 +35,14 @@ export function DataTablePagination<TData>({ paginator }: DataTablePaginationPro
         router.visit(url.toString(), { preserveScroll: true, preserveState: true });
     }, []);
 
-    const pageLinks = paginator.meta.links.filter((link) => !link.label.includes('pagination.previous') && !link.label.includes('pagination.next'));
+    // Chỉ giữ lại các link là số trang (loại bỏ "Previous" / "Next" bất kể ngôn ngữ / label)
+    const pageLinks = paginator.meta.links.filter((link) => {
+        if (link.page === null) return false;
+        const label = (link.label || '').toString().toLowerCase();
+        if (label.includes('pagination.previous') || label.includes('pagination.next')) return false;
+        if (label.includes('previous') || label.includes('next')) return false;
+        return true;
+    });
     const firstPageUrl = paginator.meta.links.find((link) => link.page === 1)?.url || paginator.links.first;
     const lastPageUrl = paginator.meta.links.find((link) => link.page === paginator.meta.last_page)?.url || paginator.links.last;
 

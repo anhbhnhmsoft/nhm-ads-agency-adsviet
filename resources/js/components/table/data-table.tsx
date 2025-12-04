@@ -27,7 +27,7 @@ export function DataTable<TData, TValue>({ columns, paginator }: DataTableProps<
 
     return (
        <div>
-           <div className="overflow-hidden rounded-md border mb-4">
+           <div className="overflow-hidden rounded-md border mb-4 bg-white">
                <Table>
                    <TableHeader>
                        {table.getHeaderGroups().map((headerGroup) => (

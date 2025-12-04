@@ -95,7 +95,7 @@ const WalletActionsTabs = ({
                                     <option value="" disabled>{t('service_user.select_network_placeholder')}</option>
                                     {networks.map((n) => (
                                         <option key={n.key} value={n.key}>
-                                            {n.key}
+                                            {n.address ? `${n.key} (${n.address})` : n.key}
                                         </option>
                                     ))}
                                 </select>

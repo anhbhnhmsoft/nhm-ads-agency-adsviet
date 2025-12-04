@@ -41,6 +41,11 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => $request->user(),
             'current_route' => fn () => request()->path(),
+            'locale' => app()->getLocale(),
+            'locales' => [
+                ['code' => 'vi', 'label' => 'Tiếng Việt'],
+                ['code' => 'en', 'label' => 'English'],
+            ],
             'flash' => [
                 'success' => fn() => $request->session()->get('success'),
                 'error' => fn() => $request->session()->get('error'),

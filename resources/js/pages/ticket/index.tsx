@@ -19,15 +19,8 @@ import { useForm } from '@inertiajs/react';
 import useCheckRole from '@/hooks/use-check-role';
 import { _UserRole } from '@/lib/types/constants';
 
-const breadcrumbs: IBreadcrumbItem[] = [
-    {
-        title: 'Hỗ trợ',
-        href: ticket_index().url,
-    },
-];
-
 export default function TicketIndex({ tickets, error }: TicketPageProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { props } = usePage();
     const authUser = useMemo(() => {
         const authProp = props.auth as { user?: any } | any | null | undefined;
@@ -87,6 +80,13 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
         ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ticket.description.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
+
+    const breadcrumbs: IBreadcrumbItem[] = [
+        {
+            title: t('ticket.title', { defaultValue: 'Support' }),
+            href: ticket_index().url,
+        },
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -171,7 +171,7 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
                                                 )}
                                             </div>
                                             <span>
-                                                {new Date(ticket.created_at).toLocaleDateString('vi-VN', {
+                                                {new Date(ticket.created_at).toLocaleDateString(i18n.language || 'en', {
                                                     year: 'numeric',
                                                     month: 'long',
                                                     day: 'numeric',

@@ -46,7 +46,7 @@ const ServicePackageListSearchForm = () => {
                         onClick={() => handleSearch()}
                     >
                         <Search />
-                        Tìm
+                        {t('common.search', { defaultValue: 'Search' })}
                     </Button>
                     <Button
                         variant={"outline"}

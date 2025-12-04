@@ -27,11 +27,13 @@ return [
         'bm_id_required' => 'Vui lòng nhập Business Manager ID',
         'bm_id_string' => 'Business Manager ID phải là chuỗi',
         'bm_id_max' => 'Business Manager ID không được vượt quá :max ký tự',
+        'monthly_spending_fee_invalid' => 'Cấu trúc phí theo mức chi tiêu hằng tháng không hợp lệ',
     ],
     'flash' => [
         'purchase_success' => 'Đã tạo đơn hàng thành công và trừ tiền từ ví.',
         'order_approve_success' => 'Đã xác nhận đơn dịch vụ.',
         'order_cancel_success' => 'Đã hủy đơn dịch vụ.',
+        'order_delete_success' => 'Đã xóa đơn dịch vụ.',
         'config_update_success' => 'Đã cập nhật cấu hình tài khoản.',
     ],
 ];

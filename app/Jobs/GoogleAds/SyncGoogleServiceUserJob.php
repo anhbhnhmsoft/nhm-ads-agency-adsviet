@@ -4,6 +4,7 @@ namespace App\Jobs\GoogleAds;
 
 use App\Models\ServiceUser;
 use App\Service\GoogleAdsService;
+use App\Service\GoogleAdsNotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -20,11 +21,16 @@ class SyncGoogleServiceUserJob implements ShouldQueue
         $this->onQueue('google-api');
     }
 
-    public function handle(GoogleAdsService $googleAdsService): void
+    public function handle(
+        GoogleAdsService $googleAdsService,
+        GoogleAdsNotificationService $googleAdsNotificationService,
+    ): void
     {
         $googleAdsService->syncGoogleAccounts($this->serviceUser);
         $googleAdsService->syncGoogleCampaigns($this->serviceUser);
         $googleAdsService->syncGoogleInsights($this->serviceUser);
+        // Kiểm tra và gửi thông báo low balance
+        $googleAdsNotificationService->sendLowBalanceAlerts();
     }
 }
 
