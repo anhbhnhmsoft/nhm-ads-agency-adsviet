@@ -7,7 +7,7 @@ export interface IBreadcrumbItem {
 }
 
 export interface IUser {
-    id: number;
+    id: string;
     name: string;
     username: string;
     email?: string | null;

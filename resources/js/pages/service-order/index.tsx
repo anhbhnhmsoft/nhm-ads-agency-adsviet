@@ -6,8 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import type { ServiceOrderPagination, ServiceOrder } from '@/pages/service-order/types/type';
-import { service_purchase_index, service_orders_cancel } from '@/routes';
-import { Package, ShoppingBag } from 'lucide-react';
+import { service_purchase_index, service_orders_cancel, service_orders_destroy } from '@/routes';
+import { Package, ShoppingBag, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/table/data-table';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -154,6 +154,22 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                 cell: ({ row }) => row.original.package?.platform_label || '-',
             },
             {
+                id: 'budget',
+                header: t('service_orders.table.budget'),
+                meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+                cell: ({ row }) => {
+                    const budget = row.original.budget;
+                    if (!budget) {
+                        return <span className="text-xs text-muted-foreground">-</span>;
+                    }
+                    const budgetValue = parseFloat(budget);
+                    if (Number.isNaN(budgetValue)) {
+                        return <span className="text-xs text-muted-foreground">-</span>;
+                    }
+                    return <span className="text-xs font-medium">{budgetValue.toFixed(2)} USD</span>;
+                },
+            },
+            {
                 id: 'status',
                 header: t('service_orders.table.status'),
                 meta: { headerClassName: 'text-center', cellClassName: 'text-center' },
@@ -198,6 +214,16 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                         openEditDialogForOrder(order);
                     };
 
+                    const handleDelete = () => {
+                        if (!window.confirm(t('service_orders.confirm_delete'))) {
+                            return;
+                        }
+                        router.delete(
+                            service_orders_destroy({ id: order.id }).url,
+                            { preserveScroll: true },
+                        );
+                    };
+
                     return (
                         <div className="flex gap-2">
                             {isPending && (
@@ -213,6 +239,10 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                             <Button size="sm" variant="outline" onClick={handleEdit}>
                                 <Pencil className="mr-1 h-3 w-3" />
                                 {t('service_orders.actions.edit')}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                <Trash2 className="mr-1 h-3 w-3" />
+                                {t('service_orders.actions.delete')}
                             </Button>
                         </div>
                     );
@@ -246,7 +276,7 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                     )}
                 </div>
 
-                <Card>
+                <Card className="py-0">
                     {orders.length === 0 ? (
                         <CardContent className="py-12 text-center">
                             <Package className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />

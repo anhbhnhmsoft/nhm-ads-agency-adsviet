@@ -73,10 +73,6 @@ const ListCustomer = ({
     const columns: ColumnDef<CustomerListItem>[] = useMemo(
         () => [
             {
-                accessorKey: 'id',
-                header: t('common.id'),
-            },
-            {
                 accessorKey: 'name',
                 header: t('common.name'),
             },
@@ -85,12 +81,27 @@ const ListCustomer = ({
                 header: t('common.username'),
             },
             {
+                accessorKey: 'email',
+                header: t('common.email'),
+                cell: (cell) => {
+                    return cell.row.original.email || '-';
+                },
+            },
+            {
+                accessorKey: 'telegram_id',
+                header: t('common.telegram_id'),
+                cell: (cell) => {
+                    return cell.row.original.telegram_id || '-';
+                },
+            },
+            {
                 id: 'managed_by',
                 header: t('user.manager_owner', { defaultValue: 'Thuộc quản lý' }),
                 cell: ({ row }) => {
                     const owner = row.original.owner;
                     const manager = row.original.manager;
 
+                    // Nếu có filter manager và owner là EMPLOYEE, hiển thị cả employee và manager
                     if (managerFilterId && owner?.role === _UserRole.EMPLOYEE && manager?.username) {
                         return t('user.manager_relation', {
                             employee: owner.username,
@@ -98,10 +109,12 @@ const ListCustomer = ({
                         });
                     }
 
+                    // Ưu tiên hiển thị owner (người trực tiếp giới thiệu) nếu có
                     if (owner?.username) {
                         return owner.username;
                     }
 
+                    // Nếu không có owner, hiển thị manager nếu có
                     if (manager?.username) {
                         return manager.username;
                     }
@@ -131,37 +144,21 @@ const ListCustomer = ({
                 },
             },
             {
-                accessorKey: 'disabled',
-                header: t('common.account_active'),
-                cell: (cell) => {
-                    const disabled = cell.row.original.disabled;
-                    return (
-                        <div className="flex items-center justify-center">
-                            {!disabled ? (
-                                <Check className={"size-4 text-green-500"} />
-                            ) : (
-                                <OctagonX className={"size-4 text-red-500"} />
-                            )}
-                        </div>
-                    );
-                },
-                meta: {
-                    headerClassName: 'text-center',
-                }
-            },
-            {
                 id: 'social',
                 header: t('common.social_authentication'),
                 cell: (cell) => {
                     const row = cell.row.original;
-                    if (row.using_telegram && row.using_whatsapp) {
+                    const hasEmail = !!row.email_verified_at;
+                    const hasTelegram = !!row.using_telegram;
+                    
+                    if (hasEmail && hasTelegram) {
                         return <div className="text-sm">{t('user.authenticated_both', { defaultValue: 'Đã xác thực cả 2' })}</div>;
                     }
                     return (
                         <div className="flex flex-col gap-2">
-                            {row.using_telegram && <div className="text-sm">{t('common.using_telegram')}</div>}
-                            {row.using_whatsapp && <div className="text-sm">{t('common.using_whatsapp')}</div>}
-                            {!row.using_telegram && !row.using_whatsapp && (
+                            {hasEmail && <div className="text-sm">{t('common.using_email')}</div>}
+                            {hasTelegram && <div className="text-sm">{t('common.using_telegram')}</div>}
+                            {!hasEmail && !hasTelegram && (
                                 <div className="text-sm text-gray-400">-</div>
                             )}
                         </div>

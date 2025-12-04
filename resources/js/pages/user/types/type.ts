@@ -2,7 +2,7 @@ import { BaseSearchRequest, LaravelPaginator } from '@/lib/types/type';
 import { _UserRole } from '@/lib/types/constants';
 
 export type EmployeeListItem = {
-    id: number;
+    id: string;
     name: string;
     username: string;
     phone: string | null;
@@ -19,42 +19,44 @@ export type EmployeeListQuery = BaseSearchRequest<{
 
 export type CustomerListQuery = BaseSearchRequest<{
     keyword?: string;
-    manager_id?: number | null;
-    employee_id?: number | null;
+    manager_id?: string | null;
+    employee_id?: string | null;
 }>
 
 export type UserOption = {
-    id: number;
+    id: string;
     name: string;
     username: string;
 };
 
 export type CustomerListItem = {
-    id: number;
+    id: string;
     name: string;
     username: string;
+    email?: string | null;
+    telegram_id?: string | null;
     phone: string | null;
     disabled: boolean;
     role: _UserRole;
     using_telegram: boolean;
-    using_whatsapp: boolean;
+    email_verified_at?: string | null;
     referral_code: string;
     wallet_balance?: number;
     wallet_status?: number;
     owner?: {
-        id?: number;
+        id?: string;
         username?: string;
         role?: _UserRole;
     } | null;
     manager?: {
-        id?: number;
+        id?: string;
         username?: string;
     } | null;
 }
 export type CustomerListPagination = LaravelPaginator<CustomerListItem>;
 
 export type Employee = {
-    id: number;
+    id: string;
     name: string;
     username: string;
     phone: string | null;
@@ -63,7 +65,7 @@ export type Employee = {
 }
 
 export type EmployeeFormData = {
-    id?: number;
+    id?: string;
     name: string;
     username: string;
     password?: string;
@@ -73,21 +75,21 @@ export type EmployeeFormData = {
 }
 
 export type Manager = {
-    id: number;
+    id: string;
     name: string;
     username: string;
 }
 
 export type EmployeeForAssignment = {
-    id: number;
+    id: string;
     name: string;
     username: string;
     assigned: boolean;
 }
 
 export interface WalletData {
-    id: number;
-    user_id: number;
+    id: string;
+    user_id: string;
     balance: number;
     status: number;
 }

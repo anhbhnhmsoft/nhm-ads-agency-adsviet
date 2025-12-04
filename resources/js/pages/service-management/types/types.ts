@@ -1,10 +1,18 @@
 import type { ServiceOrder } from '@/pages/service-order/types/type';
 
+export type StatusSeverity = 'success' | 'warning' | 'error' | null;
+
 export type MetaAccount = {
     id: string;
     account_id: string;
     account_name?: string | null;
     account_status?: number | null;
+    status_label?: string | null;
+    status_severity?: StatusSeverity;
+    status_message?: string | null;
+    disable_reason?: string | null;
+    disable_reason_code?: number | null;
+    disable_reason_severity?: StatusSeverity;
     spend_cap?: string | null;
     balance?: string | null;
     currency?: string | null;
@@ -16,10 +24,18 @@ export type GoogleAccount = {
     account_id: string;
     account_name?: string | null;
     account_status?: number | null;
+    status_label?: string | null;
+    status_severity?: StatusSeverity;
+    status_message?: string | null;
+    disable_reason?: string | null;
+    disable_reason_code?: number | null;
+    disable_reason_severity?: StatusSeverity;
     currency?: string | null;
     customer_manager_id?: string | null;
     time_zone?: string | null;
     primary_email?: string | null;
+    balance?: number | string | null;
+    balance_exhausted?: boolean | null;
     last_synced_at?: string | null;
 };
 
@@ -31,6 +47,8 @@ export type MetaCampaign = {
     name?: string | null;
     status?: string | null;
     effective_status?: string | null;
+    status_label?: string | null;
+    status_severity?: StatusSeverity;
     objective?: string | null;
     daily_budget?: string | null;
     budget_remaining?: string | null;
@@ -46,6 +64,8 @@ export type GoogleAdsCampaign = {
     name?: string | null;
     status?: string | null;
     effective_status?: string | null;
+    status_label?: string | null;
+    status_severity?: StatusSeverity;
     objective?: string | null;
     daily_budget?: string | null;
     budget_remaining?: string | null;

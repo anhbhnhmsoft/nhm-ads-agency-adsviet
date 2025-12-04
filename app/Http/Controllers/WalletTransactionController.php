@@ -160,6 +160,34 @@ class WalletTransactionController extends Controller
                 transactionId: $id,
                 txHash: $txHash
             );
+        } elseif (in_array(
+            (int) $transaction->type,
+            [
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_GOOGLE->value,
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_META->value,
+            ],
+            true
+        )) {
+            // Với lệnh cập nhật ngân sách chiến dịch: chỉ cập nhật status (tiền đã bị trừ khi tạo lệnh)
+            $result = $this->walletTransactionService->updateTransactionStatus(
+                transactionId: $id,
+                status: WalletTransactionStatus::COMPLETED->value
+            );
+        } elseif (in_array(
+            (int) $transaction->type,
+            [
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_PAUSE_GOOGLE->value,
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_PAUSE_META->value,
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_END_GOOGLE->value,
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_END_META->value,
+            ],
+            true
+        )) {
+            // Với lệnh tạm dừng/kết thúc chiến dịch: chỉ cập nhật status (không trừ tiền, admin xử lý thủ công)
+            $result = $this->walletTransactionService->updateTransactionStatus(
+                transactionId: $id,
+                status: WalletTransactionStatus::COMPLETED->value
+            );
         } else {
             FlashMessage::error(__('Loại giao dịch không được hỗ trợ'));
             return redirect()->back();
@@ -205,6 +233,36 @@ class WalletTransactionController extends Controller
         } elseif ((int) $transaction->type === \App\Common\Constants\Wallet\WalletTransactionType::WITHDRAW->value) {
             // Với withdraw, hủy và hoàn lại tiền
             $result = $this->walletTransactionService->cancelWithdrawByAdmin($id);
+        } elseif (in_array(
+            (int) $transaction->type,
+            [
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_GOOGLE->value,
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_META->value,
+            ],
+            true
+        )) {
+            // Hủy lệnh cập nhật ngân sách chiến dịch và hoàn tiền
+            $result = $this->walletTransactionService->cancelCampaignBudgetUpdateByAdmin($id);
+        } elseif (in_array(
+            (int) $transaction->type,
+            [
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_PAUSE_GOOGLE->value,
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_PAUSE_META->value,
+            ],
+            true
+        )) {
+            // Hủy lệnh tạm dừng chiến dịch (không cần hoàn tiền vì amount = 0)
+            $result = $this->walletTransactionService->cancelCampaignPauseByAdmin($id);
+        } elseif (in_array(
+            (int) $transaction->type,
+            [
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_END_GOOGLE->value,
+                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_END_META->value,
+            ],
+            true
+        )) {
+            // Hủy lệnh kết thúc chiến dịch (không cần hoàn tiền vì amount = 0)
+            $result = $this->walletTransactionService->cancelCampaignEndByAdmin($id);
         } else {
             FlashMessage::error(__('Loại giao dịch không được hỗ trợ'));
             return redirect()->back();

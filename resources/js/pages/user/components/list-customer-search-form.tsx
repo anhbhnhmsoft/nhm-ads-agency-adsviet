@@ -35,9 +35,9 @@ const ListCustomerSearchForm = ({
 
     const EMPTY_OPTION = 'all';
     const managerValue =
-        typeof query.manager_id === 'number' && query.manager_id > 0 ? String(query.manager_id) : EMPTY_OPTION;
+        query.manager_id && query.manager_id !== 'all' ? String(query.manager_id) : EMPTY_OPTION;
     const employeeValue =
-        typeof query.employee_id === 'number' && query.employee_id > 0 ? String(query.employee_id) : EMPTY_OPTION;
+        query.employee_id && query.employee_id !== 'all' ? String(query.employee_id) : EMPTY_OPTION;
 
     return (
         <Card>
@@ -65,7 +65,7 @@ const ListCustomerSearchForm = ({
                                 value={managerValue}
                                 onValueChange={(value) => {
                                     setQuery({
-                                        manager_id: value === EMPTY_OPTION ? null : Number(value),
+                                        manager_id: value === EMPTY_OPTION ? null : value,
                                         employee_id: null,
                                     });
                                 }}
@@ -91,7 +91,7 @@ const ListCustomerSearchForm = ({
                                 value={employeeValue}
                                 onValueChange={(value) => {
                                     setQuery({
-                                        employee_id: value === EMPTY_OPTION ? null : Number(value),
+                                        employee_id: value === EMPTY_OPTION ? null : value,
                                     });
                                 }}
                                 disabled={!employees.length}

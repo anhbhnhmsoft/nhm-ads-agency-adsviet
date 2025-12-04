@@ -52,11 +52,19 @@ class UserRepository extends BaseRepository
         if (!empty($filters['referrer_ids']) && is_array($filters['referrer_ids'])) {
             $referrerIds = array_filter($filters['referrer_ids']);
             if (!empty($referrerIds)) {
+                \App\Core\Logging::web('UserRepository@filterQuery: Applying referrer_ids filter', [
+                    'referrer_ids' => $referrerIds,
+                ]);
                 $query->whereHas('referredBy', function ($q) use ($referrerIds) {
                     $q->whereIn('referrer_id', $referrerIds)
                         ->whereNull('deleted_at');
                 });
             }
+        } else {
+            \App\Core\Logging::web('UserRepository@filterQuery: No referrer_ids filter - will get all customers', [
+                'has_referrer_ids' => isset($filters['referrer_ids']),
+                'referrer_ids_value' => $filters['referrer_ids'] ?? null,
+            ]);
         }
 
         // Agency không thấy chính mình
@@ -129,6 +137,16 @@ class UserRepository extends BaseRepository
                 UserRole::MANAGER->value,
             ])
             ->first();
+    }
+
+    public function getActiveAdminsWithEmail(): Collection
+    {
+        return $this->query()
+            ->where('role', UserRole::ADMIN->value)
+            ->where('disabled', false)
+            ->whereNotNull('email')
+            ->whereNotNull('email_verified_at')
+            ->get();
     }
 
     public function queryEmployees(): Builder

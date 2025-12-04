@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import LoadingGlobal from '@/components/loading-global';
 import { IBreadcrumbItem } from '@/lib/types/type';
+import i18n from '@/i18n';
 
 interface AppLayoutProps {
     children: ReactNode;
@@ -16,7 +17,14 @@ interface AppLayoutProps {
 }
 
 export default ({ children, breadcrumbs}: AppLayoutProps) => {
-    const { flash, logo_path } = usePage().props;
+    const { flash, logo_path, locale } = usePage().props as { flash: any; logo_path?: string; locale?: string };
+
+    // Đồng bộ i18next với locale từ backend mỗi lần props thay đổi
+    useEffect(() => {
+        if (locale) {
+            i18n.changeLanguage(locale);
+        }
+    }, [locale]);
     useEffect(() => {
         if (flash?.success) {
             toast.success(flash.success, { duration: 3000 });

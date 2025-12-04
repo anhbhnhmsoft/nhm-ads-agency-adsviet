@@ -38,6 +38,14 @@ class GoogleAdsService
 {
     private ?array $platformConfig = null;
 
+    /**
+     * Clear platform config cache (useful when credentials are updated)
+     */
+    public function clearPlatformConfigCache(): void
+    {
+        $this->platformConfig = null;
+    }
+
     public function __construct(
         protected ServiceUserRepository $serviceUserRepository,
         protected GoogleAccountRepository $googleAccountRepository,
@@ -503,6 +511,13 @@ class GoogleAdsService
     {
         try {
             $customerIds = $this->extractGoogleCustomerIds($serviceUser);
+            
+            Logging::web('GoogleAdsService@syncGoogleAccounts: Extracted customer IDs', [
+                'service_user_id' => $serviceUser->id,
+                'customer_ids_count' => count($customerIds),
+                'customer_ids' => $customerIds,
+            ]);
+            
             if (empty($customerIds)) {
                 $config = $serviceUser->config_account ?? [];
                 $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
@@ -546,6 +561,7 @@ SELECT
 FROM customer
 GAQL;
 
+            $syncedCount = 0;
             foreach ($customerIds as $customerId) {
                 try {
                     $request = new SearchGoogleAdsStreamRequest([
@@ -553,6 +569,7 @@ GAQL;
                         'query' => $query,
                     ]);
                     $stream = $googleAdsService->searchStream($request);
+                    $accountCount = 0;
                     foreach ($stream->readAll() as $response) {
                         foreach ($response->getResults() as $row) {
                             $customer = $row->getCustomer();
@@ -561,6 +578,13 @@ GAQL;
                                 continue;
                             }
 
+                            $mappedStatus = $this->mapStatusToInt($customer->getStatus());
+
+                            // Lấy balance từ cache hoặc query từ API
+                            $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $customerId);
+                            $balance = $balanceData['balance'] ?? null;
+                            $balanceExhausted = $balanceData['exhausted'] ?? false;
+
                             $this->googleAccountRepository->query()->updateOrCreate(
                                 [
                                     'service_user_id' => $serviceUser->id,
@@ -568,15 +592,25 @@ GAQL;
                                 ],
                                 [
                                     'account_name' => $customer->getDescriptiveName(),
-                                    'account_status' => $this->mapStatusToInt($customer->getStatus()),
+                                    'account_status' => $mappedStatus,
                                     'currency' => $customer->getCurrencyCode(),
                                     'customer_manager_id' => $loginCustomerId,
                                     'time_zone' => $customer->getTimeZone(),
+                                    'balance' => $balance,
+                                    'balance_exhausted' => $balanceExhausted,
                                     'last_synced_at' => now(),
                                 ]
                             );
+                            $accountCount++;
+                            $syncedCount++;
                         }
                     }
+                    
+                    Logging::web('GoogleAdsService@syncGoogleAccounts: Synced customer', [
+                        'service_user_id' => $serviceUser->id,
+                        'customer_id' => $customerId,
+                        'accounts_synced' => $accountCount,
+                    ]);
                 } catch (GoogleAdsException|ApiException $exception) {
                     Logging::error(
                         message: 'GoogleAdsService@syncGoogleAccounts failed',
@@ -589,6 +623,12 @@ GAQL;
                     );
                 }
             }
+            
+            Logging::web('GoogleAdsService@syncGoogleAccounts: Completed', [
+                'service_user_id' => $serviceUser->id,
+                'total_customer_ids' => count($customerIds),
+                'total_accounts_synced' => $syncedCount,
+            ]);
 
             return ServiceReturn::success();
         } catch (\Throwable $exception) {
@@ -830,6 +870,10 @@ GAQL;
             }
         }
 
+        // Get account status for comparison
+        $googleAccount = $this->googleAccountRepository->find($googleAccountDbId);
+        $normalizedCampaignStatus = $this->normalizeGoogleCampaignStatus($campaign->getStatus());
+
         try {
             $this->googleAdsCampaignRepository->query()->updateOrCreate(
                 [
@@ -839,8 +883,8 @@ GAQL;
                 ],
                 [
                     'name' => $campaign->getName() ?? '',
-                    'status' => $this->normalizeGoogleCampaignStatus($campaign->getStatus()),
-                    'effective_status' => $this->normalizeGoogleCampaignStatus($campaign->getStatus()),
+                    'status' => $normalizedCampaignStatus,
+                    'effective_status' => $normalizedCampaignStatus,
                     'objective' => $campaign->getAdvertisingChannelType()?->name ?? null,
                     'daily_budget' => $dailyBudget ? (string) $dailyBudget : null,
                     'budget_remaining' => null, // Google Ads không có budget_remaining trong campaign query
@@ -1189,9 +1233,12 @@ GAQL;
             $query = <<<GAQL
 SELECT
   customer_client.client_customer,
-  customer_client.manager
+  customer_client.manager,
+  customer_client.descriptive_name,
+  customer_client.status
 FROM customer_client
 WHERE customer_client.manager = FALSE
+  AND customer_client.status != 'CANCELED'
 GAQL;
 
             $request = new SearchGoogleAdsStreamRequest([
@@ -1200,25 +1247,24 @@ GAQL;
             ]);
 
             $customerIds = [];
+            $customerDetails = [];
             $stream = $googleAdsService->searchStream($request);
             foreach ($stream->readAll() as $response) {
                 /** @var GoogleAdsRow $row */
                 foreach ($response->getResults() as $row) {
-                    $clientCustomer = $row->getCustomerClient()?->getClientCustomer();
+                    $customerClient = $row->getCustomerClient();
+                    $clientCustomer = $customerClient?->getClientCustomer();
                     if ($clientCustomer) {
-                        $customerIds[] = $this->extractIdFromResource($clientCustomer);
+                        $customerId = $this->extractIdFromResource($clientCustomer);
+                        $customerIds[] = $customerId;
+                        $customerDetails[] = [
+                            'id' => $customerId,
+                            'name' => $customerClient->getDescriptiveName() ?? 'N/A',
+                            'status' => $customerClient->getStatus() ?? 'UNKNOWN',
+                        ];
                     }
                 }
             }
-
-            \Illuminate\Support\Facades\Log::info(
-                'GoogleAdsService@fetchCustomerIdsFromManager: Successfully fetched customer IDs',
-                [
-                    'service_user_id' => $serviceUser->id,
-                    'manager_id' => $managerId,
-                    'customer_count' => count($customerIds),
-                ]
-            );
 
             return array_values(array_filter($customerIds));
         } catch (\RuntimeException $exception) {
@@ -1268,6 +1314,133 @@ GAQL;
         return Str::afterLast($resourceName, '/');
     }
 
+    protected function fetchCampaignAggregateMetrics(
+        GoogleAdsServiceClient $googleAdsService,
+        string $customerId,
+        string $campaignId,
+        string $dateRange
+    ): array {
+        $query = <<<GAQL
+SELECT
+  metrics.cost_micros,
+  metrics.impressions,
+  metrics.clicks,
+  metrics.conversions,
+  metrics.ctr,
+  metrics.average_cpc,
+  metrics.average_cpm,
+  metrics.conversions_value
+FROM campaign
+WHERE campaign.id = {$campaignId}
+  AND segments.date DURING {$dateRange}
+GAQL;
+
+        $spend = 0.0;
+        $impressions = 0;
+        $clicks = 0;
+        $conversions = 0;
+        $ctr = 0.0;
+        $avgCpc = 0.0;
+        $avgCpm = 0.0;
+        $conversionsValue = 0.0;
+
+        $request = new SearchGoogleAdsStreamRequest([
+            'customer_id' => $customerId,
+            'query' => $query,
+        ]);
+
+        foreach ($googleAdsService->searchStream($request)->readAll() as $response) {
+            foreach ($response->getResults() as $row) {
+                $metrics = $row->getMetrics();
+                if (!$metrics) {
+                    continue;
+                }
+                $spend += $this->convertMicrosToUnit($metrics->getCostMicros());
+                $impressions += (int) ($metrics->getImpressions() ?? 0);
+                $clicks += (int) ($metrics->getClicks() ?? 0);
+                $conversions += (int) ($metrics->getConversions() ?? 0);
+                $ctr = (float) ($metrics->getCtr() ?? $ctr);
+                $avgCpc = $this->convertMicrosToUnit($metrics->getAverageCpc()) ?: $avgCpc;
+                $avgCpm = $this->convertMicrosToUnit($metrics->getAverageCpm()) ?: $avgCpm;
+                $conversionsValue += (float) ($metrics->getConversionsValue() ?? 0);
+            }
+        }
+
+        $roas = $spend > 0 ? $conversionsValue / max($spend, 0.000001) : 0.0;
+
+        return [
+            'spend' => $spend,
+            'impressions' => $impressions,
+            'clicks' => $clicks,
+            'conversions' => $conversions,
+            'ctr' => $ctr,
+            'cpc' => $avgCpc,
+            'cpm' => $avgCpm,
+            'roas' => $roas,
+        ];
+    }
+
+    protected function fetchCampaignDailyMetrics(
+        GoogleAdsServiceClient $googleAdsService,
+        string $customerId,
+        string $campaignId,
+        string $dateRange
+    ): array {
+        $query = <<<GAQL
+SELECT
+  segments.date,
+  metrics.cost_micros,
+  metrics.impressions,
+  metrics.clicks,
+  metrics.conversions,
+  metrics.ctr,
+  metrics.average_cpc,
+  metrics.average_cpm,
+  metrics.conversions_value
+FROM campaign
+WHERE campaign.id = {$campaignId}
+  AND segments.date DURING {$dateRange}
+ORDER BY segments.date
+GAQL;
+
+        $request = new SearchGoogleAdsStreamRequest([
+            'customer_id' => $customerId,
+            'query' => $query,
+        ]);
+
+        $result = [];
+        foreach ($googleAdsService->searchStream($request)->readAll() as $response) {
+            foreach ($response->getResults() as $row) {
+                $segments = $row->getSegments();
+                $metrics = $row->getMetrics();
+                if (!$segments || !$metrics) {
+                    continue;
+                }
+                $date = $segments->getDate();
+                if (!$date) {
+                    continue;
+                }
+                $spend = $this->convertMicrosToUnit($metrics->getCostMicros());
+                $conversionsValue = (float) ($metrics->getConversionsValue() ?? 0);
+                $roas = $spend > 0 ? $conversionsValue / max($spend, 0.000001) : 0.0;
+
+                $result[] = [
+                    'date' => $date,
+                    'spend' => $spend,
+                    'impressions' => (int) ($metrics->getImpressions() ?? 0),
+                    'clicks' => (int) ($metrics->getClicks() ?? 0),
+                    'conversions' => (int) ($metrics->getConversions() ?? 0),
+                    'ctr' => (float) ($metrics->getCtr() ?? 0),
+                    'cpc' => $this->convertMicrosToUnit($metrics->getAverageCpc()),
+                    'cpm' => $this->convertMicrosToUnit($metrics->getAverageCpm()),
+                    'roas' => $roas,
+                ];
+            }
+        }
+
+        return $result;
+    }
+
     protected function resolveLoginCustomerId(ServiceUser $serviceUser): ?string
     {
         $config = $serviceUser->config_account ?? [];
@@ -1281,9 +1454,151 @@ GAQL;
         return $platformConfig['login_customer_id'];
     }
 
-    protected function mapStatusToInt(?string $status): int
+    protected function mapStatusToInt(mixed $status): int
     {
         return GoogleCustomerStatus::fromApiStatus($status)->value;
+    }
+
+    /**
+     * Lấy balance của account từ Google Ads API (từ account_budget)
+     * 
+     * Logic:
+     * - Query từ account_budget với approved_spending_limit_micros (Giới hạn chi tiêu) và amount_served_micros (Số tiền đã tiêu)
+     * - Tính số dư: approved_spending_limit_micros - amount_served_micros
+     * - Nếu số dư <= 0 → balance_exhausted = true
+     * 
+     * Lưu ý: Chỉ hoạt động với tài khoản trả trước (Manual Payments/Prepay)
+     * Với tài khoản trả sau (Automatic Payments), approved_spending_limit_type sẽ là INFINITE
+     * 
+     * @param GoogleAdsServiceClient $googleAdsService
+     * @param string $accountId
+     * @param string $customerId
+     * @return array ['balance' => float|null, 'exhausted' => bool]
+     */
+    protected function getAccountBalance(
+        GoogleAdsServiceClient $googleAdsService,
+        string $accountId,
+        string $customerId
+    ): array {
+        $balance = null;
+        $balanceExhausted = false;
+
+        try {
+            // Query từ account_budget để lấy giới hạn chi tiêu và số tiền đã tiêu
+            $accountBudgetQuery = <<<GAQL
+SELECT
+  account_budget.id,
+  account_budget.approved_spending_limit_micros,
+  account_budget.amount_served_micros,
+  account_budget.approved_spending_limit_type
+FROM account_budget
+WHERE
+  account_budget.status = 'APPROVED'
+ORDER BY account_budget.id DESC
+LIMIT 1
+GAQL;
+
+            $request = new SearchGoogleAdsStreamRequest([
+                'customer_id' => $customerId,
+                'query' => $accountBudgetQuery,
+            ]);
+
+            $stream = $googleAdsService->searchStream($request);
+            foreach ($stream->readAll() as $response) {
+                foreach ($response->getResults() as $row) {
+                    $accountBudget = $row->getAccountBudget();
+                    if (!$accountBudget) {
+                        continue;
+                    }
+
+                    // Lấy giới hạn chi tiêu và số tiền đã tiêu
+                    $approvedLimitMicros = $accountBudget->getApprovedSpendingLimitMicros();
+                    $amountServedMicros = $accountBudget->getAmountServedMicros();
+                    $limitType = $accountBudget->getApprovedSpendingLimitType();
+
+                    // Chỉ tính balance cho tài khoản trả trước (SPECIFIC_AMOUNT)
+                    // Tài khoản trả sau (INFINITE) không có balance cố định
+                    $limitTypeName = null;
+                    if ($limitType !== null) {
+                        // Enum có thể là object, string, hoặc int
+                        if (is_object($limitType)) {
+                            if (method_exists($limitType, 'getName')) {
+                                $limitTypeName = $limitType->getName();
+                            } elseif (method_exists($limitType, 'name')) {
+                                $limitTypeName = $limitType->name;
+                            } elseif (property_exists($limitType, 'name')) {
+                                $limitTypeName = $limitType->name;
+                            }
+                        } elseif (is_string($limitType)) {
+                            $limitTypeName = $limitType;
+                        } elseif (is_int($limitType)) {
+                            // Nếu là int, có thể là enum value, map sang tên
+                            // Google Ads BudgetDeliveryMethod enum: SPECIFIC_AMOUNT = 1, INFINITE = 2
+                            $limitTypeName = match($limitType) {
+                                1 => 'SPECIFIC_AMOUNT',
+                                2 => 'INFINITE',
+                                default => null,
+                            };
+                        }
+                    }
+
+                    if ($limitTypeName === 'INFINITE') {
+                        // Tài khoản trả sau, không có balance cố định
+                        $balance = null;
+                        $balanceExhausted = false;
+                        
+                        Logging::web('GoogleAdsService@getAccountBalance: Account is INFINITE (Automatic Payments)', [
+                            'account_id' => $accountId,
+                            'customer_id' => $customerId,
+                            'limit_type' => 'INFINITE',
+                        ]);
+                        break;
+                    }
+
+                    // Chuyển đổi từ micros sang đơn vị tiền tệ (1 đơn vị = 1,000,000 micros)
+                    $approvedLimit = $this->convertMicrosToUnit($approvedLimitMicros);
+                    $amountServed = $this->convertMicrosToUnit($amountServedMicros);
+
+                    // Tính số dư còn lại
+                    $balance = $approvedLimit !== null && $amountServed !== null
+                        ? max(0, $approvedLimit - $amountServed)
+                        : null;
+
+                    // Nếu số dư <= 0 hoặc không tính được, đánh dấu là exhausted
+                    $balanceExhausted = $balance === null || $balance <= 0;
+
+                    Logging::web('GoogleAdsService@getAccountBalance: Fetched from account_budget', [
+                        'account_id' => $accountId,
+                        'customer_id' => $customerId,
+                        'approved_limit_micros' => $approvedLimitMicros,
+                        'amount_served_micros' => $amountServedMicros,
+                        'approved_limit' => $approvedLimit,
+                        'amount_served' => $amountServed,
+                        'balance' => $balance,
+                        'balance_exhausted' => $balanceExhausted,
+                        'limit_type' => $limitTypeName,
+                    ]);
+                    break;
+                }
+            }
+        } catch (GoogleAdsException|ApiException $exception) {
+            // Nếu không có quyền truy cập account_budget hoặc lỗi API, log và để null
+            Logging::error(
+                message: 'GoogleAdsService@getAccountBalance: Cannot fetch balance from account_budget',
+                context: [
+                    'account_id' => $accountId,
+                    'customer_id' => $customerId,
+                    'error' => $exception->getMessage(),
+                ],
+                exception: $exception
+            );
+            // Để balance = null và balance_exhausted = false (sẽ cần cập nhật thủ công)
+        }
+
+        return [
+            'balance' => $balance,
+            'exhausted' => $balanceExhausted,
+        ];
     }
 
     /**
@@ -1404,6 +1719,26 @@ GAQL;
                 $item->today_spend = $todaySpend;
             });
 
+            $campaignSnapshot = $paginator->getCollection()
+                ->map(function ($campaign) {
+                    return [
+                        'id' => (string) $campaign->id,
+                        'campaign_id' => $campaign->campaign_id,
+                        'status' => $campaign->status,
+                        'effective_status' => $campaign->effective_status,
+                    ];
+                })
+                ->take(20)
+                ->values()
+                ->toArray();
+
+            Logging::web('GoogleAdsService@getCampaignsPaginated status snapshot', [
+                'service_user_id' => (string) $serviceUser->id,
+                'google_account_id' => (string) $accountId,
+                'total' => $paginator->total(),
+                'snapshot' => $campaignSnapshot,
+            ]);
+
             return ServiceReturn::success(data: $paginator);
         } catch (\Exception $e) {
             Logging::error(
@@ -1448,6 +1783,26 @@ GAQL;
                 ]);
             $query = $this->googleAccountRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
+
+            $accountSnapshot = $paginator->getCollection()
+                ->map(function ($account) {
+                    $statusEnum = GoogleCustomerStatus::tryFrom((int) $account->account_status);
+                    return [
+                        'id' => (string) $account->id,
+                        'account_id' => $account->account_id,
+                        'account_status' => $account->account_status,
+                        'status_label' => $statusEnum?->label() ?? null,
+                    ];
+                })
+                ->take(20)
+                ->values()
+                ->toArray();
+
+            Logging::web('GoogleAdsService@getAdsAccountPaginated status snapshot', [
+                'service_user_id' => (string) $serviceUser->id,
+                'total' => $paginator->total(),
+                'snapshot' => $accountSnapshot,
+            ]);
             return ServiceReturn::success(data: $paginator);
         }
         catch (\Exception $e) {
@@ -1475,18 +1830,15 @@ GAQL;
      */
     public function getCampaignDetail(string $serviceUserId, string $campaignId): ServiceReturn
     {
-        // validate service user
         $serviceUserResult = $this->validateServiceUser($serviceUserId);
         if ($serviceUserResult->isError()) {
             return $serviceUserResult;
         }
-        /**
-         * @var ServiceUser $serviceUser
-         */
+
+        /** @var ServiceUser $serviceUser */
         $serviceUser = $serviceUserResult->getData();
 
         try {
-            // Lấy thông tin chi tiết chiến dịch từ cache
             $data = Caching::getCache(
                 key: CacheKey::CACHE_DETAIL_GOOGLE_CAMPAIGN,
                 uniqueKey: $campaignId,
@@ -1495,47 +1847,47 @@ GAQL;
                 return ServiceReturn::success(data: $data);
             }
 
-            // Lấy thông tin chi tiết chiến dịch từ database
             $campaign = $this->googleAdsCampaignRepository->query()
+                ->with('googleAccount')
                 ->where('service_user_id', $serviceUser->id)
                 ->where('id', $campaignId)
                 ->first();
             if (!$campaign) {
                 return ServiceReturn::error(message: __('google_ads.error.campaign_not_found'));
             }
-
-            // Lấy insights từ database (today, last_7d, maximum)
-            $googleAccountIds = [$campaign->google_account_id];
-
-            // Today insights
-            $insightsTodayResult = $this->getAccountsInsightsSummaryFromDatabase(
-                $googleAccountIds,
-                'today'
-            );
-            $insightsToday = $insightsTodayResult->isSuccess() ? $insightsTodayResult->getData() : [];
-
-            // Last 7 days insights
-            $insightsLast7dResult = $this->getAccountsInsightsSummaryFromDatabase(
-                $googleAccountIds,
-                'last_7d'
-            );
-            $insightsLast7d = $insightsLast7dResult->isSuccess() ? $insightsLast7dResult->getData() : [];
-
-            // Maximum insights
-            $insightsMaximumResult = $this->getAccountsInsightsSummaryFromDatabase(
-                $googleAccountIds,
-                'maximum'
-            );
-            $insightsMaximum = $insightsMaximumResult->isSuccess() ? $insightsMaximumResult->getData() : [];
-
-            // Tính toán ROAS
-            $roas = 0.0;
-            if (isset($insightsMaximum['spend']) && $insightsMaximum['spend'] > 0) {
-                $roas = ($insightsMaximum['roas'] ?? 0.0);
+            $googleAccount = $campaign->googleAccount;
+            if (!$googleAccount || empty($googleAccount->account_id)) {
+                return ServiceReturn::error(message: __('google_ads.error.account_not_found'));
             }
 
+            $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
+            if (empty($loginCustomerId)) {
+                return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
+            $client = $this->buildGoogleAdsClient($loginCustomerId);
+            $googleAdsService = $client->getGoogleAdsServiceClient();
+
+            $todayMetrics = $this->fetchCampaignAggregateMetrics(
+                $googleAdsService,
+                (string) $googleAccount->account_id,
+                (string) $campaign->campaign_id,
+                'TODAY'
+            );
+            $last7dMetrics = $this->fetchCampaignAggregateMetrics(
+                $googleAdsService,
+                (string) $googleAccount->account_id,
+                (string) $campaign->campaign_id,
+                'LAST_7_DAYS'
+            );
+            // Dùng khoảng 30 ngày gần nhất làm dữ liệu “tổng quan” thay cho ALL_TIME
+            $lifetimeMetrics = $this->fetchCampaignAggregateMetrics(
+                $googleAdsService,
+                (string) $googleAccount->account_id,
+                (string) $campaign->campaign_id,
+                'LAST_30_DAYS'
+            );
+
             $data = [
-                // Các thông tin cơ bản
                 'id' => $campaign->id,
                 'service_user_id' => $campaign->service_user_id,
                 'google_account_id' => $campaign->google_account_id,
@@ -1549,84 +1901,101 @@ GAQL;
                 'start_time' => $campaign->start_time?->toIso8601String(),
                 'stop_time' => $campaign->stop_time?->toIso8601String(),
                 'last_synced_at' => $campaign->last_synced_at?->toIso8601String(),
-
-                // Tổng chi tiêu
-                'today_spend' => $insightsToday['spend'] ?? 0.0,
-                'total_spend' => $insightsLast7d['spend'] ?? 0.0,
-
-                'cpc_avg' => $insightsMaximum['cpc'] ?? 0.0,
-                'cpm_avg' => $insightsMaximum['cpm'] ?? 0.0,
-                'roas_avg' => $roas,
-
-                // Đo lường hiệu quả
+                'today_spend' => $todayMetrics['spend'] ?? 0.0,
+                'total_spend' => $last7dMetrics['spend'] ?? 0.0,
+                'cpc_avg' => $lifetimeMetrics['cpc'] ?? 0.0,
+                'cpm_avg' => $lifetimeMetrics['cpm'] ?? 0.0,
+                'roas_avg' => $lifetimeMetrics['roas'] ?? 0.0,
                 'insight' => [
                     'spend' => [
-                        'today' => $insightsToday['spend'] ?? 0.0,
-                        'total' => $insightsLast7d['spend'] ?? 0.0,
+                        'today' => $todayMetrics['spend'] ?? 0.0,
+                        'total' => $last7dMetrics['spend'] ?? 0.0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $insightsLast7d['spend'] ?? 0.0,
-                            $insightsToday['spend'] ?? 0.0
+                            $last7dMetrics['spend'] ?? 0.0,
+                            $todayMetrics['spend'] ?? 0.0
                         ),
                     ],
                     'impressions' => [
-                        'today' => $insightsToday['impressions'] ?? 0,
-                        'total' => $insightsLast7d['impressions'] ?? 0,
+                        'today' => $todayMetrics['impressions'] ?? 0,
+                        'total' => $last7dMetrics['impressions'] ?? 0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $insightsLast7d['impressions'] ?? 0,
-                            $insightsToday['impressions'] ?? 0
+                            $last7dMetrics['impressions'] ?? 0,
+                            $todayMetrics['impressions'] ?? 0
                         ),
                     ],
                     'clicks' => [
-                        'today' => $insightsToday['clicks'] ?? 0,
-                        'total' => $insightsLast7d['clicks'] ?? 0,
+                        'today' => $todayMetrics['clicks'] ?? 0,
+                        'total' => $last7dMetrics['clicks'] ?? 0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $insightsLast7d['clicks'] ?? 0,
-                            $insightsToday['clicks'] ?? 0
+                            $last7dMetrics['clicks'] ?? 0,
+                            $todayMetrics['clicks'] ?? 0
                         ),
                     ],
                     'cpc' => [
-                        'today' => $insightsToday['cpc'] ?? 0.0,
-                        'total' => $insightsLast7d['cpc'] ?? 0.0,
+                        'today' => $todayMetrics['cpc'] ?? 0.0,
+                        'total' => $last7dMetrics['cpc'] ?? 0.0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $insightsLast7d['cpc'] ?? 0.0,
-                            $insightsToday['cpc'] ?? 0.0
+                            $last7dMetrics['cpc'] ?? 0.0,
+                            $todayMetrics['cpc'] ?? 0.0
                         ),
                     ],
                     'cpm' => [
-                        'today' => $insightsToday['cpm'] ?? 0.0,
-                        'total' => $insightsLast7d['cpm'] ?? 0.0,
+                        'today' => $todayMetrics['cpm'] ?? 0.0,
+                        'total' => $last7dMetrics['cpm'] ?? 0.0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $insightsLast7d['cpm'] ?? 0.0,
-                            $insightsToday['cpm'] ?? 0.0
+                            $last7dMetrics['cpm'] ?? 0.0,
+                            $todayMetrics['cpm'] ?? 0.0
                         ),
                     ],
                     'conversions' => [
-                        'today' => $insightsToday['conversions'] ?? 0,
-                        'total' => $insightsLast7d['conversions'] ?? 0,
+                        'today' => $todayMetrics['conversions'] ?? 0,
+                        'total' => $last7dMetrics['conversions'] ?? 0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $insightsLast7d['conversions'] ?? 0,
-                            $insightsToday['conversions'] ?? 0
+                            $last7dMetrics['conversions'] ?? 0,
+                            $todayMetrics['conversions'] ?? 0
                         ),
                     ],
                 ],
             ];
 
-            // Lưu vào cache
             Caching::setCache(
                 key: CacheKey::CACHE_DETAIL_GOOGLE_CAMPAIGN,
                 value: $data,
                 uniqueKey: $campaignId,
-                expire: 15 // 15 phút
+                expire: 15
             );
 
             return ServiceReturn::success(data: $data);
-        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
+            $errorMessage = $exception->getMessage();
+            
+            // Kiểm tra lỗi OAuth token expired/revoked
+            if (
+                str_contains($errorMessage, 'invalid_grant') ||
+                str_contains($errorMessage, 'Token has been expired') ||
+                str_contains($errorMessage, 'Token has been revoked')
+            ) {
+                // Clear platform config cache để force reload credentials
+                $this->clearPlatformConfigCache();
+                
+                Logging::error(
+                    message: 'GoogleAdsService@getCampaignDetail: OAuth token expired or revoked, cleared config cache',
+                    context: [
+                        'service_user_id' => $serviceUserId,
+                        'campaign_id' => $campaignId,
+                        'error' => $errorMessage,
+                    ],
+                    exception: $exception
+                );
+                return ServiceReturn::error(message: __('google_ads.error.oauth_token_expired'));
+            }
+            
             Logging::error(
                 message: 'GoogleAdsService@getCampaignDetail failed',
                 context: [
                     'service_user_id' => $serviceUserId,
                     'campaign_id' => $campaignId,
-                    'error' => $exception->getMessage(),
+                    'error' => $errorMessage,
                 ],
                 exception: $exception
             );
@@ -1654,68 +2023,87 @@ GAQL;
         $serviceUser = $serviceUserResult->getData();
 
         try {
-            // Validate date preset
             if (!in_array($datePreset, ['last_7d', 'last_30d'])) {
                 return ServiceReturn::error(message: __('google_ads.error.date_preset_invalid'));
             }
 
-            // Lấy thông tin chi tiết hiệu suất quảng cáo từ cache
+            $cacheKey = $campaignId . $datePreset;
             $data = Caching::getCache(
                 key: CacheKey::CACHE_DETAIL_GOOGLE_INSIGHT,
-                uniqueKey: $campaignId . $datePreset,
+                uniqueKey: $cacheKey,
             );
             if ($data) {
                 return ServiceReturn::success(data: $data);
             }
 
-            // Lấy thông tin chi tiết chiến dịch từ database
             $campaign = $this->googleAdsCampaignRepository->query()
+                ->with('googleAccount')
                 ->where('service_user_id', $serviceUser->id)
                 ->where('id', $campaignId)
                 ->first();
             if (!$campaign) {
                 return ServiceReturn::error(message: __('google_ads.error.campaign_not_found'));
             }
+            $googleAccount = $campaign->googleAccount;
+            if (!$googleAccount || empty($googleAccount->account_id)) {
+                return ServiceReturn::error(message: __('google_ads.error.account_not_found'));
+            }
 
-            // Lấy insights từ database theo date preset
-            $dateRange = $this->convertDatePresetToRange($datePreset);
-            $insights = $this->googleAdsAccountInsightRepository->query()
-                ->where('google_account_id', $campaign->google_account_id)
-                ->whereBetween('date', [$dateRange['start'], $dateRange['end']])
-                ->orderBy('date', 'asc')
-                ->get()
-                ->map(function ($insight) {
-                    return [
-                        'date' => $insight->date->format('Y-m-d'),
-                        'spend' => (float) ($insight->spend ?? 0),
-                        'impressions' => (int) ($insight->impressions ?? 0),
-                        'clicks' => (int) ($insight->clicks ?? 0),
-                        'conversions' => (int) ($insight->conversions ?? 0),
-                        'ctr' => (float) ($insight->ctr ?? 0),
-                        'cpc' => (float) ($insight->cpc ?? 0),
-                        'cpm' => (float) ($insight->cpm ?? 0),
-                        'roas' => (float) ($insight->roas ?? 0),
-                    ];
-                })
-                ->toArray();
+            $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
+            if (empty($loginCustomerId)) {
+                return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
+            $client = $this->buildGoogleAdsClient($loginCustomerId);
+            $googleAdsService = $client->getGoogleAdsServiceClient();
 
-            // Set cache
+            $gaqlPreset = $datePreset === 'last_7d' ? 'LAST_7_DAYS' : 'LAST_30_DAYS';
+            $insights = $this->fetchCampaignDailyMetrics(
+                $googleAdsService,
+                (string) $googleAccount->account_id,
+                (string) $campaign->campaign_id,
+                $gaqlPreset
+            );
+
             Caching::setCache(
                 key: CacheKey::CACHE_DETAIL_GOOGLE_INSIGHT,
                 value: $insights,
-                uniqueKey: $campaignId . $datePreset,
-                expire: 15 // 15 phút
+                uniqueKey: $cacheKey,
+                expire: 15
             );
 
             return ServiceReturn::success(data: $insights);
-        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
+            $errorMessage = $exception->getMessage();
+            
+            // Kiểm tra lỗi OAuth token expired/revoked
+            if (
+                str_contains($errorMessage, 'invalid_grant') ||
+                str_contains($errorMessage, 'Token has been expired') ||
+                str_contains($errorMessage, 'Token has been revoked')
+            ) {
+                // Clear platform config cache để force reload credentials
+                $this->clearPlatformConfigCache();
+                
+                Logging::error(
+                    message: 'GoogleAdsService@getCampaignDailyInsights: OAuth token expired or revoked, cleared config cache',
+                    context: [
+                        'service_user_id' => $serviceUserId,
+                        'campaign_id' => $campaignId,
+                        'date_preset' => $datePreset,
+                        'error' => $errorMessage,
+                    ],
+                    exception: $exception
+                );
+                return ServiceReturn::error(message: __('google_ads.error.oauth_token_expired'));
+            }
+            
             Logging::error(
                 message: 'GoogleAdsService@getCampaignDailyInsights failed',
                 context: [
                     'service_user_id' => $serviceUserId,
                     'campaign_id' => $campaignId,
                     'date_preset' => $datePreset,
-                    'error' => $exception->getMessage(),
+                    'error' => $errorMessage,
                 ],
                 exception: $exception
             );

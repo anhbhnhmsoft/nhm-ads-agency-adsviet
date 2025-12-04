@@ -74,6 +74,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('change-password', [WalletController::class, 'changePassword'])->middleware('throttle:5,1');
         Route::post('withdraw', [WalletController::class, 'withdraw']) // API rút tiền
         ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
+        Route::post('campaign-budget-update', [WalletController::class, 'campaignBudgetUpdate'])
+        ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
     });
 
     Route::prefix('tickets')->group(function () {

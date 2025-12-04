@@ -1,0 +1,40 @@
+<?php
+
+return [
+    'validation' => [
+        'package_required' => 'Please select a service package.',
+        'top_up_numeric' => 'Top-up amount is invalid.',
+        'top_up_min' => 'Top-up amount must be greater than or equal to 0.',
+        'budget_required' => 'Budget is required.',
+        'budget_numeric' => 'Budget must be numeric.',
+        'budget_min' => 'Budget must be at least :min USD.',
+        'name_invalid' => 'Package name cannot be empty.',
+        'description_invalid' => 'Package description cannot be empty.',
+        'platform_invalid' => 'Platform is invalid.',
+        'features_invalid' => 'One or more features are invalid.',
+        'open_fee_invalid' => 'Setup fee is invalid.',
+        'range_min_top_up_invalid' => 'Minimum top-up amount is invalid.',
+        'top_up_fee_invalid' => 'Top-up fee is invalid.',
+        'set_up_time_invalid' => 'Setup time is invalid.',
+        'disabled_invalid' => 'Status is invalid.',
+        'service_package_invalid' => 'Service package is invalid.',
+        'meta_email_required' => 'Please enter Meta email.',
+        'meta_email_email' => 'Meta email is invalid.',
+        'meta_email_max' => 'Meta email may not exceed :max characters.',
+        'display_name_required' => 'Display name is required.',
+        'display_name_string' => 'Display name must be a string.',
+        'display_name_max' => 'Display name may not exceed :max characters.',
+        'bm_id_required' => 'Please enter Business Manager ID.',
+        'bm_id_string' => 'Business Manager ID must be a string.',
+        'bm_id_max' => 'Business Manager ID may not exceed :max characters.',
+        'monthly_spending_fee_invalid' => 'Monthly spending & fee structure is invalid.',
+    ],
+    'flash' => [
+        'purchase_success' => 'Successfully created the order and deducted from the wallet.',
+        'order_approve_success' => 'Service order approved.',
+        'order_cancel_success' => 'Service order cancelled.',
+        'order_delete_success' => 'Service order deleted.',
+        'config_update_success' => 'Account configuration updated.',
+    ],
+];
+

@@ -81,7 +81,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function referredBy()
     {
-        return $this->hasOne(UserReferral::class, 'referred_id');
+        return $this->hasOne(UserReferral::class, 'referred_id')
+            ->whereNull('deleted_at');
     }
 
     public function otps()

@@ -12,7 +12,7 @@ class UserReferralRepository extends BaseRepository
         return new UserReferral();
     }
 
-    public function isEmployeeAssignedToManager(int $employeeId, int $managerId): bool
+    public function isEmployeeAssignedToManager(string $employeeId, string $managerId): bool
     {
         return $this->query()
             ->where('referrer_id', $managerId)
@@ -21,7 +21,7 @@ class UserReferralRepository extends BaseRepository
             ->exists();
     }
 
-    public function getAssignedEmployeeIds(int $managerId): array
+    public function getAssignedEmployeeIds(string $managerId): array
     {
         return $this->query()
             ->where('referrer_id', $managerId)
@@ -30,7 +30,7 @@ class UserReferralRepository extends BaseRepository
             ->toArray();
     }
 
-    public function assignEmployeeToManager(int $employeeId, int $managerId): bool
+    public function assignEmployeeToManager(string $employeeId, string $managerId): bool
     {
         $existing = $this->query()
             ->withTrashed()
@@ -51,7 +51,7 @@ class UserReferralRepository extends BaseRepository
         ]);
     }
 
-    public function unassignEmployeeFromManager(int $employeeId, int $managerId): bool
+    public function unassignEmployeeFromManager(string $employeeId, string $managerId): bool
     {
         $referral = $this->query()
             ->where('referrer_id', $managerId)
@@ -69,7 +69,7 @@ class UserReferralRepository extends BaseRepository
     /**
      * Lấy referrer của user (Manager hoặc Employee quản lý user này)
      */
-    public function getReferrerByReferredId(int $referredId): ?UserReferral
+    public function getReferrerByReferredId(string $referredId): ?UserReferral
     {
         return $this->query()
             ->where('referred_id', $referredId)
@@ -83,7 +83,7 @@ class UserReferralRepository extends BaseRepository
     /**
      * Lấy tất cả referrer chain (nếu Employee quản lý Customer, thì cần cả Manager của Employee)
      */
-    public function getReferrerChain(int $referredId): array
+    public function getReferrerChain(string $referredId): array
     {
         $referrers = [];
         $currentReferredId = $referredId;

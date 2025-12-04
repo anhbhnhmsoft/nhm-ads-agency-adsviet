@@ -85,10 +85,20 @@ class ServiceController extends Controller
 
         $data = $request->validated();
 
+        $configAccount = [];
+        if (isset($data['meta_email'])) {
+            $configAccount['meta_email'] = $data['meta_email'];
+        }
+        if (isset($data['display_name'])) {
+            $configAccount['display_name'] = $data['display_name'];
+        }
+
         $result = $this->servicePurchaseService->createPurchaseOrder(
             userId: (int) $user->id,
             packageId: $data['package_id'],
             topUpAmount: isset($data['top_up_amount']) ? (float) $data['top_up_amount'] : 0,
+            budget: isset($data['budget']) ? (float) $data['budget'] : 0,
+            configAccount: $configAccount,
         );
 
         if ($result->isError()) {

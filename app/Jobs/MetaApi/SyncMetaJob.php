@@ -4,6 +4,7 @@ namespace App\Jobs\MetaApi;
 
 use App\Models\ServiceUser;
 use App\Service\MetaService;
+use App\Service\MetaAdsNotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -32,7 +33,8 @@ class SyncMetaJob implements ShouldQueue
      * Execute the job.
      */
     public function handle(
-        MetaService $metaService
+        MetaService $metaService,
+        MetaAdsNotificationService $metaAdsNotificationService,
     ): void
     {
         // Đồng bộ tài khoản quảng cáo
@@ -40,6 +42,9 @@ class SyncMetaJob implements ShouldQueue
 
         // Đồng bộ chiến dịch quảng cáo và insight của ads account
         $metaService->syncMetaAdsAndCampaigns($this->serviceUser);
+
+        // Sau khi sync xong, kiểm tra và gửi thông báo low balance
+        $metaAdsNotificationService->sendLowBalanceAlerts();
     }
 
 }

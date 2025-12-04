@@ -17,15 +17,8 @@ import useCheckRole from '@/hooks/use-check-role';
 import { _UserRole } from '@/lib/types/constants';
 import { useMemo, useEffect } from 'react';
 
-const breadcrumbs: IBreadcrumbItem[] = [
-    {
-        title: 'Hỗ trợ',
-        href: ticket_index().url,
-    },
-];
-
 export default function TicketShow({ ticket }: TicketDetailPageProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { props } = usePage();
     const authUser = useMemo(() => {
         const authProp = props.auth as { user?: any } | any | null | undefined;
@@ -35,6 +28,13 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
         return (authProp as any | null) ?? null;
     }, [props.auth]);
     const checkRole = useCheckRole(authUser);
+
+    const breadcrumbs: IBreadcrumbItem[] = [
+        {
+            title: t('ticket.title', { defaultValue: 'Support' }),
+            href: ticket_index().url,
+        },
+    ];
 
     const statusForm = useForm({
         status: ticket?.status ?? _TicketStatus.PENDING,
@@ -188,7 +188,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                                     {t('ticket.created_at', { defaultValue: 'Ngày tạo' })}
                                 </Label>
                                 <p className="mt-1">
-                                    {new Date(ticket.created_at).toLocaleString('vi-VN')}
+                                    {new Date(ticket.created_at).toLocaleString(i18n.language || 'en')}
                                 </p>
                             </div>
                             <div>
@@ -196,7 +196,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                                     {t('ticket.updated_at', { defaultValue: 'Cập nhật lần cuối' })}
                                 </Label>
                                 <p className="mt-1">
-                                    {new Date(ticket.updated_at).toLocaleString('vi-VN')}
+                                    {new Date(ticket.updated_at).toLocaleString(i18n.language || 'en')}
                                 </p>
                             </div>
                         </div>

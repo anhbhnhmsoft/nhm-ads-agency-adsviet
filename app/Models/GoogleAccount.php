@@ -22,12 +22,16 @@ class GoogleAccount extends Model
         'customer_manager_id',
         'time_zone',
         'primary_email',
+        'balance',
+        'balance_exhausted',
         'last_synced_at',
     ];
 
     protected $casts = [
         'id' => 'string',
         'service_user_id' => 'string',
+        'balance' => 'decimal:2',
+        'balance_exhausted' => 'boolean',
         'last_synced_at' => 'datetime',
     ];
 

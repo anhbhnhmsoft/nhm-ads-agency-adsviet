@@ -102,7 +102,7 @@ class UserService
 
             // Lọc theo manager/employee được chọn từ bộ lọc
             if (!empty($filter['manager_id'])) {
-                $managerId = (int) $filter['manager_id'];
+                $managerId = (string) $filter['manager_id'];
                 $employeeIds = $this->userReferralRepository->getAssignedEmployeeIds($managerId);
                 $filter['referrer_ids'] = array_values(array_unique(array_merge(
                     $filter['referrer_ids'] ?? [],
@@ -119,7 +119,7 @@ class UserService
             $hasEmployeeFilter = false;
 
             if (!empty($filter['employee_id'])) {
-                $employeeId = (int) $filter['employee_id'];
+                $employeeId = (string) $filter['employee_id'];
                 $filter['referrer_ids'] = [$employeeId];
                 $hasEmployeeFilter = true;
             }
@@ -130,7 +130,7 @@ class UserService
                 switch ($currentUser->role) {
                     case UserRole::MANAGER->value:
                         $employeeIds = $this->userReferralRepository
-                            ->getAssignedEmployeeIds((int)$currentUser->id);
+                            ->getAssignedEmployeeIds((string)$currentUser->id);
 
                         if ($hasEmployeeFilter) {
                             // Đã lọc theo nhân viên cụ thể nên chỉ giữ nguyên referrer_ids hiện có
@@ -153,13 +153,54 @@ class UserService
                 }
             }
 
+            // Log filter trước khi query
+            Logging::web('UserService@getListCustomerPagination: Filter before query', [
+                'filter' => $filter,
+                'current_user_role' => $currentUser?->role,
+                'current_user_id' => $currentUser?->id,
+            ]);
+
             $query = $this->userRepository->filterQuery($filter);
             $query->with([
                 'wallet',
-                'referredBy.referrer.referredBy.referrer',
+                'referredBy' => function ($q) {
+                    $q->whereNull('deleted_at');
+                },
+                'referredBy.referrer' => function ($q) {
+                    $q->select('id', 'username', 'role');
+                },
+                'referredBy.referrer.referredBy' => function ($q) {
+                    $q->whereNull('deleted_at');
+                },
+                'referredBy.referrer.referredBy.referrer' => function ($q) {
+                    $q->select('id', 'username');
+                },
             ]);
             $query = $this->userRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
+            
+            // Log SQL query để debug
+            Logging::web('UserService@getListCustomerPagination: SQL Query', [
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings(),
+            ]);
+            
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
+            
+            // Log dữ liệu sau khi query
+            if ($paginator->count() > 0) {
+                $firstItem = $paginator->first();
+                Logging::web('UserService@getListCustomerPagination: First item data', [
+                    'user_id' => $firstItem->id,
+                    'user_name' => $firstItem->name,
+                    'has_referredBy' => $firstItem->relationLoaded('referredBy'),
+                    'referredBy_id' => $firstItem->referredBy?->id,
+                    'referredBy_referrer_id' => $firstItem->referredBy?->referrer_id,
+                    'referredBy_referrer_loaded' => $firstItem->referredBy?->relationLoaded('referrer'),
+                    'referredBy_referrer_id_value' => $firstItem->referredBy?->referrer?->id,
+                    'referredBy_referrer_username' => $firstItem->referredBy?->referrer?->username,
+                ]);
+            }
+            
             return ServiceReturn::success(data: $paginator);
         } catch (QueryException $exception) {
             Logging::error(
@@ -196,7 +237,7 @@ class UserService
         return $filter;
     }
 
-    protected function normalizeFilterId(mixed $value): ?int
+    protected function normalizeFilterId(mixed $value): ?string
     {
         if ($value === null) {
             return null;
@@ -204,14 +245,14 @@ class UserService
 
         if (is_string($value)) {
             $value = trim($value);
-            if ($value === '' || strtolower($value) === 'null' || strtolower($value) === 'undefined') {
+            if ($value === '' || strtolower($value) === 'null' || strtolower($value) === 'undefined' || $value === 'all') {
                 return null;
             }
+            return $value;
         }
 
         if (is_numeric($value)) {
-            $intValue = (int) $value;
-            return $intValue > 0 ? $intValue : null;
+            return (string) $value;
         }
 
         return null;
@@ -436,7 +477,7 @@ class UserService
         }
     }
 
-    public function getEmployeesAssignedToManager(int $managerId): ServiceReturn
+    public function getEmployeesAssignedToManager(string $managerId): ServiceReturn
     {
         try {
             $employeeIds = $this->userReferralRepository->getAssignedEmployeeIds($managerId);
@@ -473,7 +514,7 @@ class UserService
                 return ServiceReturn::error(message: __('common_error.data_not_found'));
             }
 
-            $this->userReferralRepository->assignEmployeeToManager((int)$employeeId, (int)$managerId);
+            $this->userReferralRepository->assignEmployeeToManager($employeeId, $managerId);
             return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error(message: 'Lỗi khi gán employee UserService@assignEmployee: ' . $e->getMessage(), exception: $e);
@@ -484,7 +525,7 @@ class UserService
     public function unassignEmployee(string $managerId, string $employeeId): ServiceReturn
     {
         try {
-            $this->userReferralRepository->unassignEmployeeFromManager((int)$employeeId, (int)$managerId);
+            $this->userReferralRepository->unassignEmployeeFromManager($employeeId, $managerId);
             return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error(message: 'Lỗi khi hủy gán employee UserService@unassignEmployee: ' . $e->getMessage(), exception: $e);

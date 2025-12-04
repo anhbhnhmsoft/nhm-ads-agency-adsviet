@@ -15,14 +15,14 @@ const RoleSystemCard = ({role, setRole}: Props) => {
        <div className="grid grid-cols-2 gap-2 mb-4">
            <div
                onClick={() => setRole(_RoleSystemRequest.USER)}
-               className={cn('rounded-lg border text-card-foreground shadow-sm transition-all duration-200 cursor-pointer hover:bg-green-200 hover:border-green-300 bg-green-50 border-green-200', {
-               'bg-green-200 border-green-300': role === _RoleSystemRequest.USER
+               className={cn('rounded-lg border text-card-foreground shadow-sm transition-all duration-200 cursor-pointer hover:bg-[#DAF278] hover:border-green-300 bg-[#DAF278] border-green-200', {
+               'bg-[#DAF278] border-[#c3e92d]': role === _RoleSystemRequest.USER
            })}>
                <div className="p-4">
                    <div className="text-center">
                        <User className="h-8 w-8 text-green-600 mx-auto mb-2"/>
-                       <h3 className="font-bold text-green-800">{t('auth.components.customer')}</h3>
-                       <p className="hidden sm:block text-xs text-green-600 mt-1">{t('auth.components.customer_desc')}</p>
+                       <h3 className="font-bol">{t('auth.components.customer')}</h3>
+                       <p className="hidden sm:block text-xs mt-1">{t('auth.components.customer_desc')}</p>
                    </div>
                </div>
            </div>

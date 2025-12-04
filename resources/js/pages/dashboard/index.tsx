@@ -31,7 +31,7 @@ import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransacti
 
 const breadcrumbs: IBreadcrumbItem[] = [
     {
-        title: 'Trang chủ',
+        title: 'menu.dashboard',
         href: dashboard().url,
     },
 ];
@@ -330,7 +330,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
     if (!isAgencyOrCustomer || !dashboardData) {
         return (
             <AppLayout breadcrumbs={breadcrumbs}>
-                <Head title="Dashboard" />
+                <Head title={t('dashboard.title')} />
                 <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                     <div className="text-center text-muted-foreground py-12">
                         {t('dashboard.coming_soon')}

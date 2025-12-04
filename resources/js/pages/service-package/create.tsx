@@ -13,12 +13,12 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { _PlatformType } from '@/lib/types/constants';
-import { useFormCreateServicePackage } from '@/pages/service-package/hooks/use-form';
+import { DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE, useFormCreateServicePackage } from '@/pages/service-package/hooks/use-form';
 import { ServicePackageOption } from '@/pages/service-package/types/type';
 import { service_packages_index } from '@/routes';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-
+import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 type Props = {
     meta_features: ServicePackageOption[];
     google_features: ServicePackageOption[];
@@ -29,7 +29,9 @@ const Create = ({ meta_features, google_features }: Props) => {
     const { form, submit } = useFormCreateServicePackage();
 
     const { data, setData, processing, errors } = form;
-
+    const monthlySpendingError = Object.entries(errors).find(([key]) =>
+        key.startsWith('monthly_spending_fee_structure'),
+    )?.[1];
 
     /**
      * Lấy danh sách Features dựa trên Platform
@@ -83,6 +85,40 @@ const Create = ({ meta_features, google_features }: Props) => {
         const feature = data.features.find((f) => f.key === key);
         // Trả về giá trị đã lưu, hoặc null/false/0 mặc định
         return feature ? feature.value : defaultValue;
+    };
+
+    const handleMonthlySpendingChange = (
+        index: number,
+        field: 'range' | 'fee_percent',
+        value: string,
+    ) => {
+        const next = [...data.monthly_spending_fee_structure];
+        next[index] = {
+            ...next[index],
+            [field]: value,
+        };
+        setData('monthly_spending_fee_structure', next);
+    };
+
+    const handleAddMonthlySpendingRow = () => {
+        setData('monthly_spending_fee_structure', [
+            ...data.monthly_spending_fee_structure,
+            { range: '', fee_percent: '' },
+        ]);
+    };
+
+    const handleRemoveMonthlySpendingRow = (index: number) => {
+        const next = data.monthly_spending_fee_structure.filter(
+            (_, idx) => idx !== index,
+        );
+        setData('monthly_spending_fee_structure', next);
+    };
+
+    const handleResetMonthlyTemplate = () => {
+        setData(
+            'monthly_spending_fee_structure',
+            DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
+        );
     };
 
     return (
@@ -159,6 +195,116 @@ const Create = ({ meta_features, google_features }: Props) => {
                     {errors.description && (
                         <span className="text-sm text-red-500">
                             {errors.description}
+                        </span>
+                    )}
+                </div>
+
+                {/* Monthly spending & fee structure */}
+                <div className="md:col-span-2 space-y-3 rounded-lg border p-4">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="font-medium">
+                                {t('service_packages.monthly_spending_title')}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                {t(
+                                    'service_packages.monthly_spending_description',
+                                )}
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={handleAddMonthlySpendingRow}
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                {t('service_packages.monthly_spending_add_row')}
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={handleResetMonthlyTemplate}
+                            >
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                {t(
+                                    'service_packages.monthly_spending_reset_template',
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                        <div className="hidden md:grid md:grid-cols-[2fr_1fr_auto] md:gap-3">
+                            <Label className="text-muted-foreground">
+                                {t(
+                                    'service_packages.monthly_spending_spending_label',
+                                )}
+                            </Label>
+                            <Label className="text-muted-foreground">
+                                {t(
+                                    'service_packages.monthly_spending_fee_label',
+                                )}
+                            </Label>
+                            <span />
+                        </div>
+                        {data.monthly_spending_fee_structure.map(
+                            (tier, index) => (
+                                <div
+                                    key={`monthly-tier-${index}`}
+                                    className="grid gap-2 md:grid-cols-[2fr_1fr_auto]"
+                                >
+                                    <Input
+                                        placeholder={t(
+                                            'service_packages.monthly_spending_spending_label',
+                                        )}
+                                        value={tier.range}
+                                        onChange={(e) =>
+                                            handleMonthlySpendingChange(
+                                                index,
+                                                'range',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <Input
+                                        placeholder={t(
+                                            'service_packages.monthly_spending_fee_label',
+                                        )}
+                                        value={tier.fee_percent}
+                                        onChange={(e) =>
+                                            handleMonthlySpendingChange(
+                                                index,
+                                                'fee_percent',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="justify-self-start md:justify-self-end"
+                                        size="icon"
+                                        onClick={() =>
+                                            handleRemoveMonthlySpendingRow(
+                                                index,
+                                            )
+                                        }
+                                        disabled={
+                                            data.monthly_spending_fee_structure
+                                                .length === 1
+                                        }
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ),
+                        )}
+                    </div>
+                    {monthlySpendingError && (
+                        <span className="text-sm text-red-500">
+                            {monthlySpendingError}
                         </span>
                     )}
                 </div>
@@ -255,7 +401,7 @@ const Create = ({ meta_features, google_features }: Props) => {
                 </div>
 
                 {/* Disabled */}
-                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-[[aria-checked=true]]:border-red-600 has-[[aria-checked=true]]:bg-red-50">
+                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 hover:bg-accent/50 has-aria-checked:border-red-600 has-aria-checked:bg-red-50">
                     <Checkbox
                         disabled={false}
                         checked={data.disabled}
@@ -274,7 +420,7 @@ const Create = ({ meta_features, google_features }: Props) => {
                     </div>
                 </Label>
             </div>
-            {/* Features */}
+                {/* Features */}
             <h1 className="text-xl font-semibold">
                 {data.platform === _PlatformType.META
                     ? t('service_packages.meta_features')
@@ -285,7 +431,7 @@ const Create = ({ meta_features, google_features }: Props) => {
                     if (feature.type === 'boolean') {
                         return (
                             <div key={feature.key} className={'flex flex-col gap-2'}>
-                                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50">
+                                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 hover:bg-accent/50 has-aria-checked:border-blue-600 has-aria-checked:bg-blue-50">
                                     <Checkbox
                                         id={feature.key}
                                         disabled={false}

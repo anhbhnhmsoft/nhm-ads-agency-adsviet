@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServicePackage\Meta\MetaAdsAccountStatus;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\User\UserRole;
 use App\Common\Helper;
@@ -128,6 +129,20 @@ class MetaService
                 ]);
             $query = $this->metaAccountRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
+
+            $accountSnapshot = $paginator->getCollection()
+                ->map(function ($account) {
+                    $statusEnum = MetaAdsAccountStatus::tryFrom((int) $account->account_status);
+                    return [
+                        'id' => (string) $account->id,
+                        'account_id' => $account->account_id,
+                        'account_status' => $account->account_status,
+                        'status_label' => $statusEnum?->label() ?? null,
+                    ];
+                })
+                ->take(20)
+                ->values()
+                ->toArray();
             return ServiceReturn::success(data: $paginator);
         }
         catch (\Exception $e) {
@@ -231,8 +246,6 @@ class MetaService
                 $item->total_spend = $totalSpendMap[$item->campaign_id] ?? 0;
                 $item->today_spend = $todaySpendMap[$item->campaign_id] ?? 0;
             });
-
-
             return ServiceReturn::success(data: $paginator);
         } catch (\Exception $exception) {
             Logging::error(
@@ -531,7 +544,6 @@ class MetaService
             foreach ($accounts as $adsAccountData) {
                 // Lấy chi tiết tài khoản quảng cáo
                 $detailResponse = $this->metaBusinessService->getDetailAdsAccount($adsAccountData['id']);
-                // Xử lý lỗi sau
                 if ($detailResponse->isError()) {
                     continue;
                 }
@@ -546,6 +558,7 @@ class MetaService
                         [
                             'account_name' => $detail['name'],
                             'account_status' => $detail['account_status'],
+                            'disable_reason' => $detail['disable_reason'] ?? null,
                             'spend_cap' => $detail['spend_cap'],
                             'amount_spent' => $detail['amount_spent'],
                             'balance' => $detail['balance'],

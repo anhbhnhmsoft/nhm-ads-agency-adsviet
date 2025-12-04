@@ -56,6 +56,14 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                         <div className="text-sm">{user.username}</div>
                     </div>
                     <div className="grid gap-1">
+                        <label className="text-sm font-medium text-gray-500">{t('common.email')}</label>
+                        <div className="text-sm">{user.email || '-'}</div>
+                    </div>
+                    <div className="grid gap-1">
+                        <label className="text-sm font-medium text-gray-500">{t('common.telegram_id')}</label>
+                        <div className="text-sm">{user.telegram_id || '-'}</div>
+                    </div>
+                    <div className="grid gap-1">
                         <label className="text-sm font-medium text-gray-500">{t('common.phone')}</label>
                         <div className="text-sm">{user.phone || '-'}</div>
                     </div>
@@ -86,13 +94,13 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                     <div className="grid gap-1">
                         <label className="text-sm font-medium text-gray-500">{t('common.social_authentication')}</label>
                         <div className="flex flex-col gap-1">
+                            {user.email_verified_at && (
+                                <div className="text-sm">{t('common.using_email')}</div>
+                            )}
                             {user.using_telegram && (
                                 <div className="text-sm">{t('common.using_telegram')}</div>
                             )}
-                            {user.using_whatsapp && (
-                                <div className="text-sm">{t('common.using_whatsapp')}</div>
-                            )}
-                            {!user.using_telegram && !user.using_whatsapp && (
+                            {!user.email_verified_at && !user.using_telegram && (
                                 <div className="text-sm text-gray-400">-</div>
                             )}
                         </div>

@@ -160,9 +160,11 @@ class AuthService
             ];
             $user = $this->userRepository->create($register);
             // Tạo mới user referral
+            // referrer_id: user sở hữu referral_code (người giới thiệu/upline)
+            // referred_id: user mới đăng ký (người được giới thiệu/downline)
             $this->userReferralRepository->create([
-                'referrer_id' => $user->id,
-                'referred_id' => $userRefer->id,
+                'referrer_id' => $userRefer->id,
+                'referred_id' => $user->id,
             ]);
             /**
              * Gửi mail và xác thực OTP
@@ -369,9 +371,11 @@ class AuthService
             }
 
             // Tạo mới user referral
+            // referrer_id: user sở hữu referral_code (người giới thiệu/upline)
+            // referred_id: user mới đăng ký (người được giới thiệu/downline)
             $this->userReferralRepository->create([
-                'referrer_id' => $user->id,
-                'referred_id' => $userRefer->id,
+                'referrer_id' => $userRefer->id,
+                'referred_id' => $user->id,
             ]);
             if ($forApi) {
                 // Tạo token Sanctum
@@ -609,9 +613,11 @@ class AuthService
             }
 
             // Tạo mới user referral
+            // referrer_id: user sở hữu referral_code (người giới thiệu/upline)
+            // referred_id: user mới đăng ký (người được giới thiệu/downline)
             $this->userReferralRepository->create([
-                'referrer_id' => $user->id,
-                'referred_id' => $userRefer->id,
+                'referrer_id' => $userRefer->id,
+                'referred_id' => $user->id,
             ]);
 
             DB::commit();

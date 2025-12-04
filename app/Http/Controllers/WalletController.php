@@ -11,10 +11,11 @@ use App\Http\Requests\Wallet\WalletMyWithdrawRequest;
 use App\Http\Requests\Wallet\WalletResetPasswordRequest;
 use App\Http\Requests\Wallet\WalletTopUpRequest;
 use App\Http\Requests\Wallet\WalletWithdrawRequest;
+use App\Http\Requests\API\Wallet\WalletCampaignBudgetUpdateRequest;
 use App\Service\ConfigService;
-use App\Service\NowPaymentsService;
 use App\Service\WalletTransactionService;
 use App\Service\WalletService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +26,6 @@ class WalletController extends Controller
         protected WalletService $walletService,
         protected ConfigService $configService,
         protected WalletTransactionService $walletTransactionService,
-        protected NowPaymentsService $nowPaymentsService,
     ) {}
 
     public function index()
@@ -72,39 +72,146 @@ class WalletController extends Controller
         ]);
     }
 
-    public function getMinimalAmount(string $network)
+    /**
+     * Trả về thông tin ví dạng JSON cho user hiện tại (dùng cho Inertia/React)
+     */
+    public function me(): JsonResponse
     {
         $user = Auth::user();
         if (!$user) {
-            return response()->json(['success' => false, 'message' => __('common_error.permission_denied')], 401);
+            return response()->json([
+                'success' => false,
+                'message' => __('common_error.permission_denied'),
+            ], 401);
         }
 
-        // Kiểm tra mạng có hợp lệ không (chỉ chấp nhận BEP20 hoặc TRC20)
-        if (!in_array(strtoupper($network), ['BEP20', 'TRC20'])) {
-            return response()->json(['success' => false, 'message' => __('Mạng không hợp lệ')], 400);
+        $walletResult = $this->walletService->getWalletForUser((int) $user->id);
+        if ($walletResult->isError()) {
+            return response()->json([
+                'success' => false,
+                'message' => $walletResult->getMessage(),
+            ], 400);
         }
 
-        $result = $this->nowPaymentsService->getMinimalAmount(strtoupper($network), includeFiatEquivalent: true);
-        
+        $wallet = $walletResult->getData();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'balance' => $wallet['balance'] ?? 0,
+            ],
+        ]);
+    }
+
+    /**
+     * Web: Tạo yêu cầu cập nhật ngân sách chiến dịch (dùng cho Inertia/React)
+     */
+    public function campaignBudgetUpdate(WalletCampaignBudgetUpdateRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => __('common_error.permission_denied'),
+            ], 401);
+        }
+
+        $data = $request->validated();
+
+        $result = $this->walletTransactionService->createCampaignBudgetUpdateOrder(
+            userId: (int) $user->id,
+            amount: (float) $data['amount'],
+            walletPassword: $data['wallet_password'] ?? null,
+            platformType: (int) $data['platform_type'],
+            campaignName: $data['campaign_name'] ?? null,
+            accountName: $data['account_name'] ?? null,
+        );
+
         if ($result->isError()) {
             return response()->json([
                 'success' => false,
                 'message' => $result->getMessage(),
-            ], 500);
+            ], 400);
         }
 
-        $data = $result->getData();
         return response()->json([
             'success' => true,
-            'data' => [
-                'network' => strtoupper($network),
-                'min_amount' => $data['min_amount'] ?? null,
-                'fiat_equivalent' => $data['fiat_equivalent'] ?? null, //Giá trị tương được với USD
-                'currency_from' => $data['currency_from'] ?? 'usd',
-                'currency_to' => $data['currency_to'] ?? null,
-            ],
+            'message' => __('wallet.flash.campaign_budget_update_created'),
+            'data' => $result->getData(),
         ]);
     }
+
+    public function campaignPause(\App\Http\Requests\API\Wallet\WalletCampaignPauseRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => __('common_error.permission_denied'),
+            ], 401);
+        }
+
+        $data = $request->validated();
+
+        $result = $this->walletTransactionService->createCampaignPauseOrder(
+            userId: (int) $user->id,
+            platformType: (int) $data['platform_type'],
+            campaignName: $data['campaign_name'] ?? null,
+            accountName: $data['account_name'] ?? null,
+        );
+
+        if ($result->isError()) {
+            return response()->json([
+                'success' => false,
+                'message' => $result->getMessage(),
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('wallet.flash.campaign_pause_created'),
+            'data' => $result->getData(),
+        ]);
+    }
+
+    public function campaignEnd(\App\Http\Requests\API\Wallet\WalletCampaignEndRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => __('common_error.permission_denied'),
+            ], 401);
+        }
+
+        $data = $request->validated();
+
+        $result = $this->walletTransactionService->createCampaignEndOrder(
+            userId: (int) $user->id,
+            platformType: (int) $data['platform_type'],
+            campaignName: $data['campaign_name'] ?? null,
+            accountName: $data['account_name'] ?? null,
+        );
+
+        if ($result->isError()) {
+            return response()->json([
+                'success' => false,
+                'message' => $result->getMessage(),
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('wallet.flash.campaign_end_created'),
+            'data' => $result->getData(),
+        ]);
+    }
+
+    // API lấy min amount từ NowPayments tạm thời không dùng
+    // public function getMinimalAmount(string $network)
+    // {
+    //     ...
+    // }
 
     public function create(string $userId, Request $request): RedirectResponse
     {
@@ -214,58 +321,17 @@ class WalletController extends Controller
                 'address' => substr($networkAddress, 0, 10) . '...',
             ]);
 
-            // Tạo payment trên NowPayments API
-            // NowPayments sẽ trả về payment_id và pay_address (địa chỉ ví để user chuyển tiền)
-            $orderId = 'DEPOSIT_' . time() . '_' . $user->id;
-            $successUrl = route('wallet_index') . '?payment=success';  // URL redirect sau khi thanh toán thành công (nếu dùng payment page)
-            $cancelUrl = route('wallet_index') . '?payment=cancelled';   // URL redirect nếu hủy thanh toán (nếu dùng payment page)
-            
-            Logging::web('WalletController@myTopUp: Creating payment on NowPayments', [
-                'order_id' => $orderId,
-                'amount' => $data['amount'],
-                'network' => $data['network'],
-            ]);
-            
-            $paymentResult = $this->nowPaymentsService->createPayment(
-                amount: (float) $data['amount'],
-                network: $data['network'],
-                orderId: $orderId,
-                successUrl: $successUrl,
-                cancelUrl: $cancelUrl,
-            );
-
-            if ($paymentResult->isError()) {
-                Logging::web('WalletController@myTopUp: Payment creation failed', [
-                    'error' => $paymentResult->getMessage(),
-                    'data' => $paymentResult->getData(),
-                ]);
-                FlashMessage::error($paymentResult->getMessage());
-                return redirect()->back();
-            }
-
-            // Lấy payment_id và pay_address từ response của NowPayments
-            $paymentData = $paymentResult->getData();
-            $paymentId = $paymentData['payment_id'] ?? null;
-
-            // Kiểm tra payment_id có tồn tại không
-            if (empty($paymentId)) {
-                Logging::web('WalletController@myTopUp: Missing payment_id', [
-                    'payment_data' => $paymentData,
-                ]);
-                FlashMessage::error(__('common_error.wallet_nowpayments_missing_payment_id'));
-                return redirect()->back();
-            }
-
-            // Tạo deposit order với payment info từ NowPayments
-            $expiresAt = now()->addMinutes(15);
+            // Trước đây: tạo payment trên NowPayments và đợi webhook.
+            // Hiện tại: chỉ tạo lệnh nạp để admin kiểm tra chuyển khoản và duyệt thủ công.
+            $expiresAt = now()->addMinutes(60);
             $createResult = $this->walletTransactionService->createDepositOrder(
                 userId: (int) $user->id,
                 amount: (float) $data['amount'],
                 network: $data['network'],
                 depositAddress: $networkAddress,
                 customerName: $customerName,
-                paymentId: $paymentId,
-                payAddress: $paymentData['pay_address'] ?? null,
+                paymentId: null,
+                payAddress: null,
                 expiresAt: $expiresAt,
             );
 

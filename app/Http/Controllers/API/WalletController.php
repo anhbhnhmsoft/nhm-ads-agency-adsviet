@@ -8,9 +8,9 @@ use App\Core\RestResponse;
 use App\Http\Requests\API\Wallet\WalletChangePasswordRequest;
 use App\Http\Requests\API\Wallet\WalletDepositRequest;
 use App\Http\Requests\API\Wallet\WalletWithdrawRequest;
+use App\Http\Requests\API\Wallet\WalletCampaignBudgetUpdateRequest;
 use App\Http\Resources\WalletTransactionResource;
 use App\Service\ConfigService;
-use App\Service\NowPaymentsService;
 use App\Service\WalletService;
 use App\Service\WalletTransactionService;
 use Illuminate\Http\JsonResponse;
@@ -21,7 +21,6 @@ class WalletController extends Controller
     public function __construct(
         protected WalletService $walletService,
         protected WalletTransactionService $walletTransactionService,
-        protected NowPaymentsService $nowPaymentsService,
         protected ConfigService $configService,
     ) {
     }
@@ -52,79 +51,13 @@ class WalletController extends Controller
         return $this->handleServiceReturn($result, __('wallet.flash.wallet_password_changed'));
     }
 
-    /**
-     * API Nạp tiền vào ví
-     * @param WalletDepositRequest $request
-     * @return JsonResponse
-     */
+    // API nạp tiền qua NowPayments tạm thời vô hiệu hóa.
+    // Giữ lại signature để sau này có thể bật lại nếu cần.
     public function deposit(WalletDepositRequest $request): JsonResponse
     {
-        $user = $request->user();
-        if (!$user) {
-            return RestResponse::error(message: __('common_error.permission_denied'), status: 401);
-        }
-
-        $data = $request->validated();
-
-        // Lấy địa chỉ ví mạng nạp từ config
-        $configResult = $this->configService->getAll();
-        $configs = $configResult->isSuccess() ? $configResult->getData() : [];
-        $networkConfigKey = $data['network'] === 'BEP20' ? 'BEP20_WALLET_ADDRESS' : 'TRC20_WALLET_ADDRESS';
-        $networkAddress = $configs[$networkConfigKey]['value'] ?? null;
-
-        if (empty($networkAddress)) {
-            return RestResponse::error(message: __('wallet.network_not_configured'), status: 400);
-        }
-
-        // Tạo payment trên NowPayments
-        $orderId = 'DEPOSIT_' . time() . '_' . $user->id;
-        $successUrl = '';
-        $cancelUrl = '';
-
-        $paymentResult = $this->nowPaymentsService->createPayment(
-            amount: (float) $data['amount'],
-            network: $data['network'],
-            orderId: $orderId,
-            successUrl: $successUrl,
-            cancelUrl: $cancelUrl,
-        );
-
-        if ($paymentResult->isError()) {
-            return RestResponse::error(message: $paymentResult->getMessage(), status: 400);
-        }
-
-        $paymentData = $paymentResult->getData();
-        $paymentId = $paymentData['payment_id'] ?? null;
-
-        if (empty($paymentId)) {
-            return RestResponse::error(message: __('common_error.wallet_nowpayments_missing_payment_id'), status: 500);
-        }
-
-        $expiresAt = now()->addMinutes(15);
-        $createResult = $this->walletTransactionService->createDepositOrder(
-            userId: (int) $user->id,
-            amount: (float) $data['amount'],
-            network: $data['network'],
-            depositAddress: $networkAddress,
-            customerName: $user->name ?: ('User ' . $user->id),
-            paymentId: (string) $paymentId,
-            payAddress: $paymentData['pay_address'] ?? null,
-            expiresAt: $expiresAt,
-        );
-
-        if ($createResult->isError()) {
-            return RestResponse::error(message: $createResult->getMessage(), status: 400);
-        }
-
-        $transaction = $createResult->getData();
-
-        return RestResponse::success(
-            data: [
-                'transaction_id' => (string) $transaction->id,
-                'pay_address' => (string)$transaction->pay_address,
-                'expires_at' => $expiresAt->toIso8601String(),
-            ],
-            message: __('wallet.flash.deposit_created')
+        return RestResponse::error(
+            message: __('wallet.deposit_disabled_temporarily'),
+            status: 400
         );
     }
 
@@ -181,6 +114,37 @@ class WalletController extends Controller
         return RestResponse::success(
             data: $result->getData(),
             message: __('wallet.flash.withdraw_created')
+        );
+    }
+
+    /**
+     * API: User tạo lệnh cập nhật ngân sách chiến dịch (chỉ tạo transaction, admin xử lý thủ công)
+     */
+    public function campaignBudgetUpdate(WalletCampaignBudgetUpdateRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return RestResponse::error(message: __('common_error.permission_denied'), status: 401);
+        }
+
+        $data = $request->validated();
+
+        $result = $this->walletTransactionService->createCampaignBudgetUpdateOrder(
+            userId: (int) $user->id,
+            amount: (float) $data['amount'],
+            walletPassword: $data['wallet_password'] ?? null,
+            platformType: (int) $data['platform_type'],
+            campaignName: $data['campaign_name'] ?? null,
+            accountName: $data['account_name'] ?? null,
+        );
+
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage(), status: 400);
+        }
+
+        return RestResponse::success(
+            data: $result->getData(),
+            message: __('wallet.flash.campaign_budget_update_created')
         );
     }
 

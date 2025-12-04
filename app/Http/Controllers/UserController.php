@@ -65,7 +65,7 @@ class UserController extends Controller
             $employees = $employeesResult->isSuccess() ? $employeesResult->getData() : [];
         } elseif ($authUser && $authUser->role === UserRole::MANAGER->value) {
             $canFilterEmployee = true;
-            $employeesResult = $this->userService->getEmployeesAssignedToManager((int) $authUser->id);
+            $employeesResult = $this->userService->getEmployeesAssignedToManager((string) $authUser->id);
             $employees = $employeesResult->isSuccess() ? $employeesResult->getData() : [];
         }
 
@@ -234,11 +234,11 @@ class UserController extends Controller
     public function assignEmployee(Request $request)
     {
         $request->validate([
-            'manager_id' => 'required|integer',
-            'employee_id' => 'required|integer',
+            'manager_id' => 'required|string',
+            'employee_id' => 'required|string',
         ]);
 
-        $result = $this->userService->assignEmployee($request->manager_id, $request->employee_id);
+        $result = $this->userService->assignEmployee((string)$request->manager_id, (string)$request->employee_id);
         if ($result->isError()) {
             FlashMessage::error($result->getMessage());
             return response()->json(['success' => false, 'message' => $result->getMessage()], 422);
@@ -250,11 +250,11 @@ class UserController extends Controller
     public function unassignEmployee(Request $request)
     {
         $request->validate([
-            'manager_id' => 'required|integer',
-            'employee_id' => 'required|integer',
+            'manager_id' => 'required|string',
+            'employee_id' => 'required|string',
         ]);
 
-        $result = $this->userService->unassignEmployee($request->manager_id, $request->employee_id);
+        $result = $this->userService->unassignEmployee((string)$request->manager_id, (string)$request->employee_id);
         if ($result->isError()) {
             FlashMessage::error($result->getMessage());
             return response()->json(['success' => false, 'message' => $result->getMessage()], 422);

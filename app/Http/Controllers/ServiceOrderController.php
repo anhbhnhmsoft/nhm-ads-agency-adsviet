@@ -82,5 +82,17 @@ class ServiceOrderController extends Controller
 
         return redirect()->back();
     }
+
+    public function destroy(string $id): RedirectResponse
+    {
+        $result = $this->serviceUserService->deleteServiceUser($id);
+        if ($result->isError()) {
+            FlashMessage::error($result->getMessage());
+        } else {
+            FlashMessage::success(__('services.flash.order_delete_success'));
+        }
+
+        return redirect()->back();
+    }
 }
 

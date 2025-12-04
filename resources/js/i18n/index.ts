@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import vi from "@/i18n/locales/vi.json";
+import en from "@/i18n/locales/en.json";
 
 export enum _LanguageCode {
     VI = 'vi',
@@ -13,10 +14,13 @@ i18n
     .init({
         resources: {
             vi: { translation: vi },
+            en: { translation: en },
         },
         lng: "vi",
-        fallbackLng: "en",
+        fallbackLng: "vi",
         interpolation: {
             escapeValue: false,
         },
     });
+
+export default i18n;

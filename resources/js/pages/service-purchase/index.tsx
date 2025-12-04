@@ -317,6 +317,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
             selectedPackage.platform === _PlatformType.META
                 ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
                 : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' });
+        const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
 
         return (
             <Card className="max-w-2xl mx-auto">
@@ -371,8 +372,16 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                     type="email"
                                     placeholder="abc123@gmail.com"
                                     value={metaEmail}
-                                    onChange={(e) => setMetaEmail(e.target.value)}
+                                    onChange={(e) => {
+                                        setMetaEmail(e.target.value);
+                                        if (purchaseForm.errors.meta_email) {
+                                            purchaseForm.clearErrors('meta_email');
+                                        }
+                                    }}
                                 />
+                                {purchaseForm.errors.meta_email && (
+                                    <p className="text-xs text-red-500">{purchaseForm.errors.meta_email}</p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="displayName">
@@ -383,8 +392,51 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                     type="text"
                                     placeholder="abc"
                                     value={displayName}
-                                    onChange={(e) => setDisplayName(e.target.value)}
+                                    onChange={(e) => {
+                                        setDisplayName(e.target.value);
+                                        if (purchaseForm.errors.display_name) {
+                                            purchaseForm.clearErrors('display_name');
+                                        }
+                                    }}
                                 />
+                                {purchaseForm.errors.display_name && (
+                                    <p className="text-xs text-red-500">{purchaseForm.errors.display_name}</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Monthly spending tiers */}
+                    {monthlySpendingTiers.length > 0 && (
+                        <div className="space-y-3">
+                            <div>
+                                <p className="font-medium text-gray-800">
+                                    {t('service_purchase.monthly_spending_title')}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    {t('service_purchase.monthly_spending_description')}
+                                </p>
+                            </div>
+                            <div className="rounded-lg border overflow-hidden">
+                                <div className="grid grid-cols-[2fr_1fr] bg-gray-50 px-4 py-2 text-sm font-medium text-gray-600">
+                                    <span>
+                                        {t('service_purchase.monthly_spending_spending_label')}
+                                    </span>
+                                    <span>
+                                        {t('service_purchase.monthly_spending_fee_label')}
+                                    </span>
+                                </div>
+                                <div className="divide-y">
+                                    {monthlySpendingTiers.map((tier, index) => (
+                                        <div
+                                            key={`monthly-tier-display-${index}`}
+                                            className="grid grid-cols-[2fr_1fr] px-4 py-2 text-sm text-gray-700"
+                                        >
+                                            <span>{tier.range}</span>
+                                            <span className="font-medium">{tier.fee_percent}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -399,7 +451,12 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             type="number"
                             placeholder="0.00"
                             value={budget}
-                            onChange={(e) => setBudget(e.target.value)}
+                            onChange={(e) => {
+                                setBudget(e.target.value);
+                                if (purchaseForm.errors.budget) {
+                                    purchaseForm.clearErrors('budget');
+                                }
+                            }}
                             step="0.01"
                             min="0"
                             max="50"
@@ -409,6 +466,12 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             <div className="flex items-center gap-2 text-red-600 text-sm">
                                 <AlertTriangle className="h-4 w-4" />
                                 {validateBudget(budget)}
+                            </div>
+                        )}
+                        {purchaseForm.errors.budget && (
+                            <div className="flex items-center gap-2 text-red-600 text-sm">
+                                <AlertTriangle className="h-4 w-4" />
+                                {purchaseForm.errors.budget}
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
@@ -429,7 +492,12 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                     Number(selectedPackage.range_min_top_up || '0')
                                 )} USDT`}
                                 value={topUpAmount}
-                                onChange={(e) => setTopUpAmount(e.target.value)}
+                                onChange={(e) => {
+                                    setTopUpAmount(e.target.value);
+                                    if (purchaseForm.errors.top_up_amount) {
+                                        purchaseForm.clearErrors('top_up_amount');
+                                    }
+                                }}
                                 step="1"
                             />
                             <Button
@@ -443,6 +511,12 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             <div className="flex items-center gap-2 text-red-600 text-sm">
                                 <AlertTriangle className="h-4 w-4" />
                                 {topUpError}
+                            </div>
+                        )}
+                        {purchaseForm.errors.top_up_amount && (
+                            <div className="flex items-center gap-2 text-red-600 text-sm">
+                                <AlertTriangle className="h-4 w-4" />
+                                {purchaseForm.errors.top_up_amount}
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">

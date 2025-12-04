@@ -137,6 +137,8 @@ const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: Tr
                                             <option value="4">{t('wallet.transaction_type.fee', { defaultValue: 'Phí' })}</option>
                                             <option value="5">{t('wallet.transaction_type.cashback', { defaultValue: 'Cashback' })}</option>
                                             <option value="6">{t('wallet.transaction_type.service_purchase', { defaultValue: 'Mua dịch vụ' })}</option>
+                                            <option value="7">{t('wallet.transaction_type.campaign_budget_update_google', { defaultValue: 'Cập nhật ngân sách Google Ads' })}</option>
+                                            <option value="8">{t('wallet.transaction_type.campaign_budget_update_meta', { defaultValue: 'Cập nhật ngân sách Meta Ads' })}</option>
                                         </select>
                                     </div>
                                     <div className="space-y-2">
