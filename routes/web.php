@@ -158,6 +158,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/{serviceUserId}/{accountId}/campaigns', [MetaController::class, 'getCampaigns'])->name('meta_get_campaigns');
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [MetaController::class, 'detailCampaign'])->name('meta_detail_campaign');
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [MetaController::class, 'getCampaignInsights'])->name('meta_detail_campaign_insight');
+        Route::post('/{serviceUserId}/{campaignId}/status', [MetaController::class, 'updateCampaignStatus'])->name('meta_update_campaign_status');
+        Route::post('/{serviceUserId}/{campaignId}/spend-cap', [MetaController::class, 'updateCampaignSpendCap'])->name('meta_update_campaign_spend_cap');
     });
 
     Route::prefix('/google-ads')->group(function () {
@@ -165,5 +167,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/{serviceUserId}/{accountId}/campaigns', [GoogleAdsController::class, 'getCampaigns'])->name('google_ads_get_campaigns');
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [GoogleAdsController::class, 'detailCampaign'])->name('google_ads_detail_campaign');
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [GoogleAdsController::class, 'getCampaignInsights'])->name('google_ads_detail_campaign_insight');
+        Route::post('/{serviceUserId}/{campaignId}/status', [GoogleAdsController::class, 'updateCampaignStatus'])->name('google_ads_update_campaign_status');
+        Route::post('/{serviceUserId}/{campaignId}/budget', [GoogleAdsController::class, 'updateCampaignBudget'])->name('google_ads_update_campaign_budget');
     });
 });

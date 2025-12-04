@@ -590,4 +590,86 @@ class MetaBusinessService
         }
     }
 
+    /**
+     * Cập nhật trạng thái chiến dịch (ACTIVE, PAUSED, DELETED, ...)
+     * Meta Marketing API v24: POST /{campaign_id} với tham số status
+     *
+     * @param string $campaignId
+     * @param string $status
+     * @return ServiceReturn
+     */
+    public function updateCampaignStatus(string $campaignId, string $status): ServiceReturn
+    {
+        try {
+            $this->initApi();
+
+            $normalizedStatus = strtoupper($status);
+            $allowed = ['ACTIVE', 'PAUSED', 'DELETED'];
+            if (!in_array($normalizedStatus, $allowed, true)) {
+                return ServiceReturn::error(message: __('meta.error.invalid_campaign_status'));
+            }
+
+            $response = $this->api->call(
+                "/{$campaignId}",
+                'POST',
+                [
+                    'status' => $normalizedStatus,
+                ]
+            )->getContent();
+
+            return ServiceReturn::success(data: $response);
+        } catch (Exception $exception) {
+            $message = $exception->getMessage();
+            if (str_contains($message, 'Permissions error')) {
+                return ServiceReturn::error(message: __('meta.error.permissions_error'));
+            }
+            if (str_contains($message, 'Invalid parameter')) {
+                return ServiceReturn::error(message: __('meta.error.invalid_spend_cap_generic'));
+            }
+            return ServiceReturn::error(message: $message);
+        }
+    }
+
+    /**
+     * Cập nhật giới hạn chi tiêu (spend_cap) của chiến dịch.
+     *
+     * Lưu ý:
+     * - Meta yêu cầu giá trị ở đơn vị "minor unit" (VD: USD -> cent), nên 10 USDT => 1000.
+     * - Ở hệ thống hiện tại chúng ta nhập theo đơn vị "USDT", nên cần nhân 100.
+     *
+     * @param string $campaignId
+     * @param float $amountUsd Số tiền giới hạn theo đơn vị USDT/USD (VD: 100.5)
+     * @return ServiceReturn
+     */
+    public function updateCampaignSpendCap(string $campaignId, float $amountUsd): ServiceReturn
+    {
+        try {
+            // Mức tối thiểu bắt buộc)
+            if ($amountUsd < 100) {
+                return ServiceReturn::error(message: __('meta.error.invalid_spend_cap_min', ['amount' => 100]));
+            }
+
+            $this->initApi();
+
+            // Chuyển sang "minor unit" (cent) theo chuẩn Meta
+            $spendCapMinor = (int) round($amountUsd * 100);
+
+            $response = $this->api->call(
+                "/{$campaignId}",
+                'POST',
+                [
+                    'spend_cap' => $spendCapMinor,
+                ]
+            )->getContent();
+
+            return ServiceReturn::success(data: $response);
+        } catch (Exception $exception) {
+            $message = $exception->getMessage();
+            if (str_contains($message, 'Permissions error')) {
+                return ServiceReturn::error(message: __('meta.error.permissions_error'));
+            }
+            return ServiceReturn::error(message: $message);
+        }
+    }
+
 }

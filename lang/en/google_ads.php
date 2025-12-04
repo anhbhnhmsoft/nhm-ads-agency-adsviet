@@ -12,6 +12,11 @@ return [
         'failed_to_fetch_campaign_detail' => 'Cannot fetch Google Ads campaign detail.',
         'oauth_token_expired' => 'Google Ads OAuth token expired or revoked. Please update the credentials.',
         'date_preset_invalid' => 'Invalid date range.',
+        'invalid_campaign_status' => 'Invalid campaign status.',
+        'invalid_budget_amount' => 'Budget amount must be greater than 0.',
+        'failed_to_update_campaign_status' => 'Failed to update campaign status on Google Ads.',
+        'failed_to_update_campaign_status_suspended' => 'Cannot update campaign status because the Google Ads account is suspended. Please resolve the suspension in Google Ads first.',
+        'failed_to_update_campaign_budget' => 'Failed to update campaign budget on Google Ads.',
     ],
     'account_status' => [
         'enabled' => 'Active',

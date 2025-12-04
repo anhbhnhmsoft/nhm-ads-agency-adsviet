@@ -10,6 +10,9 @@ return [
         'failed_to_fetch_campaign_detail' => 'Lấy thông tin chi tiết chiến dịch thất bại',
         'campaign_not_found' => 'Không tìm thấy chiến dịch',
         'date_preset_invalid' => 'Trường date_preset không hợp lệ',
+        'permissions_error' => 'Cấu hình Meta hiện tại không đủ quyền thao tác với chiến dịch này. Vui lòng kiểm tra lại quyền của Business Manager, tài khoản quảng cáo và quyền của ứng dụng (app).',
+        'invalid_spend_cap_min' => 'Giới hạn chi tiêu tối thiểu là :amount USDT.',
+        'invalid_spend_cap_generic' => 'Meta từ chối giá trị giới hạn chi tiêu này (Invalid parameter). Vui lòng kiểm tra lại đơn vị tiền tệ của tài khoản và xem chiến dịch có hỗ trợ đặt spend_cap trên Meta Ads Manager hay không.',
     ],
     'account_status' => [
         'active' => 'Hoạt động',

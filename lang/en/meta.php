@@ -9,6 +9,9 @@ return [
         'failed_to_fetch_campaign_detail' => 'Failed to load campaign detail.',
         'campaign_not_found' => 'Campaign not found.',
         'date_preset_invalid' => 'Invalid date range.',
+        'permissions_error' => 'The current Meta Business configuration does not have permission to manage this campaign. Please check BM access, ad account permissions and app scopes.',
+        'invalid_spend_cap_min' => 'Minimum spend cap is :amount USDT.',
+        'invalid_spend_cap_generic' => 'Meta rejected this spend cap value (Invalid parameter). Please double-check the account currency and whether this campaign supports spend cap on the Meta Ads Manager.',
     ],
     'account_status' => [
         'active' => 'Active',
