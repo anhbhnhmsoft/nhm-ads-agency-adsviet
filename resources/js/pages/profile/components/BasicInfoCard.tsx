@@ -65,13 +65,9 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
                             <Input
                                 id="username"
                                 value={form.data.username}
-                                onChange={(event) => form.setData('username', event.target.value)}
-                                disabled={form.processing}
-                                aria-invalid={!!form.errors.username}
+                                readOnly
+                                disabled
                             />
-                            {form.errors.username && (
-                                <p className="text-xs text-destructive">{form.errors.username}</p>
-                            )}
                         </div>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">

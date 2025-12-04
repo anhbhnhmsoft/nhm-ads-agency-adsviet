@@ -33,7 +33,7 @@ export function NavMain() {
                                                         <CollapsibleTrigger asChild>
                                                             <SidebarMenuButton tooltip={item.title} isActive={item.active}>
                                                                 {item.icon ? item.icon : null}
-                                                                <span>{item.title}</span>
+                                                                <span className="font-semibold">{item.title}</span>
                                                                 <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                                                             </SidebarMenuButton>
                                                         </CollapsibleTrigger>
@@ -45,7 +45,7 @@ export function NavMain() {
                                                                         <SidebarMenuSubItem key={subItem.title}>
                                                                             <SidebarMenuSubButton asChild isActive={subItem.active}>
                                                                                 <Link href={subItem.url}>
-                                                                                    <span>{subItem.title}</span>
+                                                                                    <span className="font-semibold">{subItem.title}</span>
                                                                                 </Link>
                                                                             </SidebarMenuSubButton>
                                                                         </SidebarMenuSubItem>
@@ -62,7 +62,7 @@ export function NavMain() {
                                                     <SidebarMenuButton asChild isActive={item.active}>
                                                         <Link href={item.url}>
                                                             {item.icon ? item.icon : null}
-                                                            <span>{item.title}</span>
+                                                            <span className="font-semibold">{item.title}</span>
                                                         </Link>
                                                     </SidebarMenuButton>
                                                 </SidebarMenuItem>
@@ -70,7 +70,9 @@ export function NavMain() {
                                         )}
                                     </>
                                 ) : (
-                                    <SidebarGroupLabel>{item.title}</SidebarGroupLabel>
+                                    <SidebarGroupLabel className="font-semibold">
+                                        {item.title}
+                                    </SidebarGroupLabel>
                                 )}
                             </>
                         )}
