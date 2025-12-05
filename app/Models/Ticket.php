@@ -18,6 +18,7 @@ class Ticket extends Model
         'status',
         'priority',
         'assigned_to',
+        'metadata',
     ];
 
     protected function casts(): array
@@ -28,6 +29,7 @@ class Ticket extends Model
             'assigned_to' => 'string',
             'status' => 'integer',
             'priority' => 'integer',
+            'metadata' => 'array',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',

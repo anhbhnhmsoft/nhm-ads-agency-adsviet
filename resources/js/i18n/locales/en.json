@@ -109,7 +109,8 @@
     "spend_report": "Spend report",
     "financial_management": "Financial Management",
     "support": "Support",
-    "support_customer": "Customer support"
+    "support_customer": "Customer Support",
+    "transfer_money": "Transfer Money"
   },
   "user": {
     "edit_employee": "Edit employee",
@@ -349,6 +350,27 @@
     "view_on_explorer": "View on explorer",
     "withdraw_info_title": "Withdraw information",
     "withdraw_info_description": "Account information provided by the user"
+  },
+  "business_manager": {
+    "title": "Business Manager / MCC Management",
+    "table_title": "Business Manager / MCC List",
+    "table": {
+      "account_name": "Account Name",
+      "account_id": "Account ID",
+      "account_info": "Account Info",
+      "owner": "Account Owner",
+      "spend": "Spend",
+      "balance": "Balance"
+    },
+    "detail": {
+      "title": "BM/BCC Details",
+      "description": "Ad Accounts List",
+      "acc_name": "Acc name",
+      "limit": "Limit",
+      "spend": "Spend",
+      "total_campaign": "Total campaign",
+      "no_accounts": "No accounts yet"
+    }
   },
   "spend_report": {
     "title": "Spend report",
@@ -611,6 +633,32 @@
       "customer": "Customer",
       "staff": "Staff",
       "system": "System"
+    },
+    "transfer": {
+      "title": "Transfer money between accounts",
+      "create_request": "Create request",
+      "in_progress": "In progress",
+      "platform": "Advertising channel",
+      "select_platform": "Select advertising channel",
+      "from_account": "From account",
+      "to_account": "To account",
+      "amount": "Amount",
+      "notes": "Notes",
+      "notes_placeholder": "Enter notes (if any)",
+      "select_account": "Select account",
+      "send_request": "Send request",
+      "create_success": "Transfer request created successfully",
+      "no_requests": "No requests yet",
+      "no_accounts": "No accounts available for this advertising channel",
+      "warning": "Outgoing ad accounts need to have campaigns turned off for at least 5 hours",
+      "platform_required": "Please select advertising channel",
+      "platform_invalid": "Invalid advertising channel",
+      "from_account_required": "Please select source account",
+      "to_account_required": "Please select destination account",
+      "amount_required": "Please enter amount",
+      "amount_numeric": "Amount must be a number",
+      "amount_min": "Amount must be greater than 0",
+      "notes_max": "Notes cannot exceed 1000 characters"
     }
   },
   "config": {

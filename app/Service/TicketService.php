@@ -163,6 +163,7 @@ class TicketService
                 'status' => TicketStatus::PENDING->value,
                 'priority' => $data['priority'] ?? TicketPriority::MEDIUM->value,
                 'assigned_to' => null,
+                'metadata' => $data['metadata'] ?? null,
             ]);
 
             // Tạo conversation đầu tiên từ customer
@@ -187,6 +188,74 @@ class TicketService
     }
 
     /**
+     * Tạo yêu cầu chuyển tiền (chỉ Customer/Agency)
+     */
+    public function createTransferRequest(array $data): ServiceReturn
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            // Chỉ Customer/Agency mới được tạo yêu cầu chuyển tiền
+            if (!in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            // Tạo description từ thông tin chuyển tiền
+            $description = sprintf(
+                "Yêu cầu chuyển tiền:\n- Từ tài khoản: %s\n- Đến tài khoản: %s\n- Số tiền: %s USD\n- Ghi chú: %s",
+                $data['from_account_name'] ?? $data['from_account_id'],
+                $data['to_account_name'] ?? $data['to_account_id'],
+                number_format($data['amount'], 2),
+                $data['notes'] ?? 'Không có'
+            );
+
+            // Lưu metadata
+            $metadata = [
+                'type' => 'transfer',
+                'from_account_id' => $data['from_account_id'],
+                'from_account_name' => $data['from_account_name'] ?? null,
+                'to_account_id' => $data['to_account_id'],
+                'to_account_name' => $data['to_account_name'] ?? null,
+                'amount' => $data['amount'],
+                'currency' => $data['currency'] ?? 'USD',
+                'notes' => $data['notes'] ?? null,
+            ];
+
+            $ticket = $this->ticketRepository->create([
+                'user_id' => $user->id,
+                'subject' => 'Chuyển tiền giữa các tài khoản',
+                'description' => $description,
+                'status' => TicketStatus::PENDING->value,
+                'priority' => TicketPriority::HIGH->value, // Chuyển tiền là priority cao
+                'assigned_to' => null,
+                'metadata' => $metadata,
+            ]);
+
+            // Tạo conversation đầu tiên
+            $this->ticketConversationRepository->create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'message' => $description,
+                'reply_side' => TicketReplySide::CUSTOMER->value,
+            ]);
+
+            // Gửi thông báo Telegram
+            $this->sendTicketCreatedNotification($ticket);
+
+            return ServiceReturn::success(data: $ticket->load(['user', 'conversations']));
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'TicketService@createTransferRequest error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
      * Lấy chi tiết ticket
      */
     public function getTicketDetail(string $ticketId): ServiceReturn
@@ -197,7 +266,7 @@ class TicketService
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
-            $ticket = $this->ticketRepository->find((int) $ticketId);
+            $ticket = $this->ticketRepository->find($ticketId);
             if (!$ticket) {
                 return ServiceReturn::error(message: __('ticket.not_found'));
             }
@@ -254,7 +323,7 @@ class TicketService
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
-            $ticket = $this->ticketRepository->find((int) $ticketId);
+            $ticket = $this->ticketRepository->find($ticketId);
             if (!$ticket) {
                 return ServiceReturn::error(message: __('ticket.not_found'));
             }
@@ -315,7 +384,7 @@ class TicketService
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
-            $ticket = $this->ticketRepository->find((int) $ticketId);
+            $ticket = $this->ticketRepository->find($ticketId);
             if (!$ticket) {
                 return ServiceReturn::error(message: __('ticket.not_found'));
             }

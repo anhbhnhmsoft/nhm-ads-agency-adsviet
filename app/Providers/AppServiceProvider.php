@@ -44,6 +44,7 @@ use App\Service\NotificationService;
 use App\Service\TicketService;
 use App\Service\WalletNotificationService;
 use App\Service\UserAlertService;
+use App\Service\BusinessManagerService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -124,6 +125,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TicketService::class);
         $this->app->bind(WalletNotificationService::class);
         $this->app->bind(UserAlertService::class);
+        $this->app->bind(BusinessManagerService::class);
     }
 
      /**

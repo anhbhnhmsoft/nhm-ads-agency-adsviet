@@ -94,6 +94,7 @@
         "config": "Cấu hình",
         "platform_settings": "Cấu hình nền tảng",
         "service_packages": "Gói dịch vụ",
+        "business_managers": "Quản lý BM/MCC",
         "service_packages_create": "Tạo gói dịch vụ",
         "service_user": "Dịch vụ người dùng",
         "service_user_list": "Danh sách dịch vụ",
@@ -109,7 +110,8 @@
       "spend_report": "Báo cáo chi tiêu",
       "financial_management": "Quản lý tài chính",
       "support": "Hỗ trợ",
-      "support_customer": "Hỗ trợ khách hàng"
+      "support_customer": "Hỗ trợ khách hàng",
+      "transfer_money": "Chuyển tiền"
     },
     "profile": {
         "title": "Thông tin cá nhân",
@@ -624,6 +626,32 @@
             "customer": "Khách hàng",
             "staff": "Nhân viên",
             "system": "Hệ thống"
+        },
+        "transfer": {
+            "title": "Chuyển tiền giữa các tài khoản",
+            "create_request": "Tạo yêu cầu",
+            "in_progress": "Đang thực hiện",
+            "platform": "Kênh quảng cáo",
+            "select_platform": "Chọn kênh quảng cáo",
+            "from_account": "Từ tài khoản",
+            "to_account": "Đến tài khoản",
+            "amount": "Số tiền",
+            "notes": "Ghi chú",
+            "notes_placeholder": "Nhập ghi chú (nếu có)",
+            "select_account": "Chọn tài khoản",
+            "send_request": "Gửi yêu cầu",
+            "create_success": "Đã tạo yêu cầu chuyển tiền thành công",
+            "no_requests": "Chưa có yêu cầu nào",
+            "no_accounts": "Không có tài khoản nào cho kênh quảng cáo này",
+            "warning": "Các TKQC chuyển đi cần được tắt camp tối thiểu 5 tiếng",
+            "platform_required": "Vui lòng chọn kênh quảng cáo",
+            "platform_invalid": "Kênh quảng cáo không hợp lệ",
+            "from_account_required": "Vui lòng chọn tài khoản chuyển đi",
+            "to_account_required": "Vui lòng chọn tài khoản nhận",
+            "amount_required": "Vui lòng nhập số tiền",
+            "amount_numeric": "Số tiền phải là số",
+            "amount_min": "Số tiền phải lớn hơn 0",
+            "notes_max": "Ghi chú không được vượt quá 1000 ký tự"
         }
     },
     "config": {
@@ -633,6 +661,27 @@
         "trc20_wallet_address": "Địa chỉ ví TRC20",
         "bep20_placeholder": "Nhập địa chỉ ví Binance Smart Chain (BEP20)",
         "trc20_placeholder": "Nhập địa chỉ ví Tron (TRC20)"
+    },
+    "business_manager": {
+        "title": "Quản lý Business Manager / MCC",
+        "table_title": "Danh sách Business Manager / MCC",
+        "table": {
+            "account_name": "Tên tài khoản",
+            "account_id": "ID tk",
+            "account_info": "Thông tin tài khoản",
+            "owner": "Người sở hữu tài khoản",
+            "spend": "Chi tiêu",
+            "balance": "Số dư"
+        },
+        "detail": {
+            "title": "Chi tiết BM/BCC",
+            "description": "Danh sách tài khoản quảng cáo",
+            "acc_name": "Acc name",
+            "limit": "Limit",
+            "spend": "Spend",
+            "total_campaign": "Total campaign",
+            "no_accounts": "Chưa có tài khoản nào"
+        }
     },
     "spend_report": {
         "title": "Báo cáo chi tiêu",
