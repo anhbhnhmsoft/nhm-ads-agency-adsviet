@@ -12,6 +12,11 @@ return [
         'failed_to_fetch_campaign_detail' => 'Không thể lấy chi tiết chiến dịch Google Ads.',
         'oauth_token_expired' => 'Token xác thực Google Ads đã hết hạn hoặc bị thu hồi. Vui lòng liên hệ quản trị viên để cập nhật lại thông tin đăng nhập.',
         'date_preset_invalid' => 'Khoảng thời gian không hợp lệ.',
+        'invalid_campaign_status' => 'Trạng thái chiến dịch không hợp lệ.',
+        'invalid_budget_amount' => 'Ngân sách phải lớn hơn 0.',
+        'failed_to_update_campaign_status' => 'Không thể cập nhật trạng thái chiến dịch trên Google Ads.',
+        'failed_to_update_campaign_status_suspended' => 'Không thể cập nhật trạng thái chiến dịch vì tài khoản Google Ads đang bị tạm khóa (suspended). Vui lòng xử lý trạng thái tài khoản trực tiếp trên Google Ads trước.',
+        'failed_to_update_campaign_budget' => 'Không thể cập nhật ngân sách chiến dịch trên Google Ads.',
     ],
     'account_status' => [
         'enabled' => 'Hoạt động',

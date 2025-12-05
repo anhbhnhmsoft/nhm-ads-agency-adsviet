@@ -34,7 +34,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { wallet_campaign_budget_update, wallet_campaign_pause, wallet_campaign_end, wallet_me_json } from '@/routes';
+import { wallet_me_json } from '@/routes';
 
 type Props = {
     paginator: ServiceOrderPagination;
@@ -331,6 +331,25 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
         setInsightPreset(value);
         if (selectedCampaign) {
             loadCampaignInsights(selectedCampaign, value);
+        }
+    };
+
+    const refreshCurrentCampaign = async () => {
+        if (!selectedService || !selectedAccountId) return;
+        const account = accounts.find((acc) => acc.id === selectedAccountId);
+        if (account) {
+            await loadCampaigns(account);
+        }
+        if (selectedCampaign) {
+            await loadCampaignDetail(selectedCampaign);
+        }
+    };
+
+    const refreshCampaignListOnly = async () => {
+        if (!selectedService || !selectedAccountId) return;
+        const account = accounts.find((acc) => acc.id === selectedAccountId);
+        if (account) {
+            await loadCampaigns(account);
         }
     };
 
@@ -893,10 +912,36 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
 
                                         {/* Hành động chiến dịch */}
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                                            {/*
+                                             * Xác định trạng thái hiện tại của campaign để bật/tắt nút
+                                             */}
+                                            {(() => {
+                                                // Lấy status/effective_status từ chi tiết (ưu tiên) hoặc từ selectedCampaign
+                                                const rawStatus =
+                                                    campaignDetail?.effective_status ||
+                                                    campaignDetail?.status ||
+                                                    selectedCampaign?.effective_status ||
+                                                    selectedCampaign?.status ||
+                                                    null;
+                                                const normalizedStatus = rawStatus
+                                                    ? String(rawStatus).toUpperCase()
+                                                    : null;
+                                                const isDeleted =
+                                                    normalizedStatus === 'DELETED' ||
+                                                    normalizedStatus === 'ARCHIVED';
+                                                const isPaused = normalizedStatus === 'PAUSED';
+                                                const pauseDisabled =
+                                                    !selectedCampaign || pauseSubmitting || isDeleted || isPaused;
+                                                const endDisabled = !selectedCampaign || endSubmitting || isDeleted;
+                                                const budgetDisabled = !selectedCampaign || budgetSubmitting || isDeleted;
+
+                                                return (
+                                                    <>
                                             <Button
                                                 variant="outline"
                                                 className="h-11 rounded-full px-8"
                                                 onClick={() => setPauseDialogOpen(true)}
+                                                disabled={pauseDisabled}
                                             >
                                                 {t('service_management.campaign_pause')}
                                             </Button>
@@ -904,6 +949,7 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                                 variant="destructive"
                                                 className="h-11 rounded-full px-8"
                                                 onClick={() => setEndDialogOpen(true)}
+                                                disabled={endDisabled}
                                             >
                                                 {t('service_management.campaign_end')}
                                             </Button>
@@ -932,9 +978,13 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                                         }
                                                     }
                                                 }}
+                                                disabled={budgetDisabled}
                                             >
                                                 {t('service_management.campaign_update_budget')}
                                             </Button>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 ) : null}
@@ -945,12 +995,39 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                         {/* Dialog cập nhật ngân sách */}
                         <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
                             <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>{t('service_management.campaign_update_budget')}</DialogTitle>
-                                    <DialogDescription>
-                                        {t('service_management.campaign_update_budget_description')}
-                                    </DialogDescription>
-                                </DialogHeader>
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                    <span>{t('service_management.campaign_update_budget')}</span>
+                                    {selectedService?.package?.platform === _PlatformType.META && (
+                                        <span
+                                            className="text-xs text-muted-foreground"
+                                            title={t(
+                                                'service_management.campaign_update_budget_help_meta_tooltip',
+                                            )}
+                                        >
+                                            ⓘ
+                                        </span>
+                                    )}
+                                    {selectedService?.package?.platform === _PlatformType.GOOGLE && (
+                                        <span
+                                            className="text-xs text-muted-foreground"
+                                            title={t(
+                                                'service_management.campaign_update_budget_help_google_tooltip',
+                                            )}
+                                        >
+                                            ⓘ
+                                        </span>
+                                    )}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    {selectedService?.package?.platform === _PlatformType.META &&
+                                        t('service_management.campaign_update_budget_help_meta')}
+                                    {selectedService?.package?.platform === _PlatformType.GOOGLE &&
+                                        t('service_management.campaign_update_budget_help_google')}
+                                    {!selectedService?.package?.platform &&
+                                        t('service_management.campaign_update_budget_description')}
+                                </DialogDescription>
+                            </DialogHeader>
                                 <div className="space-y-4 pt-2">
                                     {isAgencyOrCustomer && (walletBalanceLoading || walletBalance !== null) && (
                                         <div className="text-sm text-muted-foreground">
@@ -978,18 +1055,27 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                             value={budgetAmount}
                                             onChange={(e) => setBudgetAmount(e.target.value)}
                                         />
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('service_management.campaign_update_budget_min_hint', {
+                                                amount: 100,
+                                            })}
+                                        </p>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="budget-wallet-password">
-                                            {t('service_management.campaign_update_budget_wallet_password_label')}
-                                        </Label>
-                                        <Input
-                                            id="budget-wallet-password"
-                                            type="password"
-                                            value={budgetWalletPassword}
-                                            onChange={(e) => setBudgetWalletPassword(e.target.value)}
-                                        />
-                                    </div>
+                                    {isAgencyOrCustomer && (
+                                        <div className="space-y-1">
+                                            <Label htmlFor="budget-wallet-password">
+                                                {t(
+                                                    'service_management.campaign_update_budget_wallet_password_label',
+                                                )}
+                                            </Label>
+                                            <Input
+                                                id="budget-wallet-password"
+                                                type="password"
+                                                value={budgetWalletPassword}
+                                                onChange={(e) => setBudgetWalletPassword(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                                 <DialogFooter className="pt-4">
                                     <Button
@@ -1005,39 +1091,72 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                     <Button
                                         onClick={async () => {
                                             if (!budgetAmount || Number(budgetAmount) <= 0) {
-                                                toast.error(t('common_validation.amount_required') || 'Amount is invalid');
+                                                toast.error(
+                                                    t('common_validation.amount_required') || 'Amount is invalid',
+                                                );
+                                                return;
+                                            }
+
+                                            const amountNumber = Number(budgetAmount);
+                                            if (amountNumber < 100) {
+                                                toast.error(
+                                                    t('service_management.campaign_update_budget_min_error', {
+                                                        amount: 100,
+                                                    }),
+                                                );
+                                                return;
+                                            }
+
+                                            // Với Agency/Customer thì bắt buộc nhập mật khẩu ví
+                                            if (isAgencyOrCustomer && !budgetWalletPassword) {
+                                                toast.error(
+                                                    t(
+                                                        'service_management.campaign_update_budget_wallet_password_required',
+                                                    ),
+                                                );
                                                 return;
                                             }
 
                                             try {
                                                 setBudgetSubmitting(true);
                                                 const platformType = selectedService?.package?.platform ?? null;
-                                                const campaignName =
-                                                    campaignDetail?.name ||
-                                                    selectedCampaign?.name ||
-                                                    selectedCampaign?.campaign_id ||
-                                                    '';
-
-                                                let accountName: string | null = null;
-                                                if (selectedAccountId) {
-                                                    const account = accounts.find((acc) => acc.id === selectedAccountId);
-                                                    accountName =
-                                                        (account as any)?.account_name ||
-                                                        (account as any)?.account_id ||
-                                                        null;
+                                                if (!selectedService || !selectedCampaign || !platformType) {
+                                                    toast.error(t('service_management.campaign_not_selected'));
+                                                    return;
                                                 }
 
-                                                await axios.post(wallet_campaign_budget_update().url, {
-                                                    amount: Number(budgetAmount),
-                                                    wallet_password: budgetWalletPassword || undefined,
-                                                    platform_type: platformType,
-                                                    campaign_name: campaignName,
-                                                    account_name: accountName,
-                                                });
+                                                const amountNumber = Number(budgetAmount);
+
+                                                if (platformType === _PlatformType.META) {
+                                                    await axios.post(
+                                                        `/meta/${selectedService.id}/${selectedCampaign.id}/spend-cap`,
+                                                        {
+                                                            amount: amountNumber,
+                                                        },
+                                                    );
+                                                } else if (platformType === _PlatformType.GOOGLE) {
+                                                    await axios.post(
+                                                        `/google-ads/${selectedService.id}/${selectedCampaign.id}/budget`,
+                                                        {
+                                                            amount: amountNumber,
+                                                        },
+                                                    );
+                                                } else {
+                                                    toast.error(t('service_management.unsupported_platform'));
+                                                    return;
+                                                }
 
                                                 toast.success(
-                                                    t('service_management.campaign_update_budget_success')
+                                                    t('service_management.campaign_update_budget_success', {
+                                                        amount: amountNumber.toLocaleString(undefined, {
+                                                            minimumFractionDigits: 0,
+                                                            maximumFractionDigits: 2,
+                                                        }),
+                                                    }),
                                                 );
+
+                                                // Reload lại dữ liệu để UI cập nhật ngay
+                                                await refreshCurrentCampaign();
                                                 setBudgetDialogOpen(false);
                                                 setBudgetAmount('');
                                                 setBudgetWalletPassword('');
@@ -1092,28 +1211,29 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                             try {
                                                 setPauseSubmitting(true);
                                                 const platformType = selectedService?.package?.platform ?? null;
-                                                const campaignName =
-                                                    campaignDetail?.name ||
-                                                    selectedCampaign?.name ||
-                                                    selectedCampaign?.campaign_id ||
-                                                    '';
-
-                                                let accountName: string | null = null;
-                                                if (selectedAccountId) {
-                                                    const account = accounts.find((acc) => acc.id === selectedAccountId);
-                                                    accountName =
-                                                        (account as any)?.account_name ||
-                                                        (account as any)?.account_id ||
-                                                        null;
+                                                if (!selectedService || !selectedCampaign || !platformType) {
+                                                    toast.error(t('service_management.campaign_not_selected'));
+                                                    return;
                                                 }
 
-                                                await axios.post(wallet_campaign_pause().url, {
-                                                    platform_type: platformType,
-                                                    campaign_name: campaignName,
-                                                    account_name: accountName,
-                                                });
+                                                if (platformType === _PlatformType.META) {
+                                                    await axios.post(
+                                                        `/meta/${selectedService.id}/${selectedCampaign.id}/status`,
+                                                        { status: 'PAUSED' },
+                                                    );
+                                                } else if (platformType === _PlatformType.GOOGLE) {
+                                                    await axios.post(
+                                                        `/google-ads/${selectedService.id}/${selectedCampaign.id}/status`,
+                                                        { status: 'PAUSED' },
+                                                    );
+                                                } else {
+                                                    toast.error(t('service_management.unsupported_platform'));
+                                                    return;
+                                                }
 
                                                 toast.success(t('service_management.campaign_pause_success'));
+                                                // Reload lại dữ liệu để UI cập nhật ngay
+                                                await refreshCurrentCampaign();
                                                 setPauseDialogOpen(false);
                                             } catch (error: any) {
                                                 const message =
@@ -1167,31 +1287,36 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                             try {
                                                 setEndSubmitting(true);
                                                 const platformType = selectedService?.package?.platform ?? null;
-                                                const campaignName =
-                                                    campaignDetail?.name ||
-                                                    selectedCampaign?.name ||
-                                                    selectedCampaign?.campaign_id ||
-                                                    '';
-
-                                                let accountName: string | null = null;
-                                                if (selectedAccountId) {
-                                                    const account = accounts.find((acc) => acc.id === selectedAccountId);
-                                                    accountName =
-                                                        (account as any)?.account_name ||
-                                                        (account as any)?.account_id ||
-                                                        null;
+                                                if (!selectedService || !selectedCampaign || !platformType) {
+                                                    toast.error(t('service_management.campaign_not_selected'));
+                                                    return;
                                                 }
 
-                                                await axios.post(wallet_campaign_end().url, {
-                                                    platform_type: platformType,
-                                                    campaign_name: campaignName,
-                                                    account_name: accountName,
-                                                });
+                                                if (platformType === _PlatformType.META) {
+                                                    await axios.post(
+                                                        `/meta/${selectedService.id}/${selectedCampaign.id}/status`,
+                                                        { status: 'DELETED' },
+                                                    );
+                                                } else if (platformType === _PlatformType.GOOGLE) {
+                                                    await axios.post(
+                                                        `/google-ads/${selectedService.id}/${selectedCampaign.id}/status`,
+                                                        { status: 'REMOVED' },
+                                                    );
+                                                } else {
+                                                    toast.error(t('service_management.unsupported_platform'));
+                                                    return;
+                                                }
 
                                                 toast.success(t('service_management.campaign_end_success'));
                                                 setEndDialogOpen(false);
+
+                                                // Sau khi kết thúc, reload danh sách campaign và clear detail
+                                                await refreshCampaignListOnly();
+                                                setSelectedCampaign(null);
+                                                setCampaignDetail(null);
+                                                setCampaignInsights([]);
                                             } catch (error: any) {
-                                                const message =
+                                            const message =
                                                     error?.response?.data?.message ||
                                                     t('service_management.campaign_end_error');
                                                 toast.error(message);

@@ -3,7 +3,6 @@ import { type IBreadcrumbItem as BreadcrumbItemType } from '@/lib/types/type';
 import {
     Breadcrumb,
     BreadcrumbItem,
-    BreadcrumbLink,
     BreadcrumbList,
     BreadcrumbPage,
     BreadcrumbSeparator
@@ -13,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTransition } from 'react';
+import { SupportRequestButton } from './support-request-button';
 
 export function AppSidebarHeader({
     breadcrumbs = [],
@@ -43,6 +43,7 @@ export function AppSidebarHeader({
         });
     };
 
+
     return (
         <header className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border/50 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4">
             <div className="flex items-center gap-2">
@@ -68,6 +69,7 @@ export function AppSidebarHeader({
                 </Breadcrumb>
             </div>
             <div className="ml-auto flex items-center gap-2">
+                <SupportRequestButton />
                 <Select value={locale ?? 'vi'} onValueChange={handleLocaleChange} disabled={isPending}>
                     <SelectTrigger className="w-[140px]">
                         <SelectValue placeholder="Language" />

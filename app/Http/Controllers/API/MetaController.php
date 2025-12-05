@@ -135,4 +135,48 @@ class MetaController extends Controller
         $data = $result->getData();
         return RestResponse::success(data: $data);
     }
+
+    /**
+     * Tạm dừng / bật lại chiến dịch Meta trực tiếp qua API (không tạo transaction ví).
+     */
+    public function updateCampaignStatus(string $serviceUserId, string $campaignId, Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'string'],
+        ]);
+
+        $result = $this->metaService->updateCampaignStatus(
+            serviceUserId: $serviceUserId,
+            campaignId: $campaignId,
+            status: $validated['status'],
+        );
+
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage());
+        }
+
+        return RestResponse::success(data: $result->getData());
+    }
+
+    /**
+     * Cập nhật spend_cap (giới hạn chi tiêu) cho chiến dịch Meta.
+     */
+    public function updateCampaignSpendCap(string $serviceUserId, string $campaignId, Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $result = $this->metaService->updateCampaignSpendCap(
+            serviceUserId: $serviceUserId,
+            campaignId: $campaignId,
+            amount: (float) $validated['amount'],
+        );
+
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage());
+        }
+
+        return RestResponse::success(data: $result->getData());
+    }
 }

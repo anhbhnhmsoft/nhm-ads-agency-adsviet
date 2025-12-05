@@ -26,6 +26,15 @@ use Google\Ads\GoogleAds\Lib\V22\GoogleAdsClientBuilder;
 use Google\Ads\GoogleAds\V22\Services\Client\GoogleAdsServiceClient;
 use Google\Ads\GoogleAds\V22\Services\GoogleAdsRow;
 use Google\Ads\GoogleAds\V22\Services\SearchGoogleAdsStreamRequest;
+use Google\Ads\GoogleAds\V22\Services\SearchGoogleAdsRequest;
+use Google\Ads\GoogleAds\V22\Resources\Campaign;
+use Google\Ads\GoogleAds\V22\Enums\CampaignStatusEnum\CampaignStatus;
+use Google\Ads\GoogleAds\V22\Services\CampaignOperation;
+use Google\Ads\GoogleAds\V22\Services\MutateCampaignsRequest;
+use Google\Ads\GoogleAds\Util\V22\ResourceNames;
+use Google\Ads\GoogleAds\V22\Resources\CampaignBudget;
+use Google\Ads\GoogleAds\V22\Services\CampaignBudgetOperation;
+use Google\Ads\GoogleAds\V22\Services\MutateCampaignBudgetsRequest;
 use Google\ApiCore\ApiException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -2000,6 +2009,243 @@ GAQL;
                 exception: $exception
             );
             return ServiceReturn::error(message: __('google_ads.error.failed_to_fetch_campaign_detail'));
+        }
+    }
+
+    /**
+     * Cập nhật trạng thái chiến dịch Google Ads (PAUSED / ENABLED / REMOVED).
+     */
+    public function updateCampaignStatus(string $serviceUserId, string $campaignId, string $status): ServiceReturn
+    {
+        $serviceUserResult = $this->validateServiceUser($serviceUserId);
+        if ($serviceUserResult->isError()) {
+            return $serviceUserResult;
+        }
+        /** @var ServiceUser $serviceUser */
+        $serviceUser = $serviceUserResult->getData();
+
+        try {
+            $campaign = $this->googleAdsCampaignRepository->query()
+                ->with('googleAccount')
+                ->where('service_user_id', $serviceUser->id)
+                ->where('id', $campaignId)
+                ->first();
+            if (!$campaign) {
+                return ServiceReturn::error(message: __('google_ads.error.campaign_not_found'));
+            }
+            $googleAccount = $campaign->googleAccount;
+            if (!$googleAccount || empty($googleAccount->account_id)) {
+                return ServiceReturn::error(message: __('google_ads.error.account_not_found'));
+            }
+
+            $statusMap = [
+                'ENABLED' => CampaignStatus::ENABLED,
+                'PAUSED' => CampaignStatus::PAUSED,
+                'REMOVED' => CampaignStatus::REMOVED,
+            ];
+            $normalizedStatus = strtoupper($status);
+            if (!isset($statusMap[$normalizedStatus])) {
+                return ServiceReturn::error(message: __('google_ads.error.invalid_campaign_status'));
+            }
+
+            $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
+            if (empty($loginCustomerId)) {
+                return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
+
+            $client = $this->buildGoogleAdsClient($loginCustomerId);
+            $campaignService = $client->getCampaignServiceClient();
+
+            $resourceName = ResourceNames::forCampaign((string) $googleAccount->account_id, (string) $campaign->campaign_id);
+
+            $campaignResource = new Campaign();
+            $campaignResource->setResourceName($resourceName);
+            $campaignResource->setStatus($statusMap[$normalizedStatus]);
+
+            $operation = new CampaignOperation();
+            $operation->setUpdate($campaignResource);
+            // Chỉ update trường status
+            $operation->setUpdateMask((new \Google\Protobuf\FieldMask(['paths' => ['status']])));
+
+            $request = MutateCampaignsRequest::build((string) $googleAccount->account_id, [$operation]);
+            $response = $campaignService->mutateCampaigns($request);
+
+            // Cập nhật lại local status để UI sync nhanh hơn
+            $campaign->status = $normalizedStatus;
+            $campaign->effective_status = $normalizedStatus;
+            $campaign->save();
+
+            Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_CAMPAIGN, (string) $campaignId);
+
+            return ServiceReturn::success(data: [
+                'resource_name' => $response->getResults()[0]->getResourceName(),
+                'status' => $normalizedStatus,
+            ]);
+        } catch (GoogleAdsException|ApiException $e) {
+            Logging::error(
+                message: 'GoogleAdsService@updateCampaignStatus error: '.$e->getMessage(),
+                context: [
+                    'service_user_id' => $serviceUserId,
+                    'campaign_id' => $campaignId,
+                    'google_account_id' => $googleAccount->account_id ?? null,
+                    'login_customer_id' => $loginCustomerId ?? null,
+                ],
+                exception: $e,
+            );
+
+            $rawMessage = $e->getMessage() ?? '';
+            if (str_contains($rawMessage, 'ACTION_NOT_PERMITTED_FOR_SUSPENDED_ACCOUNT')) {
+                // Tài khoản Google Ads đang bị suspend, báo message thân thiện hơn
+                return ServiceReturn::error(
+                    message: __('google_ads.error.failed_to_update_campaign_status_suspended')
+                );
+            }
+
+            return ServiceReturn::error(
+                message: __('google_ads.error.failed_to_update_campaign_status')
+            );
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'GoogleAdsService@updateCampaignStatus unexpected error: '.$e->getMessage(),
+                context: [
+                    'service_user_id' => $serviceUserId,
+                    'campaign_id' => $campaignId,
+                ],
+                exception: $e,
+            );
+            $message = __('common_error.server_error');
+            if (config('app.debug')) {
+                $message .= ' (Google: '.$e->getMessage().')';
+            }
+            return ServiceReturn::error(message: $message);
+        }
+    }
+
+    /**
+     * Cập nhật ngân sách (amount_micros trong CampaignBudget) cho chiến dịch Google Ads.
+     *
+     * Lưu ý:
+     * - Trong Google Ads, ngân sách hầu hết được quản lý qua CampaignBudget (có thể được shared cho nhiều campaign).
+     * - Hàm này sẽ:
+     *   + Lấy campaign.campaign_budget của campaign hiện tại;
+     *   + Gọi CampaignBudgetService::mutateCampaignBudgets để cập nhật amount_micros.
+     * - Nếu nhiều campaign dùng chung một CampaignBudget, việc cập nhật sẽ ảnh hưởng tới tất cả các campaign đó.
+     */
+    public function updateCampaignDailyBudget(string $serviceUserId, string $campaignId, float $amount): ServiceReturn
+    {
+        $serviceUserResult = $this->validateServiceUser($serviceUserId);
+        if ($serviceUserResult->isError()) {
+            return $serviceUserResult;
+        }
+        /** @var ServiceUser $serviceUser */
+        $serviceUser = $serviceUserResult->getData();
+
+        if ($amount <= 0) {
+            return ServiceReturn::error(message: __('google_ads.error.invalid_budget_amount'));
+        }
+
+        try {
+            $campaign = $this->googleAdsCampaignRepository->query()
+                ->with('googleAccount')
+                ->where('service_user_id', $serviceUser->id)
+                ->where('id', $campaignId)
+                ->first();
+            if (!$campaign) {
+                return ServiceReturn::error(message: __('google_ads.error.campaign_not_found'));
+            }
+            $googleAccount = $campaign->googleAccount;
+            if (!$googleAccount || empty($googleAccount->account_id)) {
+                return ServiceReturn::error(message: __('google_ads.error.account_not_found'));
+            }
+
+            $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
+            if (empty($loginCustomerId)) {
+                return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
+
+            $client = $this->buildGoogleAdsClient($loginCustomerId);
+
+            $customerId = (string) $googleAccount->account_id;
+            $googleAdsService = $client->getGoogleAdsServiceClient();
+
+            // 1. Lấy campaign.campaign_budget để biết resource name của CampaignBudget
+            $query = sprintf(
+                'SELECT campaign.id, campaign.campaign_budget FROM campaign WHERE campaign.id = %s LIMIT 1',
+                $campaign->campaign_id
+            );
+
+            try {
+                // Dùng SearchGoogleAdsRequest để tránh cảnh báo kiểu dữ liệu
+                $searchRequest = new \Google\Ads\GoogleAds\V22\Services\SearchGoogleAdsRequest([
+                    'customer_id' => $customerId,
+                    'query' => $query,
+                ]);
+                $response = $googleAdsService->search($searchRequest);
+            } catch (GoogleAdsException|ApiException $e) {
+                Logging::error(
+                    message: 'GoogleAdsService@updateCampaignDailyBudget: failed to fetch campaign_budget',
+                    context: [
+                        'service_user_id' => $serviceUserId,
+                        'campaign_db_id' => $campaignId,
+                        'campaign_id' => $campaign->campaign_id,
+                        'google_account_id' => $customerId,
+                        'error' => $e->getMessage(),
+                    ],
+                    exception: $e,
+                );
+
+                return ServiceReturn::error(
+                    message: __('google_ads.error.failed_to_update_campaign_budget')
+                );
+            }
+
+            $iterator = $response->getIterator();
+            if (!$iterator->valid()) {
+                return ServiceReturn::error(
+                    message: __('google_ads.error.failed_to_update_campaign_budget')
+                );
+            }
+
+            /** @var \Google\Ads\GoogleAds\V22\Services\GoogleAdsRow $row */
+            $row = $iterator->current();
+            $gaCampaign = $row->getCampaign();
+            if (!$gaCampaign || !$gaCampaign->getCampaignBudget()) {
+                return ServiceReturn::error(
+                    message: __('google_ads.error.failed_to_update_campaign_budget')
+                );
+            }
+
+            $campaignBudgetResourceName = $gaCampaign->getCampaignBudget();
+
+            // 2. Gọi CampaignBudgetService để cập nhật amount_micros
+            $budgetService = $client->getCampaignBudgetServiceClient();
+
+            $budget = new CampaignBudget();
+            $budget->setResourceName($campaignBudgetResourceName);
+            $budget->setAmountMicros((int) round($amount * 1_000_000));
+
+            $operation = new CampaignBudgetOperation();
+            $operation->setUpdate($budget);
+            $operation->setUpdateMask(new \Google\Protobuf\FieldMask([
+                'paths' => ['amount_micros'],
+            ]));
+
+            $request = MutateCampaignBudgetsRequest::build($customerId, [$operation]);
+            $response = $budgetService->mutateCampaignBudgets($request);
+
+            Caching::clearCache(CacheKey::CACHE_DETAIL_GOOGLE_CAMPAIGN, (string) $campaignId);
+
+            return ServiceReturn::success(data: [
+                'resource_name' => $response->getResults()[0]->getResourceName() ?? $campaignBudgetResourceName,
+                'daily_budget' => $amount,
+            ]);
+
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'GoogleAdsService@updateCampaignDailyBudget unexpected error: '.$e->getMessage(),
+                exception: $e,
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 

@@ -265,6 +265,98 @@ class MetaService
     }
 
     /**
+     * Cập nhật trạng thái chiến dịch Meta theo service user + campaign DB id.
+     * @param string $serviceUserId
+     * @param string $campaignId
+     * @param string $status ACTIVE|PAUSED|DELETED
+     * @return ServiceReturn
+     */
+    public function updateCampaignStatus(string $serviceUserId, string $campaignId, string $status): ServiceReturn
+    {
+        // validate service user
+        $serviceUserResult = $this->validateServiceUser($serviceUserId);
+        if ($serviceUserResult->isError()) {
+            return $serviceUserResult;
+        }
+        /** @var ServiceUser $serviceUser */
+        $serviceUser = $serviceUserResult->getData();
+
+        try {
+            $campaign = $this->metaAdsCampaignRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->where('id', $campaignId)
+                ->first();
+
+            if (!$campaign) {
+                return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
+            }
+
+            $apiResult = $this->metaBusinessService->updateCampaignStatus($campaign->campaign_id, $status);
+            if ($apiResult->isError()) {
+                return $apiResult;
+            }
+
+            // Cập nhật trạng thái local (để UI đỡ lệch quá nhiều)
+            $campaign->status = strtoupper($status);
+            $campaign->effective_status = strtoupper($status);
+            $campaign->save();
+
+            Caching::clearCache(CacheKey::CACHE_DETAIL_META_CAMPAIGN, (string) $campaignId);
+
+            return ServiceReturn::success(data: $apiResult->getData());
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'MetaService@updateCampaignStatus error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Cập nhật giới hạn chi tiêu (spend_cap) chiến dịch Meta.
+     * @param string $serviceUserId
+     * @param string $campaignId
+     * @param float $amount
+     * @return ServiceReturn
+     */
+    public function updateCampaignSpendCap(string $serviceUserId, string $campaignId, float $amount): ServiceReturn
+    {
+        $serviceUserResult = $this->validateServiceUser($serviceUserId);
+        if ($serviceUserResult->isError()) {
+            return $serviceUserResult;
+        }
+        /** @var ServiceUser $serviceUser */
+        $serviceUser = $serviceUserResult->getData();
+
+        try {
+            $campaign = $this->metaAdsCampaignRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->where('id', $campaignId)
+                ->first();
+
+            if (!$campaign) {
+                return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
+            }
+
+            $apiResult = $this->metaBusinessService->updateCampaignSpendCap($campaign->campaign_id, $amount);
+            if ($apiResult->isError()) {
+                return $apiResult;
+            }
+
+            Caching::clearCache(CacheKey::CACHE_DETAIL_META_CAMPAIGN, (string) $campaignId);
+
+            return ServiceReturn::success(data: $apiResult->getData());
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'MetaService@updateCampaignSpendCap error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
      * Lấy thông tin chi tiết chiến dịch quảng cáo Meta
      * @param string $serviceUserId
      * @param string $campaignId
