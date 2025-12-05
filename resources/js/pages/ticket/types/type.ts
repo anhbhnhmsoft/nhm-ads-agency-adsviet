@@ -1,5 +1,7 @@
 import { IUser } from '@/lib/types/type';
 import { _TicketStatus, _TicketPriority, _TicketReplySide } from './constants';
+import type { TransferAccount } from './transfer/types/type';
+import type { TransferAccount } from './transfer/types/type';
 
 export type TicketStatus = _TicketStatus;
 export type TicketPriority = _TicketPriority;
@@ -13,6 +15,7 @@ export type Ticket = {
     status: TicketStatus;
     priority: TicketPriority;
     assigned_to: string | null;
+    metadata?: Record<string, any> | null;
     created_at: string;
     updated_at: string;
     user?: IUser;
@@ -47,5 +50,19 @@ export type TicketPageProps = {
 
 export type TicketDetailPageProps = {
     ticket: Ticket | null;
+};
+
+export type TransferPageProps = {
+    tickets: {
+        data: Ticket[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+        from: number | null;
+        to: number | null;
+    } | null;
+    accounts: TransferAccount[];
+    error: string | null;
 };
 
