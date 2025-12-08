@@ -27,6 +27,10 @@ class TicketRepository extends BaseRepository
         if (isset($params['priority'])) {
             $query->where('priority', $params['priority']);
         }
+        if (isset($params['type'])) {
+            // Filter theo metadata type
+            $query->whereJsonContains('metadata->type', $params['type']);
+        }
         return $query;
     }
 

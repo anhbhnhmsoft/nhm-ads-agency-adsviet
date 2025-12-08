@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { IBreadcrumbItem } from '@/lib/types/type';
 import { ticket_index, ticket_update_status } from '@/routes';
-import { Head, Link, useForm, usePage, usePoll } from '@inertiajs/react';
+import { Head, Link, usePage, usePoll, router } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TicketDetailPageProps, TicketStatus, TicketPriority } from './types/type';
@@ -15,7 +15,7 @@ import { TicketMessages } from './components/TicketMessages';
 import { SendMessageForm } from './components/SendMessageForm';
 import useCheckRole from '@/hooks/use-check-role';
 import { _UserRole } from '@/lib/types/constants';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 
 export default function TicketShow({ ticket }: TicketDetailPageProps) {
     const { t, i18n } = useTranslation();
@@ -36,9 +36,10 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
         },
     ];
 
-    const statusForm = useForm({
-        status: ticket?.status ?? _TicketStatus.PENDING,
-    });
+    const [currentStatus, setCurrentStatus] = useState<TicketStatus>(
+        ticket?.status ?? _TicketStatus.PENDING
+    );
+    const [statusProcessing, setStatusProcessing] = useState(false);
 
     if (!ticket) {
         return (
@@ -81,10 +82,21 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
     };
 
     const handleStatusChange = (newStatus: string) => {
-        statusForm.setData('status', parseInt(newStatus) as TicketStatus);
-        statusForm.put(ticket_update_status({ id: ticket.id }).url, {
-            preserveScroll: true,
-        });
+        const parsedStatus = parseInt(newStatus) as TicketStatus;
+        setStatusProcessing(true);
+        router.put(
+            ticket_update_status({ id: ticket.id }).url,
+            { status: parsedStatus },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setCurrentStatus(parsedStatus);
+                },
+                onFinish: () => {
+                    setStatusProcessing(false);
+                },
+            }
+        );
     };
 
     // Polling để tự động reload messages khi có tin nhắn mới
@@ -129,7 +141,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                     <div className="flex-1">
                         <h1 className="text-2xl font-bold">{ticket.subject}</h1>
                         <div className="mt-2 flex items-center gap-2">
-                            {getStatusBadge(ticket.status)}
+                            {getStatusBadge(currentStatus)}
                             {getPriorityBadge(ticket.priority)}
                         </div>
                     </div>
@@ -137,9 +149,9 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                         <div className="flex items-center gap-2">
                             <Label>{t('ticket.status_label', { defaultValue: 'Trạng thái' })}</Label>
                             <Select
-                                value={ticket.status.toString()}
+                                value={currentStatus.toString()}
                                 onValueChange={handleStatusChange}
-                                disabled={statusForm.processing}
+                                disabled={statusProcessing}
                             >
                                 <SelectTrigger className="w-[180px]">
                                     <SelectValue />

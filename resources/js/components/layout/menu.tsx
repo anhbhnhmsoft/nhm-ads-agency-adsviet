@@ -15,6 +15,8 @@ import {
     service_management_index,
     spend_report_index,
     ticket_index,
+    ticket_transfer,
+    business_managers_index,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -137,10 +139,9 @@ const useMenu = () => {
                 title: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE])
                     ? t('menu.support_customer')
                     : t('menu.support'),
-                url: ticket_index().url,
                 icon: <MessageSquare />,
                 is_menu: true,
-                active: isActive(ticket_index()),
+                active: isActive(ticket_index()) || isActive(ticket_transfer()),
                 can_show: checkRole([
                     _UserRole.ADMIN,
                     _UserRole.MANAGER,
@@ -148,6 +149,29 @@ const useMenu = () => {
                     _UserRole.CUSTOMER,
                     _UserRole.AGENCY,
                 ]),
+                items: [
+                    {
+                        title: t('ticket.list', { defaultValue: 'Quản lý hỗ trợ' }),
+                        url: ticket_index().url,
+                        active: isActive(ticket_index()),
+                        can_show: checkRole([
+                            _UserRole.ADMIN,
+                            _UserRole.MANAGER,
+                            _UserRole.EMPLOYEE,
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
+                        title: t('ticket.transfer.title', { defaultValue: 'Chuyển tiền' }),
+                        url: ticket_transfer().url,
+                        active: isActive(ticket_transfer()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                ],
             },
             {
                 title: t('menu.user'),
@@ -202,6 +226,14 @@ const useMenu = () => {
                     isActive(service_packages_index()) ||
                     isActive(service_packages_create_view()),
                 can_show: checkRole([_UserRole.ADMIN]),
+            },
+            {
+                title: t('menu.business_managers', { defaultValue: 'Quản lý BM/MCC' }),
+                url: business_managers_index().url,
+                icon: <Settings />,
+                is_menu: true,
+                active: isActive(business_managers_index()),
+                can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE]),
             },
             {
                 title: t('menu.crypto_wallet_config'),

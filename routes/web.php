@@ -18,6 +18,7 @@ use App\Http\Controllers\API\MetaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SpendReportController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\BusinessManagerController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -145,8 +146,15 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/', [SpendReportController::class, 'index'])->name('spend_report_index');
     });
 
+    Route::prefix('/business-managers')->group(function () {
+        Route::get('/', [BusinessManagerController::class, 'index'])->name('business_managers_index');
+        Route::get('/{bmId}/accounts', [BusinessManagerController::class, 'getAccounts'])->name('business_managers_get_accounts');
+    });
+
     Route::prefix('/tickets')->group(function () {
         Route::get('/', [TicketController::class, 'index'])->name('ticket_index');
+        Route::get('/transfer', [TicketController::class, 'transfer'])->name('ticket_transfer');
+        Route::post('/transfer', [TicketController::class, 'storeTransfer'])->name('ticket_transfer_store');
         Route::get('/{id}', [TicketController::class, 'show'])->name('ticket_show');
         Route::post('/', [TicketController::class, 'store'])->name('ticket_store');
         Route::post('/{id}/message', [TicketController::class, 'addMessage'])->name('ticket_add_message');

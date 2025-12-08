@@ -63,5 +63,15 @@ return [
         'status_integer' => 'Trạng thái phải là số nguyên',
         'status_invalid' => 'Trạng thái không hợp lệ',
     ],
+
+    'transfer' => [
+        'from_account_required' => 'Vui lòng chọn tài khoản chuyển đi',
+        'to_account_required' => 'Vui lòng chọn tài khoản nhận',
+        'amount_required' => 'Vui lòng nhập số tiền',
+        'amount_numeric' => 'Số tiền phải là số',
+        'amount_min' => 'Số tiền phải lớn hơn 0',
+        'notes_max' => 'Ghi chú không được vượt quá :max ký tự',
+        'create_success' => 'Đã tạo yêu cầu chuyển tiền thành công',
+    ],
 ];
 
