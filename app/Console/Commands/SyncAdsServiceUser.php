@@ -32,14 +32,17 @@ class SyncAdsServiceUser extends Command
         $totalDispatched = 0;
 
         $this->serviceUserRepository->query()
-            ->with('package:id,platform')
+            ->with(['package'])
             ->where('status', ServiceUserStatus::ACTIVE->value)
             ->chunkById(100, function (Collection $serviceUsers) use (&$totalFound, &$totalDispatched) {
                 $totalFound += $serviceUsers->count();
-                
                 $serviceUsers->each(function (ServiceUser $serviceUser) use (&$totalDispatched) {
                     // đối với từng service user, kiểm tra nền tảng và đẩy job tương ứng
                     // nếu là nền tảng Meta, đẩy job đồng bộ Meta
+                    if (!$serviceUser->package) {
+                        $this->error("Lỗi: ServiceUser ID {$serviceUser->id} không có gói dịch vụ hoặc gói dịch vụ đã bị xóa.");
+                        return;
+                    }
                     if ($serviceUser->package->platform === PlatformType::META->value) {
                         SyncMetaJob::dispatch($serviceUser);
                         $totalDispatched++;
