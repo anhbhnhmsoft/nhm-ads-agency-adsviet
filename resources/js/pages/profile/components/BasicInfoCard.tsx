@@ -111,6 +111,18 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
                             )}
                         </div>
                     </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="referral_code">{t('profile.referral_code')}</Label>
+                            <Input
+                                id="referral_code"
+                                value={user.referral_code ?? ''}
+                                readOnly
+                                disabled
+                                className="bg-muted"
+                            />
+                        </div>
+                    </div>
                     <div className="flex justify-end">
                         <Button type="submit" disabled={form.processing}>
                             {t('common.save_changes')}

@@ -16,9 +16,10 @@ declare module '@tanstack/react-table' {
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     paginator: LaravelPaginator<TData>;
+    onRowClick?: (row: TData) => void;
 }
 
-export function DataTable<TData, TValue>({ columns, paginator }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({ columns, paginator, onRowClick }: DataTableProps<TData, TValue>) {
     const table = useReactTable({
         data: paginator.data,
         columns,
@@ -52,7 +53,12 @@ export function DataTable<TData, TValue>({ columns, paginator }: DataTableProps<
                    <TableBody>
                        {table.getRowModel().rows?.length ? (
                            table.getRowModel().rows.map((row) => (
-                               <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                               <TableRow 
+                                   key={row.id} 
+                                   data-state={row.getIsSelected() && 'selected'}
+                                   className={onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''}
+                                   onClick={() => onRowClick?.(row.original)}
+                               >
                                    {row.getVisibleCells().map((cell) => (
                                        <TableCell 
                                            key={cell.id}

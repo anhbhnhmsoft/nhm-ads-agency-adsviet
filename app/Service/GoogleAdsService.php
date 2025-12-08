@@ -1882,14 +1882,8 @@ GAQL;
                 (string) $campaign->campaign_id,
                 'TODAY'
             );
-            $last7dMetrics = $this->fetchCampaignAggregateMetrics(
-                $googleAdsService,
-                (string) $googleAccount->account_id,
-                (string) $campaign->campaign_id,
-                'LAST_7_DAYS'
-            );
-            // Dùng khoảng 30 ngày gần nhất làm dữ liệu “tổng quan” thay cho ALL_TIME
-            $lifetimeMetrics = $this->fetchCampaignAggregateMetrics(
+            // Dùng khoảng 30 ngày gần nhất làm dữ liệu “tổng quan” (thay vì 7 ngày như trước khiến tổng = 0 nếu 7 ngày không chi tiêu)
+            $last30dMetrics = $this->fetchCampaignAggregateMetrics(
                 $googleAdsService,
                 (string) $googleAccount->account_id,
                 (string) $campaign->campaign_id,
@@ -1911,56 +1905,56 @@ GAQL;
                 'stop_time' => $campaign->stop_time?->toIso8601String(),
                 'last_synced_at' => $campaign->last_synced_at?->toIso8601String(),
                 'today_spend' => $todayMetrics['spend'] ?? 0.0,
-                'total_spend' => $last7dMetrics['spend'] ?? 0.0,
-                'cpc_avg' => $lifetimeMetrics['cpc'] ?? 0.0,
-                'cpm_avg' => $lifetimeMetrics['cpm'] ?? 0.0,
-                'roas_avg' => $lifetimeMetrics['roas'] ?? 0.0,
+                'total_spend' => $last30dMetrics['spend'] ?? 0.0,
+                'cpc_avg' => $last30dMetrics['cpc'] ?? 0.0,
+                'cpm_avg' => $last30dMetrics['cpm'] ?? 0.0,
+                'roas_avg' => $last30dMetrics['roas'] ?? 0.0,
                 'insight' => [
                     'spend' => [
                         'today' => $todayMetrics['spend'] ?? 0.0,
-                        'total' => $last7dMetrics['spend'] ?? 0.0,
+                        'total' => $last30dMetrics['spend'] ?? 0.0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $last7dMetrics['spend'] ?? 0.0,
+                            $last30dMetrics['spend'] ?? 0.0,
                             $todayMetrics['spend'] ?? 0.0
                         ),
                     ],
                     'impressions' => [
                         'today' => $todayMetrics['impressions'] ?? 0,
-                        'total' => $last7dMetrics['impressions'] ?? 0,
+                        'total' => $last30dMetrics['impressions'] ?? 0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $last7dMetrics['impressions'] ?? 0,
+                            $last30dMetrics['impressions'] ?? 0,
                             $todayMetrics['impressions'] ?? 0
                         ),
                     ],
                     'clicks' => [
                         'today' => $todayMetrics['clicks'] ?? 0,
-                        'total' => $last7dMetrics['clicks'] ?? 0,
+                        'total' => $last30dMetrics['clicks'] ?? 0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $last7dMetrics['clicks'] ?? 0,
+                            $last30dMetrics['clicks'] ?? 0,
                             $todayMetrics['clicks'] ?? 0
                         ),
                     ],
                     'cpc' => [
                         'today' => $todayMetrics['cpc'] ?? 0.0,
-                        'total' => $last7dMetrics['cpc'] ?? 0.0,
+                        'total' => $last30dMetrics['cpc'] ?? 0.0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $last7dMetrics['cpc'] ?? 0.0,
+                            $last30dMetrics['cpc'] ?? 0.0,
                             $todayMetrics['cpc'] ?? 0.0
                         ),
                     ],
                     'cpm' => [
                         'today' => $todayMetrics['cpm'] ?? 0.0,
-                        'total' => $last7dMetrics['cpm'] ?? 0.0,
+                        'total' => $last30dMetrics['cpm'] ?? 0.0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $last7dMetrics['cpm'] ?? 0.0,
+                            $last30dMetrics['cpm'] ?? 0.0,
                             $todayMetrics['cpm'] ?? 0.0
                         ),
                     ],
                     'conversions' => [
                         'today' => $todayMetrics['conversions'] ?? 0,
-                        'total' => $last7dMetrics['conversions'] ?? 0,
+                        'total' => $last30dMetrics['conversions'] ?? 0,
                         'percent_change' => Helper::calculatePercentageChange(
-                            $last7dMetrics['conversions'] ?? 0,
+                            $last30dMetrics['conversions'] ?? 0,
                             $todayMetrics['conversions'] ?? 0
                         ),
                     ],

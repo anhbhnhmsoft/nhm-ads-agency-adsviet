@@ -34,7 +34,7 @@ const Login = ({ bot_username }: Props) => {
                 <RoleSystemCard role={data.role} setRole={(role) => setData('role', role)} />
                 <InputError message={errors.role} />
 
-                <div className="grid gap-4">
+                <form onSubmit={handleSubmit} className="grid gap-4">
                     <div className="grid gap-2">
                         <Label htmlFor="username">{t('common.username')}</Label>
                         <Input
@@ -92,7 +92,7 @@ const Login = ({ bot_username }: Props) => {
                     </div>
 
                     <Button
-                        onClick={handleSubmit}
+                        type="submit"
                         className="mt-4 w-full"
                         tabIndex={4}
                         disabled={processing}
@@ -101,7 +101,7 @@ const Login = ({ bot_username }: Props) => {
                         {processing && <Spinner />}
                         {t('auth.login.login')}
                     </Button>
-                </div>
+                </form>
 
                 <div className="text-center text-sm text-muted-foreground">
                     {t('auth.login.signup_prompt')}

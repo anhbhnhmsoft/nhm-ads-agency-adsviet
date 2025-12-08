@@ -63,5 +63,54 @@ return [
         'status_integer' => 'Status must be an integer.',
         'status_invalid' => 'Status is invalid.',
     ],
+
+    'transfer' => [
+        'platform_required' => 'Please select advertising channel',
+        'platform_invalid' => 'Invalid advertising channel',
+        'from_account_required' => 'Please select source account',
+        'to_account_required' => 'Please select destination account',
+        'accounts_must_different' => 'Source account and destination account must be different',
+        'amount_required' => 'Please enter amount',
+        'amount_numeric' => 'Amount must be a number',
+        'amount_min' => 'Amount must be greater than 0',
+        'notes_required' => 'Please enter notes',
+        'notes_max' => 'Notes may not exceed :max characters',
+        'create_success' => 'Transfer request created successfully',
+    ],
+
+    'refund' => [
+        'platform_required' => 'Please select advertising channel',
+        'platform_invalid' => 'Invalid advertising channel',
+        'account_ids_required' => 'Please select at least one account',
+        'account_ids_invalid' => 'Invalid account list',
+        'account_ids_min' => 'Please select at least one account',
+        'liquidation_type_required' => 'Please select liquidation type',
+        'liquidation_type_invalid' => 'Invalid liquidation type',
+        'notes_required' => 'Please enter notes',
+        'notes_max' => 'Notes may not exceed :max characters',
+        'create_success' => 'Refund created successfully',
+    ],
+
+    'appeal' => [
+        'platform_required' => 'Please select advertising channel',
+        'platform_invalid' => 'Invalid advertising channel',
+        'account_id_required' => 'Please select account',
+        'account_id_invalid' => 'Invalid account',
+        'notes_required' => 'Please enter notes',
+        'notes_max' => 'Notes may not exceed :max characters',
+        'create_success' => 'Account appeal request created successfully',
+    ],
+
+    'share' => [
+        'platform_required' => 'Please select advertising channel',
+        'platform_invalid' => 'Invalid advertising channel',
+        'account_id_required' => 'Please select account',
+        'account_id_invalid' => 'Invalid account',
+        'bm_bc_mcc_id_required' => 'Please enter BM/BC/MCC ID',
+        'bm_bc_mcc_id_invalid' => 'Invalid BM/BC/MCC ID',
+        'notes_required' => 'Please enter notes',
+        'notes_max' => 'Notes may not exceed :max characters',
+        'create_success' => 'Share BM/BC/MCC request created successfully',
+    ],
 ];
 

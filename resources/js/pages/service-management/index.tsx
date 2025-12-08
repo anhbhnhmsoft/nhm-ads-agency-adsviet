@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTablePagination } from '@/components/table/pagination';
 import axios from 'axios';
+import { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useTranslation } from 'react-i18next';
@@ -143,6 +144,21 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
         ],
         [t]
     );
+
+    // Tự động mở service đầu tiên khi có filter keyword (đi từ BM/MCC) vì có thể nhập trùng bm vfa mcc
+    const hasAutoOpenedRef = useRef(false);
+    const urlKeyword =
+        typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('filter[keyword]')
+            : null;
+
+    useEffect(() => {
+        if (hasAutoOpenedRef.current) return;
+        if (urlKeyword && services.length > 0 && !selectedService) {
+            hasAutoOpenedRef.current = true;
+            handleViewService(services[0]);
+        }
+    }, [services, selectedService, urlKeyword]);
 
     const chartEntries = useMemo(() => {
         if (!campaignInsights.length) {

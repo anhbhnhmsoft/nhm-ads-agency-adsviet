@@ -16,9 +16,9 @@ class CreateTransferRequest extends FormRequest
         return [
             'platform' => ['required', 'integer', 'in:1,2'], // 1 = META, 2 = GOOGLE
             'from_account_id' => ['required', 'string', 'max:255'],
-            'to_account_id' => ['required', 'string', 'max:255'],
+            'to_account_id' => ['required', 'string', 'max:255', 'different:from_account_id'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'notes' => ['nullable', 'string', 'max:1000'],
+            'notes' => ['required', 'string', 'max:1000'],
         ];
     }
 
@@ -29,9 +29,11 @@ class CreateTransferRequest extends FormRequest
             'platform.in' => __('ticket.transfer.platform_invalid'),
             'from_account_id.required' => __('ticket.transfer.from_account_required'),
             'to_account_id.required' => __('ticket.transfer.to_account_required'),
+            'to_account_id.different' => __('ticket.transfer.accounts_must_different'),
             'amount.required' => __('ticket.transfer.amount_required'),
             'amount.numeric' => __('ticket.transfer.amount_numeric'),
             'amount.min' => __('ticket.transfer.amount_min'),
+            'notes.required' => __('ticket.transfer.notes_required'),
             'notes.max' => __('ticket.transfer.notes_max'),
         ];
     }

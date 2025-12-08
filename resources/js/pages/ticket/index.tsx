@@ -65,6 +65,16 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
         return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
     };
 
+    const getSubjectLabel = (subject: string) => {
+        const map: Record<string, string> = {
+            transfer_request: t('ticket.transfer.title', { defaultValue: 'Chuyển tiền giữa các tài khoản' }),
+            refund_request: t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' }),
+            appeal_request: t('ticket.appeal.title', { defaultValue: 'Kháng tài khoản' }),
+            share_request: t('ticket.share.title', { defaultValue: 'Share BM/BC/MCC' }),
+        };
+        return map[subject] ?? subject;
+    };
+
     const getPriorityBadge = (priority: TicketPriority) => {
         const priorityMap: Record<TicketPriority, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
             [_TicketPriority.LOW]: { label: t('ticket.priority.low'), variant: 'outline' },
@@ -145,7 +155,7 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
                                     <CardHeader>
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
-                                                <CardTitle className="mb-2">{ticket.subject}</CardTitle>
+                                                <CardTitle className="mb-2">{getSubjectLabel(ticket.subject)}</CardTitle>
                                                 <p className="line-clamp-2 text-sm text-muted-foreground">
                                                     {ticket.description}
                                                 </p>

@@ -110,8 +110,40 @@ class BusinessManagerService
                 }
             }
             
+            // Tính thống kê tổng
+            $stats = [
+                'total_accounts' => 0,
+                'active_accounts' => 0,
+                'disabled_accounts' => 0,
+                'by_platform' => [
+                    PlatformType::META->value => [
+                        'total_accounts' => 0,
+                        'active_accounts' => 0,
+                        'disabled_accounts' => 0,
+                    ],
+                    PlatformType::GOOGLE->value => [
+                        'total_accounts' => 0,
+                        'active_accounts' => 0,
+                        'disabled_accounts' => 0,
+                    ],
+                ],
+            ];
+            
             // Chuyển thành array và paginate
             $bmArray = array_values($bmList);
+
+            foreach ($bmArray as $bm) {
+                $stats['total_accounts'] += $bm['total_accounts'];
+                $stats['active_accounts'] += $bm['active_accounts'];
+                $stats['disabled_accounts'] += $bm['disabled_accounts'];
+
+                if (isset($stats['by_platform'][$bm['platform']])) {
+                    $stats['by_platform'][$bm['platform']]['total_accounts'] += $bm['total_accounts'];
+                    $stats['by_platform'][$bm['platform']]['active_accounts'] += $bm['active_accounts'];
+                    $stats['by_platform'][$bm['platform']]['disabled_accounts'] += $bm['disabled_accounts'];
+                }
+            }
+
             $perPage = $queryListDTO->perPage ?? 10;
             $page = $queryListDTO->page ?? 1;
             $total = count($bmArray);
@@ -126,7 +158,10 @@ class BusinessManagerService
                 options: ['path' => request()->url(), 'query' => request()->query()]
             );
             
-            return ServiceReturn::success(data: $paginator);
+            return ServiceReturn::success(data: [
+                'paginator' => $paginator,
+                'stats' => $stats,
+            ]);
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'BusinessManagerService@getListBusinessManagers error: ' . $e->getMessage(),

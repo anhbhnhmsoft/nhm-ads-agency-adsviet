@@ -34,7 +34,26 @@ class BusinessManagerController extends Controller
             )
         );
         
-        if ($result->isError()) {
+        $data = $result->isError() ? null : $result->getData();
+        $paginator = null;
+        $stats = [
+            'total_accounts' => 0,
+            'active_accounts' => 0,
+            'disabled_accounts' => 0,
+            'by_platform' => [],
+        ];
+
+        if ($data) {
+            // Nếu service trả về cả paginator và stats
+            if (is_array($data) && isset($data['paginator'])) {
+                $paginator = $data['paginator'];
+                $stats = $data['stats'] ?? $stats;
+            } else {
+                $paginator = $data;
+            }
+        }
+
+        if (!$paginator) {
             // Trả về empty paginator nếu có lỗi
             return $this->rendering(
                 view: 'business-manager/index',
@@ -57,12 +76,11 @@ class BusinessManagerController extends Controller
                             'total' => 0,
                         ],
                     ],
+                    'stats' => fn () => $stats,
                 ]
             );
         }
-        
-        $paginator = $result->getData();
-        
+
         // Convert LengthAwarePaginator to LaravelPaginator format that frontend expects
         $laravelArray = $paginator->toArray();
         
@@ -97,6 +115,7 @@ class BusinessManagerController extends Controller
             view: 'business-manager/index',
             data: [
                 'paginator' => fn () => $paginatorArray,
+                'stats' => fn () => $stats,
             ]
         );
     }

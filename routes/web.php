@@ -155,6 +155,12 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/', [TicketController::class, 'index'])->name('ticket_index');
         Route::get('/transfer', [TicketController::class, 'transfer'])->name('ticket_transfer');
         Route::post('/transfer', [TicketController::class, 'storeTransfer'])->name('ticket_transfer_store');
+        Route::get('/refund', [TicketController::class, 'refund'])->name('ticket_refund');
+        Route::post('/refund', [TicketController::class, 'storeRefund'])->name('ticket_refund_store');
+        Route::get('/appeal', [TicketController::class, 'appeal'])->name('ticket_appeal');
+        Route::post('/appeal', [TicketController::class, 'storeAppeal'])->name('ticket_appeal_store');
+        Route::get('/share', [TicketController::class, 'share'])->name('ticket_share');
+        Route::post('/share', [TicketController::class, 'storeShare'])->name('ticket_share_store');
         Route::get('/{id}', [TicketController::class, 'show'])->name('ticket_show');
         Route::post('/', [TicketController::class, 'store'])->name('ticket_store');
         Route::post('/{id}/message', [TicketController::class, 'addMessage'])->name('ticket_add_message');

@@ -190,29 +190,72 @@ class MetaService
                 return ServiceReturn::error(__('meta.error.account_not_found'));
             }
             // -----------------------------------------------------------------
-            // BƯỚC 1: GỌI 2 API INSIGHTS
+            // BƯỚC 1: GỌI 2 API INSIGHTS (NHƯNG KHÔNG CHẶN NẾU LỖI)
             // -----------------------------------------------------------------
+            $totalData = ['data' => []];
+            $todayData = ['data' => []];
+
             // Lần 1: Lấy TỔNG CHI TIÊU
-            $totalResult = $this->metaBusinessService->getAccountInsightsByCampaign(
-                accountId: $adsAccount->account_id,
-                datePreset: 'maximum',
-                fields: ['campaign_id', 'spend']
-            );
-            if ($totalResult->isError()) {
-                return ServiceReturn::error(__('meta.error.failed_to_fetch_campaigns'));
-            }
-            // Lần 2: Lấy CHI TIÊU HÔM NAY (Mới)
-            $todayResult = $this->metaBusinessService->getAccountInsightsByCampaign(
-                accountId: $adsAccount->account_id,
-                datePreset: 'today',
-                fields: ['campaign_id', 'spend']
-            );
-            if ($todayResult->isError()) {
-                return ServiceReturn::error(__('meta.error.failed_to_fetch_campaigns'));
+            try {
+                $totalResult = $this->metaBusinessService->getAccountInsightsByCampaign(
+                    accountId: $adsAccount->account_id,
+                    datePreset: 'maximum',
+                    fields: ['campaign_id', 'spend']
+                );
+                if ($totalResult->isSuccess()) {
+                    $totalData = $totalResult->getData();
+                } else {
+                    Logging::error(
+                        message: 'MetaService@getCampaignsPaginated: failed total insights, fallback to 0',
+                        context: [
+                            'service_user_id' => $serviceUser->id,
+                            'meta_account_id' => $accountId,
+                            'error' => $totalResult->getMessage(),
+                        ]
+                    );
+                }
+            } catch (\Throwable $e) {
+                Logging::error(
+                    message: 'MetaService@getCampaignsPaginated: exception total insights, fallback to 0',
+                    context: [
+                        'service_user_id' => $serviceUser->id,
+                        'meta_account_id' => $accountId,
+                        'error' => $e->getMessage(),
+                    ],
+                    exception: $e
+                );
             }
 
-            $totalData = $totalResult->getData();
-            $todayData = $todayResult->getData();
+            // Lần 2: Lấy CHI TIÊU HÔM NAY (Mới)
+            try {
+                $todayResult = $this->metaBusinessService->getAccountInsightsByCampaign(
+                    accountId: $adsAccount->account_id,
+                    datePreset: 'today',
+                    fields: ['campaign_id', 'spend']
+                );
+                if ($todayResult->isSuccess()) {
+                    $todayData = $todayResult->getData();
+                } else {
+                    Logging::error(
+                        message: 'MetaService@getCampaignsPaginated: failed today insights, fallback to 0',
+                        context: [
+                            'service_user_id' => $serviceUser->id,
+                            'meta_account_id' => $accountId,
+                            'error' => $todayResult->getMessage(),
+                        ]
+                    );
+                }
+            } catch (\Throwable $e) {
+                Logging::error(
+                    message: 'MetaService@getCampaignsPaginated: exception today insights, fallback to 0',
+                    context: [
+                        'service_user_id' => $serviceUser->id,
+                        'meta_account_id' => $accountId,
+                        'error' => $e->getMessage(),
+                    ],
+                    exception: $e
+                );
+            }
             // -----------------------------------------------------------------
             // BƯỚC 2: TẠO MAP ĐỂ TRA CỨU
             // -----------------------------------------------------------------

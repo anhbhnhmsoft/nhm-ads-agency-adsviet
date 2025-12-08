@@ -16,6 +16,9 @@ import {
     spend_report_index,
     ticket_index,
     ticket_transfer,
+    ticket_refund,
+    ticket_appeal,
+    ticket_share,
     business_managers_index,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
@@ -141,7 +144,7 @@ const useMenu = () => {
                     : t('menu.support'),
                 icon: <MessageSquare />,
                 is_menu: true,
-                active: isActive(ticket_index()) || isActive(ticket_transfer()),
+                active: isActive(ticket_index()) || isActive(ticket_transfer()) || isActive(ticket_refund()) || isActive(ticket_appeal()) || isActive(ticket_share()),
                 can_show: checkRole([
                     _UserRole.ADMIN,
                     _UserRole.MANAGER,
@@ -166,6 +169,33 @@ const useMenu = () => {
                         title: t('ticket.transfer.title', { defaultValue: 'Chuyển tiền' }),
                         url: ticket_transfer().url,
                         active: isActive(ticket_transfer()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
+                        title: t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' }),
+                        url: ticket_refund().url,
+                        active: isActive(ticket_refund()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
+                        title: t('ticket.appeal.title', { defaultValue: 'Kháng tài khoản' }),
+                        url: ticket_appeal().url,
+                        active: isActive(ticket_appeal()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
+                        title: t('ticket.share.title', { defaultValue: 'Share BM/BC/MCC' }),
+                        url: ticket_share().url,
+                        active: isActive(ticket_share()),
                         can_show: checkRole([
                             _UserRole.CUSTOMER,
                             _UserRole.AGENCY,

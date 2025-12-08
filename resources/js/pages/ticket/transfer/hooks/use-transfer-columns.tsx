@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import type { Ticket, TicketStatus } from '../../types/type';
 import { _TicketStatus } from '../../types/constants';
+import { _PlatformType } from '@/lib/types/constants';
 
 export const useTransferColumns = () => {
     const { t } = useTranslation();
@@ -20,6 +21,16 @@ export const useTransferColumns = () => {
         return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
     };
 
+    const getPlatformName = (platform: number) => {
+        if (platform === _PlatformType.GOOGLE) {
+            return t('enum.platform_type.google', { defaultValue: 'Google Ads' });
+        }
+        if (platform === _PlatformType.META) {
+            return t('enum.platform_type.meta', { defaultValue: 'Meta Ads' });
+        }
+        return '-';
+    };
+
     const columns: ColumnDef<Ticket>[] = useMemo(
         () => [
             {
@@ -27,11 +38,25 @@ export const useTransferColumns = () => {
                 header: t('common.id', { defaultValue: 'ID' }),
             },
             {
+                id: 'platform',
+                header: t('ticket.transfer.platform', { defaultValue: 'Kênh quảng cáo' }),
+                cell: ({ row }) => {
+                    const metadata = row.original.metadata as any;
+                    const platform = metadata?.platform;
+                    return platform ? getPlatformName(platform) : '-';
+                },
+            },
+            {
                 accessorKey: 'metadata',
                 header: t('ticket.transfer.from_account', { defaultValue: 'Từ tài khoản' }),
                 cell: ({ row }) => {
                     const metadata = row.original.metadata as any;
-                    return metadata?.from_account_name || metadata?.from_account_id || '-';
+                    const accountName = metadata?.from_account_name;
+                    const accountId = metadata?.from_account_id;
+                    if (accountName && accountId) {
+                        return `${accountName} (${accountId})`;
+                    }
+                    return accountName || accountId || '-';
                 },
             },
             {
@@ -39,7 +64,12 @@ export const useTransferColumns = () => {
                 header: t('ticket.transfer.to_account', { defaultValue: 'Đến tài khoản' }),
                 cell: ({ row }) => {
                     const metadata = row.original.metadata as any;
-                    return metadata?.to_account_name || metadata?.to_account_id || '-';
+                    const accountName = metadata?.to_account_name;
+                    const accountId = metadata?.to_account_id;
+                    if (accountName && accountId) {
+                        return `${accountName} (${accountId})`;
+                    }
+                    return accountName || accountId || '-';
                 },
             },
             {

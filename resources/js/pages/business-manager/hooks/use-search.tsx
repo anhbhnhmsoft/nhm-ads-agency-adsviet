@@ -14,7 +14,7 @@ export const useSearchBusinessManager = () => {
         }, {
             replace: true,
             preserveState: true,
-            only: ['paginator']
+            only: ['paginator', 'stats']
         });
     }
 
