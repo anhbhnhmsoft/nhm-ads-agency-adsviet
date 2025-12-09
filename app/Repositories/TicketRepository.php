@@ -24,8 +24,18 @@ class TicketRepository extends BaseRepository
         if (isset($params['status'])) {
             $query->where('status', $params['status']);
         }
+        if (isset($params['status_not_in']) && is_array($params['status_not_in'])) {
+            $query->whereNotIn('status', $params['status_not_in']);
+        }
         if (isset($params['priority'])) {
             $query->where('priority', $params['priority']);
+        }
+        if (isset($params['keyword'])) {
+            $keyword = $params['keyword'];
+            $query->where(function ($q) use ($keyword) {
+                $q->where('subject', 'like', "%{$keyword}%")
+                    ->orWhere('description', 'like', "%{$keyword}%");
+            });
         }
         if (isset($params['type'])) {
             // Filter theo metadata type

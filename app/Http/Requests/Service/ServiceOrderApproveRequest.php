@@ -17,6 +17,9 @@ class ServiceOrderApproveRequest extends FormRequest
             'meta_email' => ['required', 'email', 'max:255'],
             'display_name' => ['required', 'string', 'max:255'],
             'bm_id' => ['required', 'string', 'max:255'],
+            'info_fanpage' => ['nullable', 'string', 'max:255'],
+            'info_website' => ['nullable', 'string', 'max:255'],
+            'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],
         ];
     }
 

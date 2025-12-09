@@ -5,11 +5,11 @@ import AppLayout from '@/layouts/app-layout';
 import { IBreadcrumbItem } from '@/lib/types/type';
 import { ticket_index, ticket_show, ticket_store } from '@/routes';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { MessageSquare, Plus, Search } from 'lucide-react';
+import { MessageSquare, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TicketPageProps, Ticket, TicketStatus, TicketPriority } from './types/type';
 import { _TicketStatus, _TicketPriority } from './types/constants';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -18,10 +18,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from '@inertiajs/react';
 import useCheckRole from '@/hooks/use-check-role';
 import { _UserRole } from '@/lib/types/constants';
+import ListTicketSearchForm from './components/list-ticket-search-form';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useSearchTicketList } from './hooks/use-search-ticket';
 
 export default function TicketIndex({ tickets, error }: TicketPageProps) {
     const { t, i18n } = useTranslation();
-    const { props } = usePage();
+    const { props, url } = usePage();
     const authUser = useMemo(() => {
         const authProp = props.auth as { user?: any } | any | null | undefined;
         if (authProp && typeof authProp === 'object' && 'user' in authProp) {
@@ -34,7 +38,85 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
     const isCustomerOrAgency = checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]);
     
     const [showCreateDialog, setShowCreateDialog] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+    const { setQuery } = useSearchTicketList();
+    
+    const getCurrentTab = () => {
+        const urlString = url.split('?')[1] || '';
+        const urlParams = new URLSearchParams(urlString);
+        
+        const status = urlParams.get('filter[status]');
+        if (status === String(_TicketStatus.RESOLVED)) {
+            return 'resolved';
+        }
+        if (urlString.includes('filter[status_not_in]') || urlString.includes('status_not_in')) {
+            return 'pending';
+        }
+        
+        return 'all';
+    };
+    
+    const [activeTab, setActiveTab] = useState<'pending' | 'resolved' | 'all'>(getCurrentTab());
+
+    useEffect(() => {
+        setActiveTab(getCurrentTab());
+    }, [url]);
+    
+    const handleTabChange = (value: string) => {
+        setActiveTab(value as 'pending' | 'resolved' | 'all');
+        
+        if (value === 'pending') {
+
+            setQuery({
+                status: null,
+                status_not_in: [_TicketStatus.RESOLVED, _TicketStatus.CLOSED],
+            });
+            router.get(
+                ticket_index().url,
+                {
+                    filter: {
+                        status_not_in: [_TicketStatus.RESOLVED, _TicketStatus.CLOSED],
+                    },
+                },
+                {
+                    replace: true,
+                    preserveState: true,
+                    only: ['tickets'],
+                }
+            );
+        } else if (value === 'resolved') {
+            setQuery({
+                status: _TicketStatus.RESOLVED,
+                status_not_in: undefined,
+            });
+            router.get(
+                ticket_index().url,
+                {
+                    filter: {
+                        status: _TicketStatus.RESOLVED,
+                    },
+                },
+                {
+                    replace: true,
+                    preserveState: true,
+                    only: ['tickets'],
+                }
+            );
+        } else {
+            setQuery({
+                status: null,
+                status_not_in: undefined,
+            });
+            router.get(
+                ticket_index().url,
+                {},
+                {
+                    replace: true,
+                    preserveState: true,
+                    only: ['tickets'],
+                }
+            );
+        }
+    };
 
     const createForm = useForm({
         subject: '',
@@ -86,10 +168,7 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
         return <Badge variant={priorityInfo.variant}>{priorityInfo.label}</Badge>;
     };
 
-    const filteredTickets = tickets?.data.filter((ticket) =>
-        ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ticket.description.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
+    const displayTickets = tickets?.data || [];
 
     const breadcrumbs: IBreadcrumbItem[] = [
         {
@@ -126,74 +205,83 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
                     </Card>
                 )}
 
-                {/* Search */}
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        placeholder={t('common.search', { defaultValue: 'Tìm kiếm...' })}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
-                    />
-                </div>
+                {/* Search Form */}
+                <ListTicketSearchForm />
+                <Separator className="my-4" />
 
-                {/* Tickets List */}
-                {filteredTickets.length === 0 ? (
-                    <Card>
-                        <CardContent className="flex flex-col items-center justify-center py-12">
-                            <MessageSquare className="mb-4 h-12 w-12 text-muted-foreground" />
-                            <p className="text-muted-foreground">
-                                {t('ticket.no_tickets', { defaultValue: 'Chưa có yêu cầu hỗ trợ nào' })}
-                            </p>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="grid gap-4">
-                        {filteredTickets.map((ticket: Ticket) => (
-                            <Card key={ticket.id} className="cursor-pointer transition-colors hover:bg-muted/50">
-                                <Link href={ticket_show({ id: ticket.id }).url}>
-                                    <CardHeader>
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <CardTitle className="mb-2">{getSubjectLabel(ticket.subject)}</CardTitle>
-                                                <p className="line-clamp-2 text-sm text-muted-foreground">
-                                                    {ticket.description}
-                                                </p>
-                                            </div>
-                                            <div className="ml-4 flex gap-2">
-                                                {getStatusBadge(ticket.status)}
-                                                {getPriorityBadge(ticket.priority)}
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                            <div className="flex items-center gap-4">
-                                                <span>
-                                                    {t('ticket.created_by', { defaultValue: 'Người tạo' })}:{' '}
-                                                    {ticket.user?.name || ticket.user_id}
-                                                </span>
-                                                {ticket.assignedUser && (
-                                                    <span>
-                                                        {t('ticket.assigned_to', { defaultValue: 'Người xử lý' })}:{' '}
-                                                        {ticket.assignedUser.name}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span>
-                                                {new Date(ticket.created_at).toLocaleDateString(i18n.language || 'en', {
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric',
-                                                })}
-                                            </span>
-                                        </div>
-                                    </CardContent>
-                                </Link>
+                {/* Tabs */}
+                <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                    <TabsList>
+                        <TabsTrigger value="pending">
+                            {t('ticket.tabs.pending', { defaultValue: 'Cần xử lý' })}
+                        </TabsTrigger>
+                        <TabsTrigger value="resolved">
+                            {t('ticket.tabs.resolved', { defaultValue: 'Đã giải quyết' })}
+                        </TabsTrigger>
+                        <TabsTrigger value="all">
+                            {t('ticket.tabs.all', { defaultValue: 'Tất cả' })}
+                        </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value={activeTab} className="mt-4">
+                        {displayTickets.length === 0 ? (
+                            <Card>
+                                <CardContent className="flex flex-col items-center justify-center py-12">
+                                    <MessageSquare className="mb-4 h-12 w-12 text-muted-foreground" />
+                                    <p className="text-muted-foreground">
+                                        {t('ticket.no_tickets', { defaultValue: 'Chưa có yêu cầu hỗ trợ nào' })}
+                                    </p>
+                                </CardContent>
                             </Card>
-                        ))}
-                    </div>
-                )}
+                        ) : (
+                            <div className="grid gap-4">
+                                {displayTickets.map((ticket: Ticket) => (
+                                    <Card key={ticket.id} className="cursor-pointer transition-colors hover:bg-muted/50">
+                                        <Link href={ticket_show({ id: ticket.id }).url}>
+                                            <CardHeader>
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1">
+                                                        <CardTitle className="mb-2">{getSubjectLabel(ticket.subject)}</CardTitle>
+                                                        <p className="line-clamp-2 text-sm text-muted-foreground">
+                                                            {ticket.description}
+                                                        </p>
+                                                    </div>
+                                                    <div className="ml-4 flex gap-2">
+                                                        {getStatusBadge(ticket.status)}
+                                                        {getPriorityBadge(ticket.priority)}
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                                    <div className="flex items-center gap-4">
+                                                        <span>
+                                                            {t('ticket.created_by', { defaultValue: 'Người tạo' })}:{' '}
+                                                            {ticket.user?.name || ticket.user_id}
+                                                        </span>
+                                                        {ticket.assignedUser && (
+                                                            <span>
+                                                                {t('ticket.assigned_to', { defaultValue: 'Người xử lý' })}:{' '}
+                                                                {ticket.assignedUser.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span>
+                                                        {new Date(ticket.created_at).toLocaleDateString(i18n.language || 'en', {
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric',
+                                                        })}
+                                                    </span>
+                                                </div>
+                                            </CardContent>
+                                        </Link>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
 
                 {/* Pagination */}
                 {tickets && tickets.last_page > 1 && (

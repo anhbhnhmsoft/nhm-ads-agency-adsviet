@@ -17,6 +17,7 @@ return [
         'failed_to_update_campaign_status' => 'Failed to update campaign status on Google Ads.',
         'failed_to_update_campaign_status_suspended' => 'Cannot update campaign status because the Google Ads account is suspended. Please resolve the suspension in Google Ads first.',
         'failed_to_update_campaign_budget' => 'Failed to update campaign budget on Google Ads.',
+        'cannot_resume_spending_exceeded' => 'Cannot resume campaign. Lifetime spending (:spending USD) exceeds current balance (:balance USD) plus safety threshold (:threshold USD). Please top up your account before resuming.',
     ],
     'account_status' => [
         'enabled' => 'Active',

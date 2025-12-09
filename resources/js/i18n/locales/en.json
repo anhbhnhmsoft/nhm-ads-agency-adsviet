@@ -176,7 +176,9 @@
     "description": "Choose a platform and configure its information",
     "app_or_client_id": "App ID / Client ID",
     "bm_or_login_id": "Business Manager ID / Login Customer ID",
-    "edit_mode": "Editing configuration ID: {{id}}"
+    "edit_mode": "Editing configuration ID: {{id}}",
+    "open_google_billing": "Open Google Ads Billing",
+    "open_meta_billing": "Open Meta Ads Billing"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -290,6 +292,12 @@
         "campaign_issue_hint": "Please check budget, approval status or platform warnings.",
         "campaign_pause": "Pause",
         "campaign_pause_description": "Pause the campaign directly on the ad platform.",
+        "campaign_resume": "Resume",
+        "campaign_resume_description": "Resume the campaign on the ad platform.",
+        "campaign_resume_warning": "Are you sure you want to resume this campaign? Ads will start running again after the operation is complete.",
+        "campaign_resume_confirm": "Confirm resume",
+        "campaign_resume_success": "Campaign resumed successfully.",
+        "campaign_resume_error": "Failed to resume campaign.",
         "campaign_pause_warning": "Are you sure you want to pause this campaign? Ads will stop running shortly after this action.",
         "campaign_pause_confirm": "Confirm Pause",
         "campaign_pause_success": "Campaign has been paused successfully.",
@@ -442,6 +450,7 @@
     "description": "Package description",
     "platform": "Platform",
     "meta_features": "Meta features",
+    "choose_access": "Choose Full access or basic access",
     "google_features": "Google features",
     "open_fee": "Opening fee $ (USDT)",
     "range_min_top_up": "Minimum balance required $ (USDT)",
@@ -456,10 +465,17 @@
     "monthly_spending_title": "Monthly Spending & Fee Structure",
     "monthly_spending_description": "Fill the spending tiers and fees. Data will be displayed inside the package details.",
     "monthly_spending_spending_label": "Monthly Spending",
+    "monthly_spending_min_label": "Min spending",
+    "monthly_spending_max_label": "Max spending",
     "monthly_spending_fee_label": "Fee %",
     "monthly_spending_add_row": "Add row",
     "monthly_spending_remove_row": "Remove",
-    "monthly_spending_reset_template": "Use default template"
+    "monthly_spending_reset_template": "Use default template",
+    "id_bm": "ID BM",
+    "id_mcc": "ID MCC",
+    "email_note_meta": "If you don't have BM",
+    "email_note_google": "If you don't have MCC",
+    "display_name_note": "You can set your own name"
   },
   "service_user": {
     "title": "User services",
@@ -523,6 +539,15 @@
     "monthly_spending_description": "Reference fee table by monthly spending tier.",
     "monthly_spending_spending_label": "Monthly Spending",
     "monthly_spending_fee_label": "Fee %",
+    "info_fanpage": "Fanpage info",
+    "info_fanpage_placeholder": "Fanpage link or name",
+    "info_website": "Website info",
+    "info_website_placeholder": "Website link",
+    "payment_type": "Payment type",
+    "payment_prepay": "Prepaid",
+    "payment_postpay": "Postpaid",
+    "monthly_fee_estimate": "Estimated monthly fee (postpay)",
+    "postpay_min_wallet": "Your wallet must have at least 200 USDT to use postpaid payment.",
     "order_summary": "Order summary",
     "back_to_services": "Back to list",
     "info_message": "Choose the service that fits your campaign. Payment is USDT only.",
@@ -560,7 +585,11 @@
       "order_id": "Order ID",
       "referral": "Referrer",
       "account_info": "Account info",
+      "info_fanpage": "Fanpage",
+      "info_website": "Website",
       "platform": "Platform",
+      "top_up_amount": "Top-up amount",
+      "postpay_label": "Postpaid customer",
       "budget": "Budget",
       "status": "Order status",
       "created_at": "Created at",
@@ -587,7 +616,11 @@
     "form": {
       "meta_email_placeholder": "Enter Meta email",
       "display_name_placeholder": "Enter display name",
-      "bm_id_placeholder": "Enter Business Manager ID"
+      "bm_id_placeholder": "Enter Business Manager ID",
+      "info_fanpage": "Fanpage info",
+      "info_fanpage_placeholder": "Fanpage link or name",
+      "info_website": "Website info",
+      "info_website_placeholder": "Website link"
     },
     "admin_form_title": "Approve service order",
     "admin_form_description": "Fill in all required information to activate the service account.",
@@ -600,6 +633,11 @@
     "create": "Create support request",
     "create_description": "Describe your issue so we can help you.",
     "detail": "Support request detail",
+    "tabs": {
+      "pending": "Pending",
+      "resolved": "Resolved",
+      "all": "All"
+    },
     "subject": "Subject",
     "subject_placeholder": "Enter subject...",
     "description": "Description",
@@ -754,6 +792,23 @@
       "agency": "Agency",
       "agency_desc": "Manage ads and customers"
     }
+  },
+  "contact": {
+    "title": "Contact",
+    "description": "Contact us through the following channels",
+    "telegram": "Telegram",
+    "telegram_description": "Contact via Telegram",
+    "whatsapp": "WhatsApp",
+    "whatsapp_description": "Contact via WhatsApp",
+    "channel": "Update Channel",
+    "channel_description": "Follow for updates",
+    "open": "Open",
+    "your_telegram": "Your Telegram",
+    "your_telegram_description": "Connected Telegram information",
+    "username": "Username",
+    "name": "Name",
+    "telegram_id": "Telegram ID",
+    "telegram_info_unavailable": "Unable to retrieve information from Telegram. Telegram ID: "
   }
 }
 

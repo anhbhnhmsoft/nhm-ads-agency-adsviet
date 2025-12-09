@@ -51,6 +51,7 @@ export type DashboardData = {
         used: string;
         remaining: string;
         usage_percent: string;
+        is_postpay?: boolean;
     };
     alerts: {
         critical_errors: number;

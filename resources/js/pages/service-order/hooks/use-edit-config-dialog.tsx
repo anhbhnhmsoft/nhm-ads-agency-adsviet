@@ -9,6 +9,9 @@ export const useServiceOrderEditConfigDialog = () => {
     const [metaEmail, setMetaEmail] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [bmId, setBmId] = useState('');
+    const [infoFanpage, setInfoFanpage] = useState('');
+    const [infoWebsite, setInfoWebsite] = useState('');
+    const [paymentType, setPaymentType] = useState('');
 
     const openDialogForOrder = useCallback((order: ServiceOrder) => {
         const config = order.config_account || {};
@@ -16,6 +19,9 @@ export const useServiceOrderEditConfigDialog = () => {
         setMetaEmail((config.meta_email as string) || '');
         setDisplayName((config.display_name as string) || '');
         setBmId((config.bm_id as string) || '');
+        setInfoFanpage((config.info_fanpage as string) || '');
+        setInfoWebsite((config.info_website as string) || '');
+        setPaymentType((config.payment_type as string) || '');
         setDialogOpen(true);
     }, []);
 
@@ -28,6 +34,9 @@ export const useServiceOrderEditConfigDialog = () => {
                 meta_email: metaEmail || undefined,
                 display_name: displayName || undefined,
                 bm_id: bmId || undefined,
+                info_fanpage: infoFanpage || undefined,
+                info_website: infoWebsite || undefined,
+                payment_type: paymentType || undefined,
             },
             {
                 preserveScroll: true,
@@ -37,7 +46,7 @@ export const useServiceOrderEditConfigDialog = () => {
                 },
             },
         );
-    }, [bmId, displayName, metaEmail, selectedOrder]);
+    }, [bmId, displayName, metaEmail, infoFanpage, infoWebsite, selectedOrder]);
 
     return {
         dialogOpen,
@@ -48,6 +57,12 @@ export const useServiceOrderEditConfigDialog = () => {
         setDisplayName,
         bmId,
         setBmId,
+        infoFanpage,
+        setInfoFanpage,
+        infoWebsite,
+        setInfoWebsite,
+        paymentType,
+        setPaymentType,
         openDialogForOrder,
         handleSubmitUpdate,
     };

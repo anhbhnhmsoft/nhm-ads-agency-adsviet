@@ -19,6 +19,10 @@ class ServicePurchaseRequest extends FormRequest
             'budget' => ['required', 'numeric', 'min:50'],
             'meta_email' => ['nullable', 'string', 'email', 'max:255'],
             'display_name' => ['nullable', 'string', 'max:255'],
+            'bm_id' => ['nullable', 'string', 'max:255'],
+            'info_fanpage' => ['nullable', 'string', 'max:255'],
+            'info_website' => ['nullable', 'string', 'max:255'],
+            'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],
         ];
     }
 

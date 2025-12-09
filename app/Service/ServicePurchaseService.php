@@ -72,6 +72,11 @@ class ServicePurchaseService
 
                 $wallet->update(['balance' => (float) $wallet->balance - $totalCost]);
 
+                $configAccount['top_up_amount'] = $topUpAmount;
+                if (!isset($configAccount['payment_type'])) {
+                    $configAccount['payment_type'] = 'prepay';
+                }
+
                 $defaultConfig = $this->getDefaultConfigAccount($package->platform, $configAccount);
                 $serviceUser = $this->serviceUserRepository->create([
                     'package_id' => $packageId,
@@ -131,16 +136,16 @@ class ServicePurchaseService
      */
     private function getDefaultConfigAccount(int $platform, array $userConfig = []): array
     {
-        if ($platform === PlatformType::META->value) {
-            return [
-                'meta_email' => $userConfig['meta_email'] ?? '',
-                'display_name' => $userConfig['display_name'] ?? '',
-                'bm_id' => $userConfig['bm_id'] ?? '',
-            ];
-        }
-
-        // Google Ads config (nếu cần)
-        return $userConfig;
+        // Chuẩn hóa các key config dùng chung
+        return [
+            'meta_email' => $userConfig['meta_email'] ?? '',
+            'display_name' => $userConfig['display_name'] ?? '',
+            'bm_id' => $userConfig['bm_id'] ?? '',
+            'info_fanpage' => $userConfig['info_fanpage'] ?? '',
+            'info_website' => $userConfig['info_website'] ?? '',
+            'payment_type' => $userConfig['payment_type'] ?? 'prepay',
+            'top_up_amount' => $userConfig['top_up_amount'] ?? 0,
+        ];
     }
 }
 

@@ -82,6 +82,8 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
     // State cho dialog tạm dừng/kết thúc chiến dịch
     const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
     const [pauseSubmitting, setPauseSubmitting] = useState(false);
+    const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
+    const [resumeSubmitting, setResumeSubmitting] = useState(false);
     const [endDialogOpen, setEndDialogOpen] = useState(false);
     const [endSubmitting, setEndSubmitting] = useState(false);
     const currentUserRole = authUser?.role;
@@ -506,9 +508,9 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                 </div>
                                 <div>
                                     <span className="font-medium text-foreground">
-                                        {t('service_management.topup_fee')}:
+                                        {t('service_management.topup_amount', { defaultValue: 'Số tiền top-up' })}:
                                     </span>{' '}
-                                    {service.top_up_fee ?? 0}%
+                                    {formatCurrency(service.config_account?.top_up_amount ?? 0)}
                                 </div>
                             </div>
                             <Button onClick={() => handleViewService(service)}>
@@ -948,19 +950,32 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                                 const isPaused = normalizedStatus === 'PAUSED';
                                                 const pauseDisabled =
                                                     !selectedCampaign || pauseSubmitting || isDeleted || isPaused;
+                                                const resumeDisabled =
+                                                    !selectedCampaign || resumeSubmitting || isDeleted || !isPaused;
                                                 const endDisabled = !selectedCampaign || endSubmitting || isDeleted;
                                                 const budgetDisabled = !selectedCampaign || budgetSubmitting || isDeleted;
 
                                                 return (
                                                     <>
-                                            <Button
-                                                variant="outline"
-                                                className="h-11 rounded-full px-8"
-                                                onClick={() => setPauseDialogOpen(true)}
-                                                disabled={pauseDisabled}
-                                            >
-                                                {t('service_management.campaign_pause')}
-                                            </Button>
+                                            {isPaused ? (
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-11 rounded-full px-8"
+                                                    onClick={() => setResumeDialogOpen(true)}
+                                                    disabled={resumeDisabled}
+                                                >
+                                                    {t('service_management.campaign_resume')}
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-11 rounded-full px-8"
+                                                    onClick={() => setPauseDialogOpen(true)}
+                                                    disabled={pauseDisabled}
+                                                >
+                                                    {t('service_management.campaign_pause')}
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="destructive"
                                                 className="h-11 rounded-full px-8"
@@ -1265,6 +1280,81 @@ const ServiceManagementIndex = ({ paginator }: Props) => {
                                         {pauseSubmitting
                                             ? t('common.processing')
                                             : t('service_management.campaign_pause_confirm')}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
+                        {/* Dialog Tiếp tục chiến dịch */}
+                        <Dialog open={resumeDialogOpen} onOpenChange={setResumeDialogOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>{t('service_management.campaign_resume')}</DialogTitle>
+                                    <DialogDescription>
+                                        {t('service_management.campaign_resume_description')}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <Alert>
+                                        <AlertDescription>
+                                            {t('service_management.campaign_resume_warning')}
+                                        </AlertDescription>
+                                    </Alert>
+                                </div>
+                                <DialogFooter>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            if (!resumeSubmitting) {
+                                                setResumeDialogOpen(false);
+                                            }
+                                        }}
+                                    >
+                                        {t('common.cancel')}
+                                    </Button>
+                                    <Button
+                                        onClick={async () => {
+                                            try {
+                                                setResumeSubmitting(true);
+                                                const platformType = selectedService?.package?.platform ?? null;
+                                                if (!selectedService || !selectedCampaign || !platformType) {
+                                                    toast.error(t('service_management.campaign_not_selected'));
+                                                    return;
+                                                }
+
+                                                if (platformType === _PlatformType.META) {
+                                                    await axios.post(
+                                                        `/meta/${selectedService.id}/${selectedCampaign.id}/status`,
+                                                        { status: 'ACTIVE' },
+                                                    );
+                                                } else if (platformType === _PlatformType.GOOGLE) {
+                                                    await axios.post(
+                                                        `/google-ads/${selectedService.id}/${selectedCampaign.id}/status`,
+                                                        { status: 'ENABLED' },
+                                                    );
+                                                } else {
+                                                    toast.error(t('service_management.unsupported_platform'));
+                                                    return;
+                                                }
+
+                                                toast.success(t('service_management.campaign_resume_success'));
+                                                // Reload lại dữ liệu để UI cập nhật ngay
+                                                await refreshCurrentCampaign();
+                                                setResumeDialogOpen(false);
+                                            } catch (error: any) {
+                                                const message =
+                                                    error?.response?.data?.message ||
+                                                    t('service_management.campaign_resume_error');
+                                                toast.error(message);
+                                            } finally {
+                                                setResumeSubmitting(false);
+                                            }
+                                        }}
+                                        disabled={resumeSubmitting}
+                                    >
+                                        {resumeSubmitting
+                                            ? t('common.processing')
+                                            : t('service_management.campaign_resume_confirm')}
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>

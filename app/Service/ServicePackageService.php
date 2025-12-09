@@ -6,12 +6,14 @@ use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Repositories\ServicePackageRepository;
+use App\Repositories\ServiceUserRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ServicePackageService
 {
     public function __construct(
-        protected ServicePackageRepository $servicePackageRepository
+        protected ServicePackageRepository $servicePackageRepository,
+        protected ServiceUserRepository $serviceUserRepository,
     )
     {
     }
@@ -122,6 +124,13 @@ class ServicePackageService
     public function deleteServicePackage(string $id): ServiceReturn
     {
         try {
+            $inUse = $this->serviceUserRepository->query()
+                ->where('package_id', $id)
+                ->exists();
+            if ($inUse) {
+                return ServiceReturn::error(__('services.validation.package_in_use'));
+            }
+
             $this->servicePackageRepository->delete($id);
             return ServiceReturn::success();
         } catch (\Exception $exception) {

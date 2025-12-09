@@ -171,6 +171,7 @@
     - status (smallint, not null) -- trạng thái dịch vụ (trong enum ServiceUserStatus)
     - budget (decimal(18, 8), not null, default 0) -- ngân sách dịch vụ
     - description (varchar, nullable) -- mô tả thêm
+    - last_postpay_billed_at (timestamp, nullable) -- lần cuối tính phí postpay (30 ngày gần nhất)
     - softDeletes
     - timestamps
 

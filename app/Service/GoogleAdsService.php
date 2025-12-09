@@ -2,46 +2,47 @@
 
 namespace App\Service;
 
-use App\Common\Constants\Google\GoogleCustomerStatus;
-use App\Common\Constants\Platform\PlatformType;
-use App\Common\Constants\ServiceUser\ServiceUserStatus;
-use App\Common\Constants\User\UserRole;
-use App\Common\Helper;
-use App\Core\Cache\CacheKey;
-use App\Core\Cache\Caching;
+use Carbon\Carbon;
 use App\Core\Logging;
+use App\Common\Helper;
 use App\Core\QueryListDTO;
+use App\Core\Cache\Caching;
 use App\Core\ServiceReturn;
 use App\Models\ServiceUser;
-use App\Repositories\GoogleAccountRepository;
-use App\Repositories\GoogleAdsAccountInsightRepository;
-use App\Repositories\GoogleAdsCampaignRepository;
-use App\Repositories\ServiceUserRepository;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use App\Core\Cache\CacheKey;
+use Google\ApiCore\ApiException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use App\Repositories\WalletRepository;
-use Carbon\Carbon;
-use Google\Ads\GoogleAds\Lib\V22\GoogleAdsException;
+use App\Common\Constants\User\UserRole;
+use App\Repositories\ServiceUserRepository;
+use Illuminate\Database\Eloquent\Collection;
+use App\Repositories\GoogleAccountRepository;
+use App\Common\Constants\Platform\PlatformType;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Google\Ads\GoogleAds\Lib\OAuth2TokenBuilder;
-use Google\Ads\GoogleAds\Lib\V22\GoogleAdsClient;
-use Google\Ads\GoogleAds\Lib\V22\GoogleAdsClientBuilder;
-use Google\Ads\GoogleAds\V22\Services\Client\GoogleAdsServiceClient;
-use Google\Ads\GoogleAds\V22\Services\GoogleAdsRow;
-use Google\Ads\GoogleAds\V22\Services\SearchGoogleAdsStreamRequest;
-use Google\Ads\GoogleAds\V22\Services\SearchGoogleAdsRequest;
+use Google\Ads\GoogleAds\Util\V22\ResourceNames;
 use Google\Ads\GoogleAds\V22\Resources\Campaign;
-use Google\Ads\GoogleAds\V22\Enums\CampaignStatusEnum\CampaignStatus;
+use App\Repositories\GoogleAdsCampaignRepository;
+use Google\Ads\GoogleAds\Lib\V22\GoogleAdsClient;
+use Google\Ads\GoogleAds\V22\Services\GoogleAdsRow;
+use Google\Ads\GoogleAds\Lib\V22\GoogleAdsException;
+use App\Common\Constants\Google\GoogleCustomerStatus;
+use App\Common\Constants\Google\GoogleCampaignStatus;
+use Google\Ads\GoogleAds\V22\Resources\CampaignBudget;
+use App\Common\Constants\ServiceUser\ServiceUserStatus;
+use App\Repositories\GoogleAdsAccountInsightRepository;
+use Google\Ads\GoogleAds\Lib\V22\GoogleAdsClientBuilder;
 use Google\Ads\GoogleAds\V22\Services\CampaignOperation;
 use Google\Ads\GoogleAds\V22\Services\MutateCampaignsRequest;
-use Google\Ads\GoogleAds\Util\V22\ResourceNames;
-use Google\Ads\GoogleAds\V22\Resources\CampaignBudget;
+use Google\Ads\GoogleAds\V22\Services\SearchGoogleAdsRequest;
 use Google\Ads\GoogleAds\V22\Services\CampaignBudgetOperation;
 use Google\Ads\GoogleAds\V22\Services\MutateCampaignBudgetsRequest;
-use Google\ApiCore\ApiException;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Google\Ads\GoogleAds\V22\Services\SearchGoogleAdsStreamRequest;
+use Google\Ads\GoogleAds\V22\Services\Client\GoogleAdsServiceClient;
+use Google\Ads\GoogleAds\V22\Enums\CampaignStatusEnum\CampaignStatus;
 
 class GoogleAdsService
 {
@@ -62,6 +63,7 @@ class GoogleAdsService
         protected GoogleAdsCampaignRepository $googleAdsCampaignRepository,
         protected WalletRepository $walletRepository,
         protected PlatformSettingService $platformSettingService,
+        protected GoogleAdsNotificationService $googleAdsNotificationService,
     ) {
     }
 
@@ -174,10 +176,21 @@ class GoogleAdsService
             $avgCpm = $totalImpressions > 0 ? (($totalSpend / max($totalImpressions, 1)) * 1000) : 0.0;
             $conversionRate = $totalClicks > 0 ? (($totalConversions / $totalClicks) * 100) : 0.0;
 
+            $hasPostpay = $serviceUsers->contains(function ($serviceUser) {
+                $config = $serviceUser->config_account ?? [];
+                return ($config['payment_type'] ?? '') === 'postpay';
+            });
+
             $totalBudget = (float) ($serviceUsers->sum('budget') ?? 0);
             $budgetUsed = $todaySpend;
-            $budgetRemaining = max(0, $totalBudget - $budgetUsed);
-            $budgetUsagePercent = $totalBudget > 0 ? (($budgetUsed / $totalBudget) * 100) : 0.0;
+            if ($hasPostpay) {
+                $totalBudget = 0.0;
+                $budgetRemaining = 0.0;
+                $budgetUsagePercent = 0.0;
+            } else {
+                $budgetRemaining = max(0, $totalBudget - $budgetUsed);
+                $budgetUsagePercent = $totalBudget > 0 ? (($budgetUsed / $totalBudget) * 100) : 0.0;
+            }
 
             $wallet = $this->walletRepository->findByUserId($user->id);
             $walletBalance = $wallet ? (float) $wallet->balance : 0.0;
@@ -234,6 +247,7 @@ class GoogleAdsService
                     'used' => number_format($budgetUsed, 2, '.', ''),
                     'remaining' => number_format($budgetRemaining, 2, '.', ''),
                     'usage_percent' => number_format($budgetUsagePercent, 2, '.', ''),
+                    'is_postpay' => $hasPostpay,
                 ],
                 'alerts' => [
                     'critical_errors' => 0,
@@ -923,14 +937,7 @@ GAQL;
             return null;
         }
 
-        // Google Ads CampaignStatus enum values
-        // UNSPECIFIED = 0, UNKNOWN = 1, ENABLED = 2, PAUSED = 3, REMOVED = 4
-        return match ($status) {
-            2 => 'ENABLED',
-            3 => 'PAUSED',
-            4 => 'REMOVED',
-            default => 'UNKNOWN',
-        };
+        return GoogleCampaignStatus::fromApiStatus($status)->value;
     }
 
     protected function syncInsightsForAccount(
@@ -2032,14 +2039,53 @@ GAQL;
                 return ServiceReturn::error(message: __('google_ads.error.account_not_found'));
             }
 
-            $statusMap = [
-                'ENABLED' => CampaignStatus::ENABLED,
-                'PAUSED' => CampaignStatus::PAUSED,
-                'REMOVED' => CampaignStatus::REMOVED,
-            ];
-            $normalizedStatus = strtoupper($status);
-            if (!isset($statusMap[$normalizedStatus])) {
+            $campaignStatus = GoogleCampaignStatus::fromValue($status);
+            if (!$campaignStatus) {
                 return ServiceReturn::error(message: __('google_ads.error.invalid_campaign_status'));
+            }
+
+            $statusMap = [
+                GoogleCampaignStatus::ENABLED->value => CampaignStatus::ENABLED,
+                GoogleCampaignStatus::PAUSED->value => CampaignStatus::PAUSED,
+                GoogleCampaignStatus::REMOVED->value => CampaignStatus::REMOVED,
+            ];
+            $normalizedStatus = $campaignStatus->value;
+
+            // Kiểm tra validation khi resume (ENABLED) cho Customer/Agency
+            if ($campaignStatus === GoogleCampaignStatus::ENABLED) {
+                $user = Auth::user();
+                $userRole = $user->role ?? null;
+                
+                // Admin, Manager, Employee không cần kiểm tra
+                if (in_array($userRole, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
+                    // Cho phép cập nhập teang thái của campaign
+                } elseif (in_array($userRole, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
+                    // Customer/Agency: Kiểm tra spending > balance + 100
+                    $balance = (float) ($googleAccount->balance ?? 0);
+                    $threshold = 100.0;
+                    
+                    // Lấy chi tiêu tích lũy từ database
+                    $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(
+                        [(string) $googleAccount->id],
+                        'maximum'
+                    );
+                    
+                    if (!$insightsResult->isError()) {
+                        $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
+                        $thresholdAmount = $balance + $threshold;
+                        
+                        // Nếu chi tiêu vượt quá số dư + ngưỡng, không cho phép resume
+                        if ($lifetimeSpending > $thresholdAmount) {
+                            return ServiceReturn::error(
+                                message: __('google_ads.error.cannot_resume_spending_exceeded', [
+                                    'spending' => number_format($lifetimeSpending, 2),
+                                    'balance' => number_format($balance, 2),
+                                    'threshold' => number_format($thresholdAmount, 2),
+                                ])
+                            );
+                        }
+                    }
+                }
             }
 
             $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
@@ -2348,6 +2394,170 @@ GAQL;
                 exception: $exception
             );
             return ServiceReturn::error(message: __('google_ads.error.failed_to_fetch_campaign_detail'));
+        }
+    }
+
+    /**
+     * Kiểm tra và tự động tạm dừng tài khoản nếu spending > balance + threshold
+     * @param float $threshold Ngưỡng cảnh báo (mặc định 100 USD)
+     * @return ServiceReturn
+     */
+    public function checkAndAutoPauseAccounts(float $threshold = 100.0): ServiceReturn
+    {
+        try {
+            $accounts = $this->googleAccountRepository->query()
+                ->with(['serviceUser.user'])
+                ->whereNotNull('balance')
+                ->where('balance', '>', 0)
+                ->get();
+
+            $paused = 0;
+            $notified = 0;
+            $errors = 0;
+
+            foreach ($accounts as $account) {
+                try {
+                    $balance = (float) ($account->balance ?? 0);
+                    
+                    // Kiểm tra nếu số dư thấp hơn ngưỡng an toàn (cảnh báo số dư thấp)
+                    if ($balance < $threshold) {
+                        // Pause tất cả campaigns trong account
+                        $campaigns = $this->googleAdsCampaignRepository->query()
+                            ->where('google_account_id', $account->id)
+                            ->where('status', '!=', GoogleCampaignStatus::PAUSED->value)
+                            ->where('status', '!=', GoogleCampaignStatus::REMOVED->value)
+                            ->get();
+
+                        foreach ($campaigns as $campaign) {
+                            if ($account->serviceUser) {
+                                $pauseResult = $this->updateCampaignStatus(
+                                    (string) $account->serviceUser->id,
+                                    (string) $campaign->id,
+                                    GoogleCampaignStatus::PAUSED->value
+                                );
+                                if ($pauseResult->isError()) {
+                                    Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Failed to pause campaign', [
+                                        'account_id' => $account->id,
+                                        'campaign_id' => $campaign->id,
+                                        'error' => $pauseResult->getMessage(),
+                                    ]);
+                                }
+                            }
+                        }
+
+                        $paused++;
+
+                        // Gửi thông báo số dư thấp
+                        // Vì đây là trường hợp balance < threshold, chưa chắc đã chi tiêu vượt quá
+                        $notificationResult = $this->googleAdsNotificationService->sendLowBalanceAlert(
+                            $account,
+                            $threshold
+                        );
+                        if ($notificationResult->isSuccess()) {
+                            $notified++;
+                        }
+
+                        Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Auto-paused account (low balance)', [
+                            'account_id' => $account->id,
+                            'account_name' => $account->account_name,
+                            'balance' => $balance,
+                            'lifetime_spending' => $lifetimeSpending,
+                            'threshold' => $threshold,
+                            'campaigns_paused' => $campaigns->count(),
+                            'notification_sent' => $notificationResult->isSuccess(),
+                        ]);
+                        continue;
+                    }
+
+                    // Kiểm tra nếu chi tiêu tích lũy (lifetime) > balance + threshold
+                    // Lưu ý: Google Ads API không có date preset "maximum" hay "lifetime"
+                    // Nên lấy tổng chi tiêu từ database (tất cả insights đã sync)
+                    // Đây là tổng chi tiêu từ khi bắt đầu sync, không phải lifetime thực từ API
+                    $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(
+                        [(string) $account->id],
+                        'maximum' // 'maximum' = không filter date, lấy tất cả từ database
+                    );
+
+                    if ($insightsResult->isError()) {
+                        $errors++;
+                        continue;
+                    }
+
+                    $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
+                    $thresholdAmount = $balance + $threshold;
+
+                    // Kiểm tra nếu chi tiêu tích lũy vượt quá số dư + ngưỡng an toàn
+                    if ($lifetimeSpending > $thresholdAmount) {
+                        // Pause tất cả campaigns trong account
+                        $campaigns = $this->googleAdsCampaignRepository->query()
+                            ->where('google_account_id', $account->id)
+                            ->where('status', '!=', GoogleCampaignStatus::PAUSED->value)
+                            ->where('status', '!=', GoogleCampaignStatus::REMOVED->value)
+                            ->get();
+
+                        foreach ($campaigns as $campaign) {
+                            if ($account->serviceUser) {
+                                $pauseResult = $this->updateCampaignStatus(
+                                    (string) $account->serviceUser->id,
+                                    (string) $campaign->id,
+                                    GoogleCampaignStatus::PAUSED->value
+                                );
+                                if ($pauseResult->isError()) {
+                                    Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Failed to pause campaign', [
+                                        'account_id' => $account->id,
+                                        'campaign_id' => $campaign->id,
+                                        'error' => $pauseResult->getMessage(),
+                                    ]);
+                                }
+                            }
+                        }
+
+                        $paused++;
+
+                        // Gửi thông báo
+                        $notificationResult = $this->googleAdsNotificationService->sendSpendingExceededAlert(
+                            $account,
+                            $lifetimeSpending,
+                            $threshold
+                        );
+                        if ($notificationResult->isSuccess()) {
+                            $notified++;
+                        }
+
+                        Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Auto-paused account (spending exceeded)', [
+                            'account_id' => $account->id,
+                            'account_name' => $account->account_name,
+                            'balance' => $balance,
+                            'lifetime_spending' => $lifetimeSpending,
+                            'threshold' => $thresholdAmount,
+                            'campaigns_paused' => $campaigns->count(),
+                            'notification_sent' => $notificationResult->isSuccess(),
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    $errors++;
+                    Logging::error(
+                        message: 'GoogleAdsService@checkAndAutoPauseAccounts: Error processing account',
+                        context: [
+                            'account_id' => $account->id,
+                            'error' => $e->getMessage(),
+                        ],
+                        exception: $e
+                    );
+                }
+            }
+
+            return ServiceReturn::success(data: [
+                'paused' => $paused,
+                'notified' => $notified,
+                'errors' => $errors,
+            ]);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'GoogleAdsService@checkAndAutoPauseAccounts: Unexpected error',
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 }

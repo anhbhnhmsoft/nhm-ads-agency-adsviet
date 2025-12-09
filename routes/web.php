@@ -19,6 +19,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SpendReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\BusinessManagerController;
+use App\Http\Controllers\ContactController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -54,6 +55,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp'])->name('profile_verify_email_otp');
     Route::post('/profile/connect-telegram', [ProfileController::class, 'connectTelegram'])->name('profile_connect_telegram');
     Route::put('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile_change_password');
+
+    Route::get('/contact', [ContactController::class, 'index'])->name('contact_index');
 
     Route::prefix('user')->group(function () {
         Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');

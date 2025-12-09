@@ -12,6 +12,8 @@ use App\Mail\AdminWalletTransactionAlert;
 use App\Mail\ServiceUserStatusAlert;
 use App\Mail\GoogleAdsLowBalanceAlert;
 use App\Mail\MetaAdsLowBalanceAlert;
+use App\Mail\GoogleAdsSpendingExceededAlert;
+use App\Mail\MetaAdsSpendingExceededAlert;
 use Illuminate\Support\Facades\Mail;
 
 class MailService
@@ -181,6 +183,54 @@ class MailService
                 'trace' => $exception->getTraceAsString(),
             ]);
             return ServiceReturn::error(message: 'Failed to send Meta Ads low balance email: ' . $exception->getMessage());
+        }
+    }
+
+    public function sendGoogleAdsSpendingExceededAlert(string $email, string $username, string $accountName, float $spending, float $balance, float $threshold, float $limit, string $currency): ServiceReturn
+    {
+        try {
+            Mail::to($email)->queue(new GoogleAdsSpendingExceededAlert(
+                username: $username,
+                accountName: $accountName,
+                spending: number_format($spending, 2),
+                balance: number_format($balance, 2),
+                threshold: number_format($threshold, 2), // Ngưỡng an toàn (100)
+                limit: number_format($limit, 2), // Giới hạn tổng (150)
+                currency: $currency,
+            ));
+
+            return ServiceReturn::success();
+        } catch (\Throwable $exception) {
+            Logging::error('MailService@sendGoogleAdsSpendingExceededAlert: Failed to queue email', [
+                'email' => $email,
+                'error' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
+            ]);
+            return ServiceReturn::error(message: 'Failed to send Google Ads spending exceeded email: ' . $exception->getMessage());
+        }
+    }
+
+    public function sendMetaAdsSpendingExceededAlert(string $email, string $username, string $accountName, float $spending, float $balance, float $threshold, float $limit, string $currency): ServiceReturn
+    {
+        try {
+            Mail::to($email)->queue(new MetaAdsSpendingExceededAlert(
+                username: $username,
+                accountName: $accountName,
+                spending: number_format($spending, 2),
+                balance: number_format($balance, 2),
+                threshold: number_format($threshold, 2), // Ngưỡng an toàn (100)
+                limit: number_format($limit, 2), // Giới hạn tổng (150)
+                currency: $currency,
+            ));
+
+            return ServiceReturn::success();
+        } catch (\Throwable $exception) {
+            Logging::error('MailService@sendMetaAdsSpendingExceededAlert: Failed to queue email', [
+                'email' => $email,
+                'error' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
+            ]);
+            return ServiceReturn::error(message: 'Failed to send Meta Ads spending exceeded email: ' . $exception->getMessage());
         }
     }
 }

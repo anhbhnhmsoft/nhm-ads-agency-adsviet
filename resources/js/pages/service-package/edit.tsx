@@ -103,6 +103,53 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
         setData('monthly_spending_fee_structure', next);
     };
 
+    const parseMonthlyRangeToMinMax = (range: string): { min: string; max: string } => {
+        const cleaned = (range || '').replace(/\$/g, '').replace(/,/g, '').trim();
+        if (!cleaned) return { min: '', max: '' };
+
+        const parts = cleaned.split(/[-–]/);
+        if (parts.length >= 2) {
+            return {
+                min: parts[0].trim().replace(/[^\d.]/g, ''),
+                max: parts[1].trim().replace(/[^\d.]/g, ''),
+            };
+        }
+
+        if (cleaned.endsWith('+')) {
+            return {
+                min: cleaned.slice(0, -1).trim().replace(/[^\d.]/g, ''),
+                max: '',
+            };
+        }
+
+        return {
+            min: cleaned.replace(/[^\d.]/g, ''),
+            max: '',
+        };
+    };
+
+    const buildMonthlyRange = (min: string, max: string): string => {
+        const cleanMin = min.trim();
+        const cleanMax = max.trim();
+        if (cleanMin && cleanMax) return `${cleanMin}-${cleanMax}`;
+        if (cleanMin && !cleanMax) return `${cleanMin}+`;
+        return '';
+    };
+
+    const handleMonthlyMinChange = (index: number, min: string) => {
+        const current = data.monthly_spending_fee_structure[index];
+        const { max } = parseMonthlyRangeToMinMax(current?.range || '');
+        const newRange = buildMonthlyRange(min, max);
+        handleMonthlySpendingChange(index, 'range', newRange);
+    };
+
+    const handleMonthlyMaxChange = (index: number, max: string) => {
+        const current = data.monthly_spending_fee_structure[index];
+        const { min } = parseMonthlyRangeToMinMax(current?.range || '');
+        const newRange = buildMonthlyRange(min, max);
+        handleMonthlySpendingChange(index, 'range', newRange);
+    };
+
     const handleAddMonthlySpendingRow = () => {
         setData('monthly_spending_fee_structure', [
             ...data.monthly_spending_fee_structure,
@@ -251,42 +298,39 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
                         </div>
                     </div>
                     <div className="grid grid-cols-1 gap-3">
-                        <div className="hidden md:grid md:grid-cols-[2fr_1fr_auto] md:gap-3">
+                        <div className="hidden md:grid md:grid-cols-[1fr_1fr_1fr_auto] md:gap-3">
                             <Label className="text-muted-foreground">
-                                {t(
-                                    'service_packages.monthly_spending_spending_label',
-                                )}
+                                {t('service_packages.monthly_spending_min_label', { defaultValue: 'Min' })}
                             </Label>
                             <Label className="text-muted-foreground">
-                                {t(
-                                    'service_packages.monthly_spending_fee_label',
-                                )}
+                                {t('service_packages.monthly_spending_max_label', { defaultValue: 'Max' })}
+                            </Label>
+                            <Label className="text-muted-foreground">
+                                {t('service_packages.monthly_spending_fee_label')}
                             </Label>
                             <span />
                         </div>
-                        {data.monthly_spending_fee_structure.map(
-                            (tier, index) => (
+                        {data.monthly_spending_fee_structure.map((tier, index) => {
+                            const { min, max } = parseMonthlyRangeToMinMax(tier.range);
+                            return (
                                 <div
                                     key={`monthly-tier-${index}`}
-                                    className="grid gap-2 md:grid-cols-[2fr_1fr_auto]"
+                                    className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto]"
                                 >
                                     <Input
-                                        placeholder={t(
-                                            'service_packages.monthly_spending_spending_label',
-                                        )}
-                                        value={tier.range}
-                                        onChange={(e) =>
-                                            handleMonthlySpendingChange(
-                                                index,
-                                                'range',
-                                                e.target.value,
-                                            )
-                                        }
+                                        placeholder={t('service_packages.monthly_spending_min_label', { defaultValue: 'Min' })}
+                                        type="number"
+                                        value={min}
+                                        onChange={(e) => handleMonthlyMinChange(index, e.target.value)}
                                     />
                                     <Input
-                                        placeholder={t(
-                                            'service_packages.monthly_spending_fee_label',
-                                        )}
+                                        placeholder={t('service_packages.monthly_spending_max_label', { defaultValue: 'Max' })}
+                                        type="number"
+                                        value={max}
+                                        onChange={(e) => handleMonthlyMaxChange(index, e.target.value)}
+                                    />
+                                    <Input
+                                        placeholder={t('service_packages.monthly_spending_fee_label')}
                                         value={tier.fee_percent}
                                         onChange={(e) =>
                                             handleMonthlySpendingChange(
@@ -314,8 +358,8 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
-                            ),
-                        )}
+                            );
+                        })}
                     </div>
                     {monthlySpendingError && (
                         <span className="text-sm text-red-500">

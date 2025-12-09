@@ -20,6 +20,7 @@ import {
     ticket_appeal,
     ticket_share,
     business_managers_index,
+    contact_index,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -29,14 +30,11 @@ import {
     Settings,
     Users,
     Wallet,
-    Receipt,
     ShoppingCart,
-    ClipboardList,
     KanbanSquare,
-    BarChart3,
     MessageSquare,
-    CreditCard,
     DollarSign,
+    Phone,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -202,6 +200,17 @@ const useMenu = () => {
                         ]),
                     },
                 ],
+            },
+            {
+                title: t('menu.contact', { defaultValue: 'Liên hệ' }),
+                url: contact_index().url,
+                icon: <Phone />,
+                is_menu: true,
+                active: isActive(contact_index()),
+                can_show: checkRole([
+                    _UserRole.CUSTOMER,
+                    _UserRole.AGENCY,
+                ]),
             },
             {
                 title: t('menu.user'),

@@ -49,6 +49,12 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
         setDisplayName,
         bmId,
         setBmId,
+        infoFanpage,
+        setInfoFanpage,
+        infoWebsite,
+        setInfoWebsite,
+        paymentType,
+        setPaymentType,
         openDialogForOrder,
         handleSubmitApprove,
         formErrors,
@@ -64,6 +70,12 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
         setDisplayName: setEditDisplayName,
         bmId: editBmId,
         setBmId: setEditBmId,
+        infoFanpage: editInfoFanpage,
+        setInfoFanpage: setEditInfoFanpage,
+        infoWebsite: editInfoWebsite,
+        setInfoWebsite: setEditInfoWebsite,
+        paymentType: editPaymentType,
+        setPaymentType: setEditPaymentType,
         openDialogForOrder: openEditDialogForOrder,
         handleSubmitUpdate,
     } = useServiceOrderEditConfigDialog();
@@ -122,8 +134,10 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                     const email = (config.meta_email as string) || '';
                     const name = (config.display_name as string) || '';
                     const bm = (config.bm_id as string) || '';
+                    const fanpage = (config.info_fanpage as string) || '';
+                    const website = (config.info_website as string) || '';
 
-                    if (!email && !name && !bm) {
+                    if (!email && !name && !bm && !fanpage && !website) {
                         return <span className="text-xs text-muted-foreground">-</span>;
                     }
 
@@ -144,6 +158,16 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                     <span className="font-medium">BM ID:</span> {bm}
                                 </div>
                             )}
+                            {fanpage && (
+                                <div>
+                                    <span className="font-medium">{t('service_orders.table.info_fanpage')}:</span> {fanpage}
+                                </div>
+                            )}
+                            {website && (
+                                <div>
+                                    <span className="font-medium">{t('service_orders.table.info_website')}:</span> {website}
+                                </div>
+                            )}
                         </div>
                     );
                 },
@@ -152,6 +176,31 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                 id: 'platform',
                 header: t('service_orders.table.platform'),
                 cell: ({ row }) => row.original.package?.platform_label || '-',
+            },
+            {
+                id: 'topup',
+                header: t('service_orders.table.top_up_amount'),
+                meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+                cell: ({ row }) => {
+                    const config = row.original.config_account || {};
+                    const paymentType = ((config.payment_type as string) || '').toLowerCase();
+                    const topupRaw = config.top_up_amount as number | string | undefined;
+                    const isTopupMissing = topupRaw === undefined || topupRaw === null || topupRaw === '';
+                    const isPostpay = paymentType === 'postpay' || (paymentType === '' && isTopupMissing);
+
+                    if (isPostpay) {
+                        return <span className="text-xs text-muted-foreground">{t('service_orders.table.postpay_label')}</span>;
+                    }
+
+                    if (isTopupMissing) {
+                        return <span className="text-xs text-muted-foreground">-</span>;
+                    }
+                    const num = Number(topupRaw);
+                    if (Number.isNaN(num)) {
+                        return <span className="text-xs text-muted-foreground">-</span>;
+                    }
+                    return <span className="text-xs font-medium">{num.toFixed(2)} USDT</span>;
+                },
             },
             {
                 id: 'budget',
@@ -336,6 +385,45 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                         <p className="text-xs text-red-500">{formErrors.bm_id}</p>
                                     )}
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="payment_type">{t('service_purchase.payment_type')}</Label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant={paymentType === 'prepay' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setPaymentType('prepay')}
+                                        >
+                                            {t('service_purchase.payment_prepay')}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setPaymentType('postpay')}
+                                        >
+                                            {t('service_purchase.payment_postpay')}
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                    <Input
+                                        id="info_fanpage"
+                                        value={infoFanpage}
+                                        onChange={(e) => setInfoFanpage(e.target.value)}
+                                        placeholder={t('service_orders.form.info_fanpage_placeholder')}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="info_website">{t('service_orders.form.info_website')}</Label>
+                                    <Input
+                                        id="info_website"
+                                        value={infoWebsite}
+                                        onChange={(e) => setInfoWebsite(e.target.value)}
+                                        placeholder={t('service_orders.form.info_website_placeholder')}
+                                    />
+                                </div>
                             </div>
 
                             <DialogFooter>
@@ -383,6 +471,45 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                         value={editBmId}
                                         onChange={(e) => setEditBmId(e.target.value)}
                                         placeholder={t('service_orders.form.bm_id_placeholder')}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit_payment_type">{t('service_purchase.payment_type')}</Label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant={editPaymentType === 'prepay' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setEditPaymentType('prepay')}
+                                        >
+                                            {t('service_purchase.payment_prepay')}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={editPaymentType === 'postpay' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setEditPaymentType('postpay')}
+                                        >
+                                            {t('service_purchase.payment_postpay')}
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit_info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                    <Input
+                                        id="edit_info_fanpage"
+                                        value={editInfoFanpage}
+                                        onChange={(e) => setEditInfoFanpage(e.target.value)}
+                                        placeholder={t('service_orders.form.info_fanpage_placeholder')}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit_info_website">{t('service_orders.form.info_website')}</Label>
+                                    <Input
+                                        id="edit_info_website"
+                                        value={editInfoWebsite}
+                                        onChange={(e) => setEditInfoWebsite(e.target.value)}
+                                        placeholder={t('service_orders.form.info_website_placeholder')}
                                     />
                                 </div>
                             </div>

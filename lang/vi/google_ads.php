@@ -17,6 +17,7 @@ return [
         'failed_to_update_campaign_status' => 'Không thể cập nhật trạng thái chiến dịch trên Google Ads.',
         'failed_to_update_campaign_status_suspended' => 'Không thể cập nhật trạng thái chiến dịch vì tài khoản Google Ads đang bị tạm khóa (suspended). Vui lòng xử lý trạng thái tài khoản trực tiếp trên Google Ads trước.',
         'failed_to_update_campaign_budget' => 'Không thể cập nhật ngân sách chiến dịch trên Google Ads.',
+        'cannot_resume_spending_exceeded' => 'Không thể tiếp tục chiến dịch. Chi tiêu tích lũy (:spending USD) đã vượt quá số dư hiện tại (:balance USD) cộng với ngưỡng an toàn (:threshold USD). Vui lòng nạp thêm tiền vào tài khoản trước khi tiếp tục.',
     ],
     'account_status' => [
         'enabled' => 'Hoạt động',

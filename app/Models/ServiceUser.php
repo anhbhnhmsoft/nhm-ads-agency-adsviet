@@ -18,6 +18,7 @@ class ServiceUser extends Model
         'status',
         'budget',
         'description',
+        'last_postpay_billed_at',
     ];
 
     protected $casts = [
@@ -27,6 +28,7 @@ class ServiceUser extends Model
         'config_account' => 'array',
         'status' => 'integer',
         'budget' => 'decimal:8',
+        'last_postpay_billed_at' => 'datetime',
     ];
 
     // Relationships
