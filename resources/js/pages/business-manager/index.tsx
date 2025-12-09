@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/table/data-table';
 import BusinessManagerSearchForm from '@/pages/business-manager/components/search-form';
-import type { BusinessManagerItem, BusinessManagerPagination } from '@/pages/business-manager/types/type';
+import type { BusinessManagerItem, BusinessManagerPagination, BusinessManagerStats } from '@/pages/business-manager/types/type';
 import { _PlatformType } from '@/lib/types/constants';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import GoogleIcon from '@/images/google_icon.png';
 import FacebookIcon from '@/images/facebook_icon.png';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { service_management_index } from '@/routes';
 import {
     Dialog,
     DialogContent,
@@ -24,14 +26,16 @@ import axios from 'axios';
 
 type Props = {
     paginator: BusinessManagerPagination;
+    stats?: BusinessManagerStats;
 };
 
-const BusinessManagerIndex = ({ paginator }: Props) => {
+const BusinessManagerIndex = ({ paginator, stats }: Props) => {
     const { t } = useTranslation();
     const [selectedBM, setSelectedBM] = useState<BusinessManagerItem | null>(null);
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
     const [accounts, setAccounts] = useState<any[]>([]);
     const [loadingAccounts, setLoadingAccounts] = useState(false);
+    const [selectedPlatform, setSelectedPlatform] = useState<'all' | _PlatformType>( 'all' );
 
     const handleViewDetails = async (item: BusinessManagerItem) => {
         setSelectedBM(item);
@@ -66,7 +70,7 @@ const BusinessManagerIndex = ({ paginator }: Props) => {
             },
             {
                 accessorKey: 'id',
-                header: t('business_manager.table.account_id', { defaultValue: 'ID tk' }),
+                header: t('business_manager.table.account_id', { defaultValue: 'ID BM' }),
             },
             {
                 accessorKey: 'platform',
@@ -140,10 +144,20 @@ const BusinessManagerIndex = ({ paginator }: Props) => {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleViewDetails(row.original)}
+                            onClick={() => {
+                                // Điều hướng sang trang Quản lý tài khoản, filter theo BM ID
+                                router.get(service_management_index().url, {
+                                    filter: {
+                                        keyword: row.original.id,
+                                    },
+                                }, {
+                                    replace: true,
+                                    preserveState: false,
+                                });
+                            }}
                         >
                             <Eye className="h-4 w-4 mr-1" />
-                            {t('common.view', { defaultValue: 'Xem chi tiết' })}
+                            {t('common.view', { defaultValue: 'Xem tài khoản' })}
                         </Button>
                     );
                 },
@@ -192,11 +206,94 @@ const BusinessManagerIndex = ({ paginator }: Props) => {
         [t]
     );
 
+    const platformTabs = [
+        { key: 'all' as const, label: 'All', value: undefined },
+        { key: _PlatformType.META, label: 'Facebook', value: _PlatformType.META },
+        { key: _PlatformType.GOOGLE, label: 'Google', value: _PlatformType.GOOGLE },
+    ];
+
+    const currentStats = useMemo(() => {
+        if (!stats) {
+            return { total_accounts: 0, active_accounts: 0, disabled_accounts: 0 };
+        }
+        if (selectedPlatform === 'all') {
+            return {
+                total_accounts: stats.total_accounts,
+                active_accounts: stats.active_accounts,
+                disabled_accounts: stats.disabled_accounts,
+            };
+        }
+        const st = stats.by_platform?.[selectedPlatform] || { total_accounts: 0, active_accounts: 0, disabled_accounts: 0 };
+        return st;
+    }, [stats, selectedPlatform]);
+
+    const handleSelectPlatform = (platformKey: 'all' | _PlatformType) => {
+        setSelectedPlatform(platformKey);
+        const platformValue = platformKey === 'all' ? undefined : platformKey;
+        router.get('/business-managers', {
+            filter: {
+                platform: platformValue,
+            },
+        }, {
+            replace: true,
+            preserveState: true,
+            only: ['paginator', 'stats'],
+        });
+    };
+
     return (
         <div>
             <h1 className="text-xl font-semibold mb-4">
                 {t('business_manager.title', { defaultValue: 'Quản lý Business Manager / MCC' })}
             </h1>
+
+            {/* Platform Tabs & Stats */}
+            <div className="mb-4 flex flex-col gap-3">
+                <div className="flex flex-wrap gap-2">
+                    {platformTabs.map((tab) => (
+                        <Button
+                            key={tab.key}
+                            variant={selectedPlatform === tab.key ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => handleSelectPlatform(tab.key)}
+                        >
+                            {tab.label}
+                        </Button>
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm text-muted-foreground">
+                                {t('business_manager.stats.total', { defaultValue: 'Tổng số lượng tài khoản' })}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-2xl font-semibold">
+                            {currentStats.total_accounts || 0}
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm text-muted-foreground">
+                                {t('business_manager.stats.active', { defaultValue: 'Active' })}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-2xl font-semibold text-green-600">
+                            {currentStats.active_accounts || 0}
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm text-muted-foreground">
+                                {t('business_manager.stats.disabled', { defaultValue: 'Disabled' })}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-2xl font-semibold text-red-600">
+                            {currentStats.disabled_accounts || 0}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
             
             <BusinessManagerSearchForm />
 

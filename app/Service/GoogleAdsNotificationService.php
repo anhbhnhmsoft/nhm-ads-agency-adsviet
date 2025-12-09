@@ -158,5 +158,181 @@ class GoogleAdsNotificationService
         $now = Carbon::now();
         return $now->diffInMinutes($now->copy()->endOfDay()) ?: 60;
     }
+
+    /**
+     * Gửi thông báo số dư thấp cho 1 account (dùng khi auto-pause do balance < threshold)
+     * @param \App\Models\GoogleAccount $account
+     * @param float $threshold
+     * @return ServiceReturn
+     */
+    public function sendLowBalanceAlert(\App\Models\GoogleAccount $account, float $threshold = 100.0): ServiceReturn
+    {
+        try {
+            $serviceUser = $account->serviceUser;
+            if (!$serviceUser) {
+                return ServiceReturn::error(message: __('google_ads.error.service_not_found'));
+            }
+
+            $user = $serviceUser->user;
+            if (!$user) {
+                return ServiceReturn::error(message: __('google_ads.error.user_not_found'));
+            }
+
+            $hasTelegram = !empty($user->telegram_id);
+            $hasVerifiedEmail = !empty($user->email) && !empty($user->email_verified_at);
+
+            if (!$hasTelegram && !$hasVerifiedEmail) {
+                return ServiceReturn::error(message: __('google_ads.error.no_contact_method'));
+            }
+
+            $balance = (float) ($account->balance ?? 0);
+            $balanceFormatted = number_format($balance, 2);
+            $thresholdFormatted = number_format($threshold, 2);
+            $currency = $account->currency ?? 'USD';
+
+            $result = null;
+            $method = null;
+
+            if ($hasTelegram) {
+                $message = __('google_ads.telegram.low_balance', [
+                    'accountName' => $account->account_name ?? $account->account_id,
+                    'balance' => $balanceFormatted,
+                    'currency' => $currency,
+                    'threshold' => $thresholdFormatted,
+                ]);
+                $result = $this->telegramService->sendNotification($user->telegram_id, $message);
+                $method = 'telegram';
+
+                if (!$result->isSuccess() && $hasVerifiedEmail) {
+                    $result = $this->mailService->sendGoogleAdsLowBalanceAlert(
+                        email: $user->email,
+                        username: $user->name ?? $user->username,
+                        accountName: $account->account_name ?? $account->account_id,
+                        balance: $balance,
+                        currency: $currency,
+                        threshold: $threshold,
+                    );
+                    $method = 'email (fallback)';
+                }
+            } elseif ($hasVerifiedEmail) {
+                $result = $this->mailService->sendGoogleAdsLowBalanceAlert(
+                    email: $user->email,
+                    username: $user->name ?? $user->username,
+                    accountName: $account->account_name ?? $account->account_id,
+                    balance: $balance,
+                    currency: $currency,
+                    threshold: $threshold,
+                );
+                $method = 'email';
+            }
+
+            if ($result && $result->isSuccess()) {
+                Logging::web('GoogleAdsNotificationService: Low balance alert sent (auto-pause)', [
+                    'account_id' => $account->id,
+                    'user_id' => $user->id,
+                    'method' => $method,
+                ]);
+                return ServiceReturn::success();
+            }
+
+            return ServiceReturn::error(message: $result ? $result->getMessage() : __('common_error.server_error'));
+        } catch (\Throwable $e) {
+            Logging::error(message: 'GoogleAdsNotificationService@sendLowBalanceAlert error: ' . $e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Gửi thông báo khi spending > balance + threshold
+     * @param \App\Models\GoogleAccount $account
+     * @param float $spending
+     * @param float $threshold
+     * @return ServiceReturn
+     */
+    public function sendSpendingExceededAlert(\App\Models\GoogleAccount $account, float $spending, float $threshold = 100.0): ServiceReturn
+    {
+        try {
+            $serviceUser = $account->serviceUser;
+            if (!$serviceUser) {
+                return ServiceReturn::error(message: __('google_ads.error.service_not_found'));
+            }
+
+            $user = $serviceUser->user;
+            if (!$user) {
+                return ServiceReturn::error(message: __('google_ads.error.user_not_found'));
+            }
+
+            $hasTelegram = !empty($user->telegram_id);
+            $hasVerifiedEmail = !empty($user->email) && !empty($user->email_verified_at);
+
+            if (!$hasTelegram && !$hasVerifiedEmail) {
+                return ServiceReturn::error(message: __('google_ads.error.no_contact_method'));
+            }
+
+            $balance = (float) ($account->balance ?? 0);
+            $thresholdAmount = $balance + $threshold;
+            $balanceFormatted = number_format($balance, 2);
+            $spendingFormatted = number_format($spending, 2);
+            $thresholdFormatted = number_format($threshold, 2); // Ngưỡng an toàn riêng (100)
+            $limitFormatted = number_format($thresholdAmount, 2); // Giới hạn tổng (balance + threshold)
+            $currency = $account->currency ?? 'USD';
+
+            $result = null;
+            $method = null;
+
+            if ($hasTelegram) {
+                $message = __('google_ads.telegram.spending_exceeded', [
+                    'accountName' => $account->account_name ?? $account->account_id,
+                    'spending' => $spendingFormatted,
+                    'balance' => $balanceFormatted,
+                    'threshold' => $thresholdFormatted, // Ngưỡng an toàn (100)
+                    'limit' => $limitFormatted, // Giới hạn tổng (150)
+                    'currency' => $currency,
+                ]);
+                $result = $this->telegramService->sendNotification($user->telegram_id, $message);
+                $method = 'telegram';
+
+                if (!$result->isSuccess() && $hasVerifiedEmail) {
+                    $result = $this->mailService->sendGoogleAdsSpendingExceededAlert(
+                        email: $user->email,
+                        username: $user->name ?? $user->username,
+                        accountName: $account->account_name ?? $account->account_id,
+                        spending: $spending,
+                        balance: $balance,
+                        threshold: $threshold, // Ngưỡng an toàn (100)
+                        limit: $thresholdAmount, // Giới hạn tổng (150)
+                        currency: $currency,
+                    );
+                    $method = 'email (fallback)';
+                }
+            } elseif ($hasVerifiedEmail) {
+                $result = $this->mailService->sendGoogleAdsSpendingExceededAlert(
+                    email: $user->email,
+                    username: $user->name ?? $user->username,
+                    accountName: $account->account_name ?? $account->account_id,
+                    spending: $spending,
+                    balance: $balance,
+                    threshold: $threshold, // Ngưỡng an toàn (100)
+                    limit: $thresholdAmount, // Giới hạn tổng (150)
+                    currency: $currency,
+                );
+                $method = 'email';
+            }
+
+            if ($result && $result->isSuccess()) {
+                Logging::web('GoogleAdsNotificationService: Spending exceeded alert sent', [
+                    'account_id' => $account->id,
+                    'user_id' => $user->id,
+                    'method' => $method,
+                ]);
+                return ServiceReturn::success();
+            }
+
+            return ServiceReturn::error(message: $result ? $result->getMessage() : __('common_error.server_error'));
+        } catch (\Throwable $e) {
+            Logging::error(message: 'GoogleAdsNotificationService@sendSpendingExceededAlert error: ' . $e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
 }
 

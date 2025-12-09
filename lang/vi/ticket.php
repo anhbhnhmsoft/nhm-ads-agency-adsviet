@@ -65,13 +65,52 @@ return [
     ],
 
     'transfer' => [
+        'platform_required' => 'Vui lòng chọn kênh quảng cáo',
+        'platform_invalid' => 'Kênh quảng cáo không hợp lệ',
         'from_account_required' => 'Vui lòng chọn tài khoản chuyển đi',
         'to_account_required' => 'Vui lòng chọn tài khoản nhận',
+        'accounts_must_different' => 'Tài khoản nguồn và tài khoản đích không được trùng nhau',
         'amount_required' => 'Vui lòng nhập số tiền',
         'amount_numeric' => 'Số tiền phải là số',
         'amount_min' => 'Số tiền phải lớn hơn 0',
+        'notes_required' => 'Vui lòng nhập ghi chú',
         'notes_max' => 'Ghi chú không được vượt quá :max ký tự',
         'create_success' => 'Đã tạo yêu cầu chuyển tiền thành công',
+    ],
+
+    'refund' => [
+        'platform_required' => 'Vui lòng chọn kênh quảng cáo',
+        'platform_invalid' => 'Kênh quảng cáo không hợp lệ',
+        'account_ids_required' => 'Vui lòng chọn ít nhất một tài khoản',
+        'account_ids_invalid' => 'Danh sách tài khoản không hợp lệ',
+        'account_ids_min' => 'Vui lòng chọn ít nhất một tài khoản',
+        'liquidation_type_required' => 'Vui lòng chọn loại thanh lý',
+        'liquidation_type_invalid' => 'Loại thanh lý không hợp lệ',
+        'notes_required' => 'Vui lòng nhập ghi chú',
+        'notes_max' => 'Ghi chú không được vượt quá :max ký tự',
+        'create_success' => 'Đã tạo yêu cầu thanh lý tài khoản thành công',
+    ],
+
+    'appeal' => [
+        'platform_required' => 'Vui lòng chọn kênh quảng cáo',
+        'platform_invalid' => 'Kênh quảng cáo không hợp lệ',
+        'account_id_required' => 'Vui lòng chọn tài khoản',
+        'account_id_invalid' => 'Tài khoản không hợp lệ',
+        'notes_required' => 'Vui lòng nhập ghi chú',
+        'notes_max' => 'Ghi chú không được vượt quá :max ký tự',
+        'create_success' => 'Đã tạo yêu cầu kháng tài khoản thành công',
+    ],
+
+    'share' => [
+        'platform_required' => 'Vui lòng chọn kênh quảng cáo',
+        'platform_invalid' => 'Kênh quảng cáo không hợp lệ',
+        'account_id_required' => 'Vui lòng chọn tài khoản',
+        'account_id_invalid' => 'Tài khoản không hợp lệ',
+        'bm_bc_mcc_id_required' => 'Vui lòng nhập ID BM/BC/MCC',
+        'bm_bc_mcc_id_invalid' => 'ID BM/BC/MCC không hợp lệ',
+        'notes_required' => 'Vui lòng nhập ghi chú',
+        'notes_max' => 'Ghi chú không được vượt quá :max ký tự',
+        'create_success' => 'Đã tạo yêu cầu share BM/BC/MCC thành công',
     ],
 ];
 

@@ -19,6 +19,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SpendReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\BusinessManagerController;
+use App\Http\Controllers\ContactController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -54,6 +55,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp'])->name('profile_verify_email_otp');
     Route::post('/profile/connect-telegram', [ProfileController::class, 'connectTelegram'])->name('profile_connect_telegram');
     Route::put('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile_change_password');
+
+    Route::get('/contact', [ContactController::class, 'index'])->name('contact_index');
 
     Route::prefix('user')->group(function () {
         Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');
@@ -155,6 +158,12 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/', [TicketController::class, 'index'])->name('ticket_index');
         Route::get('/transfer', [TicketController::class, 'transfer'])->name('ticket_transfer');
         Route::post('/transfer', [TicketController::class, 'storeTransfer'])->name('ticket_transfer_store');
+        Route::get('/refund', [TicketController::class, 'refund'])->name('ticket_refund');
+        Route::post('/refund', [TicketController::class, 'storeRefund'])->name('ticket_refund_store');
+        Route::get('/appeal', [TicketController::class, 'appeal'])->name('ticket_appeal');
+        Route::post('/appeal', [TicketController::class, 'storeAppeal'])->name('ticket_appeal_store');
+        Route::get('/share', [TicketController::class, 'share'])->name('ticket_share');
+        Route::post('/share', [TicketController::class, 'storeShare'])->name('ticket_share_store');
         Route::get('/{id}', [TicketController::class, 'show'])->name('ticket_show');
         Route::post('/', [TicketController::class, 'store'])->name('ticket_store');
         Route::post('/{id}/message', [TicketController::class, 'addMessage'])->name('ticket_add_message');

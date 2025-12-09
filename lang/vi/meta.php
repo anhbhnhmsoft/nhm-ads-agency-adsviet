@@ -13,6 +13,7 @@ return [
         'permissions_error' => 'Cấu hình Meta hiện tại không đủ quyền thao tác với chiến dịch này. Vui lòng kiểm tra lại quyền của Business Manager, tài khoản quảng cáo và quyền của ứng dụng (app).',
         'invalid_spend_cap_min' => 'Giới hạn chi tiêu tối thiểu là :amount USDT.',
         'invalid_spend_cap_generic' => 'Meta từ chối giá trị giới hạn chi tiêu này (Invalid parameter). Vui lòng kiểm tra lại đơn vị tiền tệ của tài khoản và xem chiến dịch có hỗ trợ đặt spend_cap trên Meta Ads Manager hay không.',
+        'cannot_resume_spending_exceeded' => 'Không thể tiếp tục chiến dịch. Chi tiêu tích lũy (:spending USD) đã vượt quá số dư hiện tại (:balance USD) cộng với ngưỡng an toàn (:threshold USD). Vui lòng nạp thêm tiền vào tài khoản trước khi tiếp tục.',
     ],
     'account_status' => [
         'active' => 'Hoạt động',

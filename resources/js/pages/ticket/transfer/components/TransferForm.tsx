@@ -164,12 +164,13 @@ export const TransferForm = ({ accounts }: TransferFormProps) => {
                     <div className="space-y-2">
                         <Label htmlFor="notes">
                             {t('ticket.transfer.notes', { defaultValue: 'Ghi chú' })}
+                            <span className="text-red-500 ml-1">*</span>
                         </Label>
                         <Textarea
                             id="notes"
                             value={form.data.notes}
                             onChange={(e) => form.setData('notes', e.target.value)}
-                            placeholder={t('ticket.transfer.notes_placeholder', { defaultValue: 'Nhập ghi chú (nếu có)' })}
+                            placeholder={t('ticket.transfer.notes_placeholder', { defaultValue: 'Nhập mô tả vấn đề' })}
                             rows={4}
                         />
                         {form.errors.notes && (

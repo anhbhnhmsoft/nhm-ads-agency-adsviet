@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { usePlatformForm } from '@/pages/config/hooks/use-platform-form';
 import PlatformSettingForm, { FieldConfig } from '@/pages/config/components/PlatformSettingForm';
 import axios from 'axios';
@@ -129,6 +130,26 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
           )}
         </CardContent>
       </Card>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Button asChild variant="outline">
+          <a
+            href="https://ads.google.com/aw/billing/home"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t('platform.open_google_billing', { defaultValue: 'Mở Billing Google Ads' })}
+          </a>
+        </Button>
+        <Button asChild variant="outline">
+          <a
+            href="https://business.facebook.com/billing_hub/payment_settings"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t('platform.open_meta_billing', { defaultValue: 'Mở Billing Meta Ads' })}
+          </a>
+        </Button>
+      </div>
     </div>
   );
 };

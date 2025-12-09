@@ -12,7 +12,6 @@ import { useTranslation } from 'react-i18next';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTransition } from 'react';
-import { SupportRequestButton } from './support-request-button';
 
 export function AppSidebarHeader({
     breadcrumbs = [],
@@ -69,7 +68,6 @@ export function AppSidebarHeader({
                 </Breadcrumb>
             </div>
             <div className="ml-auto flex items-center gap-2">
-                <SupportRequestButton />
                 <Select value={locale ?? 'vi'} onValueChange={handleLocaleChange} disabled={isPending}>
                     <SelectTrigger className="w-[140px]">
                         <SelectValue placeholder="Language" />

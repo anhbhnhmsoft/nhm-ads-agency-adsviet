@@ -8,6 +8,10 @@ type ServicePurchaseFormData = {
     budget: string;
     meta_email?: string;
     display_name?: string;
+    bm_id?: string;
+    info_fanpage?: string;
+    info_website?: string;
+    payment_type?: 'prepay' | 'postpay';
 };
 
 export const useServicePurchaseForm = () => {
@@ -15,15 +19,31 @@ export const useServicePurchaseForm = () => {
         package_id: '',
         top_up_amount: '',
         budget: '0',
+        info_fanpage: '',
+        info_website: ''
     });
 
-    const submit = (packageId: string, topUpAmount: string, metaEmail?: string, displayName?: string, budget?: string, onSuccess?: () => void) => {
+    const submit = (
+        packageId: string, 
+        topUpAmount: string, 
+        metaEmail?: string, 
+        displayName?: string, 
+        budget?: string,
+        bmMccConfig?: {
+            bm_id?: string;
+            info_fanpage?: string;
+            info_website?: string;
+            payment_type?: 'prepay' | 'postpay';
+        },
+        onSuccess?: () => void
+    ) => {
         const payload: ServicePurchaseFormData = {
             package_id: packageId,
             top_up_amount: topUpAmount,
             budget: budget || '0',
             meta_email: metaEmail || '',
             display_name: displayName || '',
+            ...(bmMccConfig || {}),
         };
 
         form.transform(() => payload);

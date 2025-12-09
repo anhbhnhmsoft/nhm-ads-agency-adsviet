@@ -10,6 +10,9 @@ export const useServiceOrderAdminDialog = () => {
         meta_email: '',
         display_name: '',
         bm_id: '',
+        info_fanpage: '',
+        info_website: '',
+        payment_type: '',
     });
 
     const openDialogForOrder = useCallback((order: ServiceOrder) => {
@@ -19,6 +22,9 @@ export const useServiceOrderAdminDialog = () => {
             meta_email: (config.meta_email as string) || '',
             display_name: (config.display_name as string) || '',
             bm_id: (config.bm_id as string) || '',
+            info_fanpage: (config.info_fanpage as string) || '',
+            info_website: (config.info_website as string) || '',
+            payment_type: (config.payment_type as string) || '',
         });
         form.clearErrors();
         setDialogOpen(true);
@@ -50,6 +56,12 @@ export const useServiceOrderAdminDialog = () => {
         setDisplayName: (value: string) => form.setData('display_name', value),
         bmId: form.data.bm_id,
         setBmId: (value: string) => form.setData('bm_id', value),
+        infoFanpage: form.data.info_fanpage,
+        setInfoFanpage: (value: string) => form.setData('info_fanpage', value),
+        infoWebsite: form.data.info_website,
+        setInfoWebsite: (value: string) => form.setData('info_website', value),
+        paymentType: form.data.payment_type,
+        setPaymentType: (value: string) => form.setData('payment_type', value),
         formErrors: form.errors,
         processing: form.processing,
         openDialogForOrder,

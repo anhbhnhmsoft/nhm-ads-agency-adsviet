@@ -12,6 +12,7 @@ return [
         'permissions_error' => 'The current Meta Business configuration does not have permission to manage this campaign. Please check BM access, ad account permissions and app scopes.',
         'invalid_spend_cap_min' => 'Minimum spend cap is :amount USDT.',
         'invalid_spend_cap_generic' => 'Meta rejected this spend cap value (Invalid parameter). Please double-check the account currency and whether this campaign supports spend cap on the Meta Ads Manager.',
+        'cannot_resume_spending_exceeded' => 'Cannot resume campaign. Lifetime spending (:spending USD) exceeds current balance (:balance USD) plus safety threshold (:threshold USD). Please top up your account before resuming.',
     ],
     'account_status' => [
         'active' => 'Active',

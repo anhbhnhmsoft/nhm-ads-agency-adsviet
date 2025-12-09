@@ -28,6 +28,7 @@ return [
         'bm_id_string' => 'Business Manager ID phải là chuỗi',
         'bm_id_max' => 'Business Manager ID không được vượt quá :max ký tự',
         'monthly_spending_fee_invalid' => 'Cấu trúc phí theo mức chi tiêu hằng tháng không hợp lệ',
+        'package_in_use' => 'Gói dịch vụ đang được sử dụng, không thể xóa.',
     ],
     'flash' => [
         'purchase_success' => 'Đã tạo đơn hàng thành công và trừ tiền từ ví.',

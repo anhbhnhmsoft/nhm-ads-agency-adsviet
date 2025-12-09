@@ -2,7 +2,7 @@ import { IUser } from '@/lib/types/type';
 
 export type ProfileUser = Pick<
     IUser,
-    'id' | 'name' | 'username' | 'phone' | 'email' | 'telegram_id' | 'whatsapp_id'
+    'id' | 'name' | 'username' | 'phone' | 'email' | 'telegram_id' | 'whatsapp_id' | 'referral_code'
 > & {
     email_verified_at?: string | null;
 };

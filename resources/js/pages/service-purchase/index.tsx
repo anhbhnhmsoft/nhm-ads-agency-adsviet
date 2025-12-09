@@ -44,7 +44,10 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [metaEmail, setMetaEmail] = useState<string>('');
     const [displayName, setDisplayName] = useState<string>('');
-
+    const [bmId, setBmId] = useState<string>('');
+    const [infoFanpage, setInfoFanpage] = useState<string>('');
+    const [infoWebsite, setInfoWebsite] = useState<string>('');
+    const [paymentType, setPaymentType] = useState<'prepay' | 'postpay'>('prepay');
     const packageList = useMemo<ServicePackage[]>(() => {
         if (Array.isArray(packages)) {
             return packages as ServicePackage[];
@@ -113,6 +116,33 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
         return (topUpAmount * feePercent) / 100;
     };
 
+    const parseRange = (range: string) => {
+        const trimmed = (range || '').trim();
+        if (!trimmed) return null;
+        if (trimmed.includes('-')) {
+            const [minStr, maxStr] = trimmed.split('-').map((s) => s.trim());
+            const min = parseFloat(minStr);
+            const max = parseFloat(maxStr);
+            if (Number.isFinite(min) && Number.isFinite(max)) return { min, max };
+        } else if (trimmed.endsWith('+')) {
+            const min = parseFloat(trimmed.replace('+', '').trim());
+            if (Number.isFinite(min)) return { min, max: null };
+        }
+        return null;
+    };
+
+    const getMonthlyFeePercent = (amount: number, tiers: { range: string; fee_percent: string }[]) => {
+        for (const tier of tiers) {
+            const parsed = parseRange(tier.range);
+            const feePercent = parseFloat(tier.fee_percent);
+            if (!parsed || !Number.isFinite(feePercent)) continue;
+            const { min, max } = parsed;
+            const match = amount >= min && (max === null || amount <= max);
+            if (match) return feePercent;
+        }
+        return null;
+    };
+
     // Validate top-up amount
     const validateTopUpAmount = (amount: string) => {
         if (!amount) return null;
@@ -137,8 +167,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
     };
 
     // Calculate total cost: open fee + top-up + service fee
-    const calculateTotalCost = (pkg: ServicePackage, topUpAmountStr: string) => {
-        const topUpNum = parseCurrencyInput(topUpAmountStr);
+    const calculateTotalCost = (pkg: ServicePackage, topUpAmountStr: string, paymentType: 'prepay' | 'postpay') => {
+        const isPrepay = paymentType === 'prepay';
+        const topUpNum = isPrepay ? parseCurrencyInput(topUpAmountStr) : 0;
         const openFee = parseFloat(pkg.open_fee);
         const serviceFee = topUpNum > 0 ? calculateServiceFee(topUpNum, pkg.top_up_fee) : 0;
         const totalCost = openFee + topUpNum + serviceFee;
@@ -149,17 +180,27 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
     const handlePurchase = () => {
         if (!selectedPackage) return;
 
-        const sanitizedTopUp = normalizeCurrencyInput(topUpAmount);
+        // Không cho chọn trả sau nếu số dư ví < 200 USDT
+        if (paymentType === 'postpay' && wallet_balance < 200) {
+            alert(
+                t('service_purchase.postpay_min_wallet', {
+                    defaultValue: 'Ví của bạn cần tối thiểu 200 USDT để chọn thanh toán trả sau.',
+                })
+            );
+            return;
+        }
+
+        const isPrepay = paymentType === 'prepay';
+        const sanitizedTopUp = isPrepay ? normalizeCurrencyInput(topUpAmount) : '';
         const payloadTopUp = sanitizedTopUp ? sanitizedTopUp : '0';
-        const topUpNum = parseCurrencyInput(topUpAmount);
-        const { totalCost } = calculateTotalCost(selectedPackage, topUpAmount);
+        const { totalCost } = calculateTotalCost(selectedPackage, topUpAmount, paymentType);
 
         if (wallet_balance < totalCost) {
             alert(t('service_purchase.insufficient_balance'));
             return;
         }
 
-        if (topUpAmount && validateTopUpAmount(topUpAmount)) {
+        if (isPrepay && topUpAmount && validateTopUpAmount(topUpAmount)) {
             alert(validateTopUpAmount(topUpAmount));
             return;
         }
@@ -172,13 +213,24 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
         const sanitizedBudget = normalizeCurrencyInput(budget);
         const payloadBudget = sanitizedBudget ? sanitizedBudget : '0';
 
-        submitPurchase(selectedPackage.id, payloadTopUp, metaEmail, displayName, payloadBudget, () => {
+        const bmMccConfig = {
+            bm_id: bmId || undefined,
+            info_fanpage: infoFanpage || undefined,
+            info_website: infoWebsite || undefined,
+            payment_type: paymentType,
+        };
+
+        submitPurchase(selectedPackage.id, payloadTopUp, metaEmail, displayName, payloadBudget, bmMccConfig, () => {
             setSelectedPackage(null);
             setTopUpAmount('');
             setBudget('');
             setShowCalculator(false);
             setMetaEmail('');
             setDisplayName('');
+            setBmId('');
+            setInfoFanpage('');
+            setInfoWebsite('');
+            setPaymentType('prepay');
         });
     };
 
@@ -270,7 +322,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
 
                     {/* Features */}
                     {features.length > 0 && (
-                        <div>
+                        <div className="min-h-[192px]">
                             <div className="text-sm font-medium text-gray-700 mb-2">
                                 {t('service_purchase.features')}:
                             </div>
@@ -308,7 +360,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
 
         const platformInfo = getPlatformInfo(selectedPackage.platform);
         const topUpError = topUpAmount ? validateTopUpAmount(topUpAmount) : null;
-        const { serviceFee, totalCost, openFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount);
+        const { serviceFee, totalCost, openFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount, paymentType);
         const minTopUpAmount = Number(selectedPackage.range_min_top_up || '0');
         const hasInsufficientBalance = wallet_balance < totalCost;
         const showAccountInfo =
@@ -318,6 +370,12 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                 ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
                 : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' });
         const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
+        const budgetNum = parseCurrencyInput(budget);
+        const monthlyFeePercent =
+            paymentType === 'postpay' && monthlySpendingTiers.length > 0
+                ? getMonthlyFeePercent(budgetNum, monthlySpendingTiers)
+                : null;
+        const monthlyFee = monthlyFeePercent ? (budgetNum * monthlyFeePercent) / 100 : 0;
 
         return (
             <Card className="max-w-2xl mx-auto">
@@ -359,7 +417,6 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                         </div>
                     </div>
 
-                    {/* Account Info (Meta / Google) */}
                     {showAccountInfo && (
                         <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
                             <div className="font-medium text-gray-800">{accountInfoTitle}</div>
@@ -379,9 +436,55 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                         }
                                     }}
                                 />
+                                <p className="text-xs text-muted-foreground">
+                                    {selectedPackage.platform === _PlatformType.META 
+                                        ? t('service_purchase.email_note_meta', { defaultValue: 'Nếu không có BM' })
+                                        : t('service_purchase.email_note_google', { defaultValue: 'Nếu không có MCC' })}
+                                </p>
                                 {purchaseForm.errors.meta_email && (
                                     <p className="text-xs text-red-500">{purchaseForm.errors.meta_email}</p>
                                 )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="bm_id">
+                                    {selectedPackage.platform === _PlatformType.META
+                                        ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
+                                        : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}:
+                                </Label>
+                                <Input
+                                    id="bm_id"
+                                    type="text"
+                                    placeholder="1234567890"
+                                    value={bmId}
+                                    onChange={(e) => setBmId(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {t('service_purchase.choose_access', { defaultValue: 'Chọn Full access hoặc basic access' })}
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="info_fanpage">
+                                    {t('service_purchase.info_fanpage', { defaultValue: 'Thông tin fanpage' })}:
+                                </Label>
+                                <Input
+                                    id="info_fanpage"
+                                    type="text"
+                                    placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
+                                    value={infoFanpage}
+                                    onChange={(e) => setInfoFanpage(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="info_website">
+                                    {t('service_purchase.info_website', { defaultValue: 'Thông tin website' })}:
+                                </Label>
+                                <Input
+                                    id="info_website"
+                                    type="text"
+                                    placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
+                                    value={infoWebsite}
+                                    onChange={(e) => setInfoWebsite(e.target.value)}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="displayName">
@@ -399,6 +502,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                         }
                                     }}
                                 />
+                                <p className="text-xs text-muted-foreground">
+                                    {t('service_purchase.display_name_note', { defaultValue: 'Bạn có thể đặt tên của bạn' })}
+                                </p>
                                 {purchaseForm.errors.display_name && (
                                     <p className="text-xs text-red-500">{purchaseForm.errors.display_name}</p>
                                 )}
@@ -440,6 +546,35 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             </div>
                         </div>
                     )}
+
+                    {/* Payment type */}
+                    <div className="space-y-2">
+                        <Label>{t('service_purchase.payment_type', { defaultValue: 'Hình thức thanh toán' })}</Label>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant={paymentType === 'prepay' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => {
+                                    setPaymentType('prepay');
+                                }}
+                            >
+                                {t('service_purchase.payment_prepay', { defaultValue: 'Thanh toán trả trước' })}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                disabled={wallet_balance < 200}
+                                size="sm"
+                                onClick={() => {
+                                    setPaymentType('postpay');
+                                    setTopUpAmount(''); // Trả sau không thu top-up upfront
+                                }}
+                            >
+                                {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
+                            </Button>
+                        </div>
+                    </div>
 
                     {/* Budget */}
                     <div className="space-y-2">
@@ -499,15 +634,17 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                     }
                                 }}
                                 step="1"
+                                disabled={paymentType === 'postpay'}
                             />
                             <Button
                                 variant="outline"
                                 onClick={() => setShowCalculator(!showCalculator)}
+                                disabled={paymentType === 'postpay'}
                             >
                                 <Calculator className="h-4 w-4" />
                             </Button>
                         </div>
-                        {topUpError && (
+                        {paymentType === 'prepay' && topUpError && (
                             <div className="flex items-center gap-2 text-red-600 text-sm">
                                 <AlertTriangle className="h-4 w-4" />
                                 {topUpError}
@@ -530,7 +667,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                     </div>
 
                     {/* Fee Calculator */}
-                    {(showCalculator || topUpAmount) && (
+                    {(showCalculator || topUpAmount || paymentType === 'postpay') && (
                         <div className="p-4 bg-blue-50 rounded-lg space-y-3">
                             <div className="font-medium text-blue-800">{t('service_purchase.calculate_fee')}:</div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -549,6 +686,17 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                     <span className="font-medium">{formatUSDT(serviceFee)}</span>
                                 </div>
                             </div>
+                            {paymentType === 'postpay' && monthlyFeePercent && (
+                                <div className="flex justify-between text-sm">
+                                    <span>
+                                        {t('service_purchase.monthly_fee_estimate', {
+                                            defaultValue: 'Ước tính phí tháng (trả sau)',
+                                        })}{' '}
+                                        ({monthlyFeePercent}%):
+                                    </span>
+                                    <span className="font-medium">{formatUSDT(monthlyFee)}</span>
+                                </div>
+                            )}
                             <div className="border-t pt-2">
                                 <div className="flex justify-between font-bold sm:text-lg text-md">
                                     <span>{t('service_purchase.total_cost')}:</span>

@@ -16,7 +16,11 @@ import {
     spend_report_index,
     ticket_index,
     ticket_transfer,
+    ticket_refund,
+    ticket_appeal,
+    ticket_share,
     business_managers_index,
+    contact_index,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -26,14 +30,11 @@ import {
     Settings,
     Users,
     Wallet,
-    Receipt,
     ShoppingCart,
-    ClipboardList,
     KanbanSquare,
-    BarChart3,
     MessageSquare,
-    CreditCard,
     DollarSign,
+    Phone,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -141,7 +142,7 @@ const useMenu = () => {
                     : t('menu.support'),
                 icon: <MessageSquare />,
                 is_menu: true,
-                active: isActive(ticket_index()) || isActive(ticket_transfer()),
+                active: isActive(ticket_index()) || isActive(ticket_transfer()) || isActive(ticket_refund()) || isActive(ticket_appeal()) || isActive(ticket_share()),
                 can_show: checkRole([
                     _UserRole.ADMIN,
                     _UserRole.MANAGER,
@@ -171,7 +172,45 @@ const useMenu = () => {
                             _UserRole.AGENCY,
                         ]),
                     },
+                    {
+                        title: t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' }),
+                        url: ticket_refund().url,
+                        active: isActive(ticket_refund()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
+                        title: t('ticket.appeal.title', { defaultValue: 'Kháng tài khoản' }),
+                        url: ticket_appeal().url,
+                        active: isActive(ticket_appeal()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
+                        title: t('ticket.share.title', { defaultValue: 'Share BM/BC/MCC' }),
+                        url: ticket_share().url,
+                        active: isActive(ticket_share()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
                 ],
+            },
+            {
+                title: t('menu.contact', { defaultValue: 'Liên hệ' }),
+                url: contact_index().url,
+                icon: <Phone />,
+                is_menu: true,
+                active: isActive(contact_index()),
+                can_show: checkRole([
+                    _UserRole.CUSTOMER,
+                    _UserRole.AGENCY,
+                ]),
             },
             {
                 title: t('menu.user'),

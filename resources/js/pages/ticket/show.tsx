@@ -16,6 +16,7 @@ import { SendMessageForm } from './components/SendMessageForm';
 import useCheckRole from '@/hooks/use-check-role';
 import { _UserRole } from '@/lib/types/constants';
 import { useMemo, useEffect, useState } from 'react';
+import { _PlatformType } from '@/lib/types/constants';
 
 export default function TicketShow({ ticket }: TicketDetailPageProps) {
     const { t, i18n } = useTranslation();
@@ -81,6 +82,80 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
         return <Badge variant={priorityInfo.variant}>{priorityInfo.label}</Badge>;
     };
 
+    const getSubjectLabel = (subject: string) => {
+        const map: Record<string, string> = {
+            transfer_request: t('ticket.transfer.title', { defaultValue: 'Chuyển tiền giữa các tài khoản' }),
+            refund_request: t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' }),
+            appeal_request: t('ticket.appeal.title', { defaultValue: 'Kháng tài khoản' }),
+            share_request: t('ticket.share.title', { defaultValue: 'Share BM/BC/MCC' }),
+        };
+        return map[subject] ?? subject;
+    };
+
+    const getPlatformName = (platform?: number) => {
+        if (platform === _PlatformType.GOOGLE) return t('enum.platform_type.google', { defaultValue: 'Google Ads' });
+        if (platform === _PlatformType.META) return t('enum.platform_type.meta', { defaultValue: 'Meta Ads' });
+        return '-';
+    };
+
+    const renderMetadata = () => {
+        const metadata: any = ticket.metadata || {};
+        const type = metadata.type;
+
+        if (type === 'transfer') {
+            return (
+                <div className="grid gap-2 text-sm">
+                    <div>{t('ticket.transfer.platform', { defaultValue: 'Kênh quảng cáo' })}: {getPlatformName(metadata.platform)}</div>
+                    <div>{t('ticket.transfer.from_account', { defaultValue: 'Từ tài khoản' })}: {metadata.from_account_name ? `${metadata.from_account_name} (${metadata.from_account_id})` : metadata.from_account_id || '-'}</div>
+                    <div>{t('ticket.transfer.to_account', { defaultValue: 'Đến tài khoản' })}: {metadata.to_account_name ? `${metadata.to_account_name} (${metadata.to_account_id})` : metadata.to_account_id || '-'}</div>
+                    <div>{t('ticket.transfer.amount', { defaultValue: 'Số tiền' })}: {metadata.amount ? `${parseFloat(metadata.amount).toFixed(2)} ${metadata.currency || 'USD'}` : '-'}</div>
+                    <div>{t('ticket.transfer.notes', { defaultValue: 'Ghi chú' })}: {metadata.notes || '-'}</div>
+                </div>
+            );
+        }
+
+        if (type === 'refund') {
+            const accountIds = metadata.account_ids || [];
+            const accountNames = metadata.account_names || [];
+            const accountsText = accountIds.map((id: string, idx: number) => {
+                const name = accountNames[idx] || '';
+                return name ? `${name} (${id})` : id;
+            }).join(', ');
+
+            return (
+                <div className="grid gap-2 text-sm">
+                    <div>{t('ticket.refund.platform', { defaultValue: 'Kênh quảng cáo' })}: {getPlatformName(metadata.platform)}</div>
+                    <div>{t('ticket.refund.accounts', { defaultValue: 'Tài khoản thanh lý' })}: {accountsText || '-'}</div>
+                    <div>{t('ticket.refund.liquidation_type', { defaultValue: 'Loại thanh lý' })}: {metadata.liquidation_type === 'withdraw_to_wallet' ? t('ticket.refund.withdraw_to_wallet', { defaultValue: 'Rút Tiền Về Ví' }) : metadata.liquidation_type || '-'}</div>
+                    <div>{t('ticket.refund.notes', { defaultValue: 'Ghi chú' })}: {metadata.notes || '-'}</div>
+                </div>
+            );
+        }
+
+        if (type === 'appeal') {
+            return (
+                <div className="grid gap-2 text-sm">
+                    <div>{t('ticket.appeal.platform', { defaultValue: 'Kênh quảng cáo' })}: {getPlatformName(metadata.platform)}</div>
+                    <div>{t('ticket.appeal.account', { defaultValue: 'Tài khoản cần kháng' })}: {metadata.account_name ? `${metadata.account_name} (${metadata.account_id})` : metadata.account_id || '-'}</div>
+                    <div>{t('ticket.appeal.notes', { defaultValue: 'Ghi chú' })}: {metadata.notes || '-'}</div>
+                </div>
+            );
+        }
+
+        if (type === 'share') {
+            return (
+                <div className="grid gap-2 text-sm">
+                    <div>{t('ticket.share.platform', { defaultValue: 'Kênh quảng cáo' })}: {getPlatformName(metadata.platform)}</div>
+                    <div>{t('ticket.share.account', { defaultValue: 'Tài khoản' })}: {metadata.account_name ? `${metadata.account_name} (${metadata.account_id})` : metadata.account_id || '-'}</div>
+                    <div>{t('ticket.share.bm_bc_mcc_id', { defaultValue: 'ID BM/BC/MCC' })}: {metadata.bm_bc_mcc_id || '-'}</div>
+                    <div>{t('ticket.share.notes', { defaultValue: 'Ghi chú' })}: {metadata.notes || '-'}</div>
+                </div>
+            );
+        }
+
+        return null;
+    };
+
     const handleStatusChange = (newStatus: string) => {
         const parsedStatus = parseInt(newStatus) as TicketStatus;
         setStatusProcessing(true);
@@ -139,7 +214,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                         </Link>
                     </Button>
                     <div className="flex-1">
-                        <h1 className="text-2xl font-bold">{ticket.subject}</h1>
+                        <h1 className="text-2xl font-bold">{getSubjectLabel(ticket.subject)}</h1>
                         <div className="mt-2 flex items-center gap-2">
                             {getStatusBadge(currentStatus)}
                             {getPriorityBadge(ticket.priority)}
@@ -180,6 +255,16 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                             </Label>
                             <p className="mt-1 whitespace-pre-wrap">{ticket.description}</p>
                         </div>
+                        {renderMetadata() && (
+                            <div>
+                                <Label className="text-muted-foreground">
+                                    {t('ticket.detail', { defaultValue: 'Chi tiết yêu cầu' })}
+                                </Label>
+                                <div className="mt-2 rounded-md bg-muted/50 p-3">
+                                    {renderMetadata()}
+                                </div>
+                            </div>
+                        )}
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <Label className="text-muted-foreground">

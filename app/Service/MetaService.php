@@ -37,6 +37,7 @@ class MetaService
         protected ServiceUserRepository     $serviceUserRepository,
         protected MetaAdsAccountInsightRepository $metaAdsAccountInsightRepository,
         protected WalletRepository          $walletRepository,
+        protected MetaAdsNotificationService $metaAdsNotificationService,
     )
     {
     }
@@ -190,29 +191,72 @@ class MetaService
                 return ServiceReturn::error(__('meta.error.account_not_found'));
             }
             // -----------------------------------------------------------------
-            // BƯỚC 1: GỌI 2 API INSIGHTS
+            // BƯỚC 1: GỌI 2 API INSIGHTS (NHƯNG KHÔNG CHẶN NẾU LỖI)
             // -----------------------------------------------------------------
+            $totalData = ['data' => []];
+            $todayData = ['data' => []];
+
             // Lần 1: Lấy TỔNG CHI TIÊU
-            $totalResult = $this->metaBusinessService->getAccountInsightsByCampaign(
-                accountId: $adsAccount->account_id,
-                datePreset: 'maximum',
-                fields: ['campaign_id', 'spend']
-            );
-            if ($totalResult->isError()) {
-                return ServiceReturn::error(__('meta.error.failed_to_fetch_campaigns'));
-            }
-            // Lần 2: Lấy CHI TIÊU HÔM NAY (Mới)
-            $todayResult = $this->metaBusinessService->getAccountInsightsByCampaign(
-                accountId: $adsAccount->account_id,
-                datePreset: 'today',
-                fields: ['campaign_id', 'spend']
-            );
-            if ($todayResult->isError()) {
-                return ServiceReturn::error(__('meta.error.failed_to_fetch_campaigns'));
+            try {
+                $totalResult = $this->metaBusinessService->getAccountInsightsByCampaign(
+                    accountId: $adsAccount->account_id,
+                    datePreset: 'maximum',
+                    fields: ['campaign_id', 'spend']
+                );
+                if ($totalResult->isSuccess()) {
+                    $totalData = $totalResult->getData();
+                } else {
+                    Logging::error(
+                        message: 'MetaService@getCampaignsPaginated: failed total insights, fallback to 0',
+                        context: [
+                            'service_user_id' => $serviceUser->id,
+                            'meta_account_id' => $accountId,
+                            'error' => $totalResult->getMessage(),
+                        ]
+                    );
+                }
+            } catch (\Throwable $e) {
+                Logging::error(
+                    message: 'MetaService@getCampaignsPaginated: exception total insights, fallback to 0',
+                    context: [
+                        'service_user_id' => $serviceUser->id,
+                        'meta_account_id' => $accountId,
+                        'error' => $e->getMessage(),
+                    ],
+                    exception: $e
+                );
             }
 
-            $totalData = $totalResult->getData();
-            $todayData = $todayResult->getData();
+            // Lần 2: Lấy CHI TIÊU HÔM NAY (Mới)
+            try {
+                $todayResult = $this->metaBusinessService->getAccountInsightsByCampaign(
+                    accountId: $adsAccount->account_id,
+                    datePreset: 'today',
+                    fields: ['campaign_id', 'spend']
+                );
+                if ($todayResult->isSuccess()) {
+                    $todayData = $todayResult->getData();
+                } else {
+                    Logging::error(
+                        message: 'MetaService@getCampaignsPaginated: failed today insights, fallback to 0',
+                        context: [
+                            'service_user_id' => $serviceUser->id,
+                            'meta_account_id' => $accountId,
+                            'error' => $todayResult->getMessage(),
+                        ]
+                    );
+                }
+            } catch (\Throwable $e) {
+                Logging::error(
+                    message: 'MetaService@getCampaignsPaginated: exception today insights, fallback to 0',
+                    context: [
+                        'service_user_id' => $serviceUser->id,
+                        'meta_account_id' => $accountId,
+                        'error' => $e->getMessage(),
+                    ],
+                    exception: $e
+                );
+            }
             // -----------------------------------------------------------------
             // BƯỚC 2: TẠO MAP ĐỂ TRA CỨU
             // -----------------------------------------------------------------
@@ -283,12 +327,59 @@ class MetaService
 
         try {
             $campaign = $this->metaAdsCampaignRepository->query()
+                ->with('metaAccount')
                 ->where('service_user_id', $serviceUser->id)
                 ->where('id', $campaignId)
                 ->first();
 
             if (!$campaign) {
                 return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
+            }
+
+            $normalizedStatus = strtoupper($status);
+            $metaAccount = $campaign->metaAccount;
+
+            // Kiểm tra validation khi resume (ACTIVE) cho Customer/Agency
+            if ($normalizedStatus === 'ACTIVE' && $metaAccount) {
+                /** @var \App\Models\User $user */
+                $user = Auth::user();
+                $userRole = $user->role ?? null;
+                
+                // Admin, Manager, Employee không cần kiểm tra
+                if (in_array($userRole, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
+                    // Cho phép resume
+                } elseif (in_array($userRole, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
+                    // Customer/Agency: Kiểm tra spending > balance + 100
+                    $balance = (float) ($metaAccount->balance ?? 0);
+                    $threshold = 100.0;
+                    
+                    // Lấy chi tiêu tích lũy (lifetime)
+                    $lifetimeSpending = (float) ($metaAccount->amount_spent ?? 0);
+                    
+                    // Nếu không có amount_spent, lấy từ insights database
+                    if ($lifetimeSpending == 0) {
+                        $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(
+                            [(string) $metaAccount->id],
+                            'maximum'
+                        );
+                        if (!$insightsResult->isError()) {
+                            $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
+                        }
+                    }
+                    
+                    $thresholdAmount = $balance + $threshold;
+                    
+                    // Nếu chi tiêu vượt quá số dư + ngưỡng, không cho phép resume
+                    if ($lifetimeSpending > $thresholdAmount) {
+                        return ServiceReturn::error(
+                            message: __('meta.error.cannot_resume_spending_exceeded', [
+                                'spending' => number_format($lifetimeSpending, 2),
+                                'balance' => number_format($balance, 2),
+                                'threshold' => number_format($thresholdAmount, 2),
+                            ])
+                        );
+                    }
+                }
             }
 
             $apiResult = $this->metaBusinessService->updateCampaignStatus($campaign->campaign_id, $status);
@@ -395,24 +486,47 @@ class MetaService
             }
             // Lấy thông tin chi tiết insights chiến dịch từ Meta Business (today)
             $insightsTodayResult = $this->metaBusinessService->getCampaignInsights($campaign->campaign_id, AdDatePresetValues::TODAY);
+            $insightsToday = [];
             if ($insightsTodayResult->isError()) {
-                return ServiceReturn::error(message: __('meta.error.failed_to_fetch_campaign_detail'));
+                Logging::error(
+                    message: 'MetaService@getCampaignDetail failed to fetch insights today',
+                    context: [
+                        'campaign_id' => $campaign->campaign_id,
+                        'error' => $insightsTodayResult->getMessage(),
+                    ],
+                );
+            } else {
+                $insightsToday = $insightsTodayResult->getData()['data'][0] ?? [];
             }
+
             // Lấy thông tin chi tiết insights chiến dịch từ Meta Business (last 7 days)
             $insightsTotalResult = $this->metaBusinessService->getCampaignInsights($campaign->campaign_id, AdDatePresetValues::LAST_7D);
+            $insightsTotal = [];
             if ($insightsTotalResult->isError()) {
-                return ServiceReturn::error(message: __('meta.error.failed_to_fetch_campaign_detail'));
+                Logging::error(
+                    message: 'MetaService@getCampaignDetail failed to fetch insights last_7d',
+                    context: [
+                        'campaign_id' => $campaign->campaign_id,
+                        'error' => $insightsTotalResult->getMessage(),
+                    ],
+                );
+            } else {
+                $insightsTotal = $insightsTotalResult->getData()['data'][0] ?? [];
             }
 
             $insightsMaximumResult = $this->metaBusinessService->getCampaignInsights($campaign->campaign_id, AdDatePresetValues::MAXIMUM);
+            $insightsMaximum = [];
             if ($insightsMaximumResult->isError()) {
-                return ServiceReturn::error(message: __('meta.error.failed_to_fetch_campaign_detail'));
+                Logging::error(
+                    message: 'MetaService@getCampaignDetail failed to fetch insights maximum',
+                    context: [
+                        'campaign_id' => $campaign->campaign_id,
+                        'error' => $insightsMaximumResult->getMessage(),
+                    ],
+                );
+            } else {
+                $insightsMaximum = $insightsMaximumResult->getData()['data'][0] ?? [];
             }
-
-
-            $insightsToday = $insightsTodayResult->getData()['data'][0] ?? [];
-            $insightsTotal = $insightsTotalResult->getData()['data'][0] ?? [];
-            $insightsMaximum = $insightsMaximumResult->getData()['data'][0] ?? [];
             // Tổng chuyển đổi hôm nay
             $totalConversionsToday = 0;
             foreach ($insightsToday['actions'] ?? [] as $action) {
@@ -1184,11 +1298,22 @@ class MetaService
             $avgCpm = $totalImpressions > 0 ? (($totalSpend / $totalImpressions) * 1000) : 0.0;
             $conversionRate = $totalClicks > 0 ? (($totalConversions / $totalClicks) * 100) : 0.0;
 
-            // 6.
+            // 6. Ngân sách: với trả sau thì không có top-up upfront, chỉ hiển thị chi tiêu
+            $hasPostpay = $serviceUsers->contains(function ($serviceUser) {
+                $config = $serviceUser->config_account ?? [];
+                return ($config['payment_type'] ?? '') === 'postpay';
+            });
             $totalBudget = (float) $serviceUsers->sum('budget') ?? 0.0;
+            if ($hasPostpay) {
+                // Postpay: không có tổng ngân sách upfront; hiển thị chi tiêu hôm nay, remaining = 0
+                $totalBudget = 0.0;
+                $budgetRemaining = 0.0;
+                $budgetUsagePercent = 0.0;
+            } else {
+                $budgetRemaining = max(0, $totalBudget - $todaySpend);
+                $budgetUsagePercent = $totalBudget > 0 ? (($todaySpend / $totalBudget) * 100) : 0.0;
+            }
             $budgetUsed = $todaySpend;
-            $budgetRemaining = max(0, $totalBudget - $budgetUsed);
-            $budgetUsagePercent = $totalBudget > 0 ? (($budgetUsed / $totalBudget) * 100) : 0.0;
 
             // 7. Cảnh báo lỗi
             $criticalErrors = 0;
@@ -1256,6 +1381,7 @@ class MetaService
                     'used' => number_format($budgetUsed, 2, '.', ''),
                     'remaining' => number_format($budgetRemaining, 2, '.', ''),
                     'usage_percent' => number_format($budgetUsagePercent, 2, '.', ''),
+                    'is_postpay' => $hasPostpay,
                 ],
                 'alerts' => [
                     'critical_errors' => $criticalErrors,
@@ -1281,5 +1407,172 @@ class MetaService
             return number_format($number / 1000, 1, '.', '') . 'K';
         }
         return (string) $number;
+    }
+
+    /**
+     * Kiểm tra và tự động tạm dừng tài khoản nếu spending > balance + threshold
+     * @param float $threshold Ngưỡng cảnh báo (mặc định 100 USD)
+     * @return ServiceReturn
+     */
+    public function checkAndAutoPauseAccounts(float $threshold = 100.0): ServiceReturn
+    {
+        try {
+            $accounts = $this->metaAccountRepository->query()
+                ->with(['serviceUser.user'])
+                ->whereNotNull('balance')
+                ->where('balance', '>', 0)
+                ->get();
+
+            $paused = 0;
+            $notified = 0;
+            $errors = 0;
+
+            foreach ($accounts as $account) {
+                try {
+                    $balance = (float) ($account->balance ?? 0);
+                    
+                    // Kiểm tra nếu số dư thấp hơn ngưỡng an toàn (cảnh báo số dư thấp)
+                    if ($balance < $threshold) {
+                        // Pause tất cả campaigns trong account
+                        $campaigns = $this->metaAdsCampaignRepository->query()
+                            ->where('meta_account_id', $account->id)
+                            ->where('status', '!=', 'PAUSED')
+                            ->where('status', '!=', 'DELETED')
+                            ->get();
+
+                        foreach ($campaigns as $campaign) {
+                            if ($account->serviceUser) {
+                                $pauseResult = $this->updateCampaignStatus(
+                                    (string) $account->serviceUser->id,
+                                    (string) $campaign->id,
+                                    'PAUSED'
+                                );
+                                if ($pauseResult->isError()) {
+                                    Logging::web('MetaService@checkAndAutoPauseAccounts: Failed to pause campaign', [
+                                        'account_id' => $account->id,
+                                        'campaign_id' => $campaign->id,
+                                        'error' => $pauseResult->getMessage(),
+                                    ]);
+                                }
+                            }
+                        }
+
+                        $paused++;
+
+                        // Gửi thông báo số dư thấp
+                        // Vì đây là trường hợp balance < threshold, chưa chắc đã chi tiêu vượt quá
+                        $notificationResult = $this->metaAdsNotificationService->sendLowBalanceAlert(
+                            $account,
+                            $threshold
+                        );
+                        if ($notificationResult->isSuccess()) {
+                            $notified++;
+                        }
+
+                        Logging::web('MetaService@checkAndAutoPauseAccounts: Auto-paused account (low balance)', [
+                            'account_id' => $account->id,
+                            'account_name' => $account->account_name,
+                            'balance' => $balance,
+                            'lifetime_spending' => $lifetimeSpending,
+                            'threshold' => $threshold,
+                            'campaigns_paused' => $campaigns->count(),
+                            'notification_sent' => $notificationResult->isSuccess(),
+                        ]);
+                        continue;
+                    }
+
+                    // Kiểm tra nếu chi tiêu tích lũy (lifetime) > balance + threshold
+                    // Meta Ads API hỗ trợ date_preset: "maximum" để lấy lifetime spending
+                    // amount_spent là chi tiêu tích lũy (lifetime) từ Meta API, ưu tiên dùng
+                    $lifetimeSpending = (float) ($account->amount_spent ?? 0);
+                    
+                    // Nếu không có amount_spent, lấy từ insights database (maximum = tất cả insights đã sync)
+                    if ($lifetimeSpending == 0) {
+                        $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(
+                            [(string) $account->id],
+                            'maximum' // Lấy tất cả insights từ database (không filter date)
+                        );
+                        if ($insightsResult->isError()) {
+                            $errors++;
+                            continue;
+                        }
+                        $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
+                    }
+
+                    $thresholdAmount = $balance + $threshold;
+
+                    // Kiểm tra nếu chi tiêu tích lũy vượt quá số dư + ngưỡng an toàn
+                    if ($lifetimeSpending > $thresholdAmount) {
+                        // Pause tất cả campaigns trong account
+                        $campaigns = $this->metaAdsCampaignRepository->query()
+                            ->where('meta_account_id', $account->id)
+                            ->where('status', '!=', 'PAUSED')
+                            ->where('status', '!=', 'DELETED')
+                            ->get();
+
+                        foreach ($campaigns as $campaign) {
+                            if ($account->serviceUser) {
+                                $pauseResult = $this->updateCampaignStatus(
+                                    (string) $account->serviceUser->id,
+                                    (string) $campaign->id,
+                                    'PAUSED'
+                                );
+                                if ($pauseResult->isError()) {
+                                    Logging::web('MetaService@checkAndAutoPauseAccounts: Failed to pause campaign', [
+                                        'account_id' => $account->id,
+                                        'campaign_id' => $campaign->id,
+                                        'error' => $pauseResult->getMessage(),
+                                    ]);
+                                }
+                            }
+                        }
+
+                        $paused++;
+
+                        // Gửi thông báo
+                        $notificationResult = $this->metaAdsNotificationService->sendSpendingExceededAlert(
+                            $account,
+                            $lifetimeSpending,
+                            $threshold
+                        );
+                        if ($notificationResult->isSuccess()) {
+                            $notified++;
+                        }
+
+                        Logging::web('MetaService@checkAndAutoPauseAccounts: Auto-paused account (spending exceeded)', [
+                            'account_id' => $account->id,
+                            'account_name' => $account->account_name,
+                            'balance' => $balance,
+                            'lifetime_spending' => $lifetimeSpending,
+                            'threshold' => $thresholdAmount,
+                            'campaigns_paused' => $campaigns->count(),
+                            'notification_sent' => $notificationResult->isSuccess(),
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    $errors++;
+                    Logging::error(
+                        message: 'MetaService@checkAndAutoPauseAccounts: Error processing account',
+                        context: [
+                            'account_id' => $account->id,
+                            'error' => $e->getMessage(),
+                        ],
+                        exception: $e
+                    );
+                }
+            }
+
+            return ServiceReturn::success(data: [
+                'paused' => $paused,
+                'notified' => $notified,
+                'errors' => $errors,
+            ]);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'MetaService@checkAndAutoPauseAccounts: Unexpected error',
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
     }
 }

@@ -70,4 +70,28 @@ class TelegramService
             }
         }
     }
+
+    public function getTelegramUserInfo(string $telegramId): ServiceReturn
+    {
+        try {
+            $chat = $this->bot->getChat(['chat_id' => $telegramId]);
+            
+            $username = $chat->getUsername() ?? null;
+            $firstName = $chat->getFirstName() ?? null;
+            $lastName = $chat->getLastName() ?? null;
+            
+            return ServiceReturn::success(data: [
+                'username' => $username,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'full_name' => trim(($firstName ?? '') . ' ' . ($lastName ?? '')),
+            ]);
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'Error TelegramService@getTelegramUserInfo: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: 'Không thể lấy thông tin từ Telegram');
+        }
+    }
 }

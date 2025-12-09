@@ -40,3 +40,14 @@ export type BusinessManagerAccount = {
 
 export type BusinessManagerPagination = LaravelPaginator<BusinessManagerItem>;
 
+export type BusinessManagerStats = {
+    total_accounts: number;
+    active_accounts: number;
+    disabled_accounts: number;
+    by_platform: Record<number, {
+        total_accounts: number;
+        active_accounts: number;
+        disabled_accounts: number;
+    }>;
+};
+

@@ -531,21 +531,41 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                             <CardTitle>{t('dashboard.budget_usage')}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="mb-4">
-                                <div className="text-sm text-muted-foreground mb-1">{t('dashboard.today_spend')}</div>
-                                <div className="text-2xl font-bold">
-                                    {formatCurrency(dashboardData.budget.used)} / {formatCurrency(dashboardData.budget.total)}
-                                </div>
-                            </div>
-                            <Progress value={parseFloat(dashboardData.budget.usage_percent)} className="mb-2" />
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                    {dashboardData.budget.usage_percent}% {t('dashboard.used')}
-                                </span>
-                                <span className="text-muted-foreground">
-                                    {formatCurrency(dashboardData.budget.remaining)} {t('dashboard.remaining')}
-                                </span>
-                            </div>
+                            {(() => {
+                                const budget = dashboardData.budget as DashboardData['budget'];
+                                const isPostpay = Boolean(budget.is_postpay);
+                                if (isPostpay) {
+                                    return (
+                                        <div className="space-y-2">
+                                            <div className="text-sm text-muted-foreground">
+                                                {t('dashboard.budget_postpay_hint')}
+                                            </div>
+                                            <div className="text-2xl font-bold">
+                                                {formatCurrency(budget.used)}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <>
+                                        <div className="mb-4">
+                                            <div className="text-sm text-muted-foreground mb-1">{t('dashboard.today_spend')}</div>
+                                            <div className="text-2xl font-bold">
+                                                {formatCurrency(budget.used)} / {formatCurrency(budget.total)}
+                                            </div>
+                                        </div>
+                                        <Progress value={parseFloat(budget.usage_percent)} className="mb-2" />
+                                        <div className="flex items-center justify_between text-sm">
+                                            <span className="text-muted-foreground">
+                                                {budget.usage_percent}% {t('dashboard.used')}
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                                {formatCurrency(budget.remaining)} {t('dashboard.remaining')}
+                                            </span>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
                 </div>
