@@ -12,6 +12,7 @@ type ServicePurchaseFormData = {
     info_fanpage?: string;
     info_website?: string;
     payment_type?: 'prepay' | 'postpay';
+    asset_access?: 'full_asset' | 'basic_asset';
 };
 
 export const useServicePurchaseForm = () => {
@@ -20,20 +21,22 @@ export const useServicePurchaseForm = () => {
         top_up_amount: '',
         budget: '0',
         info_fanpage: '',
-        info_website: ''
+        info_website: '',
+        asset_access: 'full_asset',
     });
 
     const submit = (
-        packageId: string, 
-        topUpAmount: string, 
-        metaEmail?: string, 
-        displayName?: string, 
+        packageId: string,
+        topUpAmount: string,
+        metaEmail?: string,
+        displayName?: string,
         budget?: string,
         bmMccConfig?: {
             bm_id?: string;
             info_fanpage?: string;
             info_website?: string;
             payment_type?: 'prepay' | 'postpay';
+            asset_access?: 'full_asset' | 'basic_asset';
         },
         onSuccess?: () => void
     ) => {

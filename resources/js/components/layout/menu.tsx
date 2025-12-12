@@ -19,6 +19,8 @@ import {
     ticket_refund,
     ticket_appeal,
     ticket_share,
+    ticket_withdraw_app,
+    ticket_deposit_app,
     business_managers_index,
     contact_index,
 } from '@/routes';
@@ -199,10 +201,28 @@ const useMenu = () => {
                             _UserRole.AGENCY,
                         ]),
                     },
+                    {
+                        title: t('ticket.withdraw_app.title', { defaultValue: 'Rút ví app về ví khách' }),
+                        url: ticket_withdraw_app().url,
+                        active: isActive(ticket_withdraw_app()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
+                        title: t('ticket.deposit_app.title', { defaultValue: 'Nạp tiền vào tài khoản' }),
+                        url: ticket_deposit_app().url,
+                        active: isActive(ticket_deposit_app()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
                 ],
             },
             {
-                title: t('menu.contact', { defaultValue: 'Liên hệ' }),
+                title: t('menu.contact'),
                 url: contact_index().url,
                 icon: <Phone />,
                 is_menu: true,

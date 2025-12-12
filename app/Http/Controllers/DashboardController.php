@@ -5,13 +5,15 @@ namespace App\Http\Controllers;
 use App\Common\Constants\User\UserRole;
 use App\Common\Helper;
 use App\Core\Controller;
+use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
+use App\Service\DashboardService;
 use App\Service\GoogleAdsService;
 use App\Service\MetaService;
 use App\Service\UserService;
 use App\Service\WalletTransactionService;
-use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -21,13 +23,14 @@ class DashboardController extends Controller
         protected GoogleAdsService $googleAdsService,
         protected UserService $userService,
         protected WalletTransactionService $walletTransactionService,
+        protected DashboardService $dashboardService,
     ) {
     }
 
     // Hiển thị dashboard theo role của user
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = $request->user();
 
         // Nếu không có user, trả về dashboard rỗng
         if (!$user) {
@@ -75,11 +78,25 @@ class DashboardController extends Controller
         // Lấy danh sách giao dịch chờ duyệt
         $pendingTransactions = $this->getPendingTransactions($request);
 
+        // Lấy thống kê tài khoản Google và Meta
+        $platformAccountsStatsResult = $this->dashboardService->getPlatformAccountsStats();
+        $platformAccountsStats = $platformAccountsStatsResult->isSuccess() ? $platformAccountsStatsResult->getData() : null;
+
+        // Lấy thống kê tickets đang yêu cầu xử lý
+        $pendingTicketsByTypeResult = $this->dashboardService->getPendingTicketsByType();
+        $pendingTicketsByType = $pendingTicketsByTypeResult->isSuccess() ? $pendingTicketsByTypeResult->getData() : null;
+
+        // Lấy bảng xếp hạng chi tiêu
+        $spendingRanking = $this->getSpendingRanking($request);
+
         // Chuẩn bị data để trả về
         $adminDashboardData = [
             'total_customers' => $customerSummary['total_customers'],
             'active_customers' => $customerSummary['active_customers'],
             'pending_transactions' => $pendingTransactions['total'],
+            'platform_accounts' => $platformAccountsStats,
+            'pending_tickets_by_type' => $pendingTicketsByType,
+            'spending_ranking' => $spendingRanking,
         ];
 
         return $this->rendering('dashboard/index', [
@@ -124,7 +141,7 @@ class DashboardController extends Controller
 
         // Tạo query để lấy danh sách
         $query = new QueryListDTO(
-            perPage: 20,
+            perPage: 10,
             page: $page,
             filter: [],
             sortBy: 'created_at',
@@ -178,5 +195,62 @@ class DashboardController extends Controller
             UserRole::MANAGER->value,
             UserRole::EMPLOYEE->value,
         ]);
+    }
+
+
+    /**
+     * Lấy bảng xếp hạng chi tiêu các tài khoản
+     */
+    protected function getSpendingRanking(Request $request): ?array
+    {
+        $platform = Helper::getValidatedPlatform($request->string('ranking_platform', 'meta')->toString());
+        
+        // Lấy date range từ request
+        $startDate = null;
+        $endDate = null;
+        
+        if ($request->has('ranking_start_date') && $request->has('ranking_end_date')) {
+            try {
+                $startDateStr = $request->string('ranking_start_date')->toString();
+                $endDateStr = $request->string('ranking_end_date')->toString();
+                
+                if (!empty($startDateStr) && !empty($endDateStr)) {
+                    $startDate = Carbon::parse($startDateStr)->startOfDay();
+                    $endDate = Carbon::parse($endDateStr)->endOfDay();
+                }
+            } catch (\Exception $e) {
+                // Nếu parse lỗi, sẽ lấy tất cả dữ liệu
+            }
+        }
+        
+        // Nếu không có date range, mặc định lấy 30 ngày gần nhất
+        if (!$startDate || !$endDate) {
+            $endDate = Carbon::today()->endOfDay();
+            $startDate = $endDate->copy()->subDays(29)->startOfDay();
+        }
+
+        try {
+            if ($platform === 'google_ads') {
+                $result = $this->googleAdsService->getAccountSpendingRanking($startDate, $endDate);
+            } else {
+                $result = $this->metaService->getAccountSpendingRanking($startDate, $endDate);
+            }
+
+            if ($result->isSuccess()) {
+                return [
+                    'data' => $result->getData(),
+                    'platform' => $platform,
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                ];
+            }
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: "Error get spending ranking: " . $e->getMessage(),
+                exception: $e,
+            );
+        }
+
+        return null;
     }
 }

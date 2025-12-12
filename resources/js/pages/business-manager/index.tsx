@@ -12,7 +12,7 @@ import FacebookIcon from '@/images/facebook_icon.png';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 import { router } from '@inertiajs/react';
-import { service_management_index } from '@/routes';
+import { service_management_index, business_managers_index } from '@/routes';
 import {
     Dialog,
     DialogContent,
@@ -230,7 +230,7 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
     const handleSelectPlatform = (platformKey: 'all' | _PlatformType) => {
         setSelectedPlatform(platformKey);
         const platformValue = platformKey === 'all' ? undefined : platformKey;
-        router.get('/business-managers', {
+        router.get(business_managers_index().url, {
             filter: {
                 platform: platformValue,
             },

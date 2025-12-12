@@ -92,6 +92,10 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
         return map[subject] ?? subject;
     };
 
+    const metadata: any = ticket.metadata || {};
+    const metadataType = metadata.type;
+    const shouldHideDescription = metadataType === 'wallet_withdraw_app' || metadataType === 'wallet_deposit_app';
+
     const getPlatformName = (platform?: number) => {
         if (platform === _PlatformType.GOOGLE) return t('enum.platform_type.google', { defaultValue: 'Google Ads' });
         if (platform === _PlatformType.META) return t('enum.platform_type.meta', { defaultValue: 'Meta Ads' });
@@ -99,8 +103,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
     };
 
     const renderMetadata = () => {
-        const metadata: any = ticket.metadata || {};
-        const type = metadata.type;
+        const type = metadataType;
 
         if (type === 'transfer') {
             return (
@@ -149,6 +152,46 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                     <div>{t('ticket.share.account', { defaultValue: 'Tài khoản' })}: {metadata.account_name ? `${metadata.account_name} (${metadata.account_id})` : metadata.account_id || '-'}</div>
                     <div>{t('ticket.share.bm_bc_mcc_id', { defaultValue: 'ID BM/BC/MCC' })}: {metadata.bm_bc_mcc_id || '-'}</div>
                     <div>{t('ticket.share.notes', { defaultValue: 'Ghi chú' })}: {metadata.notes || '-'}</div>
+                </div>
+            );
+        }
+
+        if (type === 'wallet_withdraw_app') {
+            const withdrawType = metadata.withdraw_type === 'usdt' ? 'usdt' : 'bank';
+            const amountText = metadata.amount ? `${parseFloat(metadata.amount).toFixed(2)} USDT` : '-';
+            const noteText = metadata.notes || ticket.description || '-';
+            return (
+                <div className="grid gap-2 text-sm">
+                    <div>{t('ticket.withdraw_app.amount_label')}: {amountText}</div>
+                    <div>
+                        {t('ticket.withdraw_app.method_label')}: {withdrawType === 'bank' ? t('wallet.withdraw_via_bank') : t('wallet.withdraw_via_usdt')}
+                    </div>
+                    {withdrawType === 'bank' ? (
+                        <>
+                            <div>{t('wallet.bank_name')}: {metadata.withdraw_info?.bank_name || '-'}</div>
+                            <div>{t('wallet.account_holder')}: {metadata.withdraw_info?.account_holder || '-'}</div>
+                            <div>{t('wallet.account_number')}: {metadata.withdraw_info?.account_number || '-'}</div>
+                        </>
+                    ) : (
+                        <>
+                            <div>{t('wallet.crypto_address')}: {metadata.withdraw_info?.crypto_address || '-'}</div>
+                            <div>{t('wallet.select_network')}: {metadata.withdraw_info?.network || '-'}</div>
+                        </>
+                    )}
+                    <div>{t('ticket.withdraw_app.note_label')}: {noteText}</div>
+                </div>
+            );
+        }
+
+        if (type === 'wallet_deposit_app') {
+            const amountText = metadata.amount ? `${parseFloat(metadata.amount).toFixed(2)} USDT` : '-';
+            const networkText = metadata.network || '-';
+            const noteText = metadata.notes || ticket.description || '-';
+            return (
+                <div className="grid gap-2 text-sm">
+                    <div>{t('ticket.deposit_app.amount_label')}: {amountText}</div>
+                    <div>{t('ticket.deposit_app.network_label')}: {networkText}</div>
+                    <div>{t('ticket.deposit_app.note_label')}: {noteText}</div>
                 </div>
             );
         }
@@ -249,12 +292,14 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                         <CardTitle>{t('ticket.detail', { defaultValue: 'Chi tiết yêu cầu hỗ trợ' })}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div>
-                            <Label className="text-muted-foreground">
-                                {t('ticket.description', { defaultValue: 'Mô tả' })}
-                            </Label>
-                            <p className="mt-1 whitespace-pre-wrap">{ticket.description}</p>
-                        </div>
+                {!shouldHideDescription && (
+                    <div>
+                        <Label className="text-muted-foreground">
+                            {t('ticket.description', { defaultValue: 'Mô tả' })}
+                        </Label>
+                        <p className="mt-1 whitespace-pre-wrap">{ticket.description}</p>
+                    </div>
+                )}
                         {renderMetadata() && (
                             <div>
                                 <Label className="text-muted-foreground">

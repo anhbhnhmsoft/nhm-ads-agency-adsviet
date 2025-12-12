@@ -164,6 +164,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/appeal', [TicketController::class, 'storeAppeal'])->name('ticket_appeal_store');
         Route::get('/share', [TicketController::class, 'share'])->name('ticket_share');
         Route::post('/share', [TicketController::class, 'storeShare'])->name('ticket_share_store');
+        Route::get('/withdraw-app', [TicketController::class, 'withdrawApp'])->name('ticket_withdraw_app');
+        Route::get('/deposit-app', [TicketController::class, 'depositApp'])->name('ticket_deposit_app');
         Route::get('/{id}', [TicketController::class, 'show'])->name('ticket_show');
         Route::post('/', [TicketController::class, 'store'])->name('ticket_store');
         Route::post('/{id}/message', [TicketController::class, 'addMessage'])->name('ticket_add_message');

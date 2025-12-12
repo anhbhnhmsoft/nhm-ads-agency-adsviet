@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Common\Constants\Ticket\TicketMetadataType;
 use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Http\Requests\Ticket\AddMessageRequest;
@@ -14,6 +15,7 @@ use App\Http\Requests\Ticket\UpdateTicketStatusRequest;
 use App\Service\TicketService;
 use App\Service\MetaService;
 use App\Service\GoogleAdsService;
+use App\Service\WalletTransactionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +27,7 @@ class TicketController extends Controller
         protected TicketService $ticketService,
         protected MetaService $metaService,
         protected GoogleAdsService $googleAdsService,
+        protected WalletTransactionService $walletTransactionService,
     ) {
     }
 
@@ -80,7 +83,57 @@ class TicketController extends Controller
      */
     public function store(CreateTicketRequest $request): RedirectResponse
     {
-        $result = $this->ticketService->createTicket($request->validated());
+        $data = $request->validated();
+
+        $user = Auth::user();
+        if (!$user) {
+            return back()->withErrors(['error' => __('common_error.permission_denied')]);
+        }
+
+        // Nếu type = wallet_withdraw_app thì tạo lệnh rút tiền giống trang ví
+        if (($data['metadata']['type'] ?? null) === TicketMetadataType::WALLET_WITHDRAW_APP->value) {
+            $metadata = $data['metadata'] ?? [];
+            $withdrawInfo = $metadata['withdraw_info'] ?? [];
+            $withdrawType = $metadata['withdraw_type'] ?? 'bank';
+
+            $withdrawResult = $this->walletTransactionService->createWithdrawOrder(
+                userId: (int) $user->id,
+                amount: (float) ($metadata['amount'] ?? 0),
+                withdrawInfo: array_merge($withdrawInfo, ['withdraw_type' => $withdrawType]),
+                walletPassword: $data['wallet_password'] ?? null,
+            );
+
+            if ($withdrawResult->isError()) {
+                return back()->withErrors(['error' => $withdrawResult->getMessage()]);
+            }
+
+            $transaction = $withdrawResult->getData();
+            $metadata['withdraw_transaction_id'] = $transaction?->id ?? null;
+            $data['metadata'] = $metadata;
+        }
+
+        // Nếu type = wallet_deposit_app thì tạo lệnh nạp tiền chờ duyệt
+        if (($data['metadata']['type'] ?? null) === TicketMetadataType::WALLET_DEPOSIT_APP->value) {
+            $metadata = $data['metadata'] ?? [];
+            $depositResult = $this->walletTransactionService->createDepositOrder(
+                userId: (int) $user->id,
+                amount: (float) ($metadata['amount'] ?? 0),
+                network: (string) ($metadata['network'] ?? 'USDT'),
+                depositAddress: 'SUPPORT_TICKET'
+            );
+
+            if ($depositResult->isError()) {
+                return back()->withErrors(['error' => $depositResult->getMessage()]);
+            }
+
+            $transaction = $depositResult->getData();
+            $metadata['deposit_transaction_id'] = $transaction?->id ?? null;
+            $data['metadata'] = $metadata;
+        }
+
+        unset($data['wallet_password']);
+
+        $result = $this->ticketService->createTicket($data);
 
         if ($result->isError()) {
             return back()->withErrors(['error' => $result->getMessage()]);
@@ -447,6 +500,36 @@ class TicketController extends Controller
             'tickets' => $tickets,
             'accounts' => $accounts,
             'error' => $result->isError() ? $result->getMessage() : null,
+        ]);
+    }
+
+    /**
+     * Trang rút ví app về ví khách - hiển thị form tạo ticket + lệnh rút
+     */
+    public function withdrawApp(): Response|RedirectResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        return $this->rendering('ticket/withdraw-app', [
+            'auth' => $user,
+        ]);
+    }
+
+    /**
+     * Trang nạp tiền vào ví khách (tạo ticket + lệnh nạp chờ duyệt)
+     */
+    public function depositApp(): Response|RedirectResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        return $this->rendering('ticket/deposit-app', [
+            'auth' => $user,
         ]);
     }
 

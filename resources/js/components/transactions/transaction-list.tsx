@@ -26,6 +26,7 @@ import {
     TRANSACTION_TYPE,
     TRANSACTION_TYPE_MAP,
 } from '@/pages/wallet/types/constants';
+import { getTransactionDescription } from '@/lib/types/wallet-transaction-description';
 
 const amountFormatter = new Intl.NumberFormat('vi-VN', {
     minimumFractionDigits: 2,
@@ -201,7 +202,11 @@ export function TransactionList({
                                             </Button>
                                         )}
                                     </div>
-                                    {tx.description && <p className="text-sm text-gray-600">{tx.description}</p>}
+                                    {tx.description && (
+                                        <p className="text-sm text-gray-600">
+                                            {getTransactionDescription(tx.description, t)}
+                                        </p>
+                                    )}
                                     {tx.user && (
                                         <p className="text-xs text-gray-500">
                                             {tx.user.name} (ID: {tx.user.id})

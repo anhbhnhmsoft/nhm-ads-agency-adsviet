@@ -74,13 +74,51 @@ export type AdminPendingTransaction = {
         bank_name?: string;
         account_holder?: string;
         account_number?: string;
+        crypto_address?: string;
+        network?: 'TRC20' | 'BEP20';
+        withdraw_type?: 'bank' | 'usdt';
     } | null;
 };
+
+export type SpendingRankingItem = {
+    rank: number;
+    account_id: string;
+    account_name: string;
+    account_id_display: string;
+    account_status: number;
+    status_label: string;
+    total_spend: number;
+};
+
+export type SpendingRanking = {
+    data: SpendingRankingItem[];
+    platform: string;
+    start_date: string;
+    end_date: string;
+} | null;
 
 export type AdminDashboardData = {
     total_customers: number;
     active_customers: number;
     pending_transactions: number;
+    platform_accounts?: {
+        google: {
+            active_accounts: number;
+            total_balance: string;
+        };
+        meta: {
+            active_accounts: number;
+            total_balance: string;
+        };
+    };
+    pending_tickets_by_type?: {
+        transfer_budget: number;
+        account_liquidation: number;
+        account_appeal: number;
+        share_bm: number;
+        wallet_withdraw_app: number;
+    };
+    spending_ranking?: SpendingRanking;
 };
 
 export type AdminPendingTransactions = LaravelPaginator<AdminPendingTransaction>;

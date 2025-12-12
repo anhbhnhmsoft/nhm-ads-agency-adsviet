@@ -20,6 +20,7 @@ import {
 import type { WalletTransaction } from '@/pages/wallet/types/type';
 import { cn } from '@/lib/utils';
 import { TRANSACTION_TYPE, TRANSACTION_STATUS, TRANSACTION_TYPE_MAP, TRANSACTION_STATUS_MAP } from '@/pages/wallet/types/constants';
+import { getTransactionDescription } from '@/lib/types/wallet-transaction-description';
 
 type Props = {
     t: (key: string, opts?: Record<string, any>) => string;
@@ -173,7 +174,7 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                                 </div>
                                                 {tx.description && (
                                                     <p className="text-sm text-muted-foreground">
-                                                        {tx.description}
+                                                        {getTransactionDescription(tx.description, t)}
                                                     </p>
                                                 )}
                                                 <div className="hidden mt-1 sm:flex items-center gap-2 text-xs text-muted-foreground">

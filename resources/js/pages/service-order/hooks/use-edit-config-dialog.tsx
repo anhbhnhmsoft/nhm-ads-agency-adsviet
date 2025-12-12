@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { router } from '@inertiajs/react';
 import type { ServiceOrder } from '@/pages/service-order/types/type';
 import { service_orders_update_config } from '@/routes';
+import { _PlatformType } from '@/lib/types/constants';
 
 export const useServiceOrderEditConfigDialog = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -12,16 +13,19 @@ export const useServiceOrderEditConfigDialog = () => {
     const [infoFanpage, setInfoFanpage] = useState('');
     const [infoWebsite, setInfoWebsite] = useState('');
     const [paymentType, setPaymentType] = useState('');
+    const [assetAccess, setAssetAccess] = useState<'full_asset' | 'basic_asset'>('full_asset');
 
     const openDialogForOrder = useCallback((order: ServiceOrder) => {
         const config = order.config_account || {};
+        const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
         setSelectedOrder(order);
         setMetaEmail((config.meta_email as string) || '');
         setDisplayName((config.display_name as string) || '');
         setBmId((config.bm_id as string) || '');
-        setInfoFanpage((config.info_fanpage as string) || '');
-        setInfoWebsite((config.info_website as string) || '');
+        setInfoFanpage(isGoogle ? '' : (config.info_fanpage as string) || '');
+        setInfoWebsite(isGoogle ? '' : (config.info_website as string) || '');
         setPaymentType((config.payment_type as string) || '');
+        setAssetAccess(((config.asset_access as 'full_asset' | 'basic_asset') || 'full_asset'));
         setDialogOpen(true);
     }, []);
 
@@ -37,6 +41,7 @@ export const useServiceOrderEditConfigDialog = () => {
                 info_fanpage: infoFanpage || undefined,
                 info_website: infoWebsite || undefined,
                 payment_type: paymentType || undefined,
+                asset_access: assetAccess || undefined,
             },
             {
                 preserveScroll: true,
@@ -51,6 +56,7 @@ export const useServiceOrderEditConfigDialog = () => {
     return {
         dialogOpen,
         setDialogOpen,
+        selectedOrder,
         metaEmail,
         setMetaEmail,
         displayName,
@@ -63,6 +69,8 @@ export const useServiceOrderEditConfigDialog = () => {
         setInfoWebsite,
         paymentType,
         setPaymentType,
+        assetAccess,
+        setAssetAccess,
         openDialogForOrder,
         handleSubmitUpdate,
     };

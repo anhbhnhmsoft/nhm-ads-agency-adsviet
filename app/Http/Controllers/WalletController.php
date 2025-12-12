@@ -384,13 +384,23 @@ class WalletController extends Controller
 
         try {
             $data = $request->validated();
+            $withdrawType = $data['withdraw_type'] ?? 'bank';
             
-            // Tạo withdraw_info từ form
-            $withdrawInfo = [
-                'bank_name' => $data['bank_name'],
-                'account_holder' => $data['account_holder'],
-                'account_number' => $data['account_number'],
-            ];
+            // Tạo withdraw_info theo loại rút tiền
+            if ($withdrawType === 'usdt') {
+                $withdrawInfo = [
+                    'crypto_address' => $data['crypto_address'],
+                    'network' => $data['network'],
+                    'withdraw_type' => 'usdt',
+                ];
+            } else {
+                $withdrawInfo = [
+                    'bank_name' => $data['bank_name'],
+                    'account_holder' => $data['account_holder'],
+                    'account_number' => $data['account_number'],
+                    'withdraw_type' => 'bank',
+                ];
+            }
 
             // Tạo lệnh rút tiền (PENDING, chưa trừ tiền)
             $result = $this->walletTransactionService->createWithdrawOrder(
