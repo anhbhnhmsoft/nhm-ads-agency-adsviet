@@ -109,6 +109,7 @@
       "contact": "Liên hệ",
       "profile": "Thông tin cá nhân",
       "spend_report": "Báo cáo chi tiêu",
+      "spend_report_ranking": "Xếp hạng chi tiêu",
       "financial_management": "Quản lý tài chính",
       "support": "Hỗ trợ",
       "support_customer": "Hỗ trợ khách hàng",
@@ -264,6 +265,10 @@
         "support_request_type_account_appeal": "Kháng tài khoản",
         "support_request_type_transfer_budget": "Chuyển tiền từ tài khoản ads này sang tài khoản ads khác",
         "support_request_type_share_bm": "Share BM / BC / MCC cho user khác",
+        "support_request_type_wallet_withdraw_app": "Rút tiền từ ví app về ví khách",
+        "support_request_withdraw_amount_label": "Số tiền muốn rút (USDT)",
+        "support_request_withdraw_type_label": "Hình thức rút",
+        "support_request_wallet_password_label": "Mật khẩu ví",
         "support_request_note_label": "Mô tả chi tiết yêu cầu",
         "support_request_note_placeholder": "Nhập thêm thông tin như ID tài khoản, số tiền muốn chuyển, user nhận BM/BC/MCC...",
         "support_request_submit": "Gửi yêu cầu",
@@ -342,6 +347,8 @@
         "status": "Trạng thái",
         "top_up": "Nạp tiền",
         "withdraw": "Rút tiền",
+        "withdraw_via_bank": "Qua ngân hàng địa phương",
+        "withdraw_via_usdt": "Qua USDT",
         "lock": "Khóa ví",
         "info": "Thông tin ví",
         "unlock": "Mở khóa ví",
@@ -377,12 +384,29 @@
         },
         "transaction_description": {
             "deposit_created": "Đã tạo lệnh nạp tiền",
-            "withdraw_created": "User tạo lệnh rút tiền",
+            "withdraw_created_bank": "User tạo lệnh rút tiền qua ngân hàng địa phương",
+            "withdraw_created_usdt": "User tạo lệnh rút tiền qua USDT",
             "deposit_approved": "Admin duyệt nạp tiền",
             "withdraw_completed": "Admin duyệt và đã chuyển tiền rút",
             "deposit_cancelled_user": "User hủy lệnh nạp từ màn hình chờ",
             "withdraw_cancelled_user": "User hủy lệnh rút tiền",
             "withdraw_cancelled_admin": "Admin hủy lệnh rút tiền"
+        },
+        "account_number": "Số tài khoản",
+        "account_holder": "Tên chủ tài khoản",
+        "bank_name": "Tên ngân hàng",
+        "enter_bank_name": "Nhập tên ngân hàng",
+        "crypto_address": "Địa chỉ ví crypto",
+        "enter_crypto_address": "Nhập địa chỉ ví crypto",
+        "enter_account_number": "Nhập số tài khoản",
+        "enter_account_holder": "Nhập tên chủ tài khoản",
+        "select_network": "Chọn mạng",
+        "select_network_placeholder": "Chọn TRC20 hoặc BEP20",
+        "validation": {
+            "amount_required": "Vui lòng nhập số tiền cần rút.",
+            "password_required": "Vui lòng nhập mật khẩu ví.",
+            "bank_info_required": "Vui lòng điền đầy đủ thông tin ngân hàng.",
+            "crypto_info_required": "Vui lòng điền địa chỉ ví và chọn mạng."
         }
     },
     "service_packages": {
@@ -517,6 +541,10 @@
         "required": "Bắt buộc",
         "budget_hint": "Nhập ngân sách tối thiểu {{min}} USD",
         "choose_access": "Chọn Full access hoặc basic access",
+        "asset_access_label": "Chia sẻ quyền truy cập",
+        "asset_access_placeholder": "Chọn quyền truy cập",
+        "asset_access_full": "Full access",
+        "asset_access_basic": "Basic access",
         "budget_invalid": "Ngân sách không hợp lệ",
         "budget_min_required": "Ngân sách phải đạt tối thiểu {{min}} USD",
         "monthly_spending_title": "Monthly Spending & Fee Structure",
@@ -546,8 +574,6 @@
         "google_account_info": "Thông tin tài khoản Google",
         "meta_email": "Email Tài Khoản",
         "display_name": "Tên hiển thị",
-        "info_fanpage": "Thông tin fanpage",
-        "info_website": "Thông tin website",
         "display_name_placeholder": "Nhập tên hiển thị",
         "feature_labels": {
             "meta_new_bm": "BM mới, sạch lịch sử",
@@ -668,6 +694,34 @@
             "customer": "Khách hàng",
             "staff": "Nhân viên",
             "system": "Hệ thống"
+        },
+        "type": {
+            "transfer_budget": "Chuyển tiền",
+            "account_liquidation": "Thanh lý tài khoản",
+            "account_appeal": "Kháng tài khoản",
+            "share_bm": "Share BM / BC / MCC",
+            "withdraw_app": "Rút ví app về ví khách",
+            "wallet_withdraw_app": "Rút tiền từ ví app",
+            "wallet_deposit_app": "Nạp tiền vào tài khoản"
+        },
+        "withdraw_app": {
+            "title": "Rút tiền từ ví app về ví khách",
+            "description": "Tạo yêu cầu rút tiền từ ví app về ví khách. Hệ thống sẽ tạo ticket hỗ trợ và lệnh rút chờ admin duyệt.",
+            "amount_label": "Số tiền rút",
+            "method_label": "Hình thức rút",
+            "note_label": "Ghi chú (tùy chọn)",
+            "note_placeholder": "Nhập ghi chú cho yêu cầu rút tiền",
+            "submit": "Tạo yêu cầu rút"
+        },
+        "deposit_app": {
+            "title": "Nạp tiền vào tài khoản",
+            "description": "Tạo yêu cầu nạp tiền. Hệ thống sẽ tạo ticket hỗ trợ và lệnh nạp chờ admin duyệt.",
+            "amount_label": "Số tiền nạp",
+            "network_label": "Mạng USDT",
+            "network_placeholder": "Chọn mạng (TRC20 hoặc BEP20)",
+            "note_label": "Ghi chú (tùy chọn)",
+            "note_placeholder": "Nhập ghi chú cho yêu cầu nạp tiền",
+            "submit": "Tạo yêu cầu nạp"
         },
         "transfer": {
             "title": "Chuyển tiền giữa các tài khoản",
@@ -816,7 +870,17 @@
         "preset_14d": "14 ngày qua",
         "preset_28d": "28 ngày qua",
         "preset_30d": "30 ngày qua",
-        "preset_90d": "90 ngày qua"
+        "preset_90d": "90 ngày qua",
+        "ranking_title": "Bảng xếp hạng chi tiêu các tài khoản",
+        "date_range": "Khoảng thời gian",
+        "to": "đến",
+        "ranking": {
+            "rank": "Top",
+            "account": "Tài khoản",
+            "status": "Trạng thái",
+            "amount": "Số tiền",
+            "no_data": "Không có dữ liệu"
+        }
     },
     "dashboard": {
         "title": "Trang chủ",
@@ -862,7 +926,10 @@
         "admin_transaction_time": "Thời gian",
         "select_platform": "Chọn nền tảng",
         "platform_meta": "Meta Ads",
-        "platform_google_ads": "Google Ads"
+        "platform_google_ads": "Google Ads",
+        "platform_active_accounts": "Số lượng tài khoản Active",
+        "platform_total_balance": "Số dư khả dụng của các tài khoản",
+        "pending_tickets_title": "Các thẻ đang yêu cầu xử lý:"
     },
     "contact": {
         "title": "Liên hệ",

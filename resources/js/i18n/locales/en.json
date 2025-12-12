@@ -105,8 +105,10 @@
     "service_orders": "Service orders",
     "service_orders_admin": "Manage service orders",
     "transactions": "Transactions",
+    "contact": "Contact",
     "profile": "Profile",
     "spend_report": "Spend report",
+    "spend_report_ranking": "Spending ranking",
     "financial_management": "Financial Management",
     "support": "Support",
     "support_customer": "Customer Support",
@@ -224,6 +226,9 @@
     "select_platform": "Select platform",
     "platform_meta": "Meta Ads",
     "platform_google_ads": "Google Ads",
+    "platform_active_accounts": "Number of Active accounts",
+    "platform_total_balance": "Available balance of accounts",
+    "pending_tickets_title": "Cards currently awaiting processing:",
     "services_title": "Services",
     "critical_alerts_title": "Critical alerts",
     "real_time_metrics_title": "Real-time metrics"
@@ -337,6 +342,10 @@
         "support_request_type_account_appeal": "Appeal ad account",
         "support_request_type_transfer_budget": "Transfer budget from this ad account to another ad account",
         "support_request_type_share_bm": "Share BM / BC / MCC to another user",
+    "support_request_type_wallet_withdraw_app": "Withdraw from app wallet to customer wallet",
+    "support_request_withdraw_amount_label": "Withdrawal amount (USDT)",
+    "support_request_withdraw_type_label": "Withdrawal method",
+    "support_request_wallet_password_label": "Wallet password",
         "support_request_note_label": "Request details",
         "support_request_note_placeholder": "Add more information such as ad account IDs, amount to transfer, target user for BM/BC/MCC...",
         "support_request_submit": "Submit request",
@@ -397,7 +406,17 @@
     "no_chart_data": "No chart data",
     "budget_allocation": "Budget allocation",
     "no_allocation_data": "No allocation data",
-    "unknown_account": "Unknown account"
+    "unknown_account": "Unknown account",
+    "ranking_title": "Account Spending Ranking Table",
+    "date_range": "Date range",
+    "to": "to",
+    "ranking": {
+      "rank": "Top",
+      "account": "Account",
+      "status": "Status",
+      "amount": "Amount",
+      "no_data": "No data"
+    }
   },
   "wallet": {
     "active": "Active",
@@ -406,6 +425,10 @@
     "status": "Status",
     "top_up": "Top up",
     "withdraw": "Withdraw",
+    "withdraw_via_bank": "Via Local Bank",
+    "withdraw_via_usdt": "Via USDT",
+    "crypto_address": "Crypto wallet address",
+    "enter_crypto_address": "Enter crypto wallet address",
     "lock": "Lock wallet",
     "info": "Wallet info",
     "unlock": "Unlock wallet",
@@ -438,6 +461,39 @@
       "rejected": "Rejected",
       "completed": "Completed",
       "cancelled": "Cancelled"
+    },
+    "transaction_description": {
+      "deposit_created": "User created a deposit order",
+      "withdraw_created_bank": "User created a withdrawal order via local bank",
+      "withdraw_created_usdt": "User created a withdrawal order via USDT",
+      "deposit_approved": "Admin approved deposit",
+      "withdraw_completed": "Admin approved and completed withdrawal",
+      "deposit_cancelled_user": "User cancelled deposit order",
+      "withdraw_cancelled_user": "User cancelled withdrawal order",
+      "withdraw_cancelled_admin": "Admin cancelled withdrawal order",
+      "campaign_budget_update_created": "User requested a campaign budget update",
+      "campaign_budget_update_cancelled_admin": "Admin cancelled the campaign budget update request",
+      "campaign_budget_update_detail": "User requested a budget update for campaign :campaign on account :account",
+      "campaign_pause_created": "User requested to pause campaign",
+      "campaign_pause_detail": "User requested to pause campaign :campaign on account :account",
+      "campaign_pause_cancelled_admin": "Admin cancelled the pause campaign request",
+      "campaign_end_created": "User requested to end campaign",
+      "campaign_end_detail": "User requested to end campaign :campaign on account :account",
+      "campaign_end_cancelled_admin": "Admin cancelled the end campaign request"
+    },
+    "account_number": "Account number",
+    "account_holder": "Account holder",
+    "bank_name": "Bank name",
+    "enter_bank_name": "Enter bank name",
+    "enter_account_holder": "Enter account holder",
+    "enter_account_number": "Enter account number",
+    "select_network": "Select network",
+    "select_network_placeholder": "Select TRC20 or BEP20",
+    "validation": {
+      "amount_required": "Please enter withdrawal amount.",
+      "password_required": "Please enter your wallet password.",
+      "bank_info_required": "Please fill in all bank information.",
+      "crypto_info_required": "Please enter crypto address and select network."
     }
   },
   "service_packages": {
@@ -451,6 +507,10 @@
     "platform": "Platform",
     "meta_features": "Meta features",
     "choose_access": "Choose Full access or basic access",
+    "asset_access_label": "Sharing permission",
+    "asset_access_placeholder": "Select permission",
+    "asset_access_full": "Full access",
+    "asset_access_basic": "Basic access",
     "google_features": "Google features",
     "open_fee": "Opening fee $ (USDT)",
     "range_min_top_up": "Minimum balance required $ (USDT)",
@@ -672,6 +732,34 @@
       "customer": "Customer",
       "staff": "Staff",
       "system": "System"
+    },
+    "type": {
+      "transfer_budget": "Transfer budget",
+      "account_liquidation": "Account liquidation",
+      "account_appeal": "Account appeal",
+      "share_bm": "Share BM / BC / MCC",
+      "withdraw_app": "Withdraw app wallet to customer wallet",
+      "wallet_withdraw_app": "Withdraw from app wallet",
+      "wallet_deposit_app": "Deposit to account"
+    },
+    "withdraw_app": {
+      "title": "Withdraw from app wallet to customer wallet",
+      "description": "Create a withdrawal request from the app wallet to the customer wallet. The system will create a support ticket and a pending withdrawal order for admin approval.",
+      "amount_label": "Withdrawal amount",
+      "method_label": "Withdrawal method",
+      "note_label": "Note",
+      "note_placeholder": "Enter note for this withdrawal request",
+      "submit": "Create withdrawal request"
+    },
+    "deposit_app": {
+      "title": "Deposit to account",
+      "description": "Create a deposit request. The system will create a support ticket and a pending deposit order for admin approval.",
+      "amount_label": "Deposit amount",
+      "network_label": "USDT network",
+      "network_placeholder": "Select TRC20 or BEP20",
+      "note_label": "Note (optional)",
+      "note_placeholder": "Enter note for this deposit request",
+      "submit": "Create deposit request"
     },
     "transfer": {
       "title": "Transfer money between accounts",

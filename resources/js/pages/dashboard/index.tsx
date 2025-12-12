@@ -4,11 +4,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { TransactionList } from '@/components/transactions/transaction-list';
-import { cn } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
 import useCheckRole from '@/hooks/use-check-role';
 import AppLayout from '@/layouts/app-layout';
-import { _UserRole, userRolesLabel } from '@/lib/types/constants';
+import { _UserRole, userRolesLabel, _MetaAdsAccountStatus, _GoogleCustomerStatus } from '@/lib/types/constants';
 import { IBreadcrumbItem, type IUser } from '@/lib/types/type';
 import { dashboard, wallet_index } from '@/routes';
 import { Head, Link, usePage, router } from '@inertiajs/react';
@@ -27,7 +30,7 @@ import {
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { WalletTransaction } from '@/pages/wallet/types/type';
-import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransactions, DashboardData } from './types';
+import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransactions, DashboardData, SpendingRanking } from './types';
 
 const breadcrumbs: IBreadcrumbItem[] = [
     {
@@ -59,6 +62,23 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
     const [platform, setPlatform] = useState<string>(selectedPlatform);
     const [approveLoadingId, setApproveLoadingId] = useState<string | null>(null);
     
+    // Ranking state
+    const [rankingPlatform, setRankingPlatform] = useState<string>(
+        adminDashboardData?.spending_ranking?.platform || 'meta'
+    );
+    const [rankingDateRange, setRankingDateRange] = useState<DateRange | undefined>(() => {
+        if (adminDashboardData?.spending_ranking?.start_date && adminDashboardData?.spending_ranking?.end_date) {
+            return {
+                from: new Date(adminDashboardData.spending_ranking.start_date),
+                to: new Date(adminDashboardData.spending_ranking.end_date),
+            };
+        }
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 29);
+        return { from: startDate, to: endDate };
+    });
+    
     // Đồng bộ platform state với props khi selectedPlatform thay đổi
     useEffect(() => {
         setPlatform(selectedPlatform);
@@ -69,6 +89,9 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
         bank_name?: string;
         account_holder?: string;
         account_number?: string;
+        crypto_address?: string;
+        network?: 'TRC20' | 'BEP20';
+        withdraw_type?: 'bank' | 'usdt';
     } | null>(null);
 
     const currencyFormatter = useMemo(
@@ -208,6 +231,242 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                             icon={<Clock3 className="h-5 w-5 text-amber-500" />}
                         />
                     </div>
+
+                    {/* Platform Accounts Stats */}
+                    {adminDashboardData.platform_accounts && (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <PlatformAccountCard
+                                platform="meta"
+                                activeAccounts={adminDashboardData.platform_accounts.meta.active_accounts}
+                                totalBalance={adminDashboardData.platform_accounts.meta.total_balance}
+                                t={t}
+                                formatCurrency={formatCurrency}
+                            />
+                            <PlatformAccountCard
+                                platform="google"
+                                activeAccounts={adminDashboardData.platform_accounts.google.active_accounts}
+                                totalBalance={adminDashboardData.platform_accounts.google.total_balance}
+                                t={t}
+                                formatCurrency={formatCurrency}
+                            />
+                        </div>
+                    )}
+
+                    {/* Pending Tickets by Type */}
+                    {adminDashboardData.pending_tickets_by_type && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg font-semibold text-[#083e96]">
+                                    {t('dashboard.pending_tickets_title')}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid gap-4 md:grid-cols-5">
+                                    <PendingTicketCard
+                                        label={t('ticket.type.transfer_budget')}
+                                        value={adminDashboardData.pending_tickets_by_type.transfer_budget}
+                                    />
+                                    <PendingTicketCard
+                                        label={t('ticket.type.account_liquidation')}
+                                        value={adminDashboardData.pending_tickets_by_type.account_liquidation}
+                                    />
+                                    <PendingTicketCard
+                                        label={t('ticket.type.account_appeal')}
+                                        value={adminDashboardData.pending_tickets_by_type.account_appeal}
+                                    />
+                                    <PendingTicketCard
+                                        label={t('ticket.type.share_bm')}
+                                        value={adminDashboardData.pending_tickets_by_type.share_bm}
+                                    />
+                                    <PendingTicketCard
+                                        label={t('ticket.type.wallet_withdraw_app')}
+                                        value={adminDashboardData.pending_tickets_by_type.wallet_withdraw_app}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Bảng xếp hạng chi tiêu */}
+                    {adminDashboardData?.spending_ranking && (
+                        <Card>
+                            <CardHeader>
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <CardTitle className="text-lg font-semibold text-[#083e96]">
+                                        {t('spend_report.ranking_title')}
+                                    </CardTitle>
+                                    <div className="flex gap-3">
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label className="text-xs text-muted-foreground">
+                                                {t('spend_report.platform')}
+                                            </Label>
+                                            <Select
+                                                value={rankingPlatform}
+                                                onValueChange={(value) => {
+                                                    setRankingPlatform(value);
+                                                    if (rankingDateRange?.from && rankingDateRange?.to) {
+                                                        router.get(
+                                                            dashboard().url,
+                                                            {
+                                                                ranking_platform: value,
+                                                                ranking_start_date: rankingDateRange.from.toISOString().split('T')[0],
+                                                                ranking_end_date: rankingDateRange.to.toISOString().split('T')[0],
+                                                            },
+                                                            { preserveState: true, preserveScroll: true }
+                                                        );
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-[150px]">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="meta">
+                                                        {t('dashboard.platform_meta')}
+                                                    </SelectItem>
+                                                    <SelectItem value="google_ads">
+                                                        {t('dashboard.platform_google_ads')}
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label className="text-xs text-muted-foreground">
+                                                {t('spend_report.date_range')}
+                                            </Label>
+                                            <DateRangePicker
+                                                date={rankingDateRange}
+                                                onDateChange={(date) => {
+                                                    setRankingDateRange(date);
+                                                    if (date?.from && date?.to) {
+                                                        router.get(
+                                                            dashboard().url,
+                                                            {
+                                                                ranking_platform: rankingPlatform,
+                                                                ranking_start_date: date.from.toISOString().split('T')[0],
+                                                                ranking_end_date: date.to.toISOString().split('T')[0],
+                                                            },
+                                                            { preserveState: true, preserveScroll: true }
+                                                        );
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                {adminDashboardData.spending_ranking.data && adminDashboardData.spending_ranking.data.length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[80px]">
+                                                        {t('spend_report.ranking.rank')}
+                                                    </TableHead>
+                                                    <TableHead>
+                                                        {t('spend_report.ranking.account')}
+                                                    </TableHead>
+                                                    <TableHead>
+                                                        {t('spend_report.ranking.status')}
+                                                    </TableHead>
+                                                    <TableHead className="text-right">
+                                                        {t('spend_report.ranking.amount')}
+                                                    </TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {adminDashboardData.spending_ranking.data.map((item) => {
+                                                    const getStatusBadgeVariant = (status: number, platform: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+                                                        if (platform === 'meta') {
+                                                            const statusMap: Record<_MetaAdsAccountStatus, 'default' | 'destructive'> = {
+                                                                [_MetaAdsAccountStatus.ACTIVE]: 'default',
+                                                                [_MetaAdsAccountStatus.DISABLED]: 'destructive',
+                                                                [_MetaAdsAccountStatus.UNSETTLED]: 'destructive',
+                                                                [_MetaAdsAccountStatus.PENDING_RISK_REVIEW]: 'destructive',
+                                                                [_MetaAdsAccountStatus.PENDING_SETTLEMENT]: 'destructive',
+                                                                [_MetaAdsAccountStatus.IN_GRACE_PERIOD]: 'destructive',
+                                                                [_MetaAdsAccountStatus.PENDING_CLOSURE]: 'destructive',
+                                                                [_MetaAdsAccountStatus.CLOSED]: 'destructive',
+                                                                [_MetaAdsAccountStatus.ANY_ACTIVE]: 'default',
+                                                                [_MetaAdsAccountStatus.ANY_CLOSED]: 'destructive',
+                                                            };
+                                                            return statusMap[status as _MetaAdsAccountStatus] ?? 'destructive';
+                                                        } else {
+                                                            const statusMap: Record<_GoogleCustomerStatus, 'default' | 'destructive'> = {
+                                                                [_GoogleCustomerStatus.UNSPECIFIED]: 'destructive',
+                                                                [_GoogleCustomerStatus.UNKNOWN]: 'destructive',
+                                                                [_GoogleCustomerStatus.ENABLED]: 'default',
+                                                                [_GoogleCustomerStatus.CANCELED]: 'destructive',
+                                                                [_GoogleCustomerStatus.SUSPENDED]: 'destructive',
+                                                                [_GoogleCustomerStatus.CLOSED]: 'destructive',
+                                                            };
+                                                            return statusMap[status as _GoogleCustomerStatus] ?? 'destructive';
+                                                        }
+                                                    };
+                                                    const getStatusBadgeClassName = (status: number, platform: string): string => {
+                                                        if (platform === 'meta') {
+                                                            const statusMap: Record<_MetaAdsAccountStatus, string> = {
+                                                                [_MetaAdsAccountStatus.ACTIVE]: 'bg-green-500 text-white',
+                                                                [_MetaAdsAccountStatus.DISABLED]: 'bg-red-500 text-white',
+                                                                [_MetaAdsAccountStatus.UNSETTLED]: 'bg-red-500 text-white',
+                                                                [_MetaAdsAccountStatus.PENDING_RISK_REVIEW]: 'bg-red-500 text-white',
+                                                                [_MetaAdsAccountStatus.PENDING_SETTLEMENT]: 'bg-red-500 text-white',
+                                                                [_MetaAdsAccountStatus.IN_GRACE_PERIOD]: 'bg-red-500 text-white',
+                                                                [_MetaAdsAccountStatus.PENDING_CLOSURE]: 'bg-red-500 text-white',
+                                                                [_MetaAdsAccountStatus.CLOSED]: 'bg-red-500 text-white',
+                                                                [_MetaAdsAccountStatus.ANY_ACTIVE]: 'bg-green-500 text-white',
+                                                                [_MetaAdsAccountStatus.ANY_CLOSED]: 'bg-red-500 text-white',
+                                                            };
+                                                            return statusMap[status as _MetaAdsAccountStatus] ?? 'bg-red-500 text-white';
+                                                        } else {
+                                                            const statusMap: Record<_GoogleCustomerStatus, string> = {
+                                                                [_GoogleCustomerStatus.UNSPECIFIED]: 'bg-red-500 text-white',
+                                                                [_GoogleCustomerStatus.UNKNOWN]: 'bg-red-500 text-white',
+                                                                [_GoogleCustomerStatus.ENABLED]: 'bg-green-500 text-white',
+                                                                [_GoogleCustomerStatus.CANCELED]: 'bg-red-500 text-white',
+                                                                [_GoogleCustomerStatus.SUSPENDED]: 'bg-red-500 text-white',
+                                                                [_GoogleCustomerStatus.CLOSED]: 'bg-red-500 text-white',
+                                                            };
+                                                            return statusMap[status as _GoogleCustomerStatus] ?? 'bg-red-500 text-white';
+                                                        }
+                                                    };
+                                                    return (
+                                                        <TableRow key={item.account_id}>
+                                                            <TableCell className="font-medium">{item.rank}</TableCell>
+                                                            <TableCell>
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium">{item.account_name}</span>
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        {item.account_id_display}
+                                                                    </span>
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge
+                                                                    className={getStatusBadgeClassName(item.account_status, rankingPlatform)}
+                                                                    variant={getStatusBadgeVariant(item.account_status, rankingPlatform)}
+                                                                >
+                                                                    {item.status_label}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-semibold text-orange-500">
+                                                                {formatCurrency(item.total_spend)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                ) : (
+                                    <div className="py-8 text-center text-muted-foreground">
+                                        {t('spend_report.ranking.no_data', { defaultValue: 'Không có dữ liệu' })}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     <Card>
                         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -570,7 +829,6 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                     </Card>
                 </div>
 
-                {/* Vấn đề nghiêm trọng */}
                 {dashboardData.alerts.critical_errors > 0 && (
                     <Card className="border-red-500 bg-red-50 dark:bg-red-950/20">
                         <CardHeader>
@@ -656,5 +914,60 @@ function MetricCard({ title, value, percentChange }: MetricCardProps) {
                 )}
             </CardContent>
         </Card>
+    );
+}
+
+type PlatformAccountCardProps = {
+    platform: 'meta' | 'google';
+    activeAccounts: number;
+    totalBalance: string;
+    t: (key: string, options?: any) => string;
+    formatCurrency: (value: string | number) => string;
+};
+
+function PlatformAccountCard({ platform, activeAccounts, totalBalance, t, formatCurrency }: PlatformAccountCardProps) {
+    const platformLabel = platform === 'meta' 
+        ? t('dashboard.platform_meta')
+        : t('dashboard.platform_google_ads');
+    
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold text-[#083e96]">{platformLabel}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div>
+                    <div className="text-sm text-muted-foreground mb-1">
+                        {t('dashboard.platform_active_accounts')}
+                    </div>
+                    <div className="text-3xl font-bold text-[#083e96]">{activeAccounts}</div>
+                </div>
+                <div>
+                    <div className="text-sm text-muted-foreground mb-1">
+                        {t('dashboard.platform_total_balance', { defaultValue: 'Số dư khả dụng của các tài khoản' })}
+                    </div>
+                    <div className="text-3xl font-bold text-orange-500">
+                        {formatCurrency(totalBalance)}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+type PendingTicketCardProps = {
+    label: string;
+    value: number;
+};
+
+function PendingTicketCard({ label, value }: PendingTicketCardProps) {
+    return (
+        <div className="flex flex-col">
+            <div className="text-sm font-semibold mb-2 text-center min-h-10 flex items-center justify-center">
+                {label}
+            </div>
+            <div className="h-px bg-[#083e96] mb-3"></div>
+            <div className="text-3xl font-bold text-center">{value}</div>
+        </div>
     );
 }

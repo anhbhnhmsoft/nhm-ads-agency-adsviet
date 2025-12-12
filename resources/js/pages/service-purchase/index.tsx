@@ -20,7 +20,14 @@ import {
     ShoppingCart,
     Wallet,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const normalizeCurrencyInput = (value: string): string => {
@@ -38,16 +45,8 @@ const parseCurrencyInput = (value: string): number => {
 const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageProps) => {
     const { t } = useTranslation();
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
-    const [topUpAmount, setTopUpAmount] = useState<string>('');
-    const [budget, setBudget] = useState<string>('');
     const [showCalculator, setShowCalculator] = useState(false);
     const [searchQuery, setSearchQuery] = useState<string>('');
-    const [metaEmail, setMetaEmail] = useState<string>('');
-    const [displayName, setDisplayName] = useState<string>('');
-    const [bmId, setBmId] = useState<string>('');
-    const [infoFanpage, setInfoFanpage] = useState<string>('');
-    const [infoWebsite, setInfoWebsite] = useState<string>('');
-    const [paymentType, setPaymentType] = useState<'prepay' | 'postpay'>('prepay');
     const packageList = useMemo<ServicePackage[]>(() => {
         if (Array.isArray(packages)) {
             return packages as ServicePackage[];
@@ -59,6 +58,29 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
     }, [packages]);
 
     const { form: purchaseForm, submit: submitPurchase } = useServicePurchaseForm();
+
+    const {
+        top_up_amount,
+        budget,
+        meta_email,
+        display_name,
+        bm_id,
+        info_fanpage,
+        info_website,
+        payment_type,
+        asset_access,
+    } = purchaseForm.data;
+
+    const paymentType: 'prepay' | 'postpay' = (payment_type as 'prepay' | 'postpay') || 'prepay';
+    const topUpAmount = top_up_amount || '';
+    const budgetValue = budget || '';
+
+    useEffect(() => {
+        if (selectedPackage?.platform === _PlatformType.GOOGLE) {
+            purchaseForm.setData('info_fanpage', '');
+            purchaseForm.setData('info_website', '');
+        }
+    }, [selectedPackage?.platform]);
 
     // Filter packages
     const filteredPackages = useMemo(() => {
@@ -205,32 +227,32 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
             return;
         }
 
-        if (budget && validateBudget(budget)) {
-            alert(validateBudget(budget));
+        if (budgetValue && validateBudget(budgetValue)) {
+            alert(validateBudget(budgetValue));
             return;
         }
 
-        const sanitizedBudget = normalizeCurrencyInput(budget);
+        const sanitizedBudget = normalizeCurrencyInput(budgetValue);
         const payloadBudget = sanitizedBudget ? sanitizedBudget : '0';
 
         const bmMccConfig = {
-            bm_id: bmId || undefined,
-            info_fanpage: infoFanpage || undefined,
-            info_website: infoWebsite || undefined,
+            bm_id: bm_id || undefined,
+            info_fanpage: info_fanpage || undefined,
+            info_website: info_website || undefined,
             payment_type: paymentType,
+            asset_access: asset_access || 'full_asset',
         };
 
-        submitPurchase(selectedPackage.id, payloadTopUp, metaEmail, displayName, payloadBudget, bmMccConfig, () => {
+        submitPurchase(selectedPackage.id, payloadTopUp, meta_email, display_name, payloadBudget, bmMccConfig, () => {
             setSelectedPackage(null);
-            setTopUpAmount('');
-            setBudget('');
             setShowCalculator(false);
-            setMetaEmail('');
-            setDisplayName('');
-            setBmId('');
-            setInfoFanpage('');
-            setInfoWebsite('');
-            setPaymentType('prepay');
+            purchaseForm.reset();
+            purchaseForm.setData({
+                payment_type: 'prepay',
+                budget: '0',
+                top_up_amount: '',
+                asset_access: 'full_asset',
+            });
         });
     };
 
@@ -370,7 +392,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                 ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
                 : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' });
         const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
-        const budgetNum = parseCurrencyInput(budget);
+        const budgetNum = parseCurrencyInput(budgetValue);
         const monthlyFeePercent =
             paymentType === 'postpay' && monthlySpendingTiers.length > 0
                 ? getMonthlyFeePercent(budgetNum, monthlySpendingTiers)
@@ -428,9 +450,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                     id="metaEmail"
                                     type="email"
                                     placeholder="abc123@gmail.com"
-                                    value={metaEmail}
+                                    value={meta_email || ''}
                                     onChange={(e) => {
-                                        setMetaEmail(e.target.value);
+                                        purchaseForm.setData('meta_email', e.target.value);
                                         if (purchaseForm.errors.meta_email) {
                                             purchaseForm.clearErrors('meta_email');
                                         }
@@ -455,37 +477,62 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                     id="bm_id"
                                     type="text"
                                     placeholder="1234567890"
-                                    value={bmId}
-                                    onChange={(e) => setBmId(e.target.value)}
+                                    value={bm_id || ''}
+                                    onChange={(e) => purchaseForm.setData('bm_id', e.target.value)}
                                 />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {t('service_purchase.choose_access', { defaultValue: 'Chọn Full access hoặc basic access' })}
-                                </p>
+
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="info_fanpage">
-                                    {t('service_purchase.info_fanpage', { defaultValue: 'Thông tin fanpage' })}:
-                                </Label>
-                                <Input
-                                    id="info_fanpage"
-                                    type="text"
-                                    placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
-                                    value={infoFanpage}
-                                    onChange={(e) => setInfoFanpage(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="info_website">
-                                    {t('service_purchase.info_website', { defaultValue: 'Thông tin website' })}:
-                                </Label>
-                                <Input
-                                    id="info_website"
-                                    type="text"
-                                    placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
-                                    value={infoWebsite}
-                                    onChange={(e) => setInfoWebsite(e.target.value)}
-                                />
-                            </div>
+                            {selectedPackage.platform === _PlatformType.GOOGLE && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="asset_access">
+                                        {t('service_purchase.asset_access_label', { defaultValue: 'Chia sẻ quyền truy cập' })}
+                                    </Label>
+                                    <Select
+                                        value={asset_access || 'full_asset'}
+                                        onValueChange={(value: 'full_asset' | 'basic_asset') => purchaseForm.setData('asset_access', value)}
+                                    >
+                                        <SelectTrigger id="asset_access">
+                                            <SelectValue placeholder={t('service_purchase.asset_access_placeholder', { defaultValue: 'Chọn quyền' })} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="full_asset">
+                                                {t('service_purchase.asset_access_full', { defaultValue: 'Full access' })}
+                                            </SelectItem>
+                                            <SelectItem value="basic_asset">
+                                                {t('service_purchase.asset_access_basic', { defaultValue: 'Basic access' })}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                            {selectedPackage.platform === _PlatformType.META && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="info_fanpage">
+                                            {t('service_purchase.info_fanpage', { defaultValue: 'Thông tin fanpage' })}:
+                                        </Label>
+                                    <Input
+                                        id="info_fanpage"
+                                        type="text"
+                                        placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
+                                        value={info_fanpage || ''}
+                                        onChange={(e) => purchaseForm.setData('info_fanpage', e.target.value)}
+                                    />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="info_website">
+                                            {t('service_purchase.info_website', { defaultValue: 'Thông tin website' })}:
+                                        </Label>
+                                        <Input
+                                            id="info_website"
+                                            type="text"
+                                            placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
+                                            value={info_website || ''}
+                                            onChange={(e) => purchaseForm.setData('info_website', e.target.value)}
+                                        />
+                                    </div>
+                                </>
+                            )}
                             <div className="space-y-2">
                                 <Label htmlFor="displayName">
                                     {t('service_purchase.display_name')}:
@@ -494,9 +541,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                     id="displayName"
                                     type="text"
                                     placeholder="abc"
-                                    value={displayName}
+                                    value={display_name || ''}
                                     onChange={(e) => {
-                                        setDisplayName(e.target.value);
+                                        purchaseForm.setData('display_name', e.target.value);
                                         if (purchaseForm.errors.display_name) {
                                             purchaseForm.clearErrors('display_name');
                                         }
@@ -556,7 +603,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                 variant={paymentType === 'prepay' ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => {
-                                    setPaymentType('prepay');
+                                    purchaseForm.setData('payment_type', 'prepay');
                                 }}
                             >
                                 {t('service_purchase.payment_prepay', { defaultValue: 'Thanh toán trả trước' })}
@@ -567,8 +614,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                 disabled={wallet_balance < 200}
                                 size="sm"
                                 onClick={() => {
-                                    setPaymentType('postpay');
-                                    setTopUpAmount(''); // Trả sau không thu top-up upfront
+                                    purchaseForm.setData('payment_type', 'postpay');
+                                    purchaseForm.setData('top_up_amount', ''); // Trả sau không thu top-up upfront
                                 }}
                             >
                                 {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
@@ -585,9 +632,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             id="budget"
                             type="number"
                             placeholder="0.00"
-                            value={budget}
+                            value={budgetValue}
                             onChange={(e) => {
-                                setBudget(e.target.value);
+                                purchaseForm.setData('budget', e.target.value);
                                 if (purchaseForm.errors.budget) {
                                     purchaseForm.clearErrors('budget');
                                 }
@@ -597,10 +644,10 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             max="50"
                             required
                         />
-                        {budget && validateBudget(budget) && (
+                        {budgetValue && validateBudget(budgetValue) && (
                             <div className="flex items-center gap-2 text-red-600 text-sm">
                                 <AlertTriangle className="h-4 w-4" />
-                                {validateBudget(budget)}
+                                {validateBudget(budgetValue)}
                             </div>
                         )}
                         {purchaseForm.errors.budget && (
@@ -628,7 +675,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                 )} USDT`}
                                 value={topUpAmount}
                                 onChange={(e) => {
-                                    setTopUpAmount(e.target.value);
+                                    purchaseForm.setData('top_up_amount', e.target.value);
                                     if (purchaseForm.errors.top_up_amount) {
                                         purchaseForm.clearErrors('top_up_amount');
                                     }
@@ -724,7 +771,13 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                         className="w-full mb-3"
                         size="lg"
                         onClick={handlePurchase}
-                        disabled={hasInsufficientBalance || !!topUpError || !!validateBudget(budget) || !budget || purchaseForm.processing}
+                        disabled={
+                            hasInsufficientBalance ||
+                            !!topUpError ||
+                            !!validateBudget(budgetValue) ||
+                            !budgetValue ||
+                            purchaseForm.processing
+                        }
                     >
                         <ShoppingCart className="h-4 w-4 mr-2" />
                         {purchaseForm.processing

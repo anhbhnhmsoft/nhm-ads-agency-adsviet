@@ -359,6 +359,82 @@ class GoogleAdsService
         };
     }
 
+    /**
+     * Lấy bảng xếp hạng chi tiêu các tài khoản Google Ads
+     */
+    public function getAccountSpendingRanking(?Carbon $startDate = null, ?Carbon $endDate = null): ServiceReturn
+    {
+        try {
+            // Query insights từ database, group by account và sum spend
+            $query = $this->googleAdsAccountInsightRepository->query()
+                ->select('google_account_id', DB::raw('SUM(spend::numeric) as total_spend'))
+                ->groupBy('google_account_id');
+
+            // Filter theo date range nếu có
+            if ($startDate) {
+                $query->where('date', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->where('date', '<=', $endDate);
+            }
+
+            // Chỉ lấy accounts có spend > 0
+            $query->havingRaw('SUM(spend::numeric) > 0');
+
+            $insights = $query->get();
+
+            // Lấy thông tin accounts
+            $accountIds = $insights->pluck('google_account_id')->toArray();
+            if (empty($accountIds)) {
+                return ServiceReturn::success(data: []);
+            }
+            
+            $accounts = $this->googleAccountRepository->query()
+                ->whereIn('id', $accountIds)
+                ->get()
+                ->keyBy('id');
+
+            // Tạo ranking list
+            $ranking = [];
+            foreach ($insights as $insight) {
+                $account = $accounts->get($insight->google_account_id);
+                if (!$account) {
+                    continue;
+                }
+
+                $statusEnum = GoogleCustomerStatus::tryFrom((int) $account->account_status);
+                $statusLabel = $statusEnum?->label() ?? __('common.unknown');
+
+                $ranking[] = [
+                    'account_id' => (string) $account->id,
+                    'account_name' => $account->account_name ?? $account->account_id,
+                    'account_id_display' => $account->account_id,
+                    'account_status' => $account->account_status,
+                    'status_label' => $statusLabel,
+                    'total_spend' => (float) $insight->total_spend,
+                ];
+            }
+
+            // Sắp xếp theo spend giảm dần
+            usort($ranking, function ($a, $b) {
+                return $b['total_spend'] <=> $a['total_spend'];
+            });
+
+            // Thêm rank
+            foreach ($ranking as $index => &$item) {
+                $item['rank'] = $index + 1;
+            }
+
+            return ServiceReturn::success(data: $ranking);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: "Error get account spending ranking: " . $exception->getMessage(),
+                exception: $exception,
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     // Lấy dữ liệu báo cáo tổng hợp cho dịch vụ Google Ads
     public function getReportData(): ServiceReturn
     {

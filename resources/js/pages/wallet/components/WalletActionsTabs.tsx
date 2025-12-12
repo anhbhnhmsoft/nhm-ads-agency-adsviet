@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,8 @@ const WalletActionsTabs = ({
     handleChangePassword,
     walletHasPassword = false,
 }: Props) => {
+    const [withdrawType, setWithdrawType] = useState<'bank' | 'usdt'>('bank');
+
     if (isAdmin) return null;
 
     return (
@@ -131,84 +133,173 @@ const WalletActionsTabs = ({
                     )}
 
                     {activeTab === 'withdraw' && (
-                        <form onSubmit={handleWithdraw} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="withdraw-amount">
-                                    {t('wallet.amount')}
-                                </Label>
-                                <Input
-                                    id="withdraw-amount"
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    value={withdrawForm.data.amount}
-                                    onChange={(e) => withdrawForm.setData('amount', e.target.value)}
-                                    placeholder="0.00"
-                                    required
-                                />
-                                <InputError message={withdrawForm.errors.amount} />
+                        <div className="space-y-4">
+                            <div className="flex space-x-2 border-b">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setWithdrawType('bank');
+                                        withdrawForm.clearErrors();
+                                        withdrawForm.setData({
+                                            ...withdrawForm.data,
+                                            withdraw_type: 'bank',
+                                            crypto_address: '',
+                                            network: undefined,
+                                        });
+                                    }}
+                                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                                        withdrawType === 'bank'
+                                            ? 'border-b-2 border-primary text-primary'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    {t('wallet.withdraw_via_bank', { defaultValue: 'Qua ngân hàng địa phương' })}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setWithdrawType('usdt');
+                                        withdrawForm.clearErrors();
+                                        withdrawForm.setData({
+                                            ...withdrawForm.data,
+                                            withdraw_type: 'usdt',
+                                            bank_name: '',
+                                            account_holder: '',
+                                            account_number: '',
+                                        });
+                                    }}
+                                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                                        withdrawType === 'usdt'
+                                            ? 'border-b-2 border-primary text-primary'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    {t('wallet.withdraw_via_usdt', { defaultValue: 'Qua USDT' })}
+                                </button>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="withdraw-bank-name">
-                                    {t('service_user.bank_name')}
-                                </Label>
-                                <Input
-                                    id="withdraw-bank-name"
-                                    type="text"
-                                    value={withdrawForm.data.bank_name}
-                                    onChange={(e) => withdrawForm.setData('bank_name', e.target.value)}
-                                    placeholder={t('service_user.enter_bank_name')}
-                                    required
-                                />
-                                <InputError message={withdrawForm.errors.bank_name} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="withdraw-account-holder">
-                                    {t('service_user.account_holder')}
-                                </Label>
-                                <Input
-                                    id="withdraw-account-holder"
-                                    type="text"
-                                    value={withdrawForm.data.account_holder}
-                                    onChange={(e) => withdrawForm.setData('account_holder', e.target.value)}
-                                    placeholder={t('service_user.enter_account_holder')}
-                                    required
-                                />
-                                <InputError message={withdrawForm.errors.account_holder} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="withdraw-account-number">
-                                    {t('service_user.account_number')}
-                                </Label>
-                                <Input
-                                    id="withdraw-account-number"
-                                    type="text"
-                                    value={withdrawForm.data.account_number}
-                                    onChange={(e) => withdrawForm.setData('account_number', e.target.value)}
-                                    placeholder={t('service_user.enter_account_number')}
-                                    required
-                                />
-                                <InputError message={withdrawForm.errors.account_number} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="withdraw-password">
-                                    {t('service_user.wallet_password')}
-                                </Label>
-                                <Input
-                                    id="withdraw-password"
-                                    type="password"
-                                    value={withdrawForm.data.password}
-                                    onChange={(e) => withdrawForm.setData('password', e.target.value)}
-                                    placeholder={t('service_user.enter_wallet_password')}
-                                />
-                                <InputError message={withdrawForm.errors.password} />
-                            </div>
-                            <Button type="submit" disabled={withdrawForm.processing}>
-                                {withdrawForm.processing
-                                    ? t('common.processing')
-                                    : t('wallet.withdraw')}
-                            </Button>
-                        </form>
+
+                            <form onSubmit={handleWithdraw} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="withdraw-amount">
+                                        {t('wallet.amount')}
+                                    </Label>
+                                    <Input
+                                        id="withdraw-amount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        value={withdrawForm.data.amount}
+                                        onChange={(e) => withdrawForm.setData('amount', e.target.value)}
+                                        placeholder="0.00"
+                                        required
+                                    />
+                                    <InputError message={withdrawForm.errors.amount} />
+                                </div>
+
+                                {withdrawType === 'bank' ? (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="withdraw-bank-name">
+                                                {t('service_user.bank_name')}
+                                            </Label>
+                                            <Input
+                                                id="withdraw-bank-name"
+                                                type="text"
+                                                value={withdrawForm.data.bank_name || ''}
+                                                onChange={(e) => withdrawForm.setData('bank_name', e.target.value)}
+                                                placeholder={t('service_user.enter_bank_name')}
+                                                required
+                                            />
+                                            <InputError message={withdrawForm.errors.bank_name} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="withdraw-account-holder">
+                                                {t('service_user.account_holder')}
+                                            </Label>
+                                            <Input
+                                                id="withdraw-account-holder"
+                                                type="text"
+                                                value={withdrawForm.data.account_holder || ''}
+                                                onChange={(e) => withdrawForm.setData('account_holder', e.target.value)}
+                                                placeholder={t('service_user.enter_account_holder')}
+                                                required
+                                            />
+                                            <InputError message={withdrawForm.errors.account_holder} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="withdraw-account-number">
+                                                {t('service_user.account_number')}
+                                            </Label>
+                                            <Input
+                                                id="withdraw-account-number"
+                                                type="text"
+                                                value={withdrawForm.data.account_number || ''}
+                                                onChange={(e) => withdrawForm.setData('account_number', e.target.value)}
+                                                placeholder={t('service_user.enter_account_number')}
+                                                required
+                                            />
+                                            <InputError message={withdrawForm.errors.account_number} />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="withdraw-crypto-address">
+                                                {t('wallet.crypto_address', { defaultValue: 'Địa chỉ ví crypto' })}
+                                            </Label>
+                                            <Input
+                                                id="withdraw-crypto-address"
+                                                type="text"
+                                                value={withdrawForm.data.crypto_address || ''}
+                                                onChange={(e) => withdrawForm.setData('crypto_address', e.target.value)}
+                                                placeholder={t('wallet.enter_crypto_address', { defaultValue: 'Nhập địa chỉ ví crypto' })}
+                                                required
+                                            />
+                                            <InputError message={withdrawForm.errors.crypto_address} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="withdraw-network">
+                                                {t('wallet.select_network', { defaultValue: 'Chọn mạng' })}
+                                            </Label>
+                                            <select
+                                                id="withdraw-network"
+                                                className="border-input bg-background text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
+                                                value={withdrawForm.data.network || ''}
+                                                onChange={(e) => withdrawForm.setData('network', e.target.value as 'TRC20' | 'BEP20')}
+                                                required
+                                            >
+                                                <option value="" disabled>
+                                                    {t('wallet.select_network_placeholder', { defaultValue: 'Chọn TRC20 hoặc BEP20' })}
+                                                </option>
+                                                <option value="TRC20">TRC20</option>
+                                                <option value="BEP20">BEP20</option>
+                                            </select>
+                                            <InputError message={withdrawForm.errors.network} />
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="withdraw-password">
+                                        {t('service_user.wallet_password')}
+                                    </Label>
+                                    <Input
+                                        id="withdraw-password"
+                                        type="password"
+                                        value={withdrawForm.data.password}
+                                        onChange={(e) => withdrawForm.setData('password', e.target.value)}
+                                        placeholder={t('service_user.enter_wallet_password')}
+                                        required
+                                    />
+                                    <InputError message={withdrawForm.errors.password} />
+                                </div>
+                                <Button type="submit" disabled={withdrawForm.processing}>
+                                    {withdrawForm.processing
+                                        ? t('common.processing')
+                                        : t('wallet.withdraw')}
+                                </Button>
+                            </form>
+                        </div>
                     )}
 
                     {activeTab === 'password' && (

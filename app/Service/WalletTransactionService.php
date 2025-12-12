@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Common\Constants\Wallet\WalletTransactionDescription;
 use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
@@ -57,22 +58,25 @@ class WalletTransactionService
                 __('wallet.notifications.amount', ['amount' => $sign.$amountFormatted]),
             ];
             $description = (string) ($transaction->description ?? '');
-            if ($description !== '') {
-                $lines[] = __('wallet.notifications.description', ['description' => $description]);
+            $descriptionText = $description;
+            if ($description !== '' && str_starts_with($description, 'wallet.transaction_description.')) {
+                $descriptionText = __($description);
+            }
+            if ($descriptionText !== '') {
+                $lines[] = __('wallet.notifications.description', ['description' => $descriptionText]);
             }
             $message = implode("\n", $lines);
-            $description = (string) ($transaction->description ?? '');
 
             $this->userAlertService->sendPlainText(
                 $user,
                 $message,
-                function (MailService $mailService, User $u) use ($typeLabel, $amount, $description) {
+                function (MailService $mailService, User $u) use ($typeLabel, $amount, $descriptionText) {
                     return $mailService->sendWalletTransactionAlert(
                         email: $u->email,
                         username: $u->name ?? $u->username,
                         typeLabel: $typeLabel,
                         amount: $amount,
-                        description: $description ?: null,
+                        description: $descriptionText ?: null,
                     );
                 }
             );
@@ -101,6 +105,9 @@ class WalletTransactionService
             $typeLabel = __('wallet.transaction_type.deposit');
             $amount = abs((float) $transaction->amount);
             $description = $transaction->description ?? null;
+            if ($description && str_starts_with((string)$description, 'wallet.transaction_description.')) {
+                $description = __((string)$description);
+            }
 
             foreach ($admins as $admin) {
                 $this->mailService->sendAdminWalletTransactionAlert(
@@ -135,7 +142,7 @@ class WalletTransactionService
                 'amount' => $amount,
                 'type' => WalletTransactionType::DEPOSIT->value,
                 'status' => WalletTransactionStatus::PENDING->value,
-                'description' => __('wallet.transaction_description.deposit_created'),
+                'description' => WalletTransactionDescription::DEPOSIT_CREATED->value,
                 'network' => $network,
                 'deposit_address' => $depositAddress,
                 'customer_name' => $customerName,
@@ -181,13 +188,18 @@ class WalletTransactionService
                 $newBalance = (float) $wallet->balance - $amount;
                 $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
 
+                $withdrawType = $withdrawInfo['withdraw_type'] ?? 'bank';
+                $descriptionEnum = $withdrawType === 'usdt' 
+                    ? WalletTransactionDescription::WITHDRAW_CREATED_USDT->value
+                    : WalletTransactionDescription::WITHDRAW_CREATED_BANK->value;
+
                 // Tạo transaction với status PENDING
                 $transaction = $this->transactionRepository->create([
                     'wallet_id' => $wallet->id,
                     'amount' => -$amount,
                     'type' => WalletTransactionType::WITHDRAW->value,
                     'status' => WalletTransactionStatus::PENDING->value,
-                    'description' => __('wallet.transaction_description.withdraw_created'),
+                    'description' => $descriptionEnum,
                     'withdraw_info' => $withdrawInfo,
                 ]);
 
@@ -419,7 +431,7 @@ class WalletTransactionService
                 $this->transactionRepository->updateById($transactionId, [
                     'status' => WalletTransactionStatus::APPROVED->value,
                     'tx_hash' => $txHash,
-                    'description' => __('wallet.transaction_description.deposit_approved'),
+                    'description' => WalletTransactionDescription::DEPOSIT_APPROVED->value,
                 ]);
 
                 $transaction->status = WalletTransactionStatus::APPROVED->value;
@@ -466,8 +478,14 @@ class WalletTransactionService
             $this->transactionRepository->updateById($transactionId, [
                 'status' => WalletTransactionStatus::COMPLETED->value,
                 'tx_hash' => $txHash,
-                'description' => __('wallet.transaction_description.withdraw_completed'),
+                'description' => WalletTransactionDescription::WITHDRAW_COMPLETED->value,
             ]);
+
+            // Gửi notify
+            $transaction->status = WalletTransactionStatus::COMPLETED->value;
+            $transaction->tx_hash = $txHash;
+            $transaction->description = WalletTransactionDescription::WITHDRAW_COMPLETED->value;
+            $this->notifyTransaction($transaction, $transaction->wallet?->user?->id);
 
             return ServiceReturn::success();
         } catch (\Throwable $e) {
@@ -653,7 +671,7 @@ class WalletTransactionService
             // Cập nhật trạng thái thành CANCELLED
             $this->transactionRepository->updateById($transactionId, [
                 'status' => WalletTransactionStatus::CANCELLED->value,
-                'description' => __('wallet.transaction_description.deposit_cancelled_user'),
+                'description' => WalletTransactionDescription::DEPOSIT_CANCELLED_USER->value,
             ]);
 
             return ServiceReturn::success();
@@ -695,10 +713,10 @@ class WalletTransactionService
                 $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
 
                 // Cập nhật trạng thái thành CANCELLED
-                $this->transactionRepository->updateById($transactionId, [
-                    'status' => WalletTransactionStatus::CANCELLED->value,
-                'description' => __('wallet.transaction_description.withdraw_cancelled_user'),
-                ]);
+            $this->transactionRepository->updateById($transactionId, [
+                'status' => WalletTransactionStatus::CANCELLED->value,
+                'description' => WalletTransactionDescription::WITHDRAW_CANCELLED_USER->value,
+            ]);
 
                 return ServiceReturn::success();
             });
@@ -739,8 +757,13 @@ class WalletTransactionService
                 // Cập nhật trạng thái thành CANCELLED
                 $this->transactionRepository->updateById($transactionId, [
                     'status' => WalletTransactionStatus::CANCELLED->value,
-                    'description' => __('wallet.transaction_description.withdraw_cancelled_admin'),
+                    'description' => WalletTransactionDescription::WITHDRAW_CANCELLED_ADMIN->value,
                 ]);
+
+                // Gửi notify cho user
+                $transaction->status = WalletTransactionStatus::CANCELLED->value;
+                $transaction->description = WalletTransactionDescription::WITHDRAW_CANCELLED_ADMIN->value;
+                $this->notifyTransaction($transaction, $transaction->wallet?->user?->id);
 
                 return ServiceReturn::success();
             });

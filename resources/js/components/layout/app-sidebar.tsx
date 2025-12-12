@@ -11,7 +11,11 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
             {/*Header sidebar*/}
-            <SidebarHeader>{/* Hoàn thiện sau */}</SidebarHeader>
+            <SidebarHeader>
+                <div className="px-3 py-3 text-lg font-bold tracking-wide text-center">
+                    ADVIET AGENCY
+                </div>
+            </SidebarHeader>
 
             {/*Menu sidebar*/}
             <SidebarContent>

@@ -11,6 +11,7 @@ import { Clock, Filter, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import type { TransactionsIndexProps } from './types/type';
+import { transactions_index } from '@/routes';
 
 const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: TransactionsIndexProps) => {
     const { t } = useTranslation();
@@ -20,6 +21,9 @@ const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: Tr
         bank_name?: string;
         account_holder?: string;
         account_number?: string;
+        crypto_address?: string;
+        network?: 'TRC20' | 'BEP20';
+        withdraw_type?: 'bank' | 'usdt';
     } | null>(null);
     const [approveLoadingId, setApproveLoadingId] = useState<string | null>(null);
     const [cancelLoadingId, setCancelLoadingId] = useState<string | null>(null);
@@ -89,7 +93,14 @@ const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: Tr
     };
 
     const handleViewWithdrawInfo = (
-        withdrawInfo?: { bank_name?: string; account_holder?: string; account_number?: string } | null
+        withdrawInfo?: {
+            bank_name?: string;
+            account_holder?: string;
+            account_number?: string;
+            crypto_address?: string;
+            network?: 'TRC20' | 'BEP20';
+            withdraw_type?: 'bank' | 'usdt';
+        } | null
     ) => {
         setSelectedWithdrawInfo(withdrawInfo ?? null);
         setShowWithdrawInfo(true);
@@ -184,7 +195,7 @@ const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: Tr
                                         variant="outline"
                                         onClick={() => {
                                             filterForm.reset();
-                                            router.get('/transactions');
+                                            router.get(transactions_index().url);
                                         }}
                                     >
                                         {t('common.reset', { defaultValue: 'Đặt lại' })}
@@ -231,7 +242,12 @@ const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: Tr
                                         variant="outline"
                                         size="sm"
                                         disabled={pagination.current_page === 1}
-                                        onClick={() => router.get('/transactions', { page: pagination.current_page - 1, ...filters })}
+                                        onClick={() =>
+                                            router.get(transactions_index().url, {
+                                                page: pagination.current_page - 1,
+                                                ...filters,
+                                            })
+                                        }
                                     >
                                         {t('common.previous', { defaultValue: 'Trước' })}
                                     </Button>
@@ -239,7 +255,12 @@ const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: Tr
                                         variant="outline"
                                         size="sm"
                                         disabled={pagination.current_page === pagination.last_page}
-                                        onClick={() => router.get('/transactions', { page: pagination.current_page + 1, ...filters })}
+                                        onClick={() =>
+                                            router.get(transactions_index().url, {
+                                                page: pagination.current_page + 1,
+                                                ...filters,
+                                            })
+                                        }
                                     >
                                         {t('common.next', { defaultValue: 'Sau' })}
                                     </Button>
@@ -260,24 +281,43 @@ const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: Tr
                         </DialogHeader>
                         {selectedWithdrawInfo && (
                             <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>{t('service_user.bank_name', { defaultValue: 'Tên Ngân hàng/Ví điện tử' })}</Label>
-                                    <div className="rounded-md border p-2 text-sm">
-                                        {selectedWithdrawInfo.bank_name || '-'}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>{t('service_user.account_holder', { defaultValue: 'Tên Chủ tài khoản/Ví' })}</Label>
-                                    <div className="rounded-md border p-2 text-sm">
-                                        {selectedWithdrawInfo.account_holder || '-'}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>{t('service_user.account_number', { defaultValue: 'Số Tài khoản/Số điện thoại ví' })}</Label>
-                                    <div className="rounded-md border p-2 text-sm">
-                                        {selectedWithdrawInfo.account_number || '-'}
-                                    </div>
-                                </div>
+                                {selectedWithdrawInfo.withdraw_type === 'usdt' ? (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label>{t('wallet.crypto_address', { defaultValue: 'Địa chỉ ví crypto' })}</Label>
+                                            <div className="rounded-md border p-2 text-sm">
+                                                {selectedWithdrawInfo.crypto_address || '-'}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>{t('wallet.select_network', { defaultValue: 'Mạng' })}</Label>
+                                            <div className="rounded-md border p-2 text-sm">
+                                                {selectedWithdrawInfo.network || '-'}
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label>{t('service_user.bank_name', { defaultValue: 'Tên Ngân hàng/Ví điện tử' })}</Label>
+                                            <div className="rounded-md border p-2 text-sm">
+                                                {selectedWithdrawInfo.bank_name || '-'}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>{t('service_user.account_holder', { defaultValue: 'Tên Chủ tài khoản/Ví' })}</Label>
+                                            <div className="rounded-md border p-2 text-sm">
+                                                {selectedWithdrawInfo.account_holder || '-'}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>{t('service_user.account_number', { defaultValue: 'Số Tài khoản/Số điện thoại ví' })}</Label>
+                                            <div className="rounded-md border p-2 text-sm">
+                                                {selectedWithdrawInfo.account_number || '-'}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                     </DialogContent>

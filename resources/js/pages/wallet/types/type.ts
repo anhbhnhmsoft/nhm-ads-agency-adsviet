@@ -11,6 +11,9 @@ export interface WalletTransaction {
         bank_name?: string;
         account_holder?: string;
         account_number?: string;
+        crypto_address?: string;
+        network?: 'TRC20' | 'BEP20';
+        withdraw_type?: 'bank' | 'usdt';
     } | null;
     createdAt?: string | null;
     user?: {
@@ -62,9 +65,12 @@ export type TopUpFormData = {
 export type WithdrawFormData = {
   amount: string;
   password: string;
-  bank_name: string;
-  account_holder: string;
-  account_number: string;
+  bank_name?: string;
+  account_holder?: string;
+  account_number?: string;
+  crypto_address?: string;
+  network?: 'TRC20' | 'BEP20';
+  withdraw_type?: 'bank' | 'usdt';
 };
 
 export type PasswordFormData = {

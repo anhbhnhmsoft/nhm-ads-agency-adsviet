@@ -1,5 +1,6 @@
 import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import AppLayout from '@/layouts/app-layout';
+import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useForm, router, usePage } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
@@ -35,6 +36,9 @@ const WalletIndex = ({
         bank_name: '',
         account_holder: '',
         account_number: '',
+        crypto_address: '',
+        network: undefined as 'TRC20' | 'BEP20' | undefined,
+        withdraw_type: 'bank' as 'bank' | 'usdt',
     });
 
     const passwordForm = useForm({
@@ -55,10 +59,45 @@ const WalletIndex = ({
 
     const handleWithdraw = (e: React.FormEvent) => {
         e.preventDefault();
-        withdrawForm.post(wallet_my_withdraw().url, {
+        
+        // Gửi dữ liệu theo withdraw_type
+        const withdrawType = withdrawForm.data.withdraw_type || 'bank';
+        
+        const submitData: Record<string, any> = {
+            amount: withdrawForm.data.amount,
+            withdraw_type: withdrawType,
+        };
+
+        if (withdrawForm.data.password) {
+            submitData.password = withdrawForm.data.password;
+        }
+
+        if (withdrawType === 'usdt') {
+            submitData.crypto_address = withdrawForm.data.crypto_address;
+            submitData.network = withdrawForm.data.network;
+        } else {
+            submitData.bank_name = withdrawForm.data.bank_name;
+            submitData.account_holder = withdrawForm.data.account_holder;
+            submitData.account_number = withdrawForm.data.account_number;
+        }
+
+        router.post(wallet_my_withdraw().url, submitData, {
+            preserveScroll: true,
             onSuccess: () => {
                 withdrawForm.reset();
                 router.reload({ only: ['wallet'] });
+                toast.success(t('wallet.withdraw_created', { defaultValue: 'Tạo lệnh rút tiền thành công' }));
+            },
+            onError: (errors) => {
+                Object.keys(errors).forEach((key) => {
+                    withdrawForm.setError(key as any, errors[key] as string);
+                });
+                const firstError = Object.values(errors)[0] as string | undefined;
+                if (firstError) {
+                    toast.error(firstError);
+                } else {
+                    toast.error(t('common.error', { defaultValue: 'Đã xảy ra lỗi. Vui lòng thử lại.' }));
+                }
             },
         });
     };

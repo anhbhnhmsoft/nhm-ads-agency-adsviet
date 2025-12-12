@@ -1,6 +1,7 @@
 import useNestedState from '@/hooks/use-nested-state';
 import { router } from '@inertiajs/react';
 import { BusinessManagerListQuery } from '@/pages/business-manager/types/type';
+import { business_managers_index } from '@/routes';
 
 export const useSearchBusinessManager = () => {
     const [query, setQuery] = useNestedState<BusinessManagerListQuery['filter']>({
@@ -9,14 +10,18 @@ export const useSearchBusinessManager = () => {
     });
 
     const handleSearch = () => {
-        router.get('/business-managers', {
-            filter: query
-        }, {
-            replace: true,
-            preserveState: true,
-            only: ['paginator', 'stats']
-        });
-    }
+        router.get(
+            business_managers_index().url,
+            {
+                filter: query,
+            },
+            {
+                replace: true,
+                preserveState: true,
+                only: ['paginator', 'stats'],
+            }
+        );
+    };
 
     return {
         query,
