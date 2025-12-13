@@ -20,6 +20,14 @@ class Notification extends Model
         'status',
     ];
 
+    protected $casts = [
+        'id' => 'string',
+        'user_id' => 'string',
+        'type' => 'integer',
+        'status' => 'integer',
+        'data' => 'array',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class);

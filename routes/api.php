@@ -4,6 +4,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CommonController;
 use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
+use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\ServiceController;
 use App\Http\Controllers\API\TicketController;
@@ -84,6 +85,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [TicketController::class, 'store']);
         Route::post('/{id}/message', [TicketController::class, 'addMessage']);
         Route::put('/{id}/status', [TicketController::class, 'updateStatus']);
+    });
+
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::put('/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::put('/read-all', [NotificationController::class, 'markAllAsRead']);
     });
 
 });

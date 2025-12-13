@@ -482,29 +482,27 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                                 />
 
                             </div>
-                            {selectedPackage.platform === _PlatformType.GOOGLE && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="asset_access">
-                                        {t('service_purchase.asset_access_label', { defaultValue: 'Chia sẻ quyền truy cập' })}
-                                    </Label>
-                                    <Select
-                                        value={asset_access || 'full_asset'}
-                                        onValueChange={(value: 'full_asset' | 'basic_asset') => purchaseForm.setData('asset_access', value)}
-                                    >
-                                        <SelectTrigger id="asset_access">
-                                            <SelectValue placeholder={t('service_purchase.asset_access_placeholder', { defaultValue: 'Chọn quyền' })} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="full_asset">
-                                                {t('service_purchase.asset_access_full', { defaultValue: 'Full access' })}
-                                            </SelectItem>
-                                            <SelectItem value="basic_asset">
-                                                {t('service_purchase.asset_access_basic', { defaultValue: 'Basic access' })}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
+                            <div className="space-y-2">
+                                <Label htmlFor="asset_access">
+                                    {t('service_purchase.asset_access_label', { defaultValue: 'Chia sẻ quyền truy cập' })}
+                                </Label>
+                                <Select
+                                    value={asset_access || 'full_asset'}
+                                    onValueChange={(value: 'full_asset' | 'basic_asset') => purchaseForm.setData('asset_access', value)}
+                                >
+                                    <SelectTrigger id="asset_access">
+                                        <SelectValue placeholder={t('service_purchase.asset_access_placeholder', { defaultValue: 'Chọn quyền' })} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="full_asset">
+                                            {t('service_purchase.asset_access_full', { defaultValue: 'Full access' })}
+                                        </SelectItem>
+                                        <SelectItem value="basic_asset">
+                                            {t('service_purchase.asset_access_basic', { defaultValue: 'Basic access' })}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             {selectedPackage.platform === _PlatformType.META && (
                                 <>
                                     <div className="space-y-2">

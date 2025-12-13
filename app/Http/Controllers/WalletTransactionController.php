@@ -9,6 +9,8 @@ use App\Core\QueryListDTO;
 use App\Http\Resources\WalletTransactionResource;
 use App\Service\WalletService;
 use App\Common\Constants\User\UserRole;
+use App\Common\Constants\Wallet\WalletTransactionDescription;
+use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
 use App\Service\WalletTransactionService;
 use Illuminate\Http\Request;
@@ -150,12 +152,12 @@ class WalletTransactionController extends Controller
         $txHash = $request->input('tx_hash');
 
         // Kiểm tra loại giao dịch
-        if ((int) $transaction->type === \App\Common\Constants\Wallet\WalletTransactionType::DEPOSIT->value) {
+        if ((int) $transaction->type === WalletTransactionType::DEPOSIT->value) {
             $result = $this->walletTransactionService->approveDeposit(
                 transactionId: $id,
                 txHash: $txHash
             );
-        } elseif ((int) $transaction->type === \App\Common\Constants\Wallet\WalletTransactionType::WITHDRAW->value) {
+        } elseif ((int) $transaction->type === WalletTransactionType::WITHDRAW->value) {
             $result = $this->walletTransactionService->approveWithdraw(
                 transactionId: $id,
                 txHash: $txHash
@@ -163,8 +165,8 @@ class WalletTransactionController extends Controller
         } elseif (in_array(
             (int) $transaction->type,
             [
-                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_GOOGLE->value,
-                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_META->value,
+                WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_GOOGLE->value,
+                WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_META->value,
             ],
             true
         )) {
@@ -176,10 +178,10 @@ class WalletTransactionController extends Controller
         } elseif (in_array(
             (int) $transaction->type,
             [
-                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_PAUSE_GOOGLE->value,
-                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_PAUSE_META->value,
-                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_END_GOOGLE->value,
-                \App\Common\Constants\Wallet\WalletTransactionType::CAMPAIGN_END_META->value,
+               WalletTransactionType::CAMPAIGN_PAUSE_GOOGLE->value,
+               WalletTransactionType::CAMPAIGN_PAUSE_META->value,
+               WalletTransactionType::CAMPAIGN_END_GOOGLE->value,
+               WalletTransactionType::CAMPAIGN_END_META->value,
             ],
             true
         )) {
@@ -223,12 +225,12 @@ class WalletTransactionController extends Controller
         }
 
         // Kiểm tra loại giao dịch
-        if ((int) $transaction->type === \App\Common\Constants\Wallet\WalletTransactionType::DEPOSIT->value) {
+        if ((int) $transaction->type === WalletTransactionType::DEPOSIT->value) {
             // Với deposit, chỉ cập nhật status (chưa cộng tiền nên không cần hoàn lại)
             $result = $this->walletTransactionService->updateTransactionStatus(
                 transactionId: $id,
                 status: WalletTransactionStatus::CANCELLED->value,
-                description: 'Admin hủy lệnh nạp tiền'
+                description: WalletTransactionDescription::DEPOSIT_CANCELLED_ADMIN->value
             );
         } elseif ((int) $transaction->type === \App\Common\Constants\Wallet\WalletTransactionType::WITHDRAW->value) {
             // Với withdraw, hủy và hoàn lại tiền

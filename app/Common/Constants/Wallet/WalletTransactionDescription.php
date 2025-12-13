@@ -10,6 +10,7 @@ enum WalletTransactionDescription: string
     case DEPOSIT_APPROVED = 'wallet.transaction_description.deposit_approved';
     case WITHDRAW_COMPLETED = 'wallet.transaction_description.withdraw_completed';
     case DEPOSIT_CANCELLED_USER = 'wallet.transaction_description.deposit_cancelled_user';
+    case DEPOSIT_CANCELLED_ADMIN = 'wallet.transaction_description.deposit_cancelled_admin';
     case WITHDRAW_CANCELLED_USER = 'wallet.transaction_description.withdraw_cancelled_user';
     case WITHDRAW_CANCELLED_ADMIN = 'wallet.transaction_description.withdraw_cancelled_admin';
     case CAMPAIGN_BUDGET_UPDATE_CREATED = 'wallet.transaction_description.campaign_budget_update_created';

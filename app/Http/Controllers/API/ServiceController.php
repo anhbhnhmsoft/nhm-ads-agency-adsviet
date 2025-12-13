@@ -92,6 +92,22 @@ class ServiceController extends Controller
         if (isset($data['display_name'])) {
             $configAccount['display_name'] = $data['display_name'];
         }
+        if (isset($data['bm_id'])) {
+            $configAccount['bm_id'] = $data['bm_id'];
+        }
+        if (isset($data['payment_type'])) {
+            $configAccount['payment_type'] = $data['payment_type'];
+        }
+        if (isset($data['asset_access'])) {
+            $configAccount['asset_access'] = $data['asset_access'];
+        }
+        if (isset($data['info_fanpage'])) {
+            $configAccount['info_fanpage'] = $data['info_fanpage'];
+        }
+        if (isset($data['info_website'])) {
+            $configAccount['info_website'] = $data['info_website'];
+        }
+
 
         $result = $this->servicePurchaseService->createPurchaseOrder(
             userId: (int) $user->id,

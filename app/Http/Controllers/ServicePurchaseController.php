@@ -88,6 +88,9 @@ class ServicePurchaseController extends Controller
         if (isset($data['payment_type'])) {
             $configAccount['payment_type'] = $data['payment_type'];
         }
+        if (isset($data['asset_access'])) {
+            $configAccount['asset_access'] = $data['asset_access'];
+        }
 
         $result = $this->servicePurchaseService->createPurchaseOrder(
             userId: $user->id,
