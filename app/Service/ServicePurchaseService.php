@@ -40,16 +40,22 @@ class ServicePurchaseService
             return DB::transaction(function () use ($userId, $packageId, $topUpAmount, $budget, $configAccount) {
                 $package = $this->servicePackageRepository->find($packageId);
                 if (!$package) {
+                    Logging::error('Package not found: ' . $packageId);
                     return ServiceReturn::error(message: __('Gói dịch vụ không tồn tại'));
                 }
 
                 if ($package->disabled) {
+                    Logging::error('Package is disabled: ' . $packageId);
                     return ServiceReturn::error(message: __('Gói dịch vụ đã bị vô hiệu hóa'));
                 }
 
                 $topUpAmount = max(0, $topUpAmount);
                 $minTopUp = (float) $package->range_min_top_up;
                 if ($topUpAmount > 0 && $minTopUp > 0 && $topUpAmount < $minTopUp) {
+                    Logging::error('Top-up amount too low:', [
+                        'topUpAmount' => $topUpAmount,
+                        'minTopUp' => $minTopUp,
+                    ]);
                     return ServiceReturn::error(
                         message: __('Số tiền top-up tối thiểu là :amount USD', ['amount' => number_format($minTopUp, 2)])
                     );
@@ -63,6 +69,7 @@ class ServicePurchaseService
 
                 $wallet = $this->walletRepository->findByUserId($userId);
                 if (!$wallet) {
+                    Logging::error('Wallet not found for user: ' . $userId);
                     return ServiceReturn::error(message: __('Ví không tồn tại'));
                 }
 
@@ -77,7 +84,9 @@ class ServicePurchaseService
                     $configAccount['payment_type'] = 'prepay';
                 }
 
+
                 $defaultConfig = $this->getDefaultConfigAccount($package->platform, $configAccount);
+
                 $serviceUser = $this->serviceUserRepository->create([
                     'package_id' => $packageId,
                     'user_id' => $userId,
@@ -136,16 +145,23 @@ class ServicePurchaseService
      */
     private function getDefaultConfigAccount(int $platform, array $userConfig = []): array
     {
-        // Chuẩn hóa các key config dùng chung
-        return [
+        // Config cơ bản cho tất cả platform (cả Google và Meta đều có asset_access)
+        $config = [
             'meta_email' => $userConfig['meta_email'] ?? '',
             'display_name' => $userConfig['display_name'] ?? '',
             'bm_id' => $userConfig['bm_id'] ?? '',
-            'info_fanpage' => $userConfig['info_fanpage'] ?? '',
-            'info_website' => $userConfig['info_website'] ?? '',
             'payment_type' => $userConfig['payment_type'] ?? 'prepay',
             'top_up_amount' => $userConfig['top_up_amount'] ?? 0,
+            'asset_access' => $userConfig['asset_access'] ?? 'full_asset',
         ];
+
+        // Meta Ads: thêm info_fanpage và info_website
+        if ($platform === PlatformType::META->value) {
+            $config['info_fanpage'] = $userConfig['info_fanpage'] ?? '';
+            $config['info_website'] = $userConfig['info_website'] ?? '';
+        }
+
+        return $config;
     }
 }
 

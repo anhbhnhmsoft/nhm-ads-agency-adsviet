@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Service\UserAlertService;
 use App\Service\MailService;
+use App\Service\NotificationService;
+use App\Common\Constants\NotificationType\NotificationType;
 use App\Models\User;
 use App\Models\UserWalletTransaction;
 
@@ -29,6 +31,7 @@ class WalletTransactionService
         protected UserAlertService $userAlertService,
         protected MailService $mailService,
         protected UserRepository $userRepository,
+        protected NotificationService $notificationService,
     ) {
     }
 
@@ -67,6 +70,7 @@ class WalletTransactionService
             }
             $message = implode("\n", $lines);
 
+            // Gửi thông báo qua Telegram/Email
             $this->userAlertService->sendPlainText(
                 $user,
                 $message,
@@ -79,6 +83,22 @@ class WalletTransactionService
                         description: $descriptionText ?: null,
                     );
                 }
+            );
+
+            // Tạo notification trong database
+            $title = __('wallet.notifications.title', ['type' => $typeLabel]);
+            $description = $message;
+            $this->notificationService->send(
+                userId: (int) $user->id,
+                title: $title,
+                description: $description,
+                data: [
+                    'transaction_id' => $transaction->id,
+                    'type' => $transaction->type,
+                    'status' => $transaction->status,
+                    'amount' => $amount,
+                ],
+                type: NotificationType::WALLET->value
             );
         } catch (\Throwable $e) {
             Logging::error(
@@ -503,6 +523,21 @@ class WalletTransactionService
                 $updateData['description'] = $description;
             }
             $this->transactionRepository->updateById($transactionId, $updateData);
+            
+            // Nếu status là CANCELLED và có description, gửi notify cho user
+            if ($status === WalletTransactionStatus::CANCELLED->value) {
+                $transaction = $this->transactionRepository->query()
+                    ->with('wallet.user')
+                    ->find($transactionId);
+                if ($transaction) {
+                    $transaction->status = $status;
+                    if ($description !== null) {
+                        $transaction->description = $description;
+                    }
+                    $this->notifyTransaction($transaction, $transaction->wallet?->user?->id);
+                }
+            }
+            
             return ServiceReturn::success();
         } catch (QueryException $e) {
             Logging::error('WalletTransactionService@updateTransactionStatus error: '.$e->getMessage(), exception: $e);

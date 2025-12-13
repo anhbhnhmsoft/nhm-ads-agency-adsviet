@@ -401,23 +401,21 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                         <p className="text-xs text-red-500">{formErrors.bm_id}</p>
                                     )}
                                 </div>
-                                {selectedOrder?.package?.platform === _PlatformType.GOOGLE && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="approve_asset_access">{t('service_purchase.asset_access_label')}</Label>
-                                        <Select
-                                            value={assetAccess || 'full_asset'}
-                                            onValueChange={(value: 'full_asset' | 'basic_asset') => setAssetAccess(value)}
-                                        >
-                                            <SelectTrigger id="approve_asset_access">
-                                                <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
-                                                <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
+                                <div className="space-y-2">
+                                    <Label htmlFor="approve_asset_access">{t('service_purchase.asset_access_label')}</Label>
+                                    <Select
+                                        value={assetAccess || 'full_asset'}
+                                        onValueChange={(value: 'full_asset' | 'basic_asset') => setAssetAccess(value)}
+                                    >
+                                        <SelectTrigger id="approve_asset_access">
+                                            <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
+                                            <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="payment_type">{t('service_purchase.payment_type')}</Label>
                                     <div className="flex gap-2">
@@ -532,23 +530,21 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                         </Button>
                                     </div>
                                 </div>
-                                {selectedOrder?.package?.platform === _PlatformType.GOOGLE && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="edit_asset_access">{t('service_purchase.asset_access_label')}</Label>
-                                        <Select
-                                            value={editAssetAccess || 'full_asset'}
-                                            onValueChange={(value: 'full_asset' | 'basic_asset') => setEditAssetAccess(value)}
-                                        >
-                                            <SelectTrigger id="edit_asset_access">
-                                                <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
-                                                <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit_asset_access">{t('service_purchase.asset_access_label')}</Label>
+                                    <Select
+                                        value={editAssetAccess || 'full_asset'}
+                                        onValueChange={(value: 'full_asset' | 'basic_asset') => setEditAssetAccess(value)}
+                                    >
+                                        <SelectTrigger id="edit_asset_access">
+                                            <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
+                                            <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 {isEditMeta && (
                                     <>
                                         <div className="space-y-2">
