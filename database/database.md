@@ -12,7 +12,7 @@
     - password (varchar, not null)
     - role (smallint, not null) -- vai trò (trong enum UserRole)
     - disabled (boolean, not null, default false) -- trạng thái
-    - telegram_id (varchar, unique, nullable) -- id telegram
+    - telegram_id (varchar, unique delete_at, nullable) -- id telegram
     - whatsapp_id (varchar, unique, nullable) -- id whatsapp
     - referral_code (varchar, unique, not null) -- mã giới thiệu
     - rememberToken

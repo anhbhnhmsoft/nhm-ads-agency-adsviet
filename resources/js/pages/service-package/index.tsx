@@ -100,10 +100,20 @@ const Index = ({ paginator }: Props) => {
             {
                 accessorKey: 'open_fee',
                 header: t('service_packages.open_fee'),
+                cell: ({ row }) => {
+                    const raw = row.original.open_fee;
+                    const num = Number(raw);
+                    return Number.isFinite(num) ? num.toFixed(2) : raw;
+                },
             },
             {
                 accessorKey: 'top_up_fee',
                 header: t('service_packages.top_up_fee'),
+                cell: ({ row }) => {
+                    const raw = row.original.top_up_fee;
+                    const num = Number(raw);
+                    return Number.isFinite(num) ? num.toFixed(2) : raw;
+                },
             },
             {
                 accessorKey: 'set_up_time',
