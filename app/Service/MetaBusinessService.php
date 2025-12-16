@@ -185,28 +185,17 @@ class MetaBusinessService
     }
 
     /**
-     * Lấy MỘT TRANG danh sách ads account mà business có quyền (owned + client)
-     *
-     * Lưu ý:
-     * - Trước đây chỉ dùng /owned_ad_accounts nên chỉ thấy account BM sở hữu.
-     * - Chuyển sang /adaccounts để lấy tất cả account mà BM có quyền truy cập (bao gồm được share).
-     *
-     * @param string $bmId
-     * @param int $limit Số lượng muốn lấy (ví dụ: 25)
-     * @param string|null $after Con trỏ "trang kế tiếp" (lấy từ request)
-     * @param string|null $before Con trỏ "trang trước" (lấy từ request)
-     * @return ServiceReturn
+     * Lấy MỘT TRANG danh sách ads account thuộc business (BM OWNED)
+     * Sử dụng edge /{business_id}/owned_ad_accounts theo đúng Graph API.
      */
     public function getOwnerAdsAccountPaginated(string $bmId, int $limit = 25, ?string $after = null, ?string $before = null): ServiceReturn
     {
         try {
             $this->initApi();
-            //$endpoint = "/{$bmId}/owned_ad_accounts";
-            // Sử dụng /{business_id}/adaccounts để lấy tất cả tài khoản mà business có quyền
-            $endpoint = "/{$bmId}/adaccounts";
+            $endpoint = "/{$bmId}/owned_ad_accounts";
             $params = [
                 'fields' => 'id,account_id,name,account_status',
-                'limit' => $limit
+                'limit' => $limit,
             ];
             // Nếu frontend gửi 'after' (để xem trang kế), thêm nó vào
             if ($after) {
@@ -224,6 +213,33 @@ class MetaBusinessService
             // Frontend sẽ dùng 'paging.cursors.after' để gọi trang tiếp theo
             return ServiceReturn::success(data: $response);
 
+        } catch (Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
+     * Lấy MỘT TRANG danh sách ads account mà business được share (client_ad_accounts)
+     */
+    public function getClientAdsAccountPaginated(string $bmId, int $limit = 25, ?string $after = null, ?string $before = null): ServiceReturn
+    {
+        try {
+            $this->initApi();
+            $endpoint = "/{$bmId}/client_ad_accounts";
+            $params = [
+                'fields' => 'id,account_id,name,account_status',
+                'limit' => $limit,
+            ];
+            if ($after) {
+                $params['after'] = $after;
+            }
+            if ($before) {
+                $params['before'] = $before;
+            }
+
+            $response = $this->api->call($endpoint, 'GET', $params)->getContent();
+
+            return ServiceReturn::success(data: $response);
         } catch (Exception $exception) {
             return ServiceReturn::error(message: $exception->getMessage());
         }
