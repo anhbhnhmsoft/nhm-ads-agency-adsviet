@@ -730,32 +730,50 @@ class MetaService
         if (!$bmId) {
             return ServiceReturn::error('Missing bm_id in service user config');
         }
-        // Đồng bộ danh sách tài khoản quảng cáo
+        // Đồng bộ danh sách tài khoản quảng cáo:
+        // owned_ad_accounts
+        $this->syncMetaAccountsFromEdge($serviceUser, $bmId, 'owner');
+        // client_ad_accounts (được share vào BM)
+        $this->syncMetaAccountsFromEdge($serviceUser, $bmId, 'client');
+        return ServiceReturn::success();
+    }
+
+    /**
+     * Đồng bộ tài khoản quảng cáo từ một edge cụ thể (owned hoặc client)
+     */
+    private function syncMetaAccountsFromEdge(ServiceUser $serviceUser, string $bmId, string $type = 'owner'): void
+    {
         $after = null;
         do {
-            // 1. Gọi API (dùng hàm phân trang của bạn)
-            $result = $this->metaBusinessService->getOwnerAdsAccountPaginated(
-                bmId: $bmId,
-                limit: 100,
-                after: $after
-            );
-            // 2. Xử lý kết quả
-            // Nếu bị lỗi thì thoát
+            $result = $type === 'client'
+                ? $this->metaBusinessService->getClientAdsAccountPaginated(
+                    bmId: $bmId,
+                    limit: 100,
+                    after: $after
+                )
+                : $this->metaBusinessService->getOwnerAdsAccountPaginated(
+                    bmId: $bmId,
+                    limit: 100,
+                    after: $after
+                );
+
             if ($result->isError()) {
-                // Xử lý lỗi sau
-                return ServiceReturn::error('Error sync ads account: ' . $result->getMessage());
+                // log lỗi nhưng không dừng hẳn luồng cho edge còn lại
+                Logging::error('Error sync ads account from ' . $type . ' edge: ' . $result->getMessage());
+                return;
             }
+
             $data = $result->getData();
             $accounts = $data['data'] ?? [];
+
             foreach ($accounts as $adsAccountData) {
-                // Lấy chi tiết tài khoản quảng cáo
                 $detailResponse = $this->metaBusinessService->getDetailAdsAccount($adsAccountData['id']);
                 if ($detailResponse->isError()) {
                     continue;
                 }
                 $detail = $detailResponse->getData();
+
                 try {
-                    // Lưu dữ liệu vào DB
                     $this->metaAccountRepository->query()->updateOrCreate(
                         [
                             'account_id' => $detail['id'],
@@ -780,10 +798,9 @@ class MetaService
                     Logging::error('Error sync ads account: ' . $e->getMessage());
                 }
             }
-            // Lấy con trỏ phân trang
+
             $after = $data['paging']['cursors']['after'] ?? null;
         } while ($after);
-        return ServiceReturn::success();
     }
 
     /**
