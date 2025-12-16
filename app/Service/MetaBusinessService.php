@@ -185,7 +185,12 @@ class MetaBusinessService
     }
 
     /**
-     * Lấy MỘT TRANG danh sách ads account thuộc business
+     * Lấy MỘT TRANG danh sách ads account mà business có quyền (owned + client)
+     *
+     * Lưu ý:
+     * - Trước đây chỉ dùng /owned_ad_accounts nên chỉ thấy account BM sở hữu.
+     * - Chuyển sang /adaccounts để lấy tất cả account mà BM có quyền truy cập (bao gồm được share).
+     *
      * @param string $bmId
      * @param int $limit Số lượng muốn lấy (ví dụ: 25)
      * @param string|null $after Con trỏ "trang kế tiếp" (lấy từ request)
@@ -196,9 +201,11 @@ class MetaBusinessService
     {
         try {
             $this->initApi();
-            $endpoint = "/{$bmId}/owned_ad_accounts";
+            //$endpoint = "/{$bmId}/owned_ad_accounts";
+            // Sử dụng /{business_id}/adaccounts để lấy tất cả tài khoản mà business có quyền
+            $endpoint = "/{$bmId}/adaccounts";
             $params = [
-                'fields' => 'id,account_id,name',
+                'fields' => 'id,account_id,name,account_status',
                 'limit' => $limit
             ];
             // Nếu frontend gửi 'after' (để xem trang kế), thêm nó vào
@@ -210,7 +217,7 @@ class MetaBusinessService
                 $params['before'] = $before;
             }
 
-            // Chỉ gọi API 1 LẦN DUY NHẤT
+            // Chỉ gọi API một lần cho mỗi trang
             $response = $this->api->call($endpoint, 'GET', $params)->getContent();
 
             // Trả về cả 'data' và 'paging'
