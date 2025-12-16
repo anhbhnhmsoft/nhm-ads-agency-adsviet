@@ -117,6 +117,7 @@ class UserRepository extends BaseRepository
     {
         return $this->query()
             ->where('telegram_id', $telegramId)
+            ->whereNull('deleted_at')
             ->first();
     }
 
