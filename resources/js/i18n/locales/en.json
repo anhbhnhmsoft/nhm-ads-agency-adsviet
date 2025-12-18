@@ -614,6 +614,8 @@
     "back_to_services": "Back to list",
     "info_message": "Choose the service that fits your campaign. Payment is USDT only.",
     "search_placeholder": "Search services...",
+    "filter_platform": "Filter by platform",
+    "filter_all": "All",
     "no_services_found": "No services found",
     "meta_account_info": "Meta account info",
     "google_account_info": "Google account info",
