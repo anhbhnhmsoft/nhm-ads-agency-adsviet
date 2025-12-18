@@ -112,22 +112,15 @@ class TicketController extends Controller
             $data['metadata'] = $metadata;
         }
 
-        // Nếu type = wallet_deposit_app thì tạo lệnh nạp tiền chờ duyệt
+        // Nếu type = wallet_deposit_app thì chỉ lưu thông tin tài khoản vào metadata (KHÔNG tạo giao dịch nạp tiền)
         if (($data['metadata']['type'] ?? null) === TicketMetadataType::WALLET_DEPOSIT_APP->value) {
             $metadata = $data['metadata'] ?? [];
-            $depositResult = $this->walletTransactionService->createDepositOrder(
-                userId: (int) $user->id,
-                amount: (float) ($metadata['amount'] ?? 0),
-                network: (string) ($metadata['network'] ?? 'USDT'),
-                depositAddress: 'SUPPORT_TICKET'
-            );
-
-            if ($depositResult->isError()) {
-                return back()->withErrors(['error' => $depositResult->getMessage()]);
+            
+            // Lấy thông tin account name nếu chưa có
+            if (isset($metadata['account_id']) && !isset($metadata['account_name'])) {
+                $account = $this->ticketService->findAccountById($metadata['account_id']);
+                $metadata['account_name'] = $account['name'] ?? null;
             }
-
-            $transaction = $depositResult->getData();
-            $metadata['deposit_transaction_id'] = $transaction?->id ?? null;
             $data['metadata'] = $metadata;
         }
 
@@ -519,7 +512,7 @@ class TicketController extends Controller
     }
 
     /**
-     * Trang nạp tiền vào ví khách (tạo ticket + lệnh nạp chờ duyệt)
+     * Trang nạp tiền vào tài khoản quảng cáo (tạo ticket + lệnh nạp chờ duyệt)
      */
     public function depositApp(): Response|RedirectResponse
     {
@@ -528,8 +521,12 @@ class TicketController extends Controller
             return redirect()->route('login');
         }
 
+        // Lấy danh sách accounts của user
+        $accounts = $user ? $this->ticketService->getUserAccounts((int) $user->id) : [];
+
         return $this->rendering('ticket/deposit-app', [
             'auth' => $user,
+            'accounts' => $accounts,
         ]);
     }
 

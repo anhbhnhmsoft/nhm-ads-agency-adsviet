@@ -30,7 +30,9 @@ class CreateTicketRequest extends FormRequest
             'metadata.withdraw_info.account_number' => ['required_if:metadata.withdraw_type,bank', 'string', 'max:255'],
             'metadata.withdraw_info.crypto_address' => ['required_if:metadata.withdraw_type,usdt', 'string', 'max:255'],
             'metadata.withdraw_info.network' => ['required_if:metadata.withdraw_type,usdt', Rule::in(['TRC20', 'BEP20'])],
-            'metadata.network' => ['required_if:metadata.type,wallet_deposit_app', Rule::in(['TRC20', 'BEP20'])],
+            'metadata.platform' => ['required_if:metadata.type,wallet_deposit_app', 'integer', 'in:1,2'], // 1 = META, 2 = GOOGLE
+            'metadata.account_id' => ['required_if:metadata.type,wallet_deposit_app', 'string', 'max:255'],
+            'metadata.account_name' => ['nullable', 'string', 'max:255'],
             'wallet_password' => ['required_if:metadata.type,wallet_withdraw_app', 'string', 'max:255'],
         ];
     }
