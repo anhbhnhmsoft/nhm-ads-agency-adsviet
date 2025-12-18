@@ -6,6 +6,7 @@
     "processing": "Processing...",
     "or": "Or",
     "login": "Login",
+    "loading": "Loading...",
     "register": "Register",
     "refer_code": "Referral code",
     "id": "ID",
@@ -341,7 +342,7 @@
         "support_request_type_account_close": "Close / terminate ad account",
         "support_request_type_account_appeal": "Appeal ad account",
         "support_request_type_transfer_budget": "Transfer budget from this ad account to another ad account",
-        "support_request_type_share_bm": "Share BM / BC / MCC to another user",
+        "support_request_type_share_bm": "Share BM / MCC to another user",
     "support_request_type_wallet_withdraw_app": "Withdraw from app wallet to customer wallet",
     "support_request_withdraw_amount_label": "Withdrawal amount (USDT)",
     "support_request_withdraw_type_label": "Withdrawal method",
@@ -738,7 +739,7 @@
       "transfer_budget": "Transfer budget",
       "account_liquidation": "Account liquidation",
       "account_appeal": "Account appeal",
-      "share_bm": "Share BM / BC / MCC",
+      "share_bm": "Share BM/ MCC",
       "withdraw_app": "Withdraw app wallet to customer wallet",
       "wallet_withdraw_app": "Withdraw from app wallet",
       "wallet_deposit_app": "Deposit to account"
@@ -754,10 +755,11 @@
     },
     "deposit_app": {
       "title": "Deposit to account",
-      "description": "Create a deposit request. The system will create a support ticket and a pending deposit order for admin approval.",
+      "description": "Create a deposit request to an advertising account. The system will create a support ticket and a pending deposit order for admin approval.",
+      "account_label": "Account to deposit",
+      "account_required": "Please select an account",
       "amount_label": "Deposit amount",
-      "network_label": "USDT network",
-      "network_placeholder": "Select TRC20 or BEP20",
+      "amount_invalid": "Invalid amount",
       "note_label": "Note (optional)",
       "note_placeholder": "Enter note for this deposit request",
       "submit": "Create deposit request"
@@ -839,7 +841,7 @@
       "platform": "Advertising channel"
     },
     "share": {
-      "title": "Share BM/BC/MCC",
+      "title": "Share BM/MCC",
       "create_request": "Create request",
       "in_progress": "In progress",
       "platform": "Advertising channel",
@@ -852,7 +854,7 @@
       "notes": "Notes",
       "notes_placeholder": "Enter description",
       "send_request": "Send request",
-      "create_success": "Share BM/BC/MCC request created successfully",
+      "create_success": "Share BM/MCC request created successfully",
       "no_requests": "No requests yet",
       "platform_required": "Please select advertising channel",
       "platform_invalid": "Invalid advertising channel",

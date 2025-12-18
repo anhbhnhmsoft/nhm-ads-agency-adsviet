@@ -6,6 +6,7 @@
         "processing": "Đang xử lý...",
         "or": "Hoặc",
         "login": "Đăng nhập",
+        "loading": "Đang xử lý...",
         "register": "Đăng ký",
         "refer_code": "Mã giới thiệu",
         "id": "ID",
@@ -264,7 +265,7 @@
         "support_request_type_account_close": "Thanh lý tài khoản",
         "support_request_type_account_appeal": "Kháng tài khoản",
         "support_request_type_transfer_budget": "Chuyển tiền từ tài khoản ads này sang tài khoản ads khác",
-        "support_request_type_share_bm": "Share BM / BC / MCC cho user khác",
+        "support_request_type_share_bm": "Share BM / MCC cho user khác",
         "support_request_type_wallet_withdraw_app": "Rút tiền từ ví app về ví khách",
         "support_request_withdraw_amount_label": "Số tiền muốn rút (USDT)",
         "support_request_withdraw_type_label": "Hình thức rút",
@@ -700,7 +701,7 @@
             "transfer_budget": "Chuyển tiền",
             "account_liquidation": "Thanh lý tài khoản",
             "account_appeal": "Kháng tài khoản",
-            "share_bm": "Share BM / BC / MCC",
+            "share_bm": "Share BM / MCC",
             "withdraw_app": "Rút ví app về ví khách",
             "wallet_withdraw_app": "Rút tiền từ ví app",
             "wallet_deposit_app": "Nạp tiền vào tài khoản"
@@ -716,11 +717,12 @@
         },
         "deposit_app": {
             "title": "Nạp tiền vào tài khoản",
-            "description": "Tạo yêu cầu nạp tiền. Hệ thống sẽ tạo ticket hỗ trợ và lệnh nạp chờ admin duyệt.",
+            "description": "Tạo yêu cầu nạp tiền vào tài khoản quảng cáo. Hệ thống sẽ tạo ticket hỗ trợ và lệnh nạp chờ admin duyệt.",
+            "account_label": "Tài khoản cần nạp tiền",
+            "account_required": "Vui lòng chọn tài khoản",
             "amount_label": "Số tiền nạp",
-            "network_label": "Mạng USDT",
-            "network_placeholder": "Chọn mạng (TRC20 hoặc BEP20)",
-            "note_label": "Ghi chú (tùy chọn)",
+            "amount_invalid": "Số tiền không hợp lệ",
+            "note_label": "Ghi chú",
             "note_placeholder": "Nhập ghi chú cho yêu cầu nạp tiền",
             "submit": "Tạo yêu cầu nạp"
         },
@@ -801,7 +803,7 @@
             "platform": "Kênh quảng cáo"
         },
         "share": {
-            "title": "Share BM/BC/MCC",
+            "title": "Share BM/MCC",
             "create_request": "Tạo yêu cầu",
             "in_progress": "Đang thực hiện",
             "platform": "Kênh quảng cáo",

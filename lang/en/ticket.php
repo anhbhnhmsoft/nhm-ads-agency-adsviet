@@ -110,7 +110,7 @@ return [
         'bm_bc_mcc_id_invalid' => 'Invalid BM/BC/MCC ID',
         'notes_required' => 'Please enter notes',
         'notes_max' => 'Notes may not exceed :max characters',
-        'create_success' => 'Share BM/BC/MCC request created successfully',
+        'create_success' => 'Share BM/MCC request created successfully',
     ],
 ];
 

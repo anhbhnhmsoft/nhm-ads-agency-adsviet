@@ -87,7 +87,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
             transfer_request: t('ticket.transfer.title', { defaultValue: 'Chuyển tiền giữa các tài khoản' }),
             refund_request: t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' }),
             appeal_request: t('ticket.appeal.title', { defaultValue: 'Kháng tài khoản' }),
-            share_request: t('ticket.share.title', { defaultValue: 'Share BM/BC/MCC' }),
+            share_request: t('ticket.share.title', { defaultValue: 'Share BM/MCC' }),
         };
         return map[subject] ?? subject;
     };
@@ -184,14 +184,20 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
         }
 
         if (type === 'wallet_deposit_app') {
-            const amountText = metadata.amount ? `${parseFloat(metadata.amount).toFixed(2)} USDT` : '-';
-            const networkText = metadata.network || '-';
+            const amountText = metadata.amount ? `${parseFloat(metadata.amount).toFixed(2)} USD` : '-';
+            const platformText = getPlatformName(metadata.platform);
+            const accountText = metadata.account_name 
+                ? `${metadata.account_name} (${metadata.account_id})` 
+                : metadata.account_id || '-';
             const noteText = metadata.notes || ticket.description || '-';
             return (
                 <div className="grid gap-2 text-sm">
-                    <div>{t('ticket.deposit_app.amount_label')}: {amountText}</div>
-                    <div>{t('ticket.deposit_app.network_label')}: {networkText}</div>
-                    <div>{t('ticket.deposit_app.note_label')}: {noteText}</div>
+                    <div>{t('ticket.transfer.platform', { defaultValue: 'Kênh quảng cáo' })}: {platformText}</div>
+                    <div>{t('ticket.deposit_app.account_label', { defaultValue: 'Tài khoản cần nạp tiền' })}: {accountText}</div>
+                    <div>{t('ticket.deposit_app.amount_label', { defaultValue: 'Số tiền nạp' })}: {amountText}</div>
+                    {noteText && noteText !== '-' && (
+                        <div>{t('ticket.deposit_app.note_label', { defaultValue: 'Ghi chú (tùy chọn)' })}: {noteText}</div>
+                    )}
                 </div>
             );
         }

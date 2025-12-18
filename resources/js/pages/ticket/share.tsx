@@ -15,11 +15,11 @@ const ShareIndex = ({ tickets, accounts, error }: SharePageProps) => {
 
     return (
         <div>
-            <Head title={t('ticket.share.title', { defaultValue: 'Share BM/BC/MCC' })} />
+            <Head title={t('ticket.share.title', { defaultValue: 'Share BM/MCC' })} />
             
             <div className="mb-4">
                 <h1 className="text-2xl font-semibold">
-                    {t('ticket.share.title', { defaultValue: 'Share BM/BC/MCC' })}
+                    {t('ticket.share.title', { defaultValue: 'Share BM/MCC' })}
                 </h1>
             </div>
 
