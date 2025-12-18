@@ -47,6 +47,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
     const [showCalculator, setShowCalculator] = useState(false);
     const [searchQuery, setSearchQuery] = useState<string>('');
+    const [platformFilter, setPlatformFilter] = useState<string>('all');
     const packageList = useMemo<ServicePackage[]>(() => {
         if (Array.isArray(packages)) {
             return packages as ServicePackage[];
@@ -84,14 +85,26 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
 
     // Filter packages
     const filteredPackages = useMemo(() => {
-        if (!searchQuery.trim()) return packageList;
-        const query = searchQuery.toLowerCase();
-        return packageList.filter(
-            (pkg) =>
-                pkg.name.toLowerCase().includes(query) ||
-                pkg.description.toLowerCase().includes(query)
-        );
-    }, [packageList, searchQuery]);
+        let filtered = packageList;
+
+        // Filter by platform
+        if (platformFilter !== 'all') {
+            const platformNum = parseInt(platformFilter);
+            filtered = filtered.filter((pkg) => pkg.platform === platformNum);
+        }
+
+        // Filter by search query
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(
+                (pkg) =>
+                    pkg.name.toLowerCase().includes(query) ||
+                    pkg.description.toLowerCase().includes(query)
+            );
+        }
+
+        return filtered;
+    }, [packageList, searchQuery, platformFilter]);
 
     // Get platform info
     const getPlatformInfo = (platform: number) => {
@@ -812,15 +825,37 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             <span className="text-gray-600">{t('service_purchase.info_message')}</span>
                         </div>
 
-                        {/* Search */}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input
-                                placeholder={t('service_purchase.search_placeholder')}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10"
-                            />
+                        {/* Filter and Search */}
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            {/* Platform Filter */}
+                            <div className="sm:w-48 w-full">
+                                <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={t('service_purchase.filter_platform', { defaultValue: 'Lọc theo nền tảng' })} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">
+                                            {t('service_purchase.filter_all', { defaultValue: 'Tất cả' })}
+                                        </SelectItem>
+                                        <SelectItem value={String(_PlatformType.GOOGLE)}>
+                                            {t('enum.platform_type.google', { defaultValue: 'Google Ads' })}
+                                        </SelectItem>
+                                        <SelectItem value={String(_PlatformType.META)}>
+                                            {t('enum.platform_type.meta', { defaultValue: 'Meta Ads' })}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {/* Search */}
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input
+                                    placeholder={t('service_purchase.search_placeholder')}
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-10"
+                                />
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

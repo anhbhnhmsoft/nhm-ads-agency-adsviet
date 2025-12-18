@@ -556,6 +556,8 @@
         "order_summary": "Tóm tắt đơn hàng",
         "back_to_services": "Quay lại danh sách",
         "info_message": "Chọn dịch vụ phù hợp với nhu cầu của bạn. Thanh toán chỉ qua USDT.",
+        "filter_platform": "Lọc theo nền tảng",
+        "filter_all": "Tất cả",
         "id_bm": "ID BM",
         "id_mcc": "ID MCC",
         "email_note_meta": "Nếu không có BM",
