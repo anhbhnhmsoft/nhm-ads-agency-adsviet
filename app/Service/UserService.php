@@ -8,6 +8,8 @@ use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Repositories\UserRepository;
 use App\Repositories\UserReferralRepository;
+use App\Repositories\ServiceUserRepository;
+use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Common\Helper;
@@ -19,7 +21,8 @@ class UserService
 {
     public function __construct(
         protected UserRepository $userRepository,
-        protected UserReferralRepository $userReferralRepository
+        protected UserReferralRepository $userReferralRepository,
+        protected ServiceUserRepository $serviceUserRepository
     )
     {
     }
@@ -352,6 +355,21 @@ class UserService
         if (!$user) {
             return ServiceReturn::error(message: __('common_error.data_not_found'));
         }
+
+        // Kiểm tra xem user có gói dịch vụ đang hoạt động không
+        $activeServices = $this->serviceUserRepository->query()
+            ->where('user_id', $id)
+            ->whereIn('status', [
+                ServiceUserStatus::ACTIVE->value,
+                ServiceUserStatus::PROCESSING->value,
+                ServiceUserStatus::QUEUE_JOB_ON_PROCESS->value,
+            ])
+            ->exists();
+
+        if ($activeServices) {
+            return ServiceReturn::error(message: __('user.error.cannot_delete_user_with_active_services'));
+        }
+
         try {
             $user->delete();
             return ServiceReturn::success();
