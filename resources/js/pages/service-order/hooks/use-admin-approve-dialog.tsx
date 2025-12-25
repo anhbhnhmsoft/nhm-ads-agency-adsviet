@@ -15,6 +15,7 @@ export const useServiceOrderAdminDialog = () => {
         info_website: '',
         payment_type: '',
         asset_access: '',
+        timezone_bm: '',
     });
 
     const openDialogForOrder = useCallback((order: ServiceOrder) => {
@@ -29,6 +30,7 @@ export const useServiceOrderAdminDialog = () => {
             info_website: isGoogle ? '' : (config.info_website as string) || '',
             payment_type: (config.payment_type as string) || '',
             asset_access: (config.asset_access as string) || 'full_asset',
+            timezone_bm: (config.timezone_bm as string) || '',
         });
         form.clearErrors();
         setDialogOpen(true);
@@ -69,6 +71,8 @@ export const useServiceOrderAdminDialog = () => {
         setPaymentType: (value: string) => form.setData('payment_type', value),
         assetAccess: form.data.asset_access,
         setAssetAccess: (value: string) => form.setData('asset_access', value),
+        timezoneBm: form.data.timezone_bm,
+        setTimezoneBm: (value: string) => form.setData('timezone_bm', value),
         formErrors: form.errors,
         processing: form.processing,
         openDialogForOrder,

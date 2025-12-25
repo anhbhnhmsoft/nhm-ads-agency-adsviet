@@ -24,10 +24,17 @@ export type PackagesProp = ServicePackage[] | {
     data?: ServicePackage[];
 };
 
+export type TimezoneOption = {
+    value: string;
+    label: string;
+};
+
 export type ServicePurchasePageProps = {
     packages: PackagesProp;
     wallet_balance: number;
     postpay_min_balance?: number;
+    meta_timezones?: TimezoneOption[];
+    google_timezones?: TimezoneOption[];
 };
 
 

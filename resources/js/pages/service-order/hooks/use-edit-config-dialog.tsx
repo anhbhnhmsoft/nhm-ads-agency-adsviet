@@ -14,6 +14,7 @@ export const useServiceOrderEditConfigDialog = () => {
     const [infoWebsite, setInfoWebsite] = useState('');
     const [paymentType, setPaymentType] = useState('');
     const [assetAccess, setAssetAccess] = useState<'full_asset' | 'basic_asset'>('full_asset');
+    const [timezoneBm, setTimezoneBm] = useState('');
 
     const openDialogForOrder = useCallback((order: ServiceOrder) => {
         const config = order.config_account || {};
@@ -26,6 +27,7 @@ export const useServiceOrderEditConfigDialog = () => {
         setInfoWebsite(isGoogle ? '' : (config.info_website as string) || '');
         setPaymentType((config.payment_type as string) || '');
         setAssetAccess(((config.asset_access as 'full_asset' | 'basic_asset') || 'full_asset'));
+        setTimezoneBm((config.timezone_bm as string) || '');
         setDialogOpen(true);
     }, []);
 
@@ -42,6 +44,7 @@ export const useServiceOrderEditConfigDialog = () => {
                 info_website: infoWebsite || undefined,
                 payment_type: paymentType || undefined,
                 asset_access: assetAccess || undefined,
+                timezone_bm: timezoneBm || undefined,
             },
             {
                 preserveScroll: true,
@@ -51,7 +54,7 @@ export const useServiceOrderEditConfigDialog = () => {
                 },
             },
         );
-    }, [bmId, displayName, metaEmail, infoFanpage, infoWebsite, selectedOrder]);
+    }, [bmId, displayName, metaEmail, infoFanpage, infoWebsite, paymentType, assetAccess, timezoneBm, selectedOrder]);
 
     return {
         dialogOpen,
@@ -71,6 +74,8 @@ export const useServiceOrderEditConfigDialog = () => {
         setPaymentType,
         assetAccess,
         setAssetAccess,
+        timezoneBm,
+        setTimezoneBm,
         openDialogForOrder,
         handleSubmitUpdate,
     };

@@ -24,6 +24,7 @@ class ServicePurchaseRequest extends FormRequest
             'info_website' => ['nullable', 'string', 'max:255'],
             'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],
             'asset_access' => ['nullable', 'string', 'in:full_asset,basic_asset'],
+            'timezone_bm' => ['nullable', 'string'],
         ];
     }
 

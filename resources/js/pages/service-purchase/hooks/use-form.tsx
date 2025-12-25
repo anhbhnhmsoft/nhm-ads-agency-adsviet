@@ -11,6 +11,7 @@ type ServicePurchaseFormData = {
     bm_id?: string;
     info_fanpage?: string;
     info_website?: string;
+    timezone_bm?: string;
     payment_type?: 'prepay' | 'postpay';
     asset_access?: 'full_asset' | 'basic_asset';
 };
@@ -30,6 +31,7 @@ export const useServicePurchaseForm = () => {
         topUpAmount: string,
         metaEmail?: string,
         displayName?: string,
+        timezoneBm?: string,
         budget?: string,
         bmMccConfig?: {
             bm_id?: string;
@@ -46,6 +48,7 @@ export const useServicePurchaseForm = () => {
             budget: budget || '0',
             meta_email: metaEmail || '',
             display_name: displayName || '',
+            timezone_bm: timezoneBm || '',
             ...(bmMccConfig || {}),
         };
 

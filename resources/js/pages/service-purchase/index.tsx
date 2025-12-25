@@ -27,7 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const normalizeCurrencyInput = (value: string): string => {
@@ -42,13 +42,15 @@ const parseCurrencyInput = (value: string): number => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }: ServicePurchasePageProps) => {
+const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, meta_timezones = [], google_timezones = [] }: ServicePurchasePageProps) => {
     const { t } = useTranslation();
     const postpayMinBalance = typeof postpay_min_balance === 'number' ? postpay_min_balance : 200;
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
     const [showCalculator, setShowCalculator] = useState(false);
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [platformFilter, setPlatformFilter] = useState<string>('all');
+    const [touchedFields, setTouchedFields] = useState<{ topUpAmount?: boolean; budget?: boolean }>({});
+    const previousPlatformRef = useRef<number | undefined>(undefined);
     const packageList = useMemo<ServicePackage[]>(() => {
         if (Array.isArray(packages)) {
             return packages as ServicePackage[];
@@ -78,11 +80,21 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }:
     const budgetValue = budget || '';
 
     useEffect(() => {
-        if (selectedPackage?.platform === _PlatformType.GOOGLE) {
-            purchaseForm.setData('info_fanpage', '');
-            purchaseForm.setData('info_website', '');
+        const currentPlatform = selectedPackage?.platform;
+
+        if (previousPlatformRef.current !== currentPlatform) {
+            previousPlatformRef.current = currentPlatform;
+
+            if (currentPlatform === _PlatformType.GOOGLE) {
+                purchaseForm.setData('info_fanpage', '');
+                purchaseForm.setData('info_website', '');
+            }
+
+            setTimeout(() => {
+                setTouchedFields({});
+            }, 0);
         }
-    }, [selectedPackage?.platform]);
+    }, [selectedPackage?.platform, purchaseForm]);
 
     // Filter packages
     const filteredPackages = useMemo(() => {
@@ -217,6 +229,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }:
     const handlePurchase = () => {
         if (!selectedPackage) return;
 
+        // Mark all fields as touched on submit
+        setTouchedFields({ topUpAmount: true, budget: true });
+
         // Không cho chọn trả sau nếu số dư ví < ngưỡng cấu hình
         if (paymentType === 'postpay' && wallet_balance < postpayMinBalance) {
             alert(
@@ -259,9 +274,18 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }:
             asset_access: asset_access || 'full_asset',
         };
 
-        submitPurchase(selectedPackage.id, payloadTopUp, meta_email, display_name, payloadBudget, bmMccConfig, () => {
+        submitPurchase(
+            selectedPackage.id,
+            payloadTopUp,
+            meta_email,
+            display_name,
+            purchaseForm.data.timezone_bm,
+            payloadBudget,
+            bmMccConfig,
+            () => {
             setSelectedPackage(null);
             setShowCalculator(false);
+            setTouchedFields({});
             purchaseForm.reset();
             purchaseForm.setData({
                 payment_type: 'prepay',
@@ -397,8 +421,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }:
         if (!selectedPackage) return null;
 
         const platformInfo = getPlatformInfo(selectedPackage.platform);
-        const topUpError = topUpAmount ? validateTopUpAmount(topUpAmount) : null;
-        const { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount, paymentType);
+        const topUpError = touchedFields.topUpAmount && topUpAmount ? validateTopUpAmount(topUpAmount) : null;
+        const budgetError = touchedFields.budget && budgetValue ? validateBudget(budgetValue) : null;
+        const { serviceFee, totalCost, chargeOpenFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount, paymentType);
         const minTopUpAmount = Number(selectedPackage.range_min_top_up || '0');
         const hasInsufficientBalance = wallet_balance < totalCost;
         const showAccountInfo =
@@ -480,7 +505,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }:
                                     }}
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    {selectedPackage.platform === _PlatformType.META 
+                                    {selectedPackage.platform === _PlatformType.META
                                         ? t('service_purchase.email_note_meta', { defaultValue: 'Nếu không có BM' })
                                         : t('service_purchase.email_note_google', { defaultValue: 'Nếu không có MCC' })}
                                 </p>
@@ -575,6 +600,39 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }:
                                     <p className="text-xs text-red-500">{purchaseForm.errors.display_name}</p>
                                 )}
                             </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="timezone_bm">
+                                    {selectedPackage?.platform === _PlatformType.META
+                                        ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
+                                        : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                                </Label>
+                                <Select
+                                    value={purchaseForm.data.timezone_bm || ''}
+                                    onValueChange={(value) => purchaseForm.setData('timezone_bm', value)}
+                                >
+                                    <SelectTrigger id="timezone_bm">
+                                        <SelectValue placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {(selectedPackage?.platform === _PlatformType.META
+                                            ? meta_timezones
+                                            : selectedPackage?.platform === _PlatformType.GOOGLE
+                                            ? google_timezones
+                                            : []
+                                        ).map((tz) => (
+                                            <SelectItem key={tz.value} value={tz.value}>
+                                                {tz.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    {t('service_purchase.timezone_bm_description', { defaultValue: 'Múi giờ BM là múi giờ được sử dụng để tính toán thời gian và thời điểm của dịch vụ.' })}
+                                </p>
+                                {purchaseForm.errors.timezone_bm && (
+                                    <p className="text-xs text-red-500">{purchaseForm.errors.timezone_bm}</p>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -658,15 +716,16 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }:
                                     purchaseForm.clearErrors('budget');
                                 }
                             }}
+                            onBlur={() => setTouchedFields(prev => ({ ...prev, budget: true }))}
                             step="0.01"
                             min="0"
                             max="50"
                             required
                         />
-                        {budgetValue && validateBudget(budgetValue) && (
+                        {budgetError && (
                             <div className="flex items-center gap-2 text-red-600 text-sm">
                                 <AlertTriangle className="h-4 w-4" />
-                                {validateBudget(budgetValue)}
+                                {budgetError}
                             </div>
                         )}
                         {purchaseForm.errors.budget && (
@@ -723,7 +782,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }:
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            {t('service_purchase.top_up_amount_note')}, 
+                            {t('service_purchase.top_up_amount_note')},
                             {minTopUpAmount > 0
                                 ? t('service_purchase.min_top_up_hint', {
                                       amount: formatUSD(minTopUpAmount),

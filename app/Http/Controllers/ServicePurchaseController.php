@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Common\Helpers\TimezoneHelper;
 use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Core\QueryListDTO;
@@ -59,6 +60,8 @@ class ServicePurchaseController extends Controller
                 'packages' => fn() => ServicePackageListResource::collection($packages),
                 'wallet_balance' => $walletBalance,
                 'postpay_min_balance' => $postpayMinBalance,
+                'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
+                'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
             ]
         );
     }
@@ -95,6 +98,9 @@ class ServicePurchaseController extends Controller
         }
         if (isset($data['asset_access'])) {
             $configAccount['asset_access'] = $data['asset_access'];
+        }
+        if (isset($data['timezone_bm'])) {
+            $configAccount['timezone_bm'] = $data['timezone_bm'];
         }
 
         $result = $this->servicePurchaseService->createPurchaseOrder(
