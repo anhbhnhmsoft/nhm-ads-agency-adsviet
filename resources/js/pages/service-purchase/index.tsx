@@ -27,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { TimezoneSelect } from '@/components/timezone-select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -606,26 +607,19 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                         ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
                                         : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
                                 </Label>
-                                <Select
+                                <TimezoneSelect
+                                    id="timezone_bm"
                                     value={purchaseForm.data.timezone_bm || ''}
                                     onValueChange={(value) => purchaseForm.setData('timezone_bm', value)}
-                                >
-                                    <SelectTrigger id="timezone_bm">
-                                        <SelectValue placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {(selectedPackage?.platform === _PlatformType.META
+                                    options={
+                                        selectedPackage?.platform === _PlatformType.META
                                             ? meta_timezones
                                             : selectedPackage?.platform === _PlatformType.GOOGLE
                                             ? google_timezones
                                             : []
-                                        ).map((tz) => (
-                                            <SelectItem key={tz.value} value={tz.value}>
-                                                {tz.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    }
+                                    placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
+                                />
                                 <p className="text-xs text-muted-foreground">
                                     {t('service_purchase.timezone_bm_description', { defaultValue: 'Múi giờ BM là múi giờ được sử dụng để tính toán thời gian và thời điểm của dịch vụ.' })}
                                 </p>
