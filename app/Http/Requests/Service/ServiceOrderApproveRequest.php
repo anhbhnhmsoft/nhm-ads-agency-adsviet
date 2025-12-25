@@ -20,6 +20,7 @@ class ServiceOrderApproveRequest extends FormRequest
             'info_fanpage' => ['nullable', 'string', 'max:255'],
             'info_website' => ['nullable', 'string', 'max:255'],
             'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],
+            'timezone_bm' => ['nullable', 'string'],
         ];
     }
 

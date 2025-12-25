@@ -117,6 +117,7 @@ class ServicePurchaseService
                 ]);
 
                 // Lưu lịch sử ví: chỉ tạo giao dịch khi có thu tiền upfront
+                $walletTransaction = null;
                 if ($totalCost > 0) {
                     $walletTransaction = $this->walletTransactionRepository->create([
                         'wallet_id' => $wallet->id,
@@ -140,13 +141,13 @@ class ServicePurchaseService
                 Logging::web('ServicePurchaseService@createPurchaseOrder: Wallet deducted', [
                     'wallet_id' => $wallet->id,
                     'service_user_id' => $serviceUser->id,
-                    'wallet_transaction_id' => $walletTransaction->id,
+                    'wallet_transaction_id' => $walletTransaction?->id,
                     'amount' => $totalCost,
                 ]);
 
                 return ServiceReturn::success(data: [
                     'service_user_id' => $serviceUser->id,
-                    'wallet_transaction_id' => $walletTransaction->id,
+                    'wallet_transaction_id' => $walletTransaction?->id,
                     'total_cost' => $totalCost,
                 ]);
             });
@@ -175,6 +176,8 @@ class ServicePurchaseService
             'payment_type' => $userConfig['payment_type'] ?? 'prepay',
             'top_up_amount' => $userConfig['top_up_amount'] ?? 0,
             'asset_access' => $userConfig['asset_access'] ?? 'full_asset',
+            'timezone_bm' => $userConfig['timezone_bm'] ?? null,
+            'open_fee_paid' => $userConfig['open_fee_paid'] ?? false,
         ];
 
         // Meta Ads: thêm info_fanpage và info_website

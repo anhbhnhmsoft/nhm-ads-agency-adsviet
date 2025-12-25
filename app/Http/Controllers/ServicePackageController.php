@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServicePackage\ServicePackageFeature;
+use App\Common\Helpers\TimezoneHelper;
 use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Core\QueryListDTO;
@@ -58,6 +59,8 @@ class ServicePackageController extends Controller
             data: [
                 'meta_features' => ServicePackageFeature::getOptionsByPlatform('meta'),
                 'google_features' => ServicePackageFeature::getOptionsByPlatform('google'),
+                'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
+                'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
             ]
         );
     }
@@ -176,6 +179,8 @@ class ServicePackageController extends Controller
             data: [
                 'meta_features' => ServicePackageFeature::getOptionsByPlatform('meta'),
                 'google_features' => ServicePackageFeature::getOptionsByPlatform('google'),
+                'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
+                'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
                 'service_package' => fn () => ServicePackageResource::make($result->getData())->toArray(request()),
             ]
         );

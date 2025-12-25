@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Common\Helpers\TimezoneHelper;
 use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Core\QueryListDTO;
@@ -36,6 +37,8 @@ class ServiceOrderController extends Controller
             view: 'service-order/index',
             data: [
                 'paginator' => fn () => ServiceOrderResource::collection($result->getData()),
+                'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
+                'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
             ]
         );
     }

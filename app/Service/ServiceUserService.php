@@ -92,6 +92,7 @@ class ServiceUserService
                 'bm_id' => $config['bm_id'] ?? ($currentConfig['bm_id'] ?? ''),
                 'uid' => $config['uid'] ?? ($currentConfig['uid'] ?? null),
                 'account_name' => $config['account_name'] ?? ($currentConfig['account_name'] ?? null),
+                'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
             ]);
 
             if ($platform === PlatformType::GOOGLE->value) {
@@ -243,6 +244,7 @@ class ServiceUserService
                 'bm_id' => $config['bm_id'] ?? null,
                 'uid' => $config['uid'] ?? null,
                 'account_name' => $config['account_name'] ?? null,
+                'timezone_bm' => $config['timezone_bm'] ?? null,
             ], fn($value) => $value !== null));
             $serviceUser->save();
 

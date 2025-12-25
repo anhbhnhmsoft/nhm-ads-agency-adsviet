@@ -26,8 +26,15 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 
+type TimezoneOption = {
+    value: string;
+    label: string;
+};
+
 type Props = {
     paginator: ServiceOrderPagination;
+    meta_timezones?: TimezoneOption[];
+    google_timezones?: TimezoneOption[];
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -40,7 +47,7 @@ const STATUS_COLORS: Record<string, string> = {
     CANCELLED: 'bg-gray-500 text-white',
 };
 
-const ServiceOrdersIndex = ({ paginator }: Props) => {
+const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones = [] }: Props) => {
     const { t } = useTranslation();
     const { props } = usePage();
     const checkRole = useCheckRole(props.auth);
@@ -65,6 +72,8 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
         setPaymentType,
         assetAccess,
         setAssetAccess,
+        timezoneBm,
+        setTimezoneBm,
         openDialogForOrder,
         handleSubmitApprove,
         formErrors,
@@ -89,6 +98,8 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
         setPaymentType: setEditPaymentType,
         assetAccess: editAssetAccess,
         setAssetAccess: setEditAssetAccess,
+        timezoneBm: editTimezoneBm,
+        setTimezoneBm: setEditTimezoneBm,
         openDialogForOrder: openEditDialogForOrder,
         handleSubmitUpdate,
     } = useServiceOrderEditConfigDialog();
@@ -152,10 +163,14 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                     const bm = (config.bm_id as string) || '';
                     const fanpage = (config.info_fanpage as string) || '';
                     const website = (config.info_website as string) || '';
+                    const timezone = (config.timezone_bm as string) || '';
 
-                    if (!email && !name && !bm && !fanpage && !website) {
+                    if (!email && !name && !bm && !fanpage && !website && !timezone) {
                         return <span className="text-xs text-muted-foreground">-</span>;
                     }
+
+                    const platform = row.original.package?.platform;
+                    const isMeta = platform === _PlatformType.META;
 
                     return (
                         <div className="text-xs space-y-1">
@@ -171,7 +186,12 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                             )}
                             {bm && (
                                 <div>
-                                    <span className="font-medium">BM ID:</span> {bm}
+                                    <span className="font-medium">{isMeta ? 'BM ID' : 'MCC ID'}:</span> {bm}
+                                </div>
+                            )}
+                            {timezone && (
+                                <div>
+                                    <span className="font-medium">{isMeta ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' }) : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}:</span> {timezone}
                                 </div>
                             )}
                             {fanpage && (
@@ -417,6 +437,28 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
+                                    <Label htmlFor="approve_timezone_bm">
+                                        {isApproveMeta
+                                            ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
+                                            : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                                    </Label>
+                                    <Select
+                                        value={timezoneBm || ''}
+                                        onValueChange={(value) => setTimezoneBm(value)}
+                                    >
+                                        <SelectTrigger id="approve_timezone_bm">
+                                            <SelectValue placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {(isApproveMeta ? meta_timezones : google_timezones).map((tz) => (
+                                                <SelectItem key={tz.value} value={tz.value}>
+                                                    {tz.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
                                     <Label htmlFor="payment_type">{t('service_purchase.payment_type')}</Label>
                                     <div className="flex gap-2">
                                         <Button
@@ -542,6 +584,28 @@ const ServiceOrdersIndex = ({ paginator }: Props) => {
                                         <SelectContent>
                                             <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
                                             <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit_timezone_bm">
+                                        {isEditMeta
+                                            ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
+                                            : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                                    </Label>
+                                    <Select
+                                        value={editTimezoneBm || ''}
+                                        onValueChange={(value) => setEditTimezoneBm(value)}
+                                    >
+                                        <SelectTrigger id="edit_timezone_bm">
+                                            <SelectValue placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {(isEditMeta ? meta_timezones : google_timezones).map((tz) => (
+                                                <SelectItem key={tz.value} value={tz.value}>
+                                                    {tz.label}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
