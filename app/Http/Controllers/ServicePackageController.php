@@ -124,25 +124,18 @@ class ServicePackageController extends Controller
             if (!$platformEnum) {
                 return; // Bỏ qua nếu platform không hợp lệ (đã bị bắt bởi Rule::in)
             }
-            if ($platformEnum === PlatformType::GOOGLE) {
-                $validCases = ServicePackageFeature::getFeaturesByPlatform('google');
-            }else{
-                $validCases = ServicePackageFeature::getFeaturesByPlatform('meta');
-            }
-            // Lấy các keys hợp lệ cho platform này từ Enum
-            $validKeys = array_map(fn($case) => $case->value, $validCases);
-            // Lấy các keys mà người dùng đã submit
-            $submittedKeys = array_column($features, 'key');
-            // Tìm các keys không hợp lệ (có trong $submittedKeys nhưng không có trong $validKeys)
-            $invalidKeys = array_diff($submittedKeys, $validKeys);
-            if (!empty($invalidKeys)) {
-                $firstInvalidKey = array_values($invalidKeys)[0];
-                // Thêm lỗi vào trường 'platform' (hoặc 'features' tùy bạn)
-                // Inertia sẽ nhận lỗi này và hiển thị ở frontend
-                $validator->errors()->add(
-                    'platform',
-                    __('services.validation.features_invalid')
-                );
+            
+            if ($platformEnum === PlatformType::META || $platformEnum === PlatformType::GOOGLE) {
+                foreach ($features as $index => $feature) {
+                    if (!isset($feature['key']) || !isset($feature['value'])) {
+                        $validator->errors()->add(
+                            'features',
+                            __('services.validation.features_invalid')
+                        );
+                        return;
+                    }
+                }
+                return;
             }
         });
 
@@ -252,27 +245,20 @@ class ServicePackageController extends Controller
             // Lấy Enum platform
             $platformEnum = PlatformType::tryFrom((int)$platformValue);
             if (!$platformEnum) {
-                return; // Bỏ qua nếu platform không hợp lệ (đã bị bắt bởi Rule::in)
+                return;
             }
-            if ($platformEnum === PlatformType::GOOGLE) {
-                $validCases = ServicePackageFeature::getFeaturesByPlatform('google');
-            }else{
-                $validCases = ServicePackageFeature::getFeaturesByPlatform('meta');
-            }
-            // Lấy các keys hợp lệ cho platform này từ Enum
-            $validKeys = array_map(fn($case) => $case->value, $validCases);
-            // Lấy các keys mà người dùng đã submit
-            $submittedKeys = array_column($features, 'key');
-            // Tìm các keys không hợp lệ (có trong $submittedKeys nhưng không có trong $validKeys)
-            $invalidKeys = array_diff($submittedKeys, $validKeys);
-            if (!empty($invalidKeys)) {
-                $firstInvalidKey = array_values($invalidKeys)[0];
-                // Thêm lỗi vào trường 'platform' (hoặc 'features' tùy bạn)
-                // Inertia sẽ nhận lỗi này và hiển thị ở frontend
-                $validator->errors()->add(
-                    'platform',
-                    __('services.validation.features_invalid')
-                );
+            
+            if ($platformEnum === PlatformType::META || $platformEnum === PlatformType::GOOGLE) {
+                foreach ($features as $index => $feature) {
+                    if (!isset($feature['key']) || !isset($feature['value'])) {
+                        $validator->errors()->add(
+                            'features',
+                            __('services.validation.features_invalid')
+                        );
+                        return;
+                    }
+                }
+                return;
             }
         });
 

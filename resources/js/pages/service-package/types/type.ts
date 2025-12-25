@@ -20,7 +20,7 @@ export type CreateServicePackageForm = {
     platform: _PlatformType;
     features: {
         key: string;
-        value: boolean | number | null;
+        value: boolean | number | string | null;
     }[];
     open_fee: string;
     range_min_top_up: string;

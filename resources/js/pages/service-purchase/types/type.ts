@@ -27,6 +27,7 @@ export type PackagesProp = ServicePackage[] | {
 export type ServicePurchasePageProps = {
     packages: PackagesProp;
     wallet_balance: number;
+    postpay_min_balance?: number;
 };
 
 

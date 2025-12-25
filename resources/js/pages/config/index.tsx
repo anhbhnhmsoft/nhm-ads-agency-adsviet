@@ -86,6 +86,28 @@ const ConfigIndex = ({ configs }: Props) => {
                                 />
                                 <InputError message={errors[`configs.${_ConfigName.TRC20_WALLET_ADDRESS}`]} />
                             </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor={_ConfigName.POSTPAY_MIN_BALANCE}>
+                                    {t(configNameLabel[_ConfigName.POSTPAY_MIN_BALANCE], {
+                                        defaultValue: 'Số dư tối thiểu để đăng ký thanh toán trả sau',
+                                    })}
+                                </Label>
+                                <Input
+                                    id={_ConfigName.POSTPAY_MIN_BALANCE}
+                                    value={data.configs[_ConfigName.POSTPAY_MIN_BALANCE] || ''}
+                                    onChange={(e) =>
+                                        setData('configs', {
+                                            ...data.configs,
+                                            [_ConfigName.POSTPAY_MIN_BALANCE]: e.target.value,
+                                        })
+                                    }
+                                    placeholder={t('config.postpay_min_balance_placeholder', {
+                                        defaultValue: 'Nhập số dư tối thiểu để đăng ký thanh toán trả sau',
+                                    })}
+                                />
+                                <InputError message={errors[`configs.${_ConfigName.TRC20_WALLET_ADDRESS}`]} />
+                            </div>
                         </div>
 
                         <div className="flex justify-end">

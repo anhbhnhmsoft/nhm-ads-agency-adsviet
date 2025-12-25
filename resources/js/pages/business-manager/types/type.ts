@@ -26,6 +26,9 @@ export type BusinessManagerItem = {
     accounts?: Array<{
         currency?: string | null;
     }>;
+    config_account?: {
+        display_name?: string | null;
+    } | null;
 };
 
 // Detail account item inside dialog

@@ -11,6 +11,8 @@ use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
 use App\Models\ServiceUserTransactionLog;
+use App\Repositories\ConfigRepository;
+use App\Common\Constants\Config\ConfigName;
 use App\Repositories\ServicePackageRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\UserWalletTransactionRepository;
@@ -24,6 +26,7 @@ class ServicePurchaseService
         protected ServiceUserRepository $serviceUserRepository,
         protected WalletRepository $walletRepository,
         protected UserWalletTransactionRepository $walletTransactionRepository,
+        protected ConfigRepository $configRepository,
     ) {
     }
 
@@ -64,8 +67,10 @@ class ServicePurchaseService
                 $openFee = (float) $package->open_fee;
                 $serviceFeePercent = (float) $package->top_up_fee;
                 $serviceFee = $topUpAmount > 0 ? ($topUpAmount * $serviceFeePercent / 100) : 0;
-                // Tổng tiền phải trừ ví = phí mở + số tiền top-up + phí dịch vụ top-up
-                $totalCost = $openFee + $topUpAmount + $serviceFee;
+                $isPrepay = ($configAccount['payment_type'] ?? 'prepay') === 'prepay';
+                $openFeePayable = $isPrepay ? $openFee : 0; // Trả sau không thu phí mở tài khoản upfront
+                // Tổng tiền phải trừ ví = (phí mở nếu trả trước) + số tiền top-up + phí dịch vụ top-up
+                $totalCost = $openFeePayable + $topUpAmount + $serviceFee;
 
                 $wallet = $this->walletRepository->findByUserId($userId);
                 if (!$wallet) {
@@ -73,15 +78,30 @@ class ServicePurchaseService
                     return ServiceReturn::error(message: __('Ví không tồn tại'));
                 }
 
-                if ((float) $wallet->balance < $totalCost) {
-                    return ServiceReturn::error(message: __('Số dư ví không đủ'));
+                // Kiểm tra ngưỡng tối thiểu để đăng ký trả sau (cấu hình)
+                $postpayMinBalanceRaw = $this->configRepository
+                    ->findByKey(ConfigName::POSTPAY_MIN_BALANCE->value)?->value;
+                $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 200;
+                if (!$isPrepay && (float) $wallet->balance < $postpayMinBalance) {
+                    return ServiceReturn::error(
+                        message: __('services.validation.postpay_min_wallet', ['amount' => $postpayMinBalance])
+                    );
                 }
 
-                $wallet->update(['balance' => (float) $wallet->balance - $totalCost]);
+                if ($totalCost > 0) {
+                    if ((float) $wallet->balance < $totalCost) {
+                        return ServiceReturn::error(message: __('Số dư ví không đủ'));
+                    }
+                    $wallet->update(['balance' => (float) $wallet->balance - $totalCost]);
+                }
 
                 $configAccount['top_up_amount'] = $topUpAmount;
                 if (!isset($configAccount['payment_type'])) {
                     $configAccount['payment_type'] = 'prepay';
+                }
+                // Đánh dấu đã thu phí mở tài khoản nếu trả trước; trả sau sẽ thu ở kỳ bill đầu tiên
+                if (!isset($configAccount['open_fee_paid'])) {
+                    $configAccount['open_fee_paid'] = $configAccount['payment_type'] === 'prepay';
                 }
 
 
@@ -96,24 +116,26 @@ class ServicePurchaseService
                     'description' => "Mua gói dịch vụ: {$package->name}",
                 ]);
 
-                // Lưu lịch sử ví: số âm để thể hiện trừ tiền
-                $walletTransaction = $this->walletTransactionRepository->create([
-                    'wallet_id' => $wallet->id,
-                    'amount' => -$totalCost,
-                    'type' => WalletTransactionType::SERVICE_PURCHASE->value,
-                    'status' => WalletTransactionStatus::COMPLETED->value,
-                    'description' => "Thanh toán dịch vụ: {$package->name}",
-                    'reference_id' => (string) $serviceUser->id,
-                ]);
+                // Lưu lịch sử ví: chỉ tạo giao dịch khi có thu tiền upfront
+                if ($totalCost > 0) {
+                    $walletTransaction = $this->walletTransactionRepository->create([
+                        'wallet_id' => $wallet->id,
+                        'amount' => -$totalCost,
+                        'type' => WalletTransactionType::SERVICE_PURCHASE->value,
+                        'status' => WalletTransactionStatus::COMPLETED->value,
+                        'description' => "Thanh toán dịch vụ: {$package->name}",
+                        'reference_id' => (string) $serviceUser->id,
+                    ]);
 
-                ServiceUserTransactionLog::create([
-                    'service_user_id' => $serviceUser->id,
-                    'amount' => $totalCost,
-                    'type' => ServiceUserTransactionType::PURCHASE->value,
-                    'status' => ServiceUserTransactionStatus::COMPLETED->value,
-                    'reference_id' => (string) $walletTransaction->id,
-                    'description' => "Thanh toán mua gói dịch vụ: {$package->name}",
-                ]);
+                    ServiceUserTransactionLog::create([
+                        'service_user_id' => $serviceUser->id,
+                        'amount' => $totalCost,
+                        'type' => ServiceUserTransactionType::PURCHASE->value,
+                        'status' => ServiceUserTransactionStatus::COMPLETED->value,
+                        'reference_id' => (string) $walletTransaction->id,
+                        'description' => "Thanh toán mua gói dịch vụ: {$package->name}",
+                    ]);
+                }
 
                 Logging::web('ServicePurchaseService@createPurchaseOrder: Wallet deducted', [
                     'wallet_id' => $wallet->id,

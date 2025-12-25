@@ -2,6 +2,7 @@
 
 namespace App\Jobs\MetaApi;
 
+use App\Common\Constants\QueueKey\QueueKey;
 use App\Models\ServiceUser;
 use App\Service\MetaService;
 use App\Service\MetaAdsNotificationService;
@@ -26,7 +27,7 @@ class SyncMetaJob implements ShouldQueue
         protected ServiceUser $serviceUser,
     )
     {
-        $this->onQueue('meta-api');
+        $this->onQueue(QueueKey::META_API);
     }
 
     /**

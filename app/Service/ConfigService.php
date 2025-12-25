@@ -35,6 +35,20 @@ class ConfigService
         }
     }
 
+    public function getValue(string $key, mixed $default = null): mixed
+    {
+        try {
+            $config = $this->configRepository->findByKey($key);
+            return $config?->value ?? $default;
+        } catch (QueryException $e) {
+            Logging::error(
+                message: 'Lỗi khi lấy cấu hình ConfigService@getValue: ' . $e->getMessage(),
+                exception: $e
+            );
+            return $default;
+        }
+    }
+
     public function update(array $data): ServiceReturn
     {
         try {

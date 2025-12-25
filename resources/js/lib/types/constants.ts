@@ -37,11 +37,13 @@ export const walletStatusLabel: Record<_WalletStatus, string> = {
 export enum _ConfigName {
     BEP20_WALLET_ADDRESS = 'BEP20_WALLET_ADDRESS',
     TRC20_WALLET_ADDRESS = 'TRC20_WALLET_ADDRESS',
+    POSTPAY_MIN_BALANCE = 'POSTPAY_MIN_BALANCE',
 }
 
 export const configNameLabel: Record<_ConfigName, string> = {
     [_ConfigName.BEP20_WALLET_ADDRESS]: 'config.bep20_wallet_address',
     [_ConfigName.TRC20_WALLET_ADDRESS]: 'config.trc20_wallet_address',
+    [_ConfigName.POSTPAY_MIN_BALANCE]: 'config.postpay_min_balance',
 }
 
 export enum _ConfigType {

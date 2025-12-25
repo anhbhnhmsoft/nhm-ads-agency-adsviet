@@ -11,6 +11,8 @@ use App\Models\ServiceUserTransactionLog;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\WalletRepository;
+use App\Service\TelegramService;
+use App\Service\MailService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +26,8 @@ class ServicesBillPostpay extends Command
         protected ServiceUserRepository $serviceUserRepository,
         protected WalletRepository $walletRepository,
         protected UserWalletTransactionRepository $walletTransactionRepository,
+        protected TelegramService $telegramService,
+        protected MailService $mailService,
     ) {
         parent::__construct();
     }
@@ -65,6 +69,19 @@ class ServicesBillPostpay extends Command
 
                         $monthlyFee = $spending * ($feePercent / 100);
 
+                        // Thu phí mở tài khoản ở kỳ postpay đầu tiên
+                        $config = $serviceUser->config_account ?? [];
+                        $paymentType = $config['payment_type'] ?? 'prepay';
+                        $openFeePaid = $config['open_fee_paid'] ?? ($paymentType === 'prepay');
+                        $openFee = (!$openFeePaid && $paymentType === 'postpay') ? (float) $package->open_fee : 0;
+
+                        $chargeAmount = $monthlyFee + $openFee;
+                        if ($chargeAmount <= 0) {
+                            $serviceUser->last_postpay_billed_at = $today;
+                            $serviceUser->save();
+                            continue;
+                        }
+
                         $wallet = $this->walletRepository->findByUserId((string) $serviceUser->user_id);
                         if (!$wallet) {
                             Logging::web('services:bill-postpay wallet not found', [
@@ -76,25 +93,57 @@ class ServicesBillPostpay extends Command
                             continue;
                         }
 
-                        if ((float) $wallet->balance < $monthlyFee) {
+                        if ((float) $wallet->balance < $chargeAmount) {
                             // Phương án A: cảnh báo và bỏ qua (không cập nhật last_postpay_billed_at để lần sau thử lại)
                             Logging::web('services:bill-postpay insufficient balance, skip', [
                                 'service_user_id' => $serviceUser->id,
                                 'user_id' => $serviceUser->user_id,
                                 'balance' => $wallet->balance,
                                 'monthly_fee' => $monthlyFee,
+                                'open_fee' => $openFee,
+                                'charge_amount' => $chargeAmount,
                             ]);
+
+                            // Gửi thông báo cho khách (Telegram hoặc email)
+                            $user = $wallet->user;
+                            if ($user) {
+                                $shortName = $user->name ?? $user->username ?? 'Customer';
+                                $balanceFormatted = number_format((float) $wallet->balance, 2);
+                                $chargeFormatted = number_format($chargeAmount, 2);
+                                $openFeeFormatted = number_format($openFee, 2);
+                                $monthlyFeeFormatted = number_format($monthlyFee, 2);
+                                $message = __('wallet.postpay_charge_insufficient', [
+                                    'name' => $shortName,
+                                    'balance' => $balanceFormatted,
+                                    'charge' => $chargeFormatted,
+                                    'monthly_fee' => $monthlyFeeFormatted,
+                                    'open_fee' => $openFeeFormatted,
+                                ]);
+
+                                if (!empty($user->telegram_id)) {
+                                    $this->telegramService->sendNotification($user->telegram_id, $message);
+                                } elseif (!empty($user->email) && !empty($user->email_verified_at)) {
+                                    $this->mailService->sendWalletTransactionAlert(
+                                        email: $user->email,
+                                        username: $shortName,
+                                        typeLabel: __('wallet.postpay_charge_label'),
+                                        amount: $chargeAmount,
+                                        description: $message,
+                                    );
+                                }
+                            }
+
                             $serviceUser->last_postpay_billed_at = $today;
                             $serviceUser->save();
                             continue;
                         }
 
-                        DB::transaction(function () use ($wallet, $monthlyFee, $package, $serviceUser, $today) {
-                            $wallet->update(['balance' => (float) $wallet->balance - $monthlyFee]);
+                        DB::transaction(function () use ($wallet, $openFee, $chargeAmount, $package, $serviceUser, $today, $config, $openFeePaid) {
+                            $wallet->update(['balance' => (float) $wallet->balance - $chargeAmount]);
 
                             $walletTransaction = $this->walletTransactionRepository->create([
                                 'wallet_id' => $wallet->id,
-                                'amount' => -$monthlyFee,
+                                'amount' => -$chargeAmount,
                                 'type' => WalletTransactionType::SERVICE_PURCHASE->value,
                                 'status' => WalletTransactionStatus::COMPLETED->value,
                                 'description' => "Postpay monthly fee: {$package->name}",
@@ -103,12 +152,18 @@ class ServicesBillPostpay extends Command
 
                             ServiceUserTransactionLog::create([
                                 'service_user_id' => $serviceUser->id,
-                                'amount' => $monthlyFee,
+                                'amount' => $chargeAmount,
                                 'type' => ServiceUserTransactionType::FEE->value,
                                 'status' => ServiceUserTransactionStatus::COMPLETED->value,
                                 'reference_id' => (string) $walletTransaction->id,
                                 'description' => "Postpay monthly fee (last 30d): {$package->name}",
                             ]);
+
+                            // Đánh dấu đã thu phí mở tài khoản (chỉ một lần cho trả sau)
+                            if (!$openFeePaid && $openFee > 0) {
+                                $config['open_fee_paid'] = true;
+                                $serviceUser->config_account = $config;
+                            }
 
                             $serviceUser->last_postpay_billed_at = $today;
                             $serviceUser->save();
