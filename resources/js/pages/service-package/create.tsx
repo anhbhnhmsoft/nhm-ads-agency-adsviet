@@ -16,7 +16,7 @@ import { _PlatformType } from '@/lib/types/constants';
 import { DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE, useFormCreateServicePackage } from '@/pages/service-package/hooks/use-form';
 import { ServicePackageOption } from '@/pages/service-package/types/type';
 import { service_packages_index } from '@/routes';
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 type Props = {
@@ -32,6 +32,12 @@ const Create = ({ meta_features, google_features }: Props) => {
     const monthlySpendingError = Object.entries(errors).find(([key]) =>
         key.startsWith('monthly_spending_fee_structure'),
     )?.[1];
+
+    useEffect(() => {
+        if ((data.platform === _PlatformType.META || data.platform === _PlatformType.GOOGLE) && data.features.length === 0) {
+            setData('features', [{ key: '', value: '' }]);
+        }
+    }, [data.platform]);
 
     /**
      * Lấy danh sách Features dựa trên Platform
@@ -472,79 +478,144 @@ const Create = ({ meta_features, google_features }: Props) => {
                     ? t('service_packages.meta_features')
                     : t('service_packages.google_features')}
             </h1>
-            <div className={'grid grid-cols-1 gap-6 md:grid-cols-2'}>
-                {availableFeatures.map((feature) => {
-                    if (feature.type === 'boolean') {
-                        return (
-                            <div key={feature.key} className={'flex flex-col gap-2'}>
-                                <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 hover:bg-accent/50 has-aria-checked:border-blue-600 has-aria-checked:bg-blue-50">
-                                    <Checkbox
-                                        id={feature.key}
-                                        disabled={false}
-                                        checked={
-                                            !!getCurrentFeatureValue(
-                                                feature.key,
-                                                false,
-                                            )
-                                        }
-                                        onCheckedChange={(value) => {
-                                            const val = value as boolean;
-                                            // e là Event, nhưng Checkbox component của shadcn trả về giá trị trực tiếp
-                                            return handleFeatureChange(
-                                                feature.key,
-                                                val,
-                                            ); // <--- Nguồn gốc vấn đề 2
-                                        }}
-                                        className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
-                                    />
-                                    <div className="grid gap-1.5 font-normal">
-                                        <p className="text-sm leading-none font-medium">
-                                            {feature.label}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {t('service_packages.toggle_desc')}
-                                        </p>
-                                    </div>
-                                </Label>
+            
+            {(data.platform === _PlatformType.META || data.platform === _PlatformType.GOOGLE) ? (
+                <div className="space-y-3 rounded-lg border p-4">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="font-medium">
+                                {data.platform === _PlatformType.META
+                                    ? t('service_packages.meta_features')
+                                    : t('service_packages.google_features')}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                {data.platform === _PlatformType.META
+                                    ? t('service_packages.meta_features_desc', { defaultValue: 'Nhập các rule Meta Ads. Mỗi dòng là một rule với tiêu đề và mô tả.' })
+                                    : t('service_packages.google_features_desc', { defaultValue: 'Nhập các rule Google Ads. Mỗi dòng là một rule với tiêu đề và mô tả.' })}
+                            </p>
+                        </div>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                                const newFeatures = [...data.features, { key: '', value: '' }];
+                                setData('features', newFeatures);
+                            }}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            {t('service_packages.meta_features_add_rule', { defaultValue: '+ Thêm rule' })}
+                        </Button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                        <div className="hidden md:grid md:grid-cols-[1fr_1fr_auto] md:gap-3">
+                            <Label className="text-muted-foreground">
+                                {t('service_packages.meta_features_key_label', { defaultValue: 'Tiêu đề' })}
+                            </Label>
+                            <Label className="text-muted-foreground">
+                                {t('service_packages.meta_features_value_label', { defaultValue: 'Mô tả' })}
+                            </Label>
+                            <span />
+                        </div>
+                        {data.features.map((feature, index) => (
+                            <div
+                                key={`feature-${index}`}
+                                className="grid gap-2 md:grid-cols-[1fr_1fr_auto]"
+                            >
+                                <Input
+                                    placeholder={t('service_packages.meta_features_key_placeholder', { defaultValue: 'Nhập tiêu đề' })}
+                                    value={feature.key || ''}
+                                    onChange={(e) => {
+                                        const newFeatures = [...data.features];
+                                        newFeatures[index] = {
+                                            key: e.target.value,
+                                            value: newFeatures[index].value,
+                                        };
+                                        setData('features', newFeatures);
+                                    }}
+                                />
+                                <Input
+                                    placeholder={t('service_packages.meta_features_value_placeholder', { defaultValue: 'Nhập mô tả' })}
+                                    value={typeof feature.value === 'string' ? feature.value : (feature.value?.toString() || '')}
+                                    onChange={(e) => {
+                                        const newFeatures = [...data.features];
+                                        // Lưu value dạng string (text) để admin nhập tự do
+                                        newFeatures[index] = {
+                                            key: newFeatures[index].key,
+                                            value: e.target.value,
+                                        };
+                                        setData('features', newFeatures);
+                                    }}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="justify-self-start md:justify-self-end"
+                                    size="icon"
+                                    onClick={() => {
+                                        const newFeatures = data.features.filter(
+                                            (_, idx) => idx !== index,
+                                        );
+                                        setData('features', newFeatures);
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
-                        )
-                    }
-
-                    if (feature.type === 'number') {
-                        if (feature.key === 'meta_timezone_id') {
+                        ))}
+                    </div>
+                    {errors.features && (
+                        <span className="text-sm text-red-500">
+                            {errors.features}
+                        </span>
+                    )}
+                </div>
+            ) : (
+                <div className={'grid grid-cols-1 gap-6 md:grid-cols-2'}>
+                    {availableFeatures.map((feature) => {
+                        if (feature.type === 'boolean') {
                             return (
                                 <div key={feature.key} className={'flex flex-col gap-2'}>
-                                    <Label htmlFor={feature.key}>
-                                        {feature.label}
+                                    <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 hover:bg-accent/50 has-aria-checked:border-blue-600 has-aria-checked:bg-blue-50">
+                                        <Checkbox
+                                            id={feature.key}
+                                            disabled={false}
+                                            checked={
+                                                !!getCurrentFeatureValue(
+                                                    feature.key,
+                                                    false,
+                                                )
+                                            }
+                                            onCheckedChange={(value) => {
+                                                const val = value as boolean;
+                                                return handleFeatureChange(
+                                                    feature.key,
+                                                    val,
+                                                );
+                                            }}
+                                            className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+                                        />
+                                        <div className="grid gap-1.5 font-normal">
+                                            <p className="text-sm leading-none font-medium">
+                                                {feature.label}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {t('service_packages.toggle_desc')}
+                                            </p>
+                                        </div>
                                     </Label>
-                                    <Input
-                                        type="number"
-                                        value={
-                                            (getCurrentFeatureValue(
-                                                feature.key,
-                                                0,
-                                            ) as number) ?? ''
-                                        }
-                                        onChange={(e) =>
-                                            handleFeatureChange(
-                                                feature.key,
-                                                parseFloat(e.target.value) || 0,
-                                            )
-                                        }
-                                    />
-                                    <span className="text-sm text-slate-400">
-                                        {t('service_packages.meta_timezone_id_desc')}
-                                    </span>
                                 </div>
                             )
-                        }else{
+                        }
+
+                        if (feature.type === 'number') {
                             return (
                                 <div key={feature.key} className={'flex flex-col gap-2'}>
                                     <Label htmlFor={feature.key}>
                                         {feature.label}
                                     </Label>
                                     <Input
-                                        type="text" // Dùng text để hỗ trợ thập phân
+                                        type="text"
                                         inputMode="decimal"
                                         value={
                                             (getCurrentFeatureValue(
@@ -562,12 +633,12 @@ const Create = ({ meta_features, google_features }: Props) => {
                                 </div>
                             )
                         }
-                    }
-                })}
-                {errors.features && (
-                    <p className="text-sm text-red-500">{errors.features}</p>
-                )}
-            </div>
+                    })}
+                    {errors.features && (
+                        <p className="text-sm text-red-500">{errors.features}</p>
+                    )}
+                </div>
+            )}
 
             <Button type="submit" disabled={processing}>
                 {t('common.save')}

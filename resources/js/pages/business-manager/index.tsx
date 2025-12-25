@@ -21,9 +21,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import axios from 'axios';
-
 type Props = {
     paginator: BusinessManagerPagination;
     stats?: BusinessManagerStats;
@@ -37,36 +34,15 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
     const [loadingAccounts, setLoadingAccounts] = useState(false);
     const [selectedPlatform, setSelectedPlatform] = useState<'all' | _PlatformType>( 'all' );
 
-    const handleViewDetails = async (item: BusinessManagerItem) => {
-        setSelectedBM(item);
-        setDetailDialogOpen(true);
-        setLoadingAccounts(true);
-        
-        try {
-            const response = await axios.get(`/business-managers/${item.id}/accounts`, {
-                params: {
-                    platform: item.platform,
-                },
-            });
-            
-            if (response.data.success) {
-                setAccounts(response.data.data || []);
-            } else {
-                setAccounts([]);
-            }
-        } catch (error) {
-            console.error('Error loading accounts:', error);
-            setAccounts([]);
-        } finally {
-            setLoadingAccounts(false);
-        }
-    };
-
     const columns: ColumnDef<BusinessManagerItem>[] = useMemo(
         () => [
             {
                 accessorKey: 'name',
                 header: t('business_manager.table.account_name', { defaultValue: 'Tên tài khoản' }),
+                cell: ({ row }) => {
+                    const displayName = row.original.config_account?.display_name || row.original.name;
+                    return <span className="font-medium">{displayName}</span>;
+                },
             },
             {
                 accessorKey: 'id',
@@ -335,10 +311,21 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                                     columns={accountColumns} 
                                     paginator={{
                                         data: accounts,
-                                        current_page: 1,
-                                        last_page: 1,
-                                        per_page: accounts.length,
-                                        total: accounts.length,
+                                        links: {
+                                            first: null,
+                                            last: null,
+                                            next: null,
+                                            prev: null,
+                                        },
+                                        meta: {
+                                            links: [],
+                                            current_page: 1,
+                                            from: 1,
+                                            last_page: 1,
+                                            per_page: accounts.length || 1,
+                                            to: accounts.length,
+                                            total: accounts.length,
+                                        },
                                     }} 
                                 />
                             )}

@@ -64,6 +64,8 @@ return [
     'telegram' => [
         'low_balance' => "⚠️ Your wallet only has :balance USDT (threshold :threshold USDT).\nPlease top up to avoid service interruption.",
     ],
+    'postpay_charge_insufficient' => 'Hello :name, this postpaid billing is :charge USDT (open fee: :open_fee, monthly fee: :monthly_fee) but your wallet balance is :balance USDT. Please top up to keep services running.',
+    'postpay_charge_label' => 'Postpay charge',
     'notifications' => [
         'title' => '🔔 :type',
         'amount' => 'Amount: :amount USDT',

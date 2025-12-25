@@ -42,8 +42,9 @@ const parseCurrencyInput = (value: string): number => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageProps) => {
+const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance }: ServicePurchasePageProps) => {
     const { t } = useTranslation();
+    const postpayMinBalance = typeof postpay_min_balance === 'number' ? postpay_min_balance : 200;
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
     const [showCalculator, setShowCalculator] = useState(false);
     const [searchQuery, setSearchQuery] = useState<string>('');
@@ -206,20 +207,22 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
         const isPrepay = paymentType === 'prepay';
         const topUpNum = isPrepay ? parseCurrencyInput(topUpAmountStr) : 0;
         const openFee = parseFloat(pkg.open_fee);
+        const chargeOpenFee = isPrepay ? openFee : 0; // Trả sau không thu phí mở tài khoản upfront
         const serviceFee = topUpNum > 0 ? calculateServiceFee(topUpNum, pkg.top_up_fee) : 0;
-        const totalCost = openFee + topUpNum + serviceFee;
-        return { serviceFee, totalCost, openFee, topUpNum };
+        const totalCost = chargeOpenFee + topUpNum + serviceFee;
+        return { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum };
     };
 
     // Handle purchase
     const handlePurchase = () => {
         if (!selectedPackage) return;
 
-        // Không cho chọn trả sau nếu số dư ví < 200 USDT
-        if (paymentType === 'postpay' && wallet_balance < 200) {
+        // Không cho chọn trả sau nếu số dư ví < ngưỡng cấu hình
+        if (paymentType === 'postpay' && wallet_balance < postpayMinBalance) {
             alert(
                 t('service_purchase.postpay_min_wallet', {
-                    defaultValue: 'Ví của bạn cần tối thiểu 200 USDT để chọn thanh toán trả sau.',
+                    defaultValue: 'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau.',
+                    amount: postpayMinBalance,
                 })
             );
             return;
@@ -395,7 +398,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
 
         const platformInfo = getPlatformInfo(selectedPackage.platform);
         const topUpError = topUpAmount ? validateTopUpAmount(topUpAmount) : null;
-        const { serviceFee, totalCost, openFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount, paymentType);
+        const { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount, paymentType);
         const minTopUpAmount = Number(selectedPackage.range_min_top_up || '0');
         const hasInsufficientBalance = wallet_balance < totalCost;
         const showAccountInfo =
@@ -444,7 +447,12 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-3 bg-gray-50 rounded-lg">
                             <div className="text-sm text-gray-600">{t('service_purchase.account_opening_fee')}</div>
-                            <div className="sm:text-lg text-base font-bold">{formatUSDT(openFee)}</div>
+                            <div className="sm:text-lg text-base font-bold">{formatUSDT(chargeOpenFee)}</div>
+                            {paymentType === 'postpay' && (
+                                <div className="text-xs text-amber-600">
+                                    {t('service_purchase.postpay_open_fee_hint', { defaultValue: 'Phí mở tài khoản thu khi đối soát (không thu trước)' })}
+                                </div>
+                            )}
                         </div>
                         <div className="p-3 bg-gray-50 rounded-lg">
                             <div className="text-sm text-gray-600">{t('service_purchase.service_fee_pct')}</div>
@@ -622,7 +630,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             <Button
                                 type="button"
                                 variant={paymentType === 'postpay' ? 'default' : 'outline'}
-                                disabled={wallet_balance < 200}
+                                disabled={wallet_balance < postpayMinBalance}
                                 size="sm"
                                 onClick={() => {
                                     purchaseForm.setData('payment_type', 'postpay');
@@ -730,8 +738,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance }: ServicePurchasePageP
                             <div className="font-medium text-blue-800">{t('service_purchase.calculate_fee')}:</div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="flex justify-between">
-                                    <span>{t('service_purchase.account_opening_fee')}:</span>
-                                    <span className="font-medium">{formatUSDT(openFee)}</span>
+                                        <span>{t('service_purchase.account_opening_fee')}:</span>
+                                    <span className="font-medium">{formatUSDT(chargeOpenFee)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>{t('service_purchase.top_up')}:</span>

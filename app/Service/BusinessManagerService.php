@@ -62,7 +62,7 @@ class BusinessManagerService
                 if (!isset($bmList[$key])) {
                     $bmList[$key] = [
                         'id' => $bmId,
-                        'name' => $serviceUser->user->name ?? $serviceUser->user->username ?? 'Unknown',
+                        'name' => $config['display_name'] ?? $serviceUser->user->name ?? $serviceUser->user->username ?? 'Unknown',
                         'platform' => $platform,
                         'owner_name' => $serviceUser->user->name ?? $serviceUser->user->username ?? 'Unknown',
                         'owner_id' => $serviceUser->user_id,

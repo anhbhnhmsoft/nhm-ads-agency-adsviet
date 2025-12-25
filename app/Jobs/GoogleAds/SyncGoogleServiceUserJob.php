@@ -2,6 +2,7 @@
 
 namespace App\Jobs\GoogleAds;
 
+use App\Common\Constants\QueueKey\QueueKey;
 use App\Models\ServiceUser;
 use App\Service\GoogleAdsService;
 use App\Service\GoogleAdsNotificationService;
@@ -18,7 +19,7 @@ class SyncGoogleServiceUserJob implements ShouldQueue
     public function __construct(
         protected ServiceUser $serviceUser,
     ) {
-        $this->onQueue('google-api');
+        $this->onQueue(QueueKey::GOOGLE_API);
     }
 
     public function handle(

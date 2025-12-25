@@ -7,6 +7,7 @@ use App\Core\FlashMessage;
 use App\Core\QueryListDTO;
 use App\Http\Requests\Service\ServicePurchaseRequest;
 use App\Http\Resources\ServicePackageListResource;
+use App\Service\ConfigService;
 use App\Service\ServicePackageService;
 use App\Service\ServicePurchaseService;
 use App\Service\WalletService;
@@ -19,6 +20,7 @@ class ServicePurchaseController extends Controller
         protected ServicePurchaseService $servicePurchaseService,
         protected ServicePackageService $servicePackageService,
         protected WalletService $walletService,
+        protected ConfigService $configService,
     ) {}
 
     public function index()
@@ -48,12 +50,15 @@ class ServicePurchaseController extends Controller
         $walletResult = $this->walletService->getWalletForUser((int) $user->id);
         $wallet = $walletResult->isSuccess() ? $walletResult->getData() : null;
         $walletBalance = $wallet ? (float) $wallet['balance'] : 0;
+        $postpayMinBalanceRaw = $this->configService->getValue(\App\Common\Constants\Config\ConfigName::POSTPAY_MIN_BALANCE->value, 200);
+        $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 200;
 
         return $this->rendering(
             view: 'service-purchase/index',
             data: [
                 'packages' => fn() => ServicePackageListResource::collection($packages),
                 'wallet_balance' => $walletBalance,
+                'postpay_min_balance' => $postpayMinBalance,
             ]
         );
     }

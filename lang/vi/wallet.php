@@ -64,6 +64,8 @@ return [
     'telegram' => [
         'low_balance' => "⚠️ Ví của bạn chỉ còn :balance USDT (ngưỡng cảnh báo :threshold USDT).\nVui lòng nạp thêm để tránh gián đoạn dịch vụ.",
     ],
+    'postpay_charge_insufficient' => 'Xin chào :name, phí trả sau kỳ này là :charge USDT (phí mở tài khoản: :open_fee, phí tháng: :monthly_fee) nhưng số dư ví hiện tại :balance USDT không đủ. Vui lòng nạp thêm để tiếp tục duy trì dịch vụ.',
+    'postpay_charge_label' => 'Thu phí trả sau',
     'notifications' => [
         'title' => '🔔 :type',
         'amount' => 'Số tiền: :amount USDT',
