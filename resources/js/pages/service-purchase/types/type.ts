@@ -35,6 +35,7 @@ export type ServicePurchasePageProps = {
     postpay_min_balance?: number;
     meta_timezones?: TimezoneOption[];
     google_timezones?: TimezoneOption[];
+    postpay_permissions?: Record<string, boolean>; // package_id => is_allowed
 };
 
 

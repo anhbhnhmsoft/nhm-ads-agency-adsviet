@@ -30,6 +30,7 @@ return [
         'monthly_spending_fee_invalid' => 'Cấu trúc phí theo mức chi tiêu hằng tháng không hợp lệ',
         'package_in_use' => 'Gói dịch vụ đang được sử dụng, không thể xóa.',
         'postpay_min_wallet' => 'Ví của bạn cần tối thiểu :amount USDT để đăng ký trả sau.',
+        'postpay_not_allowed' => 'Bạn không được phép sử dụng hình thức trả sau cho gói dịch vụ này.',
     ],
     'flash' => [
         'purchase_success' => 'Đã tạo đơn hàng thành công và trừ tiền từ ví.',

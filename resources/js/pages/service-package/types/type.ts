@@ -49,6 +49,14 @@ export type ServicePackageItem = {
     monthly_spending_fee_structure: MonthlySpendingFeeItem[];
 };
 
+export type UserOption = {
+    id: string;
+    name: string;
+    username: string;
+    email: string;
+    label: string;
+};
+
 export type ServicePackageListQuery = BaseSearchRequest<{
     keyword?: string;
 }>;

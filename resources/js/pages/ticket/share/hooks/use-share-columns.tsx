@@ -61,7 +61,7 @@ export const useShareColumns = () => {
             },
             {
                 id: 'bm_bc_mcc_id',
-                header: t('ticket.share.bm_bc_mcc_id', { defaultValue: 'ID BM/BC/MCC' }),
+                header: t('ticket.share.bm_bc_mcc_id', { defaultValue: 'ID BM/MCC' }),
                 cell: ({ row }) => {
                     const metadata = row.original.metadata as any;
                     return metadata?.bm_bc_mcc_id || '-';

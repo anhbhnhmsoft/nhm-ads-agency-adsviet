@@ -23,6 +23,7 @@ use App\Repositories\NotificationRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\TicketRepository;
 use App\Repositories\TicketConversationRepository;
+use App\Repositories\ServicePackagePostpayUserRepository;
 use App\Service\AuthService;
 use App\Service\GoogleAdsService;
 use App\Service\MailService;
@@ -97,6 +98,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(GoogleAdsCampaignRepository::class);
         $this->app->bind(TicketRepository::class);
         $this->app->bind(TicketConversationRepository::class);
+        $this->app->bind(ServicePackagePostpayUserRepository::class);
     }
 
     /**

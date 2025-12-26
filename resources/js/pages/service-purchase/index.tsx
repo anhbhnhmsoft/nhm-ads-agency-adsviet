@@ -43,7 +43,7 @@ const parseCurrencyInput = (value: string): number => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, meta_timezones = [], google_timezones = [] }: ServicePurchasePageProps) => {
+const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, meta_timezones = [], google_timezones = [], postpay_permissions = {} }: ServicePurchasePageProps) => {
     const { t } = useTranslation();
     const postpayMinBalance = typeof postpay_min_balance === 'number' ? postpay_min_balance : 200;
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
@@ -96,6 +96,17 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             }, 0);
         }
     }, [selectedPackage?.platform, purchaseForm]);
+
+    // Reset payment_type về 'prepay' nếu package không cho phép trả sau
+    useEffect(() => {
+        if (selectedPackage) {
+            const isPostpayAllowed = postpay_permissions[selectedPackage.id] === true;
+            // Nếu đang chọn trả sau nhưng package không cho phép => reset về trả trước
+            if (paymentType === 'postpay' && !isPostpayAllowed) {
+                purchaseForm.setData('payment_type', 'prepay');
+            }
+        }
+    }, [selectedPackage?.id, postpay_permissions, paymentType, purchaseForm]);
 
     // Filter packages
     const filteredPackages = useMemo(() => {
@@ -233,15 +244,26 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         // Mark all fields as touched on submit
         setTouchedFields({ topUpAmount: true, budget: true });
 
-        // Không cho chọn trả sau nếu số dư ví < ngưỡng cấu hình
-        if (paymentType === 'postpay' && wallet_balance < postpayMinBalance) {
-            alert(
-                t('service_purchase.postpay_min_wallet', {
-                    defaultValue: 'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau.',
-                    amount: postpayMinBalance,
-                })
-            );
-            return;
+        // Kiểm tra quyền trả sau - chỉ true mới được phép
+        const isPostpayAllowed = selectedPackage 
+            ? (postpay_permissions[selectedPackage.id] === true)
+            : false;
+
+        if (paymentType === 'postpay') {
+            if (!isPostpayAllowed) {
+                alert(t('services.validation.postpay_not_allowed'));
+                purchaseForm.setData('payment_type', 'prepay');
+                return;
+            }
+            if (wallet_balance < postpayMinBalance) {
+                alert(
+                    t('service_purchase.postpay_min_wallet', {
+                        defaultValue: 'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau.',
+                        amount: postpayMinBalance,
+                    })
+                );
+                return;
+            }
         }
 
         const isPrepay = paymentType === 'prepay';
@@ -679,18 +701,28 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             >
                                 {t('service_purchase.payment_prepay', { defaultValue: 'Thanh toán trả trước' })}
                             </Button>
-                            <Button
-                                type="button"
-                                variant={paymentType === 'postpay' ? 'default' : 'outline'}
-                                disabled={wallet_balance < postpayMinBalance}
-                                size="sm"
-                                onClick={() => {
-                                    purchaseForm.setData('payment_type', 'postpay');
-                                    purchaseForm.setData('top_up_amount', ''); // Trả sau không thu top-up upfront
-                                }}
-                            >
-                                {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
-                            </Button>
+                            {(() => {
+                                if (!selectedPackage) return false;
+                                const packageId = selectedPackage.id;
+                                const permission = postpay_permissions[packageId];
+                                // Chỉ hiển thị nếu permission === true (rõ ràng là true)
+                                // Nếu undefined hoặc false => ẩn nút
+                                const isAllowed = permission === true;
+                                return isAllowed;
+                            })() && (
+                                <Button
+                                    type="button"
+                                    variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                    disabled={wallet_balance < postpayMinBalance}
+                                    size="sm"
+                                    onClick={() => {
+                                        purchaseForm.setData('payment_type', 'postpay');
+                                        purchaseForm.setData('top_up_amount', ''); // Trả sau không thu top-up upfront
+                                    }}
+                                >
+                                    {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
+                                </Button>
+                            )}
                         </div>
                     </div>
 

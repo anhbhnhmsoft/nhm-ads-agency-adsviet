@@ -157,6 +157,21 @@
     - softDeletes
     - timestamps
 
+# bảng service_package_postpay_users
+    # note
+    - lưu trữ danh sách users được phép sử dụng hình thức trả sau cho từng gói dịch vụ
+    - Bảng pivot giữa service_packages và users
+    # quan hệ
+    - n-1 với bảng service_packages qua service_package_id
+    - n-1 với bảng users qua user_id
+    # cấu trúc
+    - id (int, primary key, auto-increment)
+    - service_package_id (varchar, foreign key to service_packages.id, not null)
+    - user_id (varchar, foreign key to users.id, not null)
+    - unique constraint: (service_package_id, user_id) -- một user chỉ được phép trả sau một lần cho một gói
+    - softDeletes
+    - timestamps
+
 # bảng service_users
     # note
     - lưu trữ thông tin người dùng sử dụng gói dịch vụ

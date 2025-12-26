@@ -41,4 +41,10 @@ class ServicePackage extends Model
     {
         return $this->hasMany(ServiceUser::class, 'package_id');
     }
+
+    public function postpayUsers()
+    {
+        return $this->belongsToMany(User::class, 'service_package_postpay_users', 'service_package_id', 'user_id')
+            ->withTimestamps();
+    }
 }

@@ -150,7 +150,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                 <div className="grid gap-2 text-sm">
                     <div>{t('ticket.share.platform', { defaultValue: 'Kênh quảng cáo' })}: {getPlatformName(metadata.platform)}</div>
                     <div>{t('ticket.share.account', { defaultValue: 'Tài khoản' })}: {metadata.account_name ? `${metadata.account_name} (${metadata.account_id})` : metadata.account_id || '-'}</div>
-                    <div>{t('ticket.share.bm_bc_mcc_id', { defaultValue: 'ID BM/BC/MCC' })}: {metadata.bm_bc_mcc_id || '-'}</div>
+                    <div>{t('ticket.share.bm_bc_mcc_id', { defaultValue: 'ID BM/MCC' })}: {metadata.bm_bc_mcc_id || '-'}</div>
                     <div>{t('ticket.share.notes', { defaultValue: 'Ghi chú' })}: {metadata.notes || '-'}</div>
                 </div>
             );

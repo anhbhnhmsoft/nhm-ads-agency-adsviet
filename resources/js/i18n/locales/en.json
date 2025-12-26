@@ -498,7 +498,11 @@
       "crypto_info_required": "Please enter crypto address and select network."
     }
   },
-  "service_packages": {
+    "service_packages": {
+        "postpay_users_title": "Users Allowed for Postpay",
+        "postpay_users_description": "Select users who are allowed to use postpay payment for this service package. If no one is selected, all users can use postpay.",
+        "postpay_users_label": "Select Users",
+        "postpay_users_placeholder": "Select users allowed for postpay",
     "empty_title": "No service packages yet",
     "empty_description": "You haven’t created any service packages. Start by creating a new one.",
     "create_btn": "Create new package",
