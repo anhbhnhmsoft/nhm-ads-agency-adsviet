@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServicePackage\ServicePackageFeature;
+use App\Common\Constants\User\UserRole;
 use App\Common\Helpers\TimezoneHelper;
 use App\Core\Controller;
 use App\Core\FlashMessage;
@@ -11,6 +12,7 @@ use App\Core\QueryListDTO;
 use App\Http\Resources\ServicePackageListResource;
 use App\Http\Resources\ServicePackageResource;
 use App\Service\ServicePackageService;
+use App\Service\UserService;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -20,7 +22,8 @@ class ServicePackageController extends Controller
 {
 
     public function __construct(
-        protected ServicePackageService $servicePackageService
+        protected ServicePackageService $servicePackageService,
+        protected UserService $userService,
     )
     {
     }
@@ -174,6 +177,17 @@ class ServicePackageController extends Controller
             FlashMessage::error($result->getMessage());
             return redirect()->route('service_packages_index');
         }
+        // Lấy danh sách users được phép trả sau
+        $postpayUsersResult = $this->servicePackageService->getPostpayUserIds($id);
+        $postpayUserIds = $postpayUsersResult->isError() ? [] : $postpayUsersResult->getData();
+
+        // Lấy danh sách users theo roles (AGENCY và CUSTOMER)
+        $allUsersResult = $this->userService->getUsersByRoles([
+            UserRole::AGENCY->value,
+            UserRole::CUSTOMER->value,
+        ]);
+        $allUsers = $allUsersResult->isError() ? [] : $allUsersResult->getData();
+
         return $this->rendering(
             view: 'service-package/edit',
             data: [
@@ -182,6 +196,8 @@ class ServicePackageController extends Controller
                 'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
                 'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
                 'service_package' => fn () => ServicePackageResource::make($result->getData())->toArray(request()),
+                'all_users' => $allUsers,
+                'postpay_user_ids' => $postpayUserIds,
             ]
         );
     }
@@ -274,11 +290,23 @@ class ServicePackageController extends Controller
         $form = $validator->validated();
         $form = $this->prepareMonthlySpendingData($form);
 
+        $postpayUserIds = $request->input('postpay_user_ids', []);
+        if (!is_array($postpayUserIds)) {
+            $postpayUserIds = [];
+        }
+
         // Cập nhật service package
         $result = $this->servicePackageService->updateServicePackage($id, $form);
 
         // Xử lý kết quả
         if($result->isSuccess()){
+            // Đồng bộ danh sách users được phép trả sau
+            $syncResult = $this->servicePackageService->syncPostpayUsers($id, $postpayUserIds);
+            if ($syncResult->isError()) {
+                FlashMessage::error($syncResult->getMessage());
+                return redirect()->back()->withInput();
+            }
+
             FlashMessage::success(__('common_success.update_success'));
             return redirect()->route('service_packages_index');
         }else{

@@ -609,4 +609,37 @@ class UserService
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
+
+    /**
+     * Lấy danh sách users để chọn cho postpay
+     */
+    public function getUsersByRoles(array $roles): ServiceReturn
+    {
+        try {
+            $users = $this->userRepository->query()
+                ->whereIn('role', $roles)
+                ->where('disabled', false)
+                ->select('id', 'name', 'username', 'email')
+                ->orderBy('name')
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'username' => $user->username,
+                        'email' => $user->email,
+                        'label' => "{$user->name} ({$user->username})",
+                    ];
+                })
+                ->toArray();
+
+            return ServiceReturn::success(data: $users);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'Lỗi khi lấy danh sách users theo roles UserService@getUsersByRoles: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
 }

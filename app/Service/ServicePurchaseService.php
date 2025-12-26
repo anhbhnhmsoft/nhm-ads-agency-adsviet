@@ -27,6 +27,7 @@ class ServicePurchaseService
         protected WalletRepository $walletRepository,
         protected UserWalletTransactionRepository $walletTransactionRepository,
         protected ConfigRepository $configRepository,
+        protected ServicePackageService $servicePackageService,
     ) {
     }
 
@@ -68,6 +69,14 @@ class ServicePurchaseService
                 $serviceFeePercent = (float) $package->top_up_fee;
                 $serviceFee = $topUpAmount > 0 ? ($topUpAmount * $serviceFeePercent / 100) : 0;
                 $isPrepay = ($configAccount['payment_type'] ?? 'prepay') === 'prepay';
+                
+                // Kiểm tra user có được phép trả sau cho gói này không
+                if (!$isPrepay && !$this->servicePackageService->isUserAllowedPostpay($packageId, $userId)) {
+                    return ServiceReturn::error(
+                        message: __('services.validation.postpay_not_allowed')
+                    );
+                }
+
                 $openFeePayable = $isPrepay ? $openFee : 0; // Trả sau không thu phí mở tài khoản upfront
                 // Tổng tiền phải trừ ví = (phí mở nếu trả trước) + số tiền top-up + phí dịch vụ top-up
                 $totalCost = $openFeePayable + $topUpAmount + $serviceFee;

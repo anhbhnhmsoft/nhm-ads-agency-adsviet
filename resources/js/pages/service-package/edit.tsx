@@ -19,16 +19,19 @@ import { service_packages_index } from '@/routes';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { UserSelect } from '@/components/user-select';
+import { UserOption } from '@/pages/service-package/types/type';
 
 type Props = {
     meta_features: ServicePackageOption[];
     google_features: ServicePackageOption[];
     service_package: ServicePackageItem;
-
+    all_users?: UserOption[];
+    postpay_user_ids?: string[];
 };
-const Edit = ({ meta_features, google_features, service_package }: Props) => {
+const Edit = ({ meta_features, google_features, service_package, all_users = [], postpay_user_ids = [] }: Props) => {
     const { t } = useTranslation();
-    const { form, submit } = useFormEditServicePackage(service_package.id, service_package);
+    const { form, submit } = useFormEditServicePackage(service_package.id, service_package, postpay_user_ids);
 
     const { data, setData, processing, errors } = form;
     const monthlySpendingError = Object.entries(errors).find(([key]) =>
@@ -646,6 +649,35 @@ const Edit = ({ meta_features, google_features, service_package }: Props) => {
                     )}
                 </div>
             )}
+
+            {/* Section chọn users được phép trả sau */}
+            <div className="space-y-4 rounded-lg border p-4">
+                <div>
+                    <h3 className="text-lg font-semibold mb-2">
+                        {t('service_packages.postpay_users_title', { defaultValue: 'Người dùng được phép trả sau' })}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        {t('service_packages.postpay_users_description', { 
+                            defaultValue: 'Chọn các người dùng được phép sử dụng hình thức trả sau cho gói dịch vụ này. Nếu không chọn ai, tất cả người dùng đều có thể trả sau.' 
+                        })}
+                    </p>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="postpay_user_ids">
+                        {t('service_packages.postpay_users_label', { defaultValue: 'Chọn người dùng' })}
+                    </Label>
+                    <UserSelect
+                        id="postpay_user_ids"
+                        value={form.data.postpay_user_ids || []}
+                        onValueChange={(value) => form.setData('postpay_user_ids', value)}
+                        options={all_users}
+                        placeholder={t('service_packages.postpay_users_placeholder', { defaultValue: 'Chọn người dùng được phép trả sau' })}
+                    />
+                    {form.errors.postpay_user_ids && (
+                        <p className="text-sm text-red-500">{form.errors.postpay_user_ids}</p>
+                    )}
+                </div>
+            </div>
 
             <Button type="submit" disabled={processing}>
                 {t('common.save')}

@@ -54,6 +54,24 @@ class ServicePurchaseController extends Controller
         $postpayMinBalanceRaw = $this->configService->getValue(\App\Common\Constants\Config\ConfigName::POSTPAY_MIN_BALANCE->value, 200);
         $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 200;
 
+        // Nếu package có danh sách users được phép trả sau và user hiện tại có trong danh sách => true
+        $postpayPermissions = [];
+        foreach ($packages as $package) {
+            $postpayUserIds = $this->servicePackageService->getPostpayUserIds($package->id);
+            if ($postpayUserIds->isError()) {
+                $postpayPermissions[$package->id] = false;
+                continue;
+            }
+            $allowedUserIds = $postpayUserIds->getData();
+            // Nếu danh sách rỗng => không cho phép (ẩn nút)
+            if (empty($allowedUserIds)) {
+                $postpayPermissions[$package->id] = false;
+            } else {
+                // Nếu có danh sách => chỉ những user trong danh sách mới được phép
+                $postpayPermissions[$package->id] = in_array((string) $user->id, $allowedUserIds);
+            }
+        }
+
         return $this->rendering(
             view: 'service-purchase/index',
             data: [
@@ -62,6 +80,7 @@ class ServicePurchaseController extends Controller
                 'postpay_min_balance' => $postpayMinBalance,
                 'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
                 'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
+                'postpay_permissions' => $postpayPermissions,
             ]
         );
     }

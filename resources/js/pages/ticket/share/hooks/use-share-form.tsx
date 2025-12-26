@@ -25,7 +25,7 @@ export const useShareForm = () => {
         }
 
         if (!form.data.bm_bc_mcc_id || form.data.bm_bc_mcc_id.trim() === '') {
-            form.setError('bm_bc_mcc_id', t('ticket.share.bm_bc_mcc_id_required', { defaultValue: 'Vui lòng nhập ID BM/BC/MCC' }));
+            form.setError('bm_bc_mcc_id', t('ticket.share.bm_bc_mcc_id_required', { defaultValue: 'Vui lòng nhập ID BM/MCC' }));
             return;
         }
 

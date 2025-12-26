@@ -25,6 +25,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { TimezoneSelect } from '@/components/timezone-select';
 
 type TimezoneOption = {
     value: string;
@@ -442,21 +443,13 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                             ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
                                             : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
                                     </Label>
-                                    <Select
+                                    <TimezoneSelect
+                                        id="approve_timezone_bm"
                                         value={timezoneBm || ''}
                                         onValueChange={(value) => setTimezoneBm(value)}
-                                    >
-                                        <SelectTrigger id="approve_timezone_bm">
-                                            <SelectValue placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {(isApproveMeta ? meta_timezones : google_timezones).map((tz) => (
-                                                <SelectItem key={tz.value} value={tz.value}>
-                                                    {tz.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        options={isApproveMeta ? meta_timezones : google_timezones}
+                                        placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="payment_type">{t('service_purchase.payment_type')}</Label>
@@ -593,21 +586,13 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                             ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
                                             : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
                                     </Label>
-                                    <Select
+                                    <TimezoneSelect
+                                        id="edit_timezone_bm"
                                         value={editTimezoneBm || ''}
                                         onValueChange={(value) => setEditTimezoneBm(value)}
-                                    >
-                                        <SelectTrigger id="edit_timezone_bm">
-                                            <SelectValue placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {(isEditMeta ? meta_timezones : google_timezones).map((tz) => (
-                                                <SelectItem key={tz.value} value={tz.value}>
-                                                    {tz.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        options={isEditMeta ? meta_timezones : google_timezones}
+                                        placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
+                                    />
                                 </div>
                                 {isEditMeta && (
                                     <>

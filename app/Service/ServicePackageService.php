@@ -7,6 +7,8 @@ use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Repositories\ServicePackageRepository;
 use App\Repositories\ServiceUserRepository;
+use App\Repositories\ServicePackagePostpayUserRepository;
+use App\Repositories\UserRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ServicePackageService
@@ -14,6 +16,8 @@ class ServicePackageService
     public function __construct(
         protected ServicePackageRepository $servicePackageRepository,
         protected ServiceUserRepository $serviceUserRepository,
+        protected ServicePackagePostpayUserRepository $servicePackagePostpayUserRepository,
+        protected UserRepository $userRepository,
     )
     {
     }
@@ -164,5 +168,54 @@ class ServicePackageService
             );
             return ServiceReturn::error(__('common_error.server_error'));
         }
+    }
+
+    /**
+     * Lấy danh sách user IDs được phép trả sau cho gói dịch vụ
+     */
+    public function getPostpayUserIds(int|string $packageId): ServiceReturn
+    {
+        try {
+            $userIds = $this->servicePackagePostpayUserRepository->getPostpayUserIdsByPackageId($packageId);
+            return ServiceReturn::success(data: $userIds);
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi lấy danh sách postpay users ServicePackageService@getPostpayUserIds: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(__('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Đồng bộ danh sách users được phép trả sau cho gói dịch vụ
+     */
+    public function syncPostpayUsers(int|string $packageId, array $userIds): ServiceReturn
+    {
+        try {
+            // Kiểm tra package tồn tại
+            $package = $this->servicePackageRepository->find($packageId);
+            if (!$package) {
+                return ServiceReturn::error(__('common_error.not_found'));
+            }
+
+            $userIdsAsString = array_map(fn($id) => (string)$id, $userIds);
+            $this->servicePackagePostpayUserRepository->syncPostpayUsers($packageId, $userIdsAsString);
+            return ServiceReturn::success();
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi đồng bộ postpay users ServicePackageService@syncPostpayUsers: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(__('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Kiểm tra user có được phép trả sau cho gói dịch vụ không
+     */
+    public function isUserAllowedPostpay(int|string $packageId, int|string $userId): bool
+    {
+        return $this->servicePackagePostpayUserRepository->isUserAllowedPostpay($packageId, $userId);
     }
 }

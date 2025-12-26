@@ -43,8 +43,8 @@ export const useFormCreateServicePackage = () => {
     };
 };
 
-export const useFormEditServicePackage = (id: string, item: ServicePackageItem) => {
-    const form = useForm<CreateServicePackageForm>({
+export const useFormEditServicePackage = (id: string, item: ServicePackageItem, postpayUserIds: string[] = []) => {
+    const form = useForm<CreateServicePackageForm & { postpay_user_ids?: string[] }>({
         name: item.name,
         description: item.description,
         platform: item.platform,
@@ -59,6 +59,7 @@ export const useFormEditServicePackage = (id: string, item: ServicePackageItem) 
                 item.monthly_spending_fee_structure.length > 0
                 ? item.monthly_spending_fee_structure
                 : DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE),
+        postpay_user_ids: postpayUserIds,
     });
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {

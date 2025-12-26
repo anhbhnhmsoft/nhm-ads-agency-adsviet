@@ -46,14 +46,14 @@ export const ShareForm = ({ accounts }: ShareFormProps) => {
                     {/* BM/BC/MCC ID */}
                     <div className="space-y-2">
                         <Label htmlFor="bm_bc_mcc_id">
-                            {t('ticket.share.bm_bc_mcc_id', { defaultValue: 'ID BM/BC/MCC' })}
+                            {t('ticket.share.bm_bc_mcc_id', { defaultValue: 'ID BM/MCC' })}
                             <span className="text-red-500 ml-1">*</span>
                         </Label>
                         <Input
                             id="bm_bc_mcc_id"
                             value={form.data.bm_bc_mcc_id}
                             onChange={(e) => form.setData('bm_bc_mcc_id', e.target.value)}
-                            placeholder={t('ticket.share.bm_bc_mcc_id_placeholder', { defaultValue: 'Nhập ID BM/BC/MCC' })}
+                            placeholder={t('ticket.share.bm_bc_mcc_id_placeholder', { defaultValue: 'Nhập ID BM/MCC' })}
                             disabled={form.processing}
                         />
                         {form.errors.bm_bc_mcc_id && (
