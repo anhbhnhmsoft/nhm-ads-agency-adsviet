@@ -5,6 +5,10 @@ export type BusinessManagerListQuery = {
     filter: {
         keyword?: string;
         platform?: _PlatformType | number | undefined;
+        period?: 'day' | 'week' | 'month' | undefined;
+        date?: string;
+        start_date?: string;
+        end_date?: string;
     };
     sort_by?: string;
     direction?: 'asc' | 'desc';

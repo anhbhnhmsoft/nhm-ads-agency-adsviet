@@ -7,6 +7,10 @@ export const useSearchBusinessManager = () => {
     const [query, setQuery] = useNestedState<BusinessManagerListQuery['filter']>({
         keyword: "",
         platform: undefined,
+        period: undefined,
+        date: undefined,
+        start_date: undefined,
+        end_date: undefined,
     });
 
     const handleSearch = () => {
