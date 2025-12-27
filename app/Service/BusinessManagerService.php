@@ -9,7 +9,10 @@ use App\Core\ServiceReturn;
 use App\Repositories\GoogleAccountRepository;
 use App\Repositories\MetaAccountRepository;
 use App\Repositories\ServiceUserRepository;
+use App\Repositories\MetaAdsAccountInsightRepository;
+use App\Repositories\GoogleAdsAccountInsightRepository;
 use App\Core\Logging;
+use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class BusinessManagerService
@@ -18,6 +21,8 @@ class BusinessManagerService
         protected ServiceUserRepository $serviceUserRepository,
         protected MetaAccountRepository $metaAccountRepository,
         protected GoogleAccountRepository $googleAccountRepository,
+        protected MetaAdsAccountInsightRepository $metaAdsAccountInsightRepository,
+        protected GoogleAdsAccountInsightRepository $googleAdsAccountInsightRepository,
     ) {
     }
 
@@ -28,6 +33,19 @@ class BusinessManagerService
     {
         try {
             $filter = $queryListDTO->filter ?? [];
+            
+            // Xác định date range từ filter
+            $dateStart = null;
+            $dateEnd = null;
+            if (!empty($filter['period'])) {
+                if ($filter['period'] === 'day' && !empty($filter['date'])) {
+                    $dateStart = Carbon::parse($filter['date'])->startOfDay();
+                    $dateEnd = Carbon::parse($filter['date'])->endOfDay();
+                } elseif (($filter['period'] === 'week' || $filter['period'] === 'month') && !empty($filter['start_date']) && !empty($filter['end_date'])) {
+                    $dateStart = Carbon::parse($filter['start_date'])->startOfDay();
+                    $dateEnd = Carbon::parse($filter['end_date'])->endOfDay();
+                }
+            }
             
             // Lấy tất cả service_users active
             $query = $this->serviceUserRepository->query()
@@ -88,7 +106,18 @@ class BusinessManagerService
                         } else {
                             $bmList[$key]['disabled_accounts']++;
                         }
-                        $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], $account->amount_spent ?? '0', 2);
+                        
+                        // Tính spend từ insights nếu có date range, nếu không dùng amount_spent
+                        if ($dateStart && $dateEnd) {
+                            $spend = $this->metaAdsAccountInsightRepository->query()
+                                ->where('meta_account_id', $account->id)
+                                ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
+                                ->sum('spend');
+                            $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], (string) ($spend ?? '0'), 2);
+                        } else {
+                            $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], $account->amount_spent ?? '0', 2);
+                        }
+                        
                         $bmList[$key]['total_balance'] = bcadd($bmList[$key]['total_balance'], $account->balance ?? '0', 2);
                         $bmList[$key]['currency'] = $account->currency ?? 'USD';
                     }
@@ -104,6 +133,19 @@ class BusinessManagerService
                         } else {
                             $bmList[$key]['disabled_accounts']++;
                         }
+                        
+                        // Tính spend từ insights nếu có date range
+                        if ($dateStart && $dateEnd) {
+                            $spend = $this->googleAdsAccountInsightRepository->query()
+                                ->where('google_account_id', $account->id)
+                                ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
+                                ->sum('spend');
+                            $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], (string) ($spend ?? '0'), 2);
+                        } else {
+                            // Google không có amount_spent trong account, để 0 hoặc tính từ insights tổng
+                            $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], '0', 2);
+                        }
+                        
                         $bmList[$key]['total_balance'] = bcadd($bmList[$key]['total_balance'], $account->balance ?? '0', 2);
                         $bmList[$key]['currency'] = $account->currency ?? 'USD';
                     }
