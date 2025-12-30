@@ -14,13 +14,25 @@ class ServiceOrderApproveRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'meta_email' => ['required', 'email', 'max:255'],
-            'display_name' => ['required', 'string', 'max:255'],
-            'bm_id' => ['required', 'string', 'max:255'],
+            'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],            
+            'meta_email' => ['nullable', 'email', 'max:255'],
+            'display_name' => ['nullable', 'string', 'max:255'],
+            'bm_id' => ['nullable', 'string', 'max:255'],
             'info_fanpage' => ['nullable', 'string', 'max:255'],
             'info_website' => ['nullable', 'string', 'max:255'],
-            'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],
             'timezone_bm' => ['nullable', 'string'],
+            
+            'accounts' => ['nullable', 'array', 'max:3'],
+            'accounts.*.meta_email' => ['nullable', 'string', 'email', 'max:255'],
+            'accounts.*.display_name' => ['nullable', 'string', 'max:255'],
+            'accounts.*.bm_ids' => ['nullable', 'array', 'max:3'],
+            'accounts.*.bm_ids.*' => ['nullable', 'string', 'max:255'],
+            'accounts.*.fanpages' => ['nullable', 'array', 'max:3'],
+            'accounts.*.fanpages.*' => ['nullable', 'string', 'max:255'],
+            'accounts.*.websites' => ['nullable', 'array', 'max:3'],
+            'accounts.*.websites.*' => ['nullable', 'string', 'max:255'],
+            'accounts.*.timezone_bm' => ['nullable', 'string'],
+            'accounts.*.asset_access' => ['nullable', 'string', 'in:full_asset,basic_asset'],
         ];
     }
 

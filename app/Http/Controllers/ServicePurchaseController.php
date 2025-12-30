@@ -97,29 +97,30 @@ class ServicePurchaseController extends Controller
         $data = $request->validated();
 
         $configAccount = [];
-        if (isset($data['meta_email'])) {
-            $configAccount['meta_email'] = $data['meta_email'];
+
+        if (isset($data['accounts']) && is_array($data['accounts']) && !empty($data['accounts'])) {
+            $configAccount['accounts'] = $data['accounts'];
+        } else {
+            $allowedKeys = [
+                'meta_email',
+                'display_name',
+                'bm_id',
+                'info_fanpage',
+                'info_website',
+                'info_website',
+                'asset_access',
+                'timezone_bm'
+            ];
+
+            foreach ($allowedKeys as $key) {
+                if(isset($data[$key])){
+                    $configAccount[$key] = $data[$key];
+                }
+            }
         }
-        if (isset($data['display_name'])) {
-            $configAccount['display_name'] = $data['display_name'];
-        }
-        if (isset($data['bm_id'])) {
-            $configAccount['bm_id'] = $data['bm_id'];
-        }
-        if (isset($data['info_fanpage'])) {
-            $configAccount['info_fanpage'] = $data['info_fanpage'];
-        }
-        if (isset($data['info_website'])) {
-            $configAccount['info_website'] = $data['info_website'];
-        }
+
         if (isset($data['payment_type'])) {
             $configAccount['payment_type'] = $data['payment_type'];
-        }
-        if (isset($data['asset_access'])) {
-            $configAccount['asset_access'] = $data['asset_access'];
-        }
-        if (isset($data['timezone_bm'])) {
-            $configAccount['timezone_bm'] = $data['timezone_bm'];
         }
 
         $result = $this->servicePurchaseService->createPurchaseOrder(

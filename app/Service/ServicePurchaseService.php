@@ -32,7 +32,7 @@ class ServicePurchaseService
     }
 
     // Tạo order mua dịch vụ và trừ tiền ví nội bộ
-     
+
     public function createPurchaseOrder(
         int $userId,
         string $packageId,
@@ -69,7 +69,7 @@ class ServicePurchaseService
                 $serviceFeePercent = (float) $package->top_up_fee;
                 $serviceFee = $topUpAmount > 0 ? ($topUpAmount * $serviceFeePercent / 100) : 0;
                 $isPrepay = ($configAccount['payment_type'] ?? 'prepay') === 'prepay';
-                
+
                 // Kiểm tra user có được phép trả sau cho gói này không
                 if (!$isPrepay && !$this->servicePackageService->isUserAllowedPostpay($packageId, $userId)) {
                     return ServiceReturn::error(
@@ -177,7 +177,43 @@ class ServicePurchaseService
      */
     private function getDefaultConfigAccount(int $platform, array $userConfig = []): array
     {
-        // Config cơ bản cho tất cả platform (cả Google và Meta đều có asset_access)
+        if (is_array($userConfig['accounts']) && !empty($userConfig['accounts'])) {
+            $accounts = [];
+            foreach ($userConfig['accounts'] as $account) {
+                $accountData = [
+                    'meta_email' => $account['meta_email'] ?? '',
+                    'display_name' => $account['display_name'] ?? '',
+                    'bm_ids' => $account['bm_ids'] ?? [],
+                    'timezone_bm' => $account['timezone_bm'] ?? null,
+                    'asset_access' => $account['asset_access'] ?? 'full_asset',
+                ];
+
+                if ($platform === PlatformType::META->value) {
+                    $accountData['fanpages'] = $account['fanpages'] ?? [];
+                    $accountData['websites'] = $account['websites'] ?? [];
+                } else {
+                    $accountData['websites'] = $account['websites'] ?? [];
+                }
+
+                $accountData['bm_ids'] = array_filter($accountData['bm_ids'], fn($v) => !empty(trim($v ?? '')));
+                if (isset($accountData['fanpages'])) {
+                    $accountData['fanpages'] = array_filter($accountData['fanpages'], fn($v) => !empty(trim($v ?? '')));
+                }
+                if (isset($accountData['websites'])) {
+                    $accountData['websites'] = array_filter($accountData['websites'], fn($v) => !empty(trim($v ?? '')));
+                }
+
+                $accounts[] = $accountData;
+            }
+
+            return [
+                'payment_type' => $userConfig['payment_type'] ?? 'prepay',
+                'top_up_amount' => $userConfig['top_up_amount'] ?? 0,
+                'open_fee_paid' => $userConfig['open_fee_paid'] ?? false,
+                'accounts' => $accounts,
+            ];
+        }
+
         $config = [
             'meta_email' => $userConfig['meta_email'] ?? '',
             'display_name' => $userConfig['display_name'] ?? '',

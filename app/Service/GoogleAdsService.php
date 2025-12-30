@@ -388,7 +388,7 @@ class GoogleAdsService
             if (empty($accountIds)) {
                 return ServiceReturn::success(data: []);
             }
-            
+
             $accounts = $this->googleAccountRepository->query()
                 ->whereIn('id', $accountIds)
                 ->get()
@@ -610,16 +610,25 @@ class GoogleAdsService
     {
         try {
             $customerIds = $this->extractGoogleCustomerIds($serviceUser);
-            
+
             Logging::web('GoogleAdsService@syncGoogleAccounts: Extracted customer IDs', [
                 'service_user_id' => $serviceUser->id,
                 'customer_ids_count' => count($customerIds),
                 'customer_ids' => $customerIds,
             ]);
-            
+
             if (empty($customerIds)) {
                 $config = $serviceUser->config_account ?? [];
-                $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
+                $managerId = null;
+                if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
+                    // lấy BM ID đầu tiên từ account đầu tiên
+                    $firstAccount = $config['accounts'][0];
+                    if (isset($firstAccount['bm_ids']) && is_array($firstAccount['bm_ids']) && !empty($firstAccount['bm_ids'])) {
+                        $managerId = $firstAccount['bm_ids'][0];
+                    }
+                } else {
+                    $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
+                }
                 $platformConfig = $this->getPlatformConfig();
 
                 Logging::error(
@@ -704,7 +713,7 @@ GAQL;
                             $syncedCount++;
                         }
                     }
-                    
+
                     Logging::web('GoogleAdsService@syncGoogleAccounts: Synced customer', [
                         'service_user_id' => $serviceUser->id,
                         'customer_id' => $customerId,
@@ -722,7 +731,7 @@ GAQL;
                     );
                 }
             }
-            
+
             Logging::web('GoogleAdsService@syncGoogleAccounts: Completed', [
                 'service_user_id' => $serviceUser->id,
                 'total_customer_ids' => count($customerIds),
@@ -1305,7 +1314,15 @@ GAQL;
     protected function fetchCustomerIdsFromManager(ServiceUser $serviceUser): array
     {
         $config = $serviceUser->config_account ?? [];
-        $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
+        $managerId = null;
+        if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
+            $firstAccount = $config['accounts'][0];
+            if (isset($firstAccount['bm_ids']) && is_array($firstAccount['bm_ids']) && !empty($firstAccount['bm_ids'])) {
+                $managerId = $firstAccount['bm_ids'][0];
+            }
+        } else {
+            $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
+        }
         if (!$managerId) {
             Logging::error(
                 message: 'GoogleAdsService@fetchCustomerIdsFromManager: No manager ID found in config',
@@ -1553,15 +1570,15 @@ GAQL;
 
     /**
      * Lấy balance của account từ Google Ads API (từ account_budget)
-     * 
+     *
      * Logic:
      * - Query từ account_budget với approved_spending_limit_micros (Giới hạn chi tiêu) và amount_served_micros (Số tiền đã tiêu)
      * - Tính số dư: approved_spending_limit_micros - amount_served_micros
      * - Nếu số dư <= 0 → balance_exhausted = true
-     * 
+     *
      * Lưu ý: Chỉ hoạt động với tài khoản trả trước (Manual Payments/Prepay)
      * Với tài khoản trả sau (Automatic Payments), approved_spending_limit_type sẽ là INFINITE
-     * 
+     *
      * @param GoogleAdsServiceClient $googleAdsService
      * @param string $accountId
      * @param string $customerId
@@ -1638,7 +1655,7 @@ GAQL;
                         // Tài khoản trả sau, không có balance cố định
                         $balance = null;
                         $balanceExhausted = false;
-                        
+
                         Logging::web('GoogleAdsService@getAccountBalance: Account is INFINITE (Automatic Payments)', [
                             'account_id' => $accountId,
                             'customer_id' => $customerId,
@@ -2054,7 +2071,7 @@ GAQL;
             return ServiceReturn::success(data: $data);
         } catch (\Throwable $exception) {
             $errorMessage = $exception->getMessage();
-            
+
             // Kiểm tra lỗi OAuth token expired/revoked
             if (
                 str_contains($errorMessage, 'invalid_grant') ||
@@ -2063,7 +2080,7 @@ GAQL;
             ) {
                 // Clear platform config cache để force reload credentials
                 $this->clearPlatformConfigCache();
-                
+
                 Logging::error(
                     message: 'GoogleAdsService@getCampaignDetail: OAuth token expired or revoked, cleared config cache',
                     context: [
@@ -2075,7 +2092,7 @@ GAQL;
                 );
                 return ServiceReturn::error(message: __('google_ads.error.oauth_token_expired'));
             }
-            
+
             Logging::error(
                 message: 'GoogleAdsService@getCampaignDetail failed',
                 context: [
@@ -2131,25 +2148,25 @@ GAQL;
             if ($campaignStatus === GoogleCampaignStatus::ENABLED) {
                 $user = Auth::user();
                 $userRole = $user->role ?? null;
-                
+
                 // Admin, Manager, Employee không cần kiểm tra
                 if (in_array($userRole, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
-                    // Cho phép cập nhập teang thái của campaign
+                    // Cho phép cập nhập trạng thái của campaign
                 } elseif (in_array($userRole, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
                     // Customer/Agency: Kiểm tra spending > balance + 100
                     $balance = (float) ($googleAccount->balance ?? 0);
                     $threshold = 100.0;
-                    
+
                     // Lấy chi tiêu tích lũy từ database
                     $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(
                         [(string) $googleAccount->id],
                         'maximum'
                     );
-                    
+
                     if (!$insightsResult->isError()) {
                         $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
                         $thresholdAmount = $balance + $threshold;
-                        
+
                         // Nếu chi tiêu vượt quá số dư + ngưỡng, không cho phép resume
                         if ($lifetimeSpending > $thresholdAmount) {
                             return ServiceReturn::error(
@@ -2436,7 +2453,7 @@ GAQL;
             return ServiceReturn::success(data: $insights);
         } catch (\Throwable $exception) {
             $errorMessage = $exception->getMessage();
-            
+
             // Kiểm tra lỗi OAuth token expired/revoked
             if (
                 str_contains($errorMessage, 'invalid_grant') ||
@@ -2445,7 +2462,7 @@ GAQL;
             ) {
                 // Clear platform config cache để force reload credentials
                 $this->clearPlatformConfigCache();
-                
+
                 Logging::error(
                     message: 'GoogleAdsService@getCampaignDailyInsights: OAuth token expired or revoked, cleared config cache',
                     context: [
@@ -2458,7 +2475,7 @@ GAQL;
                 );
                 return ServiceReturn::error(message: __('google_ads.error.oauth_token_expired'));
             }
-            
+
             Logging::error(
                 message: 'GoogleAdsService@getCampaignDailyInsights failed',
                 context: [
@@ -2494,7 +2511,7 @@ GAQL;
             foreach ($accounts as $account) {
                 try {
                     $balance = (float) ($account->balance ?? 0);
-                    
+
                     // Kiểm tra nếu số dư thấp hơn ngưỡng an toàn (cảnh báo số dư thấp)
                     if ($balance < $threshold) {
                         // Pause tất cả campaigns trong account
@@ -2537,7 +2554,6 @@ GAQL;
                             'account_id' => $account->id,
                             'account_name' => $account->account_name,
                             'balance' => $balance,
-                            'lifetime_spending' => $lifetimeSpending,
                             'threshold' => $threshold,
                             'campaigns_paused' => $campaigns->count(),
                             'notification_sent' => $notificationResult->isSuccess(),

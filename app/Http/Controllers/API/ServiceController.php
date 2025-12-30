@@ -86,26 +86,28 @@ class ServiceController extends Controller
         $data = $request->validated();
 
         $configAccount = [];
-        if (isset($data['meta_email'])) {
-            $configAccount['meta_email'] = $data['meta_email'];
+
+        if (is_array($data['accounts']) && !empty($data['accounts'])) {
+            $configAccount['accounts'] = $data['accounts'];
+        } else {
+            $allowedKeys = [
+                'meta_email',
+                'display_name',
+                'bm_id',
+                'asset_access',
+                'info_fanpage',
+                'info_website',
+            ];
+
+            foreach ($allowedKeys as $key) {
+                if (isset($data[$key])) {
+                    $configAccount[$key] = $data[$key];
+                }
+            }
         }
-        if (isset($data['display_name'])) {
-            $configAccount['display_name'] = $data['display_name'];
-        }
-        if (isset($data['bm_id'])) {
-            $configAccount['bm_id'] = $data['bm_id'];
-        }
+
         if (isset($data['payment_type'])) {
             $configAccount['payment_type'] = $data['payment_type'];
-        }
-        if (isset($data['asset_access'])) {
-            $configAccount['asset_access'] = $data['asset_access'];
-        }
-        if (isset($data['info_fanpage'])) {
-            $configAccount['info_fanpage'] = $data['info_fanpage'];
-        }
-        if (isset($data['info_website'])) {
-            $configAccount['info_website'] = $data['info_website'];
         }
 
 
