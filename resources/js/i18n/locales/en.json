@@ -321,7 +321,7 @@
         "campaign_update_budget_help_google": "For Google Ads, this value is managed by Google as daily or shared budgets. The system records this value as a reference limit; Google Ads may still optimise delivery based on its own budget rules.",
         "campaign_update_budget_help_google_tooltip": "Google Ads: budgets are managed differently (daily/shared). This value is used as a reference limit in the system.",
         "campaign_update_budget_amount_label": "New limit (USDT)",
-        "campaign_update_budget_wallet_password_label": "Wallet password (not used anymore)",
+        "campaign_update_budget_wallet_password_label": "Wallet password",
         "campaign_update_budget_submit": "Update budget",
         "campaign_update_budget_success": "Campaign spend cap has been updated to {{amount}} USDT successfully.",
         "campaign_update_budget_insufficient_balance": "Cannot update campaign budget.",

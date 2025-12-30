@@ -5,13 +5,16 @@ export type BusinessManagerListQuery = {
     filter: {
         keyword?: string;
         platform?: _PlatformType | number | undefined;
-        period?: 'day' | 'week' | 'month' | undefined;
-        date?: string;
         start_date?: string;
         end_date?: string;
     };
     sort_by?: string;
     direction?: 'asc' | 'desc';
+};
+
+// Config account structure
+export type BusinessManagerConfigAccount = {
+    display_name?: string | null;
 };
 
 // Item in the BM/MCC list
@@ -30,9 +33,7 @@ export type BusinessManagerItem = {
     accounts?: Array<{
         currency?: string | null;
     }>;
-    config_account?: {
-        display_name?: string | null;
-    } | null;
+    config_account?: BusinessManagerConfigAccount | null;
 };
 
 // Detail account item inside dialog
@@ -43,6 +44,8 @@ export type BusinessManagerAccount = {
     amount_spent?: string | null;
     total_campaigns?: number;
     currency?: string | null;
+    service_user_id?: string;
+    id?: string;
 };
 
 export type BusinessManagerPagination = LaravelPaginator<BusinessManagerItem>;
