@@ -102,5 +102,34 @@ class TicketController extends Controller
             message: __('ticket.status_updated')
         );
     }
-}
 
+    public function createAccount(): JsonResponse
+    {
+        $result = $this->ticketService->createAccount();
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage(), status: 400);
+        }
+
+        return RestResponse::success(data: $result->getData());
+    }
+
+    public function storeCreateAccount(CreateAccountRequest $request): JsonResponse
+    {
+        $result = $this->ticketService->storeCreateAccount($request->validated());
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage(), status: 400);
+        }
+
+        return RestResponse::success(data: $result->getData());
+    }
+
+    public function getUserAccounts(): JsonResponse
+    {
+        $result = $this->ticketService->getUserAccounts();
+        if ($result->isError()) {
+            return RestResponse::error(message: $result->getMessage(), status: 400);
+        }
+
+        return RestResponse::success(data: $result->getData());
+    }
+}

@@ -850,6 +850,14 @@
             "bm_bc_mcc_id_invalid": "ID BM/MCC không hợp lệ",
             "notes_required": "Vui lòng nhập ghi chú",
             "notes_max": "Ghi chú không được vượt quá 1000 ký tự"
+        },
+        "create_account": {
+            "title": "Tạo tài khoản",
+            "description": "Điền thông tin để tạo yêu cầu tạo tài khoản mới",
+            "notes": "Ghi chú",
+            "notes_placeholder": "Nhập ghi chú (nếu có)",
+            "submit": "Gửi yêu cầu",
+            "create_success": "Đã tạo yêu cầu tạo tài khoản thành công"
         }
     },
     "config": {

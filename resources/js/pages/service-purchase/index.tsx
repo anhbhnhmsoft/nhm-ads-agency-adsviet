@@ -164,13 +164,13 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 return {
                     name: 'Google Ads',
                     icon: <img src={GoogleIcon} alt="Google" className="w-8 h-8" />,
-                    color: 'bg-blue-500',
+                    color: 'bg-[#eb4e23]',
                 };
             case _PlatformType.META:
                 return {
                     name: 'Facebook Ads',
                     icon: <img src={FacebookIcon} alt="Facebook" className="w-8 h-8" />,
-                    color: 'bg-blue-600',
+                    color: 'bg-[#eb4e23]',
                 };
             default:
                 return {
@@ -418,8 +418,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                     {/* Pricing Info */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="text-center p-3 bg-blue-50 rounded-lg">
-                            <div className="text-xl font-bold text-blue-600">
+                        <div className="text-center p-3 bg-orange-50 rounded-lg">
+                            <div className="text-xl font-bold text-[#eb4e23]">
                                 {formatUSDT(parseFloat(pkg.open_fee))}
                             </div>
                             <div className="text-xs text-gray-600">
@@ -522,7 +522,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                 <CardContent className="space-y-6">
                     {/* Wallet Balance */}
-                    <div className="p-4 bg-linear-to-r from-green-50 to-blue-50 rounded-lg">
+                    <div className="p-4 bg-linear-to-r from-green-50 to-orange-50 rounded-lg">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Wallet className="h-5 w-5 text-green-600" />
@@ -591,10 +591,25 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                         platform={selectedPackage.platform}
                                         metaTimezones={meta_timezones}
                                         googleTimezones={google_timezones}
-                                        onUpdate={(index, data) => {
-                                            const newAccounts = [...accounts];
-                                            newAccounts[index] = data;
-                                            setAccounts(newAccounts);
+                                        onUpdate={(index, updater) => {
+                                            setAccounts((prevAccounts) => {
+                                                const newAccounts = [...prevAccounts];
+                                                const currentAccount = newAccounts[index] || {
+                                                    meta_email: '',
+                                                    display_name: '',
+                                                    bm_ids: [],
+                                                    fanpages: [],
+                                                    websites: [],
+                                                    timezone_bm: '',
+                                                    asset_access: 'full_asset',
+                                                };
+                                                if (typeof updater === 'function') {
+                                                    newAccounts[index] = updater(currentAccount);
+                                                } else {
+                                                    newAccounts[index] = updater;
+                                                }
+                                                return newAccounts;
+                                            });
                                         }}
                                         onRemove={(index) => {
                                             setAccounts(accounts.filter((_, i) => i !== index));
@@ -914,8 +929,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                     {/* Fee Calculator */}
                     {(showCalculator || topUpAmount || paymentType === 'postpay') && (
-                        <div className="p-4 bg-blue-50 rounded-lg space-y-3">
-                            <div className="font-medium text-blue-800">{t('service_purchase.calculate_fee')}:</div>
+                        <div className="p-4 bg-orange-50 rounded-lg space-y-3">
+                            <div className="font-medium text-[#eb4e23]">{t('service_purchase.calculate_fee')}:</div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="flex justify-between">
                                         <span>{t('service_purchase.account_opening_fee')}:</span>
@@ -1009,7 +1024,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 ) : (
                     <>
                         <div className="flex items-center gap-2 mb-4">
-                            <Info className="h-5 w-5 text-blue-500" />
+                            <Info className="h-5 w-5 text-[#eb4e23]" />
                             <span className="text-gray-600">{t('service_purchase.info_message')}</span>
                         </div>
 

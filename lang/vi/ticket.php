@@ -112,5 +112,8 @@ return [
         'notes_max' => 'Ghi chú không được vượt quá :max ký tự',
         'create_success' => 'Đã tạo yêu cầu share BM/BC/MCC thành công',
     ],
+    'create_account' => [
+        'create_success' => 'Đã tạo yêu cầu tạo tài khoản thành công',
+    ],
 ];
 

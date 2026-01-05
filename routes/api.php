@@ -85,6 +85,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [TicketController::class, 'store']);
         Route::post('/{id}/message', [TicketController::class, 'addMessage']);
         Route::put('/{id}/status', [TicketController::class, 'updateStatus']);
+        Route::get('/create-account', [TicketController::class, 'createAccount']);
+        Route::post('/create-account', [TicketController::class, 'storeCreateAccount']);
     });
 
     Route::prefix('notifications')->group(function () {

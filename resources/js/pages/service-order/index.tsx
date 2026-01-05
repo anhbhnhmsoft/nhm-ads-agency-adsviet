@@ -42,8 +42,8 @@ type Props = {
 
 const STATUS_COLORS: Record<string, string> = {
     PENDING: 'bg-amber-500 text-white',
-    QUEUE_JOB_PENDING: 'bg-blue-500 text-white',
-    QUEUE_JOB_ON_PROCESS: 'bg-blue-600 text-white',
+    QUEUE_JOB_PENDING: 'bg-[#eb4e23] text-white',
+    QUEUE_JOB_ON_PROCESS: 'bg-[#eb4e23] text-white',
     PROCESSING: 'bg-indigo-500 text-white',
     ACTIVE: 'bg-green-500 text-white',
     FAILED: 'bg-red-500 text-white',

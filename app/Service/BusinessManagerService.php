@@ -12,6 +12,7 @@ use App\Repositories\MetaAccountRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\GoogleAdsAccountInsightRepository;
+use App\Repositories\UserReferralRepository;
 use App\Core\Logging;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -25,6 +26,7 @@ class BusinessManagerService
         protected GoogleAccountRepository $googleAccountRepository,
         protected MetaAdsAccountInsightRepository $metaAdsAccountInsightRepository,
         protected GoogleAdsAccountInsightRepository $googleAdsAccountInsightRepository,
+        protected UserReferralRepository $userReferralRepository,
     ) {
     }
 
@@ -54,9 +56,19 @@ class BusinessManagerService
                 ->where('status', ServiceUserStatus::ACTIVE->value)
                 ->whereHas('package');
 
-            // Nếu là customer hoặc agency, chỉ lấy service_users của chính họ
-            if ($user && in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
+            // Nếu là customer, chỉ lấy service_users của chính họ
+            if ($user && $user->role === UserRole::CUSTOMER->value) {
                 $query->where('user_id', $user->id);
+            } elseif ($user && $user->role === UserRole::AGENCY->value) {
+                // Agency: lấy service_users của chính họ + service_users của các customer mà họ quản lý
+                $managedCustomerIds = $this->userReferralRepository->query()
+                    ->where('referrer_id', $user->id)
+                    ->whereNull('deleted_at')
+                    ->pluck('referred_id')
+                    ->toArray();
+                
+                $userIds = array_merge([$user->id], $managedCustomerIds);
+                $query->whereIn('user_id', $userIds);
             }
 
             $query = $this->serviceUserRepository->sortQuery($query, 'created_at', 'desc');
@@ -278,9 +290,19 @@ class BusinessManagerService
                 ->with(['user:id,name,username', 'package:id,platform'])
                 ->where('status', ServiceUserStatus::ACTIVE->value);
             
-            // Nếu là customer hoặc agency, chỉ lấy service_users của chính họ
-            if ($user && in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
+            // Nếu là customer, chỉ lấy service_users của chính họ
+            if ($user && $user->role === UserRole::CUSTOMER->value) {
                 $query->where('user_id', $user->id);
+            } elseif ($user && $user->role === UserRole::AGENCY->value) {
+                // Agency: lấy service_users của chính họ + service_users của các customer mà họ quản lý
+                $managedCustomerIds = $this->userReferralRepository->query()
+                    ->where('referrer_id', $user->id)
+                    ->whereNull('deleted_at')
+                    ->pluck('referred_id')
+                    ->toArray();
+                
+                $userIds = array_merge([$user->id], $managedCustomerIds);
+                $query->whereIn('user_id', $userIds);
             }
             
             $serviceUsers = $query->get()->filter(function ($serviceUser) use ($bmId) {

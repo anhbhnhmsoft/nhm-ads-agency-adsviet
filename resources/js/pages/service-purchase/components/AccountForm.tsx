@@ -20,7 +20,7 @@ type AccountFormProps = {
     platform: number;
     metaTimezones?: Array<{ value: string; label: string }>;
     googleTimezones?: Array<{ value: string; label: string }>;
-    onUpdate: (index: number, data: AccountFormData) => void;
+    onUpdate: (index: number, data: AccountFormData | ((prev: AccountFormData) => AccountFormData)) => void;
     onRemove: (index: number) => void;
     canRemove: boolean;
 };
@@ -54,13 +54,6 @@ export const AccountForm = ({
         updateField('bm_ids', bmIds.filter((_, i) => i !== index));
     };
 
-    const updateBmId = (index: number, value: string) => {
-        const bmIds = account.bm_ids || [];
-        const newBmIds = [...bmIds];
-        newBmIds[index] = value;
-        updateField('bm_ids', newBmIds);
-    };
-
     const addFanpage = () => {
         const fanpages = account.fanpages || [];
         if (fanpages.length < 3) {
@@ -71,13 +64,6 @@ export const AccountForm = ({
     const removeFanpage = (index: number) => {
         const fanpages = account.fanpages || [];
         updateField('fanpages', fanpages.filter((_, i) => i !== index));
-    };
-
-    const updateFanpage = (index: number, value: string) => {
-        const fanpages = account.fanpages || [];
-        const newFanpages = [...fanpages];
-        newFanpages[index] = value;
-        updateField('fanpages', newFanpages);
     };
 
     const addWebsite = () => {
@@ -92,12 +78,8 @@ export const AccountForm = ({
         updateField('websites', websites.filter((_, i) => i !== index));
     };
 
-    const updateWebsite = (index: number, value: string) => {
-        const websites = account.websites || [];
-        const newWebsites = [...websites];
-        newWebsites[index] = value;
-        updateField('websites', newWebsites);
-    };
+    // Fix phần hiển thị input website khi mảng websites rỗng
+    // Chỉ hiển thị một input (array length === 0), khi có giá trị thì convert sang dạng mảng
 
     return (
         <div className="space-y-4 p-4 border rounded-lg bg-white">
@@ -120,7 +102,7 @@ export const AccountForm = ({
 
             <div className="space-y-2">
                 <Label htmlFor={`metaEmail_${accountIndex}`}>
-                    {t('service_purchase.meta_email')}:
+                    {t('service_purchase.meta_email') + ':'}
                 </Label>
                 <Input
                     id={`metaEmail_${accountIndex}`}
@@ -138,7 +120,7 @@ export const AccountForm = ({
 
             <div className="space-y-2">
                 <Label htmlFor={`displayName_${accountIndex}`}>
-                    {t('service_purchase.display_name')}:
+                    {t('service_purchase.display_name') + ':'}
                 </Label>
                 <Input
                     id={`displayName_${accountIndex}`}
@@ -157,7 +139,7 @@ export const AccountForm = ({
                     <Label>
                         {isMeta
                             ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
-                            : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}:
+                            : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' }) + ':'}
                     </Label>
                     {(account.bm_ids?.length || 0) < 3 && (
                         <Button
@@ -172,16 +154,30 @@ export const AccountForm = ({
                         </Button>
                     )}
                 </div>
-                {account.bm_ids && account.bm_ids.length > 0 ? (
-                    <div className="space-y-2">
-                        {account.bm_ids.map((bmId, idx) => (
-                            <div key={idx} className="flex gap-2">
-                                <Input
-                                    type="text"
-                                    placeholder="1234567890"
-                                    value={bmId}
-                                    onChange={(e) => updateBmId(idx, e.target.value)}
-                                />
+                <div className="space-y-2">
+                    {(account.bm_ids && account.bm_ids.length > 0 ? account.bm_ids : ['']).map((bmId, idx) => (
+                        <div key={`bm-${accountIndex}-${idx}`} className="flex gap-2">
+                            <Input
+                                id={`bm-id-${accountIndex}-${idx}`}
+                                type="text"
+                                placeholder="1234567890"
+                                value={bmId}
+                                onChange={(e) => {
+                                    const newValue = e.target.value;
+                                    const bmIds =
+                                        account.bm_ids && account.bm_ids.length > 0
+                                            ? [...account.bm_ids]
+                                            : [''];
+
+                                    bmIds[idx] = newValue;
+
+                                    onUpdate(accountIndex, {
+                                        ...account,
+                                        bm_ids: bmIds,
+                                    });
+                                }}
+                            />
+                            {account.bm_ids && account.bm_ids.length > 1 && (
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -191,72 +187,82 @@ export const AccountForm = ({
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <Input
-                        type="text"
-                        placeholder="1234567890"
-                        value=""
-                        onChange={(e) => updateField('bm_ids', [e.target.value])}
-                    />
-                )}
+                            )}
+                        </div>
+                    ))}
+                </div>
             </div>
 
-            {isMeta && (
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <Label>{t('service_purchase.info_fanpage', { defaultValue: 'Thông tin fanpage' })}:</Label>
-                        {(account.fanpages?.length || 0) < 3 && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={addFanpage}
-                                className="h-7 text-xs"
-                            >
-                                <Plus className="h-3 w-3 mr-1" />
-                                {t('service_purchase.add_fanpage', { defaultValue: 'Thêm fanpage' })}
-                            </Button>
-                        )}
-                    </div>
-                    {account.fanpages && account.fanpages.length > 0 ? (
+            <div className="space-y-2">
+                {isMeta && (
+                    <>
+                        <div className="flex items-center justify-between">
+                            <Label>
+                                {t('service_purchase.info_fanpage', { defaultValue: 'Thông tin fanpage' }) + ':'}
+                            </Label>
+                            {(account.fanpages?.length || 0) < 3 && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={addFanpage}
+                                    className="h-7 text-xs"
+                                >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    {t('service_purchase.add_fanpage', { defaultValue: 'Thêm fanpage' })}
+                                </Button>
+                            )}
+                        </div>
                         <div className="space-y-2">
-                            {account.fanpages.map((fanpage, idx) => (
-                                <div key={idx} className="flex gap-2">
+                            {(account.fanpages && account.fanpages.length > 0 ? account.fanpages : ['']).map((fanpage, idx) => (
+                                <div key={`fanpage-${accountIndex}-${idx}`} className="flex gap-2">
                                     <Input
+                                        id={`fanpage-${accountIndex}-${idx}`}
                                         type="text"
-                                        placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
+                                        placeholder={t('service_purchase.info_fanpage_placeholder', {
+                                            defaultValue: 'Link hoặc tên fanpage',
+                                        })}
                                         value={fanpage}
-                                        onChange={(e) => updateFanpage(idx, e.target.value)}
+                                        onChange={(e) => {
+                                            const newValue = e.target.value;
+
+                                            const fanpages =
+                                                account.fanpages && account.fanpages.length > 0
+                                                    ? [...account.fanpages]
+                                                    : [''];
+
+                                            fanpages[idx] = newValue;
+
+                                            onUpdate(accountIndex, {
+                                                ...account,
+                                                fanpages,
+                                            });
+                                        }}
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => removeFanpage(idx)}
-                                        className="text-red-600"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
+
+                                    {account.fanpages && account.fanpages.length > 1 && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removeFanpage(idx)}
+                                            className="text-red-600"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </div>
                             ))}
                         </div>
-                    ) : (
-                        <Input
-                            type="text"
-                            placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
-                            value=""
-                            onChange={(e) => updateField('fanpages', [e.target.value])}
-                        />
-                    )}
-                </div>
-            )}
+                    </>
+                )}
+            </div>
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                    <Label>{t('service_purchase.info_website', { defaultValue: 'Thông tin website' })}:</Label>
+                    <Label>
+                        {t('service_purchase.info_website', { defaultValue: 'Thông tin website' }) + ':'}
+                    </Label>
                     {(account.websites?.length || 0) < 3 && (
                         <Button
                             type="button"
@@ -270,16 +276,36 @@ export const AccountForm = ({
                         </Button>
                     )}
                 </div>
-                {account.websites && account.websites.length > 0 ? (
-                    <div className="space-y-2">
-                        {account.websites.map((website, idx) => (
-                            <div key={idx} className="flex gap-2">
-                                <Input
-                                    type="text"
-                                    placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
-                                    value={website}
-                                    onChange={(e) => updateWebsite(idx, e.target.value)}
-                                />
+                <div className="space-y-2">
+                    {(account.websites && account.websites.length > 0
+                        ? account.websites
+                        : ['']
+                    ).map((website, idx) => (
+                        <div key={`website-${accountIndex}-${idx}`} className="flex gap-2">
+                            <Input
+                                id={`website-${accountIndex}-${idx}`}
+                                type="text"
+                                placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
+                                value={website || ''}
+                                onChange={(e) => {
+                                    const newValue = e.target.value;
+                                    let websites = account.websites && account.websites.length > 0 ? [...account.websites] : [''];
+                                    websites[idx] = newValue;
+                                    // Nếu là input đầu tiên và tất cả empty, thay [] thành [""] -> []
+                                    // Nếu tất cả các input đều trống, thì chuyển thành mảng rỗng (người dùng xóa hết)
+                                    // Nếu có 1 input và input rỗng, thì để ""
+                                    // Nếu có 1 input và có giá trị, thì thành [giá trị]
+                                    // Nếu có nhiều input thì giữ nguyên
+                                    // Always trim trailing empty websites
+                                    websites = websites.filter((url, i, arr) => !(arr.length === 1 && url === ''));
+                                    // Không cho phép nhiều input đều rỗng
+                                    onUpdate(accountIndex, {
+                                        ...account,
+                                        websites,
+                                    });
+                                }}
+                            />
+                            {(account.websites && account.websites.length > 1) && (
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -289,17 +315,10 @@ export const AccountForm = ({
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <Input
-                        type="text"
-                        placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
-                        value=""
-                        onChange={(e) => updateField('websites', [e.target.value])}
-                    />
-                )}
+                            )}
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="space-y-2">
@@ -344,4 +363,3 @@ export const AccountForm = ({
         </div>
     );
 };
-

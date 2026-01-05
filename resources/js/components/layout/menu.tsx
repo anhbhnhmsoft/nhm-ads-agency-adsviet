@@ -23,6 +23,7 @@ import {
     ticket_deposit_app,
     business_managers_index,
     contact_index,
+    ticket_create_account,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -161,6 +162,15 @@ const useMenu = () => {
                             _UserRole.ADMIN,
                             _UserRole.MANAGER,
                             _UserRole.EMPLOYEE,
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
+                        title: t('ticket.create_account.title', { defaultValue: 'Tạo tài khoản' }),
+                        url: ticket_create_account().url,
+                        active: isActive(ticket_create_account()),
+                        can_show: checkRole([
                             _UserRole.CUSTOMER,
                             _UserRole.AGENCY,
                         ]),

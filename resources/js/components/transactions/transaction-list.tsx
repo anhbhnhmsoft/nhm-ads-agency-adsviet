@@ -42,7 +42,7 @@ const getTransactionIcon = (type?: number | null) => {
         case TRANSACTION_TYPE.WITHDRAW:
             return <ArrowUpCircle className="h-5 w-5 text-red-500" />;
         case TRANSACTION_TYPE.REFUND:
-            return <RefreshCcw className="h-5 w-5 text-blue-500" />;
+            return <RefreshCcw className="h-5 w-5 text-[#eb4e23]" />;
         case TRANSACTION_TYPE.FEE:
             return <Percent className="h-5 w-5 text-amber-500" />;
         case TRANSACTION_TYPE.CASHBACK:
@@ -234,7 +234,7 @@ export function TransactionList({
                                         href={explorerUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                                        className="mt-1 inline-flex items-center gap-1 text-xs text-[#eb4e23] hover:underline"
                                     >
                                         <ExternalLink className="h-3 w-3" />
                                         {t('transactions.view_on_explorer', { defaultValue: 'Xem trên explorer' })}

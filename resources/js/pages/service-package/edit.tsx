@@ -586,7 +586,7 @@ const Edit = ({ meta_features, google_features, service_package, all_users = [],
                         if (feature.type === 'boolean') {
                             return (
                                 <div key={feature.key} className={'flex flex-col gap-2'}>
-                                    <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 hover:bg-accent/50 has-aria-checked:border-blue-600 has-aria-checked:bg-blue-50">
+                                    <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 hover:bg-accent/50 has-aria-checked:border-[#eb4e23] has-aria-checked:bg-orange-50">
                                         <Checkbox
                                             id={feature.key}
                                             disabled={false}
@@ -603,7 +603,7 @@ const Edit = ({ meta_features, google_features, service_package, all_users = [],
                                                     val,
                                                 );
                                             }}
-                                            className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+                                            className="data-[state=checked]:border-[#eb4e23] data-[state=checked]:bg-[#eb4e23] data-[state=checked]:text-white"
                                         />
                                         <div className="grid gap-1.5 font-normal">
                                             <p className="text-sm leading-none font-medium">

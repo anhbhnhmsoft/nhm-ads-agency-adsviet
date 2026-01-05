@@ -37,10 +37,10 @@ export default function AuthLayout({
 
     return (
         <ThemeProvider defaultTheme={"light"}>
-            <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-blue-100 p-3 md:p-10">
+            <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-orange-100 p-3 md:p-10">
                 <div className="flex w-full max-w-md flex-col gap-6">
                     <div className="flex flex-col gap-2 items-center justify-center">
-                        <Shield className="w-12 h-12 text-blue-500" />
+                        <Shield className="w-12 h-12 text-[#eb4e23]" />
                         <h1 className="text-2xl font-bold text-center">{t(title)}</h1>
                         <p className="text-sm text-gray-500 text-center">{t(description)}</p>
                     </div>

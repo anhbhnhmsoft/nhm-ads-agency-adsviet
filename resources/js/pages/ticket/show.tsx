@@ -88,6 +88,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
             refund_request: t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' }),
             appeal_request: t('ticket.appeal.title', { defaultValue: 'Kháng tài khoản' }),
             share_request: t('ticket.share.title', { defaultValue: 'Share BM/MCC' }),
+            create_account_request: t('ticket.create_account.title', { defaultValue: 'Mua tài khoản mới' }),
         };
         return map[subject] ?? subject;
     };
@@ -102,8 +103,164 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
         return '-';
     };
 
+    const renderAccountDetail = (account: any, index: number, platform: number) => {
+        const isMeta = platform === _PlatformType.META;
+        
+        return (
+            <div key={`account-${index}`} className="space-y-3 p-4 border rounded-lg bg-white">
+                <h4 className="font-medium text-gray-800">
+                    {t('service_purchase.account_number', { number: index + 1, defaultValue: `Tài khoản ${index + 1}` })}
+                </h4>
+                
+                <div className="grid gap-2 text-sm">
+                    {account.meta_email && (
+                        <div>
+                            <span className="font-medium">{t('service_purchase.meta_email', { defaultValue: 'Email' })}:</span>{' '}
+                            <span>{account.meta_email}</span>
+                        </div>
+                    )}
+                    
+                    {account.display_name && (
+                        <div>
+                            <span className="font-medium">{t('service_purchase.display_name', { defaultValue: 'Tên hiển thị' })}:</span>{' '}
+                            <span>{account.display_name}</span>
+                        </div>
+                    )}
+                    
+                    {account.bm_ids && Array.isArray(account.bm_ids) && account.bm_ids.length > 0 && account.bm_ids.some((id: string) => id?.trim()) && (
+                        <div>
+                            <span className="font-medium">
+                                {isMeta 
+                                    ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
+                                    : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}:
+                            </span>{' '}
+                            <span>{account.bm_ids.filter((id: string) => id?.trim()).join(', ')}</span>
+                        </div>
+                    )}
+                    
+                    {isMeta && account.fanpages && Array.isArray(account.fanpages) && account.fanpages.length > 0 && account.fanpages.some((fp: string) => fp?.trim()) && (
+                        <div>
+                            <span className="font-medium">{t('service_purchase.info_fanpage', { defaultValue: 'Fanpage' })}:</span>{' '}
+                            <span>{account.fanpages.filter((fp: string) => fp?.trim()).join(', ')}</span>
+                        </div>
+                    )}
+                    
+                    {account.websites && Array.isArray(account.websites) && account.websites.length > 0 && account.websites.some((ws: string) => ws?.trim()) && (
+                        <div>
+                            <span className="font-medium">{t('service_purchase.info_website', { defaultValue: 'Website' })}:</span>{' '}
+                            <span>{account.websites.filter((ws: string) => ws?.trim()).join(', ')}</span>
+                        </div>
+                    )}
+                    
+                    {account.timezone_bm && (
+                        <div>
+                            <span className="font-medium">
+                                {isMeta
+                                    ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
+                                    : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}:
+                            </span>{' '}
+                            <span>{account.timezone_bm}</span>
+                        </div>
+                    )}
+                    
+                    {account.asset_access && (
+                        <div>
+                            <span className="font-medium">{t('service_purchase.asset_access_label', { defaultValue: 'Chia sẻ quyền truy cập' })}:</span>{' '}
+                            <span>
+                                {account.asset_access === 'full_asset' 
+                                    ? t('service_purchase.asset_access_full', { defaultValue: 'Full access' })
+                                    : t('service_purchase.asset_access_basic', { defaultValue: 'Basic access' })}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const renderCreateAccountInfo = () => {
+        if (!metadata) return null;
+
+        const configAccount = metadata.config_account || {};
+        
+        let accounts: any[] = [];
+        if (configAccount.accounts && Array.isArray(configAccount.accounts)) {
+            accounts = configAccount.accounts;
+        } else if (Array.isArray(configAccount)) {
+            accounts = configAccount;
+        } else if (configAccount && typeof configAccount === 'object') {
+            accounts = [configAccount];
+        }
+        
+        const firstAccount = accounts.length > 0 ? accounts[0] : null;
+        const platformValue = metadata.platform || firstAccount?.platform || firstAccount?.platform_type;
+        const platform = getPlatformName(platformValue);
+        const platformNum = platformValue || metadata.platform;
+        
+        const servicePackage = metadata.package_name || metadata.package || (metadata.package_id ? `Package ID: ${metadata.package_id}` : '-');
+        
+        const quantity = metadata.quantity !== undefined 
+            ? metadata.quantity 
+            : (accounts.length > 0 ? accounts.length : 1);
+        
+        const priceValue = metadata.price || metadata.amount || metadata.budget;
+        const price = priceValue 
+            ? `${parseFloat(String(priceValue)).toLocaleString('vi-VN')} ${metadata.currency || 'đ'}` 
+            : '-';
+        
+        const note = metadata.notes || ticket.description || '-';
+
+        return (
+            <div className="space-y-4">
+                <div className="grid gap-2 text-sm">
+                    {platform !== '-' && (
+                        <div>
+                            <span className="font-medium">{t('ticket.create_account.platform', { defaultValue: 'Nền tảng' })}:</span>{' '}
+                            <span>{platform}</span>
+                        </div>
+                    )}
+                    {servicePackage !== '-' && (
+                        <div>
+                            <span className="font-medium">{t('ticket.create_account.package', { defaultValue: 'Gói dịch vụ' })}:</span>{' '}
+                            <span>{servicePackage}</span>
+                        </div>
+                    )}
+                    <div>
+                        <span className="font-medium">{t('ticket.create_account.quantity', { defaultValue: 'Số lượng' })}:</span>{' '}
+                        <span>{quantity}</span>
+                    </div>
+                    {price !== '-' && (
+                        <div>
+                            <span className="font-medium">{t('ticket.create_account.price', { defaultValue: 'Giá mua' })}:</span>{' '}
+                            <span>{price}</span>
+                        </div>
+                    )}
+                    {note && note !== '-' && (
+                        <div>
+                            <span className="font-medium">{t('ticket.create_account.notes', { defaultValue: 'Ghi chú' })}:</span>{' '}
+                            <span>{note}</span>
+                        </div>
+                    )}
+                </div>
+
+                {accounts.length > 0 && (
+                    <div className="space-y-4">
+                        <div className="font-medium text-base">
+                            {t('service_purchase.account_info', { defaultValue: 'Thông tin tài khoản' })}
+                        </div>
+                        {accounts.map((account, idx) => renderAccountDetail(account, idx, platformNum))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const renderMetadata = () => {
         const type = metadataType;
+
+        if (type === 'create_account') {
+            return renderCreateAccountInfo();
+        }
 
         if (type === 'transfer') {
             return (
@@ -186,8 +343,8 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
         if (type === 'wallet_deposit_app') {
             const amountText = metadata.amount ? `${parseFloat(metadata.amount).toFixed(2)} USD` : '-';
             const platformText = getPlatformName(metadata.platform);
-            const accountText = metadata.account_name 
-                ? `${metadata.account_name} (${metadata.account_id})` 
+            const accountText = metadata.account_name
+                ? `${metadata.account_name} (${metadata.account_id})`
                 : metadata.account_id || '-';
             const noteText = metadata.notes || ticket.description || '-';
             return (
@@ -251,9 +408,13 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
         };
     }, [ticket?.id, ticket?.status, startPolling, stopPolling]);
 
+    // Đối với create_account_request, luôn show mô tả chi tiết như renderCreateAccountInfo
+    const isCreateAccountRequest =
+        ticket.subject === 'create_account_request' || metadataType === 'create_account';
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={ticket.subject} />
+            <Head title={getSubjectLabel(ticket.subject)} />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4 md:p-6">
                 {/* Header */}
                 <div className="flex items-center gap-4">
@@ -295,18 +456,31 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                 {/* Ticket Info */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>{t('ticket.detail', { defaultValue: 'Chi tiết yêu cầu hỗ trợ' })}</CardTitle>
+                        <CardTitle>
+                            {t('ticket.detail', { defaultValue: 'Chi tiết yêu cầu hỗ trợ' })}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                {!shouldHideDescription && (
-                    <div>
-                        <Label className="text-muted-foreground">
-                            {t('ticket.description', { defaultValue: 'Mô tả' })}
-                        </Label>
-                        <p className="mt-1 whitespace-pre-wrap">{ticket.description}</p>
-                    </div>
-                )}
-                        {renderMetadata() && (
+                        {isCreateAccountRequest ? (
+                            <div>
+                                <Label className="text-muted-foreground">
+                                    {t('ticket.create_account.detail', { defaultValue: 'Thông tin đơn mua tài khoản' })}
+                                </Label>
+                                <div className="mt-2 rounded-md bg-muted/50 p-3">
+                                    {renderCreateAccountInfo()}
+                                </div>
+                            </div>
+                        ) : (
+                            !shouldHideDescription && (
+                                <div>
+                                    <Label className="text-muted-foreground">
+                                        {t('ticket.description', { defaultValue: 'Mô tả' })}
+                                    </Label>
+                                    <p className="mt-1 whitespace-pre-wrap">{ticket.description}</p>
+                                </div>
+                            )
+                        )}
+                        {(renderMetadata() && !isCreateAccountRequest) && (
                             <div>
                                 <Label className="text-muted-foreground">
                                     {t('ticket.detail', { defaultValue: 'Chi tiết yêu cầu' })}
