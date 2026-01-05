@@ -159,6 +159,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::prefix('/profit')->group(function () {
         Route::get('/by-customer', [ProfitController::class, 'byCustomer'])->name('profit_by_customer');
         Route::get('/by-platform', [ProfitController::class, 'byPlatform'])->name('profit_by_platform');
+        Route::get('/over-time', [ProfitController::class, 'overTime'])->name('profit_over_time');
+        Route::get('/by-bm-mcc', [ProfitController::class, 'byBmMcc'])->name('profit_by_bm_mcc');
     });
 
     Route::prefix('/tickets')->group(function () {

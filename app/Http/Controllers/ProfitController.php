@@ -123,5 +123,98 @@ class ProfitController extends Controller
             'selectedPlatform' => $platform,
         ]);
     }
+
+    /**
+     * Trang thống kê lợi nhuận tổng theo thời gian (cho Agency/Admin)
+     */
+    public function overTime(Request $request): Response
+    {
+        $user = $request->user();
+        
+        // Chỉ agency và admin mới được truy cập
+        if (!$user || !in_array($user->role, [UserRole::AGENCY->value, UserRole::ADMIN->value])) {
+            abort(403, __('common_error.permission_denied'));
+        }
+
+        // Lấy date range từ request
+        $startDate = null;
+        $endDate = null;
+        
+        if ($request->has('start_date') && $request->has('end_date')) {
+            try {
+                $startDateStr = $request->string('start_date')->toString();
+                $endDateStr = $request->string('end_date')->toString();
+                
+                if (!empty($startDateStr) && !empty($endDateStr)) {
+                    $startDate = Carbon::parse($startDateStr)->startOfDay();
+                    $endDate = Carbon::parse($endDateStr)->endOfDay();
+                }
+            } catch (\Exception $e) {
+                // Nếu parse lỗi, sẽ dùng mặc định
+            }
+        }
+
+        // Group by: day, week, month
+        $groupBy = $request->input('group_by', 'day');
+        if (!in_array($groupBy, ['day', 'week', 'month'])) {
+            $groupBy = 'day';
+        }
+
+        $result = $this->profitService->getProfitOverTime($groupBy, $startDate, $endDate);
+
+        $profitData = $result->isSuccess() ? $result->getData() : [];
+        $error = $result->isError() ? $result->getMessage() : null;
+
+        return Inertia::render('profit/over-time', [
+            'profitData' => $profitData,
+            'error' => $error,
+            'startDate' => $startDate ? $startDate->format('Y-m-d') : null,
+            'endDate' => $endDate ? $endDate->format('Y-m-d') : null,
+            'groupBy' => $groupBy,
+        ]);
+    }
+
+    /**
+     * Trang thống kê lợi nhuận theo BM/MCC (chỉ Admin)
+     */
+    public function byBmMcc(Request $request): Response
+    {
+        $user = $request->user();
+        
+        // Chỉ admin mới được truy cập
+        if (!$user || $user->role !== UserRole::ADMIN->value) {
+            abort(403, __('common_error.permission_denied'));
+        }
+
+        // Lấy date range từ request
+        $startDate = null;
+        $endDate = null;
+        
+        if ($request->has('start_date') && $request->has('end_date')) {
+            try {
+                $startDateStr = $request->string('start_date')->toString();
+                $endDateStr = $request->string('end_date')->toString();
+                
+                if (!empty($startDateStr) && !empty($endDateStr)) {
+                    $startDate = Carbon::parse($startDateStr)->startOfDay();
+                    $endDate = Carbon::parse($endDateStr)->endOfDay();
+                }
+            } catch (\Exception $e) {
+                // Nếu parse lỗi, sẽ dùng mặc định
+            }
+        }
+
+        $result = $this->profitService->getProfitByBmMcc($startDate, $endDate);
+
+        $profitData = $result->isSuccess() ? $result->getData() : [];
+        $error = $result->isError() ? $result->getMessage() : null;
+
+        return Inertia::render('profit/by-bm-mcc', [
+            'profitData' => $profitData,
+            'error' => $error,
+            'startDate' => $startDate ? $startDate->format('Y-m-d') : null,
+            'endDate' => $endDate ? $endDate->format('Y-m-d') : null,
+        ]);
+    }
 }
 

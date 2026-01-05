@@ -81,7 +81,7 @@ export default function ProfitByCustomer({ profitData, error, startDate, endDate
                 accessorKey: 'cost',
                 header: t('profit.cost', { defaultValue: 'Chi phí' }),
                 cell: ({ row }) => {
-                    return <span className="font-medium text-red-600">{formatCurrency(row.original.cost)}</span>;
+                    return <span className="font-medium text-red-600">{formatCurrency(Math.abs(parseFloat(row.original.cost)))}</span>;
                 },
             },
             {
@@ -242,7 +242,7 @@ export default function ProfitByCustomer({ profitData, error, startDate, endDate
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-red-600">
-                                {formatCurrency(totals.cost)}
+                                {formatCurrency(Math.abs(totals.cost))}
                             </div>
                         </CardContent>
                     </Card>
