@@ -15,9 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useServiceOrderAdminDialog } from '@/pages/service-order/hooks/use-admin-approve-dialog';
 import { useServiceOrderEditConfigDialog } from '@/pages/service-order/hooks/use-edit-config-dialog';
+import { AccountInfoCell } from '@/pages/service-order/components/AccountInfoCell';
+import { AccountFormEdit } from '@/pages/service-order/components/AccountFormEdit';
 import useCheckRole from '@/hooks/use-check-role';
 import { _PlatformType, _UserRole } from '@/lib/types/constants';
-import { Pencil } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -40,8 +42,8 @@ type Props = {
 
 const STATUS_COLORS: Record<string, string> = {
     PENDING: 'bg-amber-500 text-white',
-    QUEUE_JOB_PENDING: 'bg-blue-500 text-white',
-    QUEUE_JOB_ON_PROCESS: 'bg-blue-600 text-white',
+    QUEUE_JOB_PENDING: 'bg-[#eb4e23] text-white',
+    QUEUE_JOB_ON_PROCESS: 'bg-[#eb4e23] text-white',
     PROCESSING: 'bg-indigo-500 text-white',
     ACTIVE: 'bg-green-500 text-white',
     FAILED: 'bg-red-500 text-white',
@@ -59,6 +61,9 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
         dialogOpen,
         setDialogOpen,
         selectedOrder,
+        useAccountsStructure: approveUseAccountsStructure,
+        accounts: approveAccounts,
+        setAccounts: setApproveAccounts,
         metaEmail,
         setMetaEmail,
         displayName,
@@ -85,6 +90,9 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
         dialogOpen: editDialogOpen,
         setDialogOpen: setEditDialogOpen,
         selectedOrder: selectedEditOrder,
+        useAccountsStructure: editUseAccountsStructure,
+        accounts: editAccounts,
+        setAccounts: setEditAccounts,
         metaEmail: editMetaEmail,
         setMetaEmail: setEditMetaEmail,
         displayName: editDisplayName,
@@ -157,55 +165,15 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
             {
                 id: 'account_info',
                 header: t('service_orders.table.account_info'),
+                meta: {
+                    headerClassName: 'w-[475px] min-w-[475px] max-w-[475px] break-words whitespace-normal',
+                    cellClassName: "w-[475px] min-w-[475px] max-w-[475px] break-words whitespace-normal"  },
                 cell: ({ row }) => {
-                    const config = row.original.config_account || {};
-                    const email = (config.meta_email as string) || '';
-                    const name = (config.display_name as string) || '';
-                    const bm = (config.bm_id as string) || '';
-                    const fanpage = (config.info_fanpage as string) || '';
-                    const website = (config.info_website as string) || '';
-                    const timezone = (config.timezone_bm as string) || '';
-
-                    if (!email && !name && !bm && !fanpage && !website && !timezone) {
-                        return <span className="text-xs text-muted-foreground">-</span>;
-                    }
-
-                    const platform = row.original.package?.platform;
-                    const isMeta = platform === _PlatformType.META;
-
                     return (
-                        <div className="text-xs space-y-1">
-                            {email && (
-                                <div>
-                                    <span className="font-medium">Email:</span> {email}
-                                </div>
-                            )}
-                            {name && (
-                                <div>
-                                    <span className="font-medium">Name:</span> {name}
-                                </div>
-                            )}
-                            {bm && (
-                                <div>
-                                    <span className="font-medium">{isMeta ? 'BM ID' : 'MCC ID'}:</span> {bm}
-                                </div>
-                            )}
-                            {timezone && (
-                                <div>
-                                    <span className="font-medium">{isMeta ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' }) : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}:</span> {timezone}
-                                </div>
-                            )}
-                            {fanpage && (
-                                <div>
-                                    <span className="font-medium">{t('service_orders.table.info_fanpage')}:</span> {fanpage}
-                                </div>
-                            )}
-                            {website && (
-                                <div>
-                                    <span className="font-medium">{t('service_orders.table.info_website')}:</span> {website}
-                                </div>
-                            )}
-                        </div>
+                        <AccountInfoCell
+                            config={row.original.config_account || null}
+                            platform={row.original.package?.platform}
+                        />
                     );
                 },
             },
@@ -386,72 +354,6 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
 
                             <div className="space-y-4 py-2">
                                 <div className="space-y-2">
-                                    <Label htmlFor="meta_email">{t('service_purchase.meta_email')}</Label>
-                                    <Input
-                                        id="meta_email"
-                                        type="email"
-                                        value={metaEmail}
-                                        onChange={(e) => setMetaEmail(e.target.value)}
-                                        placeholder={t('service_orders.form.meta_email_placeholder')}
-                                    />
-                                    {formErrors.meta_email && (
-                                        <p className="text-xs text-red-500">{formErrors.meta_email}</p>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="display_name">{t('service_purchase.display_name')}</Label>
-                                    <Input
-                                        id="display_name"
-                                        value={displayName}
-                                        onChange={(e) => setDisplayName(e.target.value)}
-                                        placeholder={t('service_orders.form.display_name_placeholder')}
-                                    />
-                                    {formErrors.display_name && (
-                                        <p className="text-xs text-red-500">{formErrors.display_name}</p>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="bm_id">BM ID</Label>
-                                    <Input
-                                        id="bm_id"
-                                        value={bmId}
-                                        onChange={(e) => setBmId(e.target.value)}
-                                        placeholder={t('service_orders.form.bm_id_placeholder')}
-                                    />
-                                    {formErrors.bm_id && (
-                                        <p className="text-xs text-red-500">{formErrors.bm_id}</p>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="approve_asset_access">{t('service_purchase.asset_access_label')}</Label>
-                                    <Select
-                                        value={assetAccess || 'full_asset'}
-                                        onValueChange={(value: 'full_asset' | 'basic_asset') => setAssetAccess(value)}
-                                    >
-                                        <SelectTrigger id="approve_asset_access">
-                                            <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
-                                            <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="approve_timezone_bm">
-                                        {isApproveMeta
-                                            ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
-                                            : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
-                                    </Label>
-                                    <TimezoneSelect
-                                        id="approve_timezone_bm"
-                                        value={timezoneBm || ''}
-                                        onValueChange={(value) => setTimezoneBm(value)}
-                                        options={isApproveMeta ? meta_timezones : google_timezones}
-                                        placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
                                     <Label htmlFor="payment_type">{t('service_purchase.payment_type')}</Label>
                                     <div className="flex gap-2">
                                         <Button
@@ -472,27 +374,157 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                         </Button>
                                     </div>
                                 </div>
-                                
-                                {isApproveMeta && (
+
+                                {approveUseAccountsStructure ? (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-base font-semibold">
+                                                {isApproveMeta
+                                                    ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
+                                                    : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' })}
+                                            </Label>
+                                            {approveAccounts.length < 3 && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setApproveAccounts([
+                                                            ...approveAccounts,
+                                                            {
+                                                                meta_email: '',
+                                                                display_name: '',
+                                                                bm_ids: [],
+                                                                fanpages: isApproveMeta ? [] : [],
+                                                                websites: [],
+                                                                timezone_bm: '',
+                                                                asset_access: 'full_asset',
+                                                            },
+                                                        ]);
+                                                    }}
+                                                >
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                                            {approveAccounts.map((account, idx) => (
+                                                <AccountFormEdit
+                                                    key={idx}
+                                                    account={account}
+                                                    accountIndex={idx}
+                                                    platform={selectedOrder?.package?.platform || 0}
+                                                    metaTimezones={meta_timezones}
+                                                    googleTimezones={google_timezones}
+                                                    onUpdate={(index, data) => {
+                                                        const newAccounts = [...approveAccounts];
+                                                        newAccounts[index] = data;
+                                                        setApproveAccounts(newAccounts);
+                                                    }}
+                                                    onRemove={(index) => {
+                                                        setApproveAccounts(approveAccounts.filter((_, i) => i !== index));
+                                                    }}
+                                                    canRemove={approveAccounts.length > 1}
+                                                />
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : (
                                     <>
                                         <div className="space-y-2">
-                                            <Label htmlFor="info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                            <Label htmlFor="meta_email">{t('service_purchase.meta_email')}</Label>
                                             <Input
-                                                id="info_fanpage"
-                                                value={infoFanpage}
-                                                onChange={(e) => setInfoFanpage(e.target.value)}
-                                                placeholder={t('service_orders.form.info_fanpage_placeholder')}
+                                                id="meta_email"
+                                                type="email"
+                                                value={metaEmail}
+                                                onChange={(e) => setMetaEmail(e.target.value)}
+                                                placeholder={t('service_orders.form.meta_email_placeholder')}
                                             />
+                                            {formErrors.meta_email && (
+                                                <p className="text-xs text-red-500">{formErrors.meta_email}</p>
+                                            )}
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="info_website">{t('service_orders.form.info_website')}</Label>
+                                            <Label htmlFor="display_name">{t('service_purchase.display_name')}</Label>
                                             <Input
-                                                id="info_website"
-                                                value={infoWebsite}
-                                                onChange={(e) => setInfoWebsite(e.target.value)}
-                                                placeholder={t('service_orders.form.info_website_placeholder')}
+                                                id="display_name"
+                                                value={displayName}
+                                                onChange={(e) => setDisplayName(e.target.value)}
+                                                placeholder={t('service_orders.form.display_name_placeholder')}
+                                            />
+                                            {formErrors.display_name && (
+                                                <p className="text-xs text-red-500">{formErrors.display_name}</p>
+                                            )}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="bm_id">
+                                                {isApproveMeta
+                                                    ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
+                                                    : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}
+                                            </Label>
+                                            <Input
+                                                id="bm_id"
+                                                value={bmId}
+                                                onChange={(e) => setBmId(e.target.value)}
+                                                placeholder={t('service_orders.form.bm_id_placeholder')}
+                                            />
+                                            {formErrors.bm_id && (
+                                                <p className="text-xs text-red-500">{formErrors.bm_id}</p>
+                                            )}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="approve_asset_access">{t('service_purchase.asset_access_label')}</Label>
+                                            <Select
+                                                value={assetAccess || 'full_asset'}
+                                                onValueChange={(value: 'full_asset' | 'basic_asset') => setAssetAccess(value)}
+                                            >
+                                                <SelectTrigger id="approve_asset_access">
+                                                    <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
+                                                    <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="approve_timezone_bm">
+                                                {isApproveMeta
+                                                    ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
+                                                    : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                                            </Label>
+                                            <TimezoneSelect
+                                                id="approve_timezone_bm"
+                                                value={timezoneBm || ''}
+                                                onValueChange={(value) => setTimezoneBm(value)}
+                                                options={isApproveMeta ? meta_timezones : google_timezones}
+                                                placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
                                             />
                                         </div>
+
+                                        {isApproveMeta && (
+                                            <>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                                    <Input
+                                                        id="info_fanpage"
+                                                        value={infoFanpage}
+                                                        onChange={(e) => setInfoFanpage(e.target.value)}
+                                                        placeholder={t('service_orders.form.info_fanpage_placeholder')}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="info_website">{t('service_orders.form.info_website')}</Label>
+                                                    <Input
+                                                        id="info_website"
+                                                        value={infoWebsite}
+                                                        onChange={(e) => setInfoWebsite(e.target.value)}
+                                                        placeholder={t('service_orders.form.info_website_placeholder')}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -517,34 +549,6 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
 
                             <div className="space-y-4 py-2">
                                 <div className="space-y-2">
-                                    <Label htmlFor="edit_meta_email">{t('service_purchase.meta_email')}</Label>
-                                    <Input
-                                        id="edit_meta_email"
-                                        type="email"
-                                        value={editMetaEmail}
-                                        onChange={(e) => setEditMetaEmail(e.target.value)}
-                                        placeholder={t('service_orders.form.meta_email_placeholder')}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit_display_name">{t('service_purchase.display_name')}</Label>
-                                    <Input
-                                        id="edit_display_name"
-                                        value={editDisplayName}
-                                        onChange={(e) => setEditDisplayName(e.target.value)}
-                                        placeholder={t('service_orders.form.display_name_placeholder')}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit_bm_id">BM ID</Label>
-                                    <Input
-                                        id="edit_bm_id"
-                                        value={editBmId}
-                                        onChange={(e) => setEditBmId(e.target.value)}
-                                        placeholder={t('service_orders.form.bm_id_placeholder')}
-                                    />
-                                </div>
-                                <div className="space-y-2">
                                     <Label htmlFor="edit_payment_type">{t('service_purchase.payment_type')}</Label>
                                     <div className="flex gap-2">
                                         <Button
@@ -565,55 +569,146 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                         </Button>
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit_asset_access">{t('service_purchase.asset_access_label')}</Label>
-                                    <Select
-                                        value={editAssetAccess || 'full_asset'}
-                                        onValueChange={(value: 'full_asset' | 'basic_asset') => setEditAssetAccess(value)}
-                                    >
-                                        <SelectTrigger id="edit_asset_access">
-                                            <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
-                                            <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit_timezone_bm">
-                                        {isEditMeta
-                                            ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
-                                            : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
-                                    </Label>
-                                    <TimezoneSelect
-                                        id="edit_timezone_bm"
-                                        value={editTimezoneBm || ''}
-                                        onValueChange={(value) => setEditTimezoneBm(value)}
-                                        options={isEditMeta ? meta_timezones : google_timezones}
-                                        placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
-                                    />
-                                </div>
-                                {isEditMeta && (
+                                {editUseAccountsStructure ? (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-base font-semibold">
+                                                {isEditMeta
+                                                    ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
+                                                    : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' })}
+                                            </Label>
+                                            {editAccounts.length < 3 && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setEditAccounts([
+                                                            ...editAccounts,
+                                                            {
+                                                                meta_email: '',
+                                                                display_name: '',
+                                                                bm_ids: [],
+                                                                fanpages: isEditMeta ? [] : [],
+                                                                websites: [],
+                                                                timezone_bm: '',
+                                                                asset_access: 'full_asset',
+                                                            },
+                                                        ]);
+                                                    }}
+                                                >
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                                            {editAccounts.map((account, idx) => (
+                                                <AccountFormEdit
+                                                    key={idx}
+                                                    account={account}
+                                                    accountIndex={idx}
+                                                    platform={selectedEditOrder?.package?.platform ?? 0}
+                                                    metaTimezones={meta_timezones}
+                                                    googleTimezones={google_timezones}
+                                                    onUpdate={(index, data) => {
+                                                        const newAccounts = [...editAccounts];
+                                                        newAccounts[index] = data;
+                                                        setEditAccounts(newAccounts);
+                                                    }}
+                                                    onRemove={(index) => {
+                                                        setEditAccounts(editAccounts.filter((_, i) => i !== index));
+                                                    }}
+                                                    canRemove={editAccounts.length > 1}
+                                                />
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : (
                                     <>
                                         <div className="space-y-2">
-                                            <Label htmlFor="edit_info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                            <Label htmlFor="edit_meta_email">{t('service_purchase.meta_email')}</Label>
                                             <Input
-                                                id="edit_info_fanpage"
-                                                value={editInfoFanpage}
-                                                onChange={(e) => setEditInfoFanpage(e.target.value)}
-                                                placeholder={t('service_orders.form.info_fanpage_placeholder')}
+                                                id="edit_meta_email"
+                                                type="email"
+                                                value={editMetaEmail || ''}
+                                                onChange={(e) => setEditMetaEmail(e.target.value)}
+                                                placeholder={t('service_orders.form.meta_email_placeholder')}
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="edit_info_website">{t('service_orders.form.info_website')}</Label>
+                                            <Label htmlFor="edit_display_name">{t('service_purchase.display_name')}</Label>
                                             <Input
-                                                id="edit_info_website"
-                                                value={editInfoWebsite}
-                                                onChange={(e) => setEditInfoWebsite(e.target.value)}
-                                                placeholder={t('service_orders.form.info_website_placeholder')}
+                                                id="edit_display_name"
+                                                value={editDisplayName || ''}
+                                                onChange={(e) => setEditDisplayName(e.target.value)}
+                                                placeholder={t('service_orders.form.display_name_placeholder')}
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_bm_id">
+                                                {isEditMeta
+                                                    ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
+                                                    : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}
+                                            </Label>
+                                            <Input
+                                                id="edit_bm_id"
+                                                value={editBmId || ''}
+                                                onChange={(e) => setEditBmId(e.target.value)}
+                                                placeholder={t('service_orders.form.bm_id_placeholder')}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_asset_access">{t('service_purchase.asset_access_label')}</Label>
+                                            <Select
+                                                value={editAssetAccess ?? 'full_asset'}
+                                                onValueChange={(value: 'full_asset' | 'basic_asset') => setEditAssetAccess(value)}
+                                            >
+                                                <SelectTrigger id="edit_asset_access">
+                                                    <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
+                                                    <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_timezone_bm">
+                                                {isEditMeta
+                                                    ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
+                                                    : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                                            </Label>
+                                            <TimezoneSelect
+                                                id="edit_timezone_bm"
+                                                value={editTimezoneBm || ''}
+                                                onValueChange={(value) => setEditTimezoneBm(value)}
+                                                options={isEditMeta ? meta_timezones : google_timezones}
+                                                placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
+                                            />
+                                        </div>
+                                        {isEditMeta && (
+                                            <>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="edit_info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                                    <Input
+                                                        id="edit_info_fanpage"
+                                                        value={editInfoFanpage || ''}
+                                                        onChange={(e) => setEditInfoFanpage(e.target.value)}
+                                                        placeholder={t('service_orders.form.info_fanpage_placeholder')}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="edit_info_website">{t('service_orders.form.info_website')}</Label>
+                                                    <Input
+                                                        id="edit_info_website"
+                                                        value={editInfoWebsite || ''}
+                                                        onChange={(e) => setEditInfoWebsite(e.target.value)}
+                                                        placeholder={t('service_orders.form.info_website_placeholder')}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </>
                                 )}
                             </div>

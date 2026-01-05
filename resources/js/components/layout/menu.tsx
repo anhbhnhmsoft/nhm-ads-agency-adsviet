@@ -23,6 +23,7 @@ import {
     ticket_deposit_app,
     business_managers_index,
     contact_index,
+    ticket_create_account,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -166,6 +167,15 @@ const useMenu = () => {
                         ]),
                     },
                     {
+                        title: t('ticket.create_account.title', { defaultValue: 'Tạo tài khoản' }),
+                        url: ticket_create_account().url,
+                        active: isActive(ticket_create_account()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
                         title: t('ticket.transfer.title', { defaultValue: 'Chuyển tiền' }),
                         url: ticket_transfer().url,
                         active: isActive(ticket_transfer()),
@@ -292,7 +302,7 @@ const useMenu = () => {
                 icon: <Settings />,
                 is_menu: true,
                 active: isActive(business_managers_index()),
-                can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE]),
+                can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE, _UserRole.CUSTOMER, _UserRole.AGENCY]),
             },
             {
                 title: t('menu.crypto_wallet_config'),

@@ -344,7 +344,7 @@ class MetaService
                 /** @var \App\Models\User $user */
                 $user = Auth::user();
                 $userRole = $user->role ?? null;
-                
+
                 // Admin, Manager, Employee không cần kiểm tra
                 if (in_array($userRole, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
                     // Cho phép resume
@@ -352,10 +352,10 @@ class MetaService
                     // Customer/Agency: Kiểm tra spending > balance + 100
                     $balance = (float) ($metaAccount->balance ?? 0);
                     $threshold = 100.0;
-                    
+
                     // Lấy chi tiêu tích lũy (lifetime)
                     $lifetimeSpending = (float) ($metaAccount->amount_spent ?? 0);
-                    
+
                     // Nếu không có amount_spent, lấy từ insights database
                     if ($lifetimeSpending == 0) {
                         $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(
@@ -366,9 +366,9 @@ class MetaService
                             $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
                         }
                     }
-                    
+
                     $thresholdAmount = $balance + $threshold;
-                    
+
                     // Nếu chi tiêu vượt quá số dư + ngưỡng, không cho phép resume
                     if ($lifetimeSpending > $thresholdAmount) {
                         return ServiceReturn::error(
@@ -724,8 +724,18 @@ class MetaService
      */
     public function syncMetaAccounts(ServiceUser $serviceUser): ServiceReturn
     {
-        $serviceUserConfig = $serviceUser->config_account;
-        $bmId = $serviceUserConfig['bm_id'];
+        $serviceUserConfig = $serviceUser->config_account ?? [];
+
+        $bmId = null;
+        if (is_array($serviceUserConfig['accounts']) && !empty($serviceUserConfig['accounts'])) {
+            $firstAccount = $serviceUserConfig['accounts'][0];
+            if (is_array($firstAccount['bm_ids']) && !empty($firstAccount['bm_ids'])) {
+                $bmId = $firstAccount['bm_ids'][0];
+            }
+        } else {
+            $bmId = $serviceUserConfig['bm_id'] ?? null;
+        }
+
         // Nếu không có bmId thì thoát
         if (!$bmId) {
             return ServiceReturn::error('Missing bm_id in service user config');
@@ -1075,7 +1085,7 @@ class MetaService
             if (empty($accountIds)) {
                 return ServiceReturn::success(data: []);
             }
-            
+
             $accounts = $this->metaAccountRepository->query()
                 ->whereIn('id', $accountIds)
                 ->get()
@@ -1223,7 +1233,7 @@ class MetaService
                 AdDatePresetValues::LAST_28D => Carbon::today()->subDays(27),
                 AdDatePresetValues::LAST_30D => Carbon::today()->subDays(29),
                 AdDatePresetValues::LAST_90D => Carbon::today()->subDays(89),
-                default => Carbon::today()->subDays(6),
+                default => Carbon::today(),
             };
             $records = $this->metaAdsAccountInsightRepository->query()
                 ->whereIn('service_user_id', $serviceUserIds)
@@ -1523,7 +1533,7 @@ class MetaService
             foreach ($accounts as $account) {
                 try {
                     $balance = (float) ($account->balance ?? 0);
-                    
+
                     // Kiểm tra nếu số dư thấp hơn ngưỡng an toàn (cảnh báo số dư thấp)
                     if ($balance < $threshold) {
                         // Pause tất cả campaigns trong account
@@ -1566,7 +1576,6 @@ class MetaService
                             'account_id' => $account->id,
                             'account_name' => $account->account_name,
                             'balance' => $balance,
-                            'lifetime_spending' => $lifetimeSpending,
                             'threshold' => $threshold,
                             'campaigns_paused' => $campaigns->count(),
                             'notification_sent' => $notificationResult->isSuccess(),
@@ -1578,7 +1587,7 @@ class MetaService
                     // Meta Ads API hỗ trợ date_preset: "maximum" để lấy lifetime spending
                     // amount_spent là chi tiêu tích lũy (lifetime) từ Meta API, ưu tiên dùng
                     $lifetimeSpending = (float) ($account->amount_spent ?? 0);
-                    
+
                     // Nếu không có amount_spent, lấy từ insights database (maximum = tất cả insights đã sync)
                     if ($lifetimeSpending == 0) {
                         $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(

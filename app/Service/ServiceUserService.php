@@ -20,6 +20,8 @@ use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\WalletRepository;
 use App\Service\UserAlertService;
 use App\Service\MailService;
+use App\Jobs\MetaApi\SyncMetaJob;
+use App\Jobs\GoogleAds\SyncGoogleServiceUserJob;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -73,7 +75,9 @@ class ServiceUserService
     {
         try {
             /** @var ServiceUser|null $serviceUser */
-            $serviceUser = $this->serviceUserRepository->find($id);
+            $serviceUser = $this->serviceUserRepository->query()
+                ->with('package')
+                ->find($id);
             if (!$serviceUser) {
                 return ServiceReturn::error(message: __('common_error.not_found'));
             }
@@ -86,22 +90,42 @@ class ServiceUserService
 
             $platform = $serviceUser->package->platform ?? null;
 
-            $newConfig = array_merge($currentConfig, [
-                'meta_email' => $config['meta_email'] ?? ($currentConfig['meta_email'] ?? ''),
-                'display_name' => $config['display_name'] ?? ($currentConfig['display_name'] ?? ''),
-                'bm_id' => $config['bm_id'] ?? ($currentConfig['bm_id'] ?? ''),
-                'uid' => $config['uid'] ?? ($currentConfig['uid'] ?? null),
-                'account_name' => $config['account_name'] ?? ($currentConfig['account_name'] ?? null),
-                'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
-            ]);
+            if (is_array($config['accounts']) && !empty($config['accounts'])) {
+                $newConfig = array_merge($currentConfig, [
+                    'accounts' => $config['accounts'],
+                    'payment_type' => $config['payment_type'] ?? ($currentConfig['payment_type'] ?? 'prepay'),
+                ]);
+            } else {
+                $newConfig = array_merge($currentConfig, [
+                    'meta_email' => $config['meta_email'] ?? ($currentConfig['meta_email'] ?? ''),
+                    'display_name' => $config['display_name'] ?? ($currentConfig['display_name'] ?? ''),
+                    'bm_id' => $config['bm_id'] ?? ($currentConfig['bm_id'] ?? ''),
+                    'uid' => $config['uid'] ?? ($currentConfig['uid'] ?? null),
+                    'account_name' => $config['account_name'] ?? ($currentConfig['account_name'] ?? null),
+                    'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
+                ]);
 
-            if ($platform === PlatformType::GOOGLE->value) {
-                $newConfig['google_manager_id'] = $config['bm_id'] ?? ($currentConfig['google_manager_id'] ?? null);
+                if ($platform === PlatformType::GOOGLE->value) {
+                    $newConfig['google_manager_id'] = $config['bm_id'] ?? ($currentConfig['google_manager_id'] ?? null);
+                }
+
+                if ($platform === PlatformType::META->value) {
+                    $newConfig['info_fanpage'] = $config['info_fanpage'] ?? ($currentConfig['info_fanpage'] ?? '');
+                    $newConfig['info_website'] = $config['info_website'] ?? ($currentConfig['info_website'] ?? '');
+                }
             }
 
             $serviceUser->config_account = $newConfig;
             $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value;
             $serviceUser->save();
+
+            // Dispatch job sync dữ liệu từ API sau khi approve thành công
+            // Platform đã được load ở trên
+            if ($platform === PlatformType::META->value) {
+                SyncMetaJob::dispatch($serviceUser);
+            } elseif ($platform === PlatformType::GOOGLE->value) {
+                SyncGoogleServiceUserJob::dispatch($serviceUser);
+            }
 
             $this->notifyServiceStatus($serviceUser, 'activated');
 
@@ -129,7 +153,7 @@ class ServiceUserService
 
                 // Chỉ hoàn tiền nếu đơn đang ở trạng thái PENDING (chưa được approve)
                 $isPending = $serviceUser->status === \App\Common\Constants\ServiceUser\ServiceUserStatus::PENDING->value;
-                
+
                 if ($isPending) {
                     // Tìm transaction gốc (SERVICE_PURCHASE với reference_id = service_user_id)
                     $originalTransaction = $this->walletTransactionRepository->findByReferenceId(
@@ -140,14 +164,14 @@ class ServiceUserService
                     if ($originalTransaction) {
                         // Lấy số tiền đã trừ từ transaction gốc (amount là số âm, nên dùng abs để lấy giá trị dương)
                         $refundAmount = abs((float) $originalTransaction->amount);
-                        
+
                         // Lấy ví của user
                         $wallet = $this->walletRepository->findByUserId($serviceUser->user_id);
                         if ($wallet) {
                             // Lấy tên package để hiển thị trong description (nếu có)
                             $package = $serviceUser->package;
                             $packageName = $package ? $package->name : 'Dịch vụ';
-                            
+
                             // Cộng lại tiền vào ví
                             $wallet->update(['balance' => (float) $wallet->balance + $refundAmount]);
 
@@ -238,14 +262,24 @@ class ServiceUserService
                 $currentConfig = [];
             }
 
-            $serviceUser->config_account = array_merge($currentConfig, array_filter([
-                'meta_email' => $config['meta_email'] ?? null,
-                'display_name' => $config['display_name'] ?? null,
-                'bm_id' => $config['bm_id'] ?? null,
-                'uid' => $config['uid'] ?? null,
-                'account_name' => $config['account_name'] ?? null,
-                'timezone_bm' => $config['timezone_bm'] ?? null,
-            ], fn($value) => $value !== null));
+            if (is_array($config['accounts']) && !empty($config['accounts'])) {
+                $serviceUser->config_account = array_merge($currentConfig, array_filter([
+                    'accounts' => $config['accounts'],
+                    'payment_type' => $config['payment_type'] ?? null,
+                ], fn($value) => $value !== null));
+            } else {
+                $serviceUser->config_account = array_merge($currentConfig, array_filter([
+                    'meta_email' => $config['meta_email'] ?? null,
+                    'display_name' => $config['display_name'] ?? null,
+                    'bm_id' => $config['bm_id'] ?? null,
+                    'uid' => $config['uid'] ?? null,
+                    'account_name' => $config['account_name'] ?? null,
+                    'timezone_bm' => $config['timezone_bm'] ?? null,
+                    'info_fanpage' => $config['info_fanpage'] ?? null,
+                    'info_website' => $config['info_website'] ?? null,
+                    'payment_type' => $config['payment_type'] ?? null,
+                ], fn($value) => $value !== null));
+            }
             $serviceUser->save();
 
             return ServiceReturn::success(data: $serviceUser);

@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
+use App\Common\Constants\User\UserRole;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Repositories\GoogleAccountRepository;
@@ -11,9 +12,11 @@ use App\Repositories\MetaAccountRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\GoogleAdsAccountInsightRepository;
+use App\Repositories\UserReferralRepository;
 use App\Core\Logging;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 
 class BusinessManagerService
 {
@@ -23,6 +26,7 @@ class BusinessManagerService
         protected GoogleAccountRepository $googleAccountRepository,
         protected MetaAdsAccountInsightRepository $metaAdsAccountInsightRepository,
         protected GoogleAdsAccountInsightRepository $googleAdsAccountInsightRepository,
+        protected UserReferralRepository $userReferralRepository,
     ) {
     }
 
@@ -37,20 +41,37 @@ class BusinessManagerService
             // Xác định date range từ filter
             $dateStart = null;
             $dateEnd = null;
-            if (!empty($filter['period'])) {
-                if ($filter['period'] === 'day' && !empty($filter['date'])) {
-                    $dateStart = Carbon::parse($filter['date'])->startOfDay();
-                    $dateEnd = Carbon::parse($filter['date'])->endOfDay();
-                } elseif (($filter['period'] === 'week' || $filter['period'] === 'month') && !empty($filter['start_date']) && !empty($filter['end_date'])) {
-                    $dateStart = Carbon::parse($filter['start_date'])->startOfDay();
-                    $dateEnd = Carbon::parse($filter['end_date'])->endOfDay();
-                }
+            if (!empty($filter['start_date']) && !empty($filter['end_date'])) {
+                $dateStart = Carbon::parse($filter['start_date'])->startOfDay();
+                $dateEnd = Carbon::parse($filter['end_date'])->endOfDay();
             }
             
+            // Lấy user hiện tại để check role
+            $user = Auth::user();
+            
             // Lấy tất cả service_users active
+            // Đảm bảo load package để có platform
             $query = $this->serviceUserRepository->query()
                 ->with(['user:id,name,username', 'package:id,platform'])
-                ->where('status', ServiceUserStatus::ACTIVE->value);
+                ->where('status', ServiceUserStatus::ACTIVE->value)
+                ->whereHas('package');
+
+            // Nếu là customer, chỉ lấy service_users của chính họ
+            if ($user && $user->role === UserRole::CUSTOMER->value) {
+                $query->where('user_id', $user->id);
+            } elseif ($user && $user->role === UserRole::AGENCY->value) {
+                // Agency: lấy service_users của chính họ + service_users của các customer mà họ quản lý
+                $managedCustomerIds = $this->userReferralRepository->query()
+                    ->where('referrer_id', $user->id)
+                    ->whereNull('deleted_at')
+                    ->pluck('referred_id')
+                    ->toArray();
+                
+                $userIds = array_merge([$user->id], $managedCustomerIds);
+                $query->whereIn('user_id', $userIds);
+            }
+
+            $query = $this->serviceUserRepository->sortQuery($query, 'created_at', 'desc');
             
             // Filter theo platform nếu có
             if (!empty($filter['platform'])) {
@@ -68,18 +89,38 @@ class BusinessManagerService
                 $config = $serviceUser->config_account ?? [];
                 $platform = $serviceUser->package->platform ?? null;
                 
-                // Lấy BM ID từ config (có thể là bm_id hoặc từ ad_account_ids)
-                $bmId = $config['bm_id'] ?? null;
-                if (!$bmId) {
-                    // Nếu không có BM ID, dùng user_id làm key
-                    $bmId = 'user_' . $serviceUser->user_id;
+                // Bỏ qua nếu không có platform
+                if (!$platform) {
+                    continue;
                 }
                 
-                $key = $platform . '_' . $bmId;
+                $bmIds = [];
+                if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
+                    foreach ($config['accounts'] as $account) {
+                        if (isset($account['bm_ids']) && is_array($account['bm_ids'])) {
+                            $bmIds = array_merge($bmIds, array_filter($account['bm_ids'], fn($id) => !empty(trim($id ?? ''))));
+                        }
+                    }
+                } else {
+                    $bmId = $config['bm_id'] ?? null;
+                    if ($bmId) {
+                        $bmIds[] = $bmId;
+                    }
+                }
+                
+                if (empty($bmIds)) {
+                    $bmIds = ['user_' . $serviceUser->user_id];
+                }
+                
+                $bmIdForKey = $bmIds[0];
+                $key = $platform . '_' . $bmIdForKey;
                 
                 if (!isset($bmList[$key])) {
+                    $bmIdDisplay = count($bmIds) > 1 ? implode(', ', $bmIds) : $bmIds[0];
+                    
                     $bmList[$key] = [
-                        'id' => $bmId,
+                        'id' => $bmIdDisplay,
+                        'bm_ids' => $bmIds,
                         'name' => $config['display_name'] ?? $serviceUser->user->name ?? $serviceUser->user->username ?? 'Unknown',
                         'platform' => $platform,
                         'owner_name' => $serviceUser->user->name ?? $serviceUser->user->username ?? 'Unknown',
@@ -112,8 +153,10 @@ class BusinessManagerService
                             $spend = $this->metaAdsAccountInsightRepository->query()
                                 ->where('meta_account_id', $account->id)
                                 ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
-                                ->sum('spend');
-                            $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], (string) ($spend ?? '0'), 2);
+                                ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
+                                ->first();
+                            $spendValue = $spend && isset($spend->total_spend) ? (string) $spend->total_spend : '0';
+                            $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], $spendValue, 2);
                         } else {
                             $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], $account->amount_spent ?? '0', 2);
                         }
@@ -139,8 +182,10 @@ class BusinessManagerService
                             $spend = $this->googleAdsAccountInsightRepository->query()
                                 ->where('google_account_id', $account->id)
                                 ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
-                                ->sum('spend');
-                            $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], (string) ($spend ?? '0'), 2);
+                                ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
+                                ->first();
+                            $spendValue = $spend && isset($spend->total_spend) ? (string) $spend->total_spend : '0';
+                            $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], $spendValue, 2);
                         } else {
                             // Google không có amount_spent trong account, để 0 hoặc tính từ insights tổng
                             $bmList[$key]['total_spend'] = bcadd($bmList[$key]['total_spend'], '0', 2);
@@ -174,6 +219,19 @@ class BusinessManagerService
             // Chuyển thành array và paginate
             $bmArray = array_values($bmList);
 
+            // Đảm bảo total_spend và total_balance luôn có giá trị mặc định
+            foreach ($bmArray as &$bm) {
+                $bm['total_spend'] = $bm['total_spend'] ?? '0';
+                $bm['total_balance'] = $bm['total_balance'] ?? '0';
+                if (empty($bm['total_spend']) || $bm['total_spend'] === null) {
+                    $bm['total_spend'] = '0';
+                }
+                if (empty($bm['total_balance']) || $bm['total_balance'] === null) {
+                    $bm['total_balance'] = '0';
+                }
+            }
+            unset($bm);
+
             foreach ($bmArray as $bm) {
                 $stats['total_accounts'] += $bm['total_accounts'];
                 $stats['active_accounts'] += $bm['active_accounts'];
@@ -186,6 +244,11 @@ class BusinessManagerService
                 }
             }
 
+            // Nếu là customer hoặc agency, chỉ hiển thị 1 BM/MCC đầu tiên
+            if ($user && in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
+                $bmArray = array_slice($bmArray, 0, 1);
+            }
+            
             $perPage = $queryListDTO->perPage ?? 10;
             $page = $queryListDTO->page ?? 1;
             $total = count($bmArray);
@@ -219,18 +282,51 @@ class BusinessManagerService
     public function getAccountsByBmId(string $bmId, ?int $platform = null): ServiceReturn
     {
         try {
+            // Lấy user hiện tại để check role
+            $user = Auth::user();
+            
             // Tìm service_users có BM ID này
             $query = $this->serviceUserRepository->query()
                 ->with(['user:id,name,username', 'package:id,platform'])
                 ->where('status', ServiceUserStatus::ACTIVE->value);
             
+            // Nếu là customer, chỉ lấy service_users của chính họ
+            if ($user && $user->role === UserRole::CUSTOMER->value) {
+                $query->where('user_id', $user->id);
+            } elseif ($user && $user->role === UserRole::AGENCY->value) {
+                // Agency: lấy service_users của chính họ + service_users của các customer mà họ quản lý
+                $managedCustomerIds = $this->userReferralRepository->query()
+                    ->where('referrer_id', $user->id)
+                    ->whereNull('deleted_at')
+                    ->pluck('referred_id')
+                    ->toArray();
+                
+                $userIds = array_merge([$user->id], $managedCustomerIds);
+                $query->whereIn('user_id', $userIds);
+            }
+            
             $serviceUsers = $query->get()->filter(function ($serviceUser) use ($bmId) {
                 $config = $serviceUser->config_account ?? [];
-                $configBmId = $config['bm_id'] ?? null;
-                if (!$configBmId) {
-                    $configBmId = 'user_' . $serviceUser->user_id;
+                
+                $configBmIds = [];
+                if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
+                    foreach ($config['accounts'] as $account) {
+                        if (isset($account['bm_ids']) && is_array($account['bm_ids'])) {
+                            $configBmIds = array_merge($configBmIds, array_filter($account['bm_ids'], fn($id) => !empty(trim($id ?? ''))));
+                        }
+                    }
+                } else {
+                    $configBmId = $config['bm_id'] ?? null;
+                    if ($configBmId) {
+                        $configBmIds[] = $configBmId;
+                    }
                 }
-                return $configBmId === $bmId;
+                
+                if (empty($configBmIds)) {
+                    $configBmIds = ['user_' . $serviceUser->user_id];
+                }
+                
+                return in_array($bmId, $configBmIds);
             });
             
             $accounts = [];
@@ -253,6 +349,7 @@ class BusinessManagerService
                             'id' => (string) $account->id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
+                            'service_user_id' => (string) $serviceUser->id,
                             'spend_cap' => $account->spend_cap,
                             'amount_spent' => $account->amount_spent,
                             'balance' => $account->balance,
@@ -271,8 +368,9 @@ class BusinessManagerService
                             'id' => (string) $account->id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
+                            'service_user_id' => (string) $serviceUser->id,
                             'spend_cap' => null, // Google không có spend_cap
-                            'amount_spent' => '0', // TODO: Tính từ campaigns
+                            'amount_spent' => '0',
                             'balance' => $account->balance ?? '0',
                             'currency' => $account->currency ?? 'USD',
                             'account_status' => $account->account_status ?? 1,

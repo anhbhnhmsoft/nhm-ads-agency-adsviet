@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\Service;
+namespace App\Http\Requests\Ticket;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ServiceOrderUpdateConfigRequest extends FormRequest
+class CreateAccountRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -14,12 +14,14 @@ class ServiceOrderUpdateConfigRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],            
-            'meta_email' => ['nullable', 'email', 'max:255'],
+            'package_id' => ['required', 'string'],
+            'budget' => ['required', 'numeric', 'min:50'],
+            'meta_email' => ['nullable', 'string', 'email', 'max:255'],
             'display_name' => ['nullable', 'string', 'max:255'],
             'bm_id' => ['nullable', 'string', 'max:255'],
             'info_fanpage' => ['nullable', 'string', 'max:255'],
             'info_website' => ['nullable', 'string', 'max:255'],
+            'asset_access' => ['nullable', 'string', 'in:full_asset,basic_asset'],
             'timezone_bm' => ['nullable', 'string'],
             'accounts' => ['nullable', 'array', 'max:3'],
             'accounts.*.meta_email' => ['nullable', 'string', 'email', 'max:255'],
@@ -32,19 +34,21 @@ class ServiceOrderUpdateConfigRequest extends FormRequest
             'accounts.*.websites.*' => ['nullable', 'string', 'max:255'],
             'accounts.*.timezone_bm' => ['nullable', 'string'],
             'accounts.*.asset_access' => ['nullable', 'string', 'in:full_asset,basic_asset'],
+            'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'package_id.required' => __('services.validation.package_required'),
+            'budget.required' => __('services.validation.budget_required'),
+            'budget.numeric' => __('services.validation.budget_numeric'),
+            'budget.min' => __('services.validation.budget_min', ['min' => 50]),
             'meta_email.email' => __('services.validation.meta_email_email'),
             'meta_email.max' => __('services.validation.meta_email_max', ['max' => 255]),
-            'display_name.string' => __('services.validation.display_name_string'),
             'display_name.max' => __('services.validation.display_name_max', ['max' => 255]),
-            'bm_id.string' => __('services.validation.bm_id_string'),
-            'bm_id.max' => __('services.validation.bm_id_max', ['max' => 255]),
+            'notes.max' => __('common_validation.max', ['max' => 2000]),
         ];
     }
 }
-

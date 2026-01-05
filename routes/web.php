@@ -20,6 +20,7 @@ use App\Http\Controllers\SpendReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\BusinessManagerController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ProfitController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -152,6 +153,12 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::prefix('/business-managers')->group(function () {
         Route::get('/', [BusinessManagerController::class, 'index'])->name('business_managers_index');
         Route::get('/{bmId}/accounts', [BusinessManagerController::class, 'getAccounts'])->name('business_managers_get_accounts');
+        Route::post('/{bmId}/top-up', [BusinessManagerController::class, 'topUp'])->name('business_managers_top_up');
+    });
+
+    Route::prefix('/profit')->group(function () {
+        Route::get('/by-customer', [ProfitController::class, 'byCustomer'])->name('profit_by_customer');
+        Route::get('/by-platform', [ProfitController::class, 'byPlatform'])->name('profit_by_platform');
     });
 
     Route::prefix('/tickets')->group(function () {
@@ -166,6 +173,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/share', [TicketController::class, 'storeShare'])->name('ticket_share_store');
         Route::get('/withdraw-app', [TicketController::class, 'withdrawApp'])->name('ticket_withdraw_app');
         Route::get('/deposit-app', [TicketController::class, 'depositApp'])->name('ticket_deposit_app');
+        Route::get('/create-account', [TicketController::class, 'createAccount'])->name('ticket_create_account');
+        Route::post('/create-account', [TicketController::class, 'storeCreateAccount'])->name('ticket_create_account_store');
         Route::get('/{id}', [TicketController::class, 'show'])->name('ticket_show');
         Route::post('/', [TicketController::class, 'store'])->name('ticket_store');
         Route::post('/{id}/message', [TicketController::class, 'addMessage'])->name('ticket_add_message');

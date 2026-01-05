@@ -27,14 +27,14 @@ const CustomerRoleCard = ({ role, setRole }: Props) => {
             </div>
             <div
                 onClick={() => setRole(_UserRole.AGENCY)}
-                className={cn('rounded-lg border text-card-foreground shadow-sm transition-all duration-200 cursor-pointer hover:bg-blue-200 hover:border-blue-300 bg-blue-50 border-blue-200', {
-                    'bg-blue-200 border-blue-300': role === _UserRole.AGENCY
+                className={cn('rounded-lg border text-card-foreground shadow-sm transition-all duration-200 cursor-pointer hover:bg-orange-200 hover:border-orange-300 bg-orange-50 border-orange-200', {
+                    'bg-orange-200 border-orange-300': role === _UserRole.AGENCY
                 })}>
                 <div className="p-4">
                     <div className="text-center">
-                        <ShieldCheck className="h-8 w-8 text-blue-600 mx-auto mb-2"/>
-                        <h3 className="font-bold text-blue-800">{t('auth.components.agency')}</h3>
-                        <p className="hidden sm:block text-xs text-blue-600 mt-1">{t('auth.components.agency_desc')}</p>
+                        <ShieldCheck className="h-8 w-8 text-[#eb4e23] mx-auto mb-2"/>
+                        <h3 className="font-bold text-[#eb4e23]">{t('auth.components.agency')}</h3>
+                        <p className="hidden sm:block text-xs text-[#eb4e23] mt-1">{t('auth.components.agency_desc')}</p>
                     </div>
                 </div>
             </div>

@@ -13,6 +13,7 @@ use App\Service\GoogleAdsService;
 use App\Service\MetaService;
 use App\Service\UserService;
 use App\Service\WalletTransactionService;
+use App\Service\ProfitService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -24,6 +25,7 @@ class DashboardController extends Controller
         protected UserService $userService,
         protected WalletTransactionService $walletTransactionService,
         protected DashboardService $dashboardService,
+        protected ProfitService $profitService,
     ) {
     }
 
@@ -89,6 +91,16 @@ class DashboardController extends Controller
         // Lấy bảng xếp hạng chi tiêu
         $spendingRanking = $this->getSpendingRanking($request);
 
+        // Lấy thống kê lợi nhuận theo nền tảng (chỉ cho Agency và Admin)
+        $profitByPlatform = null;
+        $user = $request->user();
+        if (in_array($user->role, [\App\Common\Constants\User\UserRole::AGENCY->value, \App\Common\Constants\User\UserRole::ADMIN->value])) {
+            $endDate = Carbon::today()->endOfDay();
+            $startDate = $endDate->copy()->subDays(29)->startOfDay();
+            $profitResult = $this->profitService->getProfitByPlatform(null, $startDate, $endDate);
+            $profitByPlatform = $profitResult->isSuccess() ? $profitResult->getData() : null;
+        }
+
         // Chuẩn bị data để trả về
         $adminDashboardData = [
             'total_customers' => $customerSummary['total_customers'],
@@ -103,6 +115,7 @@ class DashboardController extends Controller
             'adminDashboardData' => $adminDashboardData,
             'adminPendingTransactions' => $pendingTransactions['pagination'],
             'dashboardError' => $pendingTransactions['error'],
+            'profitByPlatform' => $profitByPlatform,
         ]);
     }
 

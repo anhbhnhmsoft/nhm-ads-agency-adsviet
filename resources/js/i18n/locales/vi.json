@@ -244,7 +244,7 @@
         "campaign_update_budget_help_google": "Đối với Google Ads, ngân sách được Google quản lý theo dạng ngân sách ngày hoặc ngân sách chia sẻ. Hệ thống sẽ ghi nhận giá trị này như một giới hạn tham chiếu; Google vẫn có thể tối ưu phân phối theo quy tắc ngân sách riêng của họ.",
         "campaign_update_budget_help_google_tooltip": "Google Ads: ngân sách được quản lý khác (ngày/chia sẻ). Giá trị này dùng như giới hạn tham chiếu trong hệ thống.",
         "campaign_update_budget_amount_label": "Giới hạn mới (USDT)",
-        "campaign_update_budget_wallet_password_label": "Mật khẩu ví (không còn sử dụng)",
+        "campaign_update_budget_wallet_password_label": "Mật khẩu ví",
         "campaign_update_budget_submit": "Cập nhật ngân sách",
         "campaign_update_budget_success": "Đã cập nhật giới hạn chi tiêu của chiến dịch thành {{amount}} USDT.",
         "campaign_update_budget_insufficient_balance": "Không thể cập nhật ngân sách chiến dịch.",
@@ -596,6 +596,11 @@
         "meta_email": "Email Tài Khoản",
         "display_name": "Tên hiển thị",
         "display_name_placeholder": "Nhập tên hiển thị",
+        "account_number": "Tài khoản {{number}}",
+        "add_account": "Thêm tài khoản",
+        "add_bm_mcc": "Thêm BM/MCC",
+        "add_fanpage": "Thêm fanpage",
+        "add_website": "Thêm website",
         "feature_labels": {
             "meta_new_bm": "BM mới, sạch lịch sử",
             "meta_multibrand_support": "Hỗ trợ đa thương hiệu",
@@ -845,6 +850,14 @@
             "bm_bc_mcc_id_invalid": "ID BM/MCC không hợp lệ",
             "notes_required": "Vui lòng nhập ghi chú",
             "notes_max": "Ghi chú không được vượt quá 1000 ký tự"
+        },
+        "create_account": {
+            "title": "Tạo tài khoản",
+            "description": "Điền thông tin để tạo yêu cầu tạo tài khoản mới",
+            "notes": "Ghi chú",
+            "notes_placeholder": "Nhập ghi chú (nếu có)",
+            "submit": "Gửi yêu cầu",
+            "create_success": "Đã tạo yêu cầu tạo tài khoản thành công"
         }
     },
     "config": {
@@ -876,6 +889,23 @@
             "spend": "Spend",
             "total_campaign": "Total campaign",
             "no_accounts": "Chưa có tài khoản nào"
+        },
+        "top_up": "Nạp tiền",
+        "top_up_dialog": {
+            "title": "Nạp tiền vào BM/MCC",
+            "description": "Nhập số tiền cần nạp vào tài khoản quảng cáo",
+            "amount_label": "Số tiền (USD)",
+            "amount_placeholder": "Nhập số tiền cần nạp",
+            "amount_invalid": "Số tiền không hợp lệ",
+            "note_label": "Ghi chú (tùy chọn)",
+            "note_placeholder": "Nhập ghi chú (nếu có)",
+            "submit": "Gửi yêu cầu",
+            "success": "Yêu cầu nạp tiền đã được gửi thành công",
+            "error": "Có lỗi xảy ra khi gửi yêu cầu nạp tiền",
+            "bm_not_found": "Không tìm thấy BM/MCC",
+            "no_accounts": "BM/MCC chưa có tài khoản",
+            "platform_not_found": "Không xác định được platform",
+            "ticket_subject": "Yêu cầu nạp tiền vào BM/MCC"
         },
         "filter": {
             "period": "Khoảng thời gian",

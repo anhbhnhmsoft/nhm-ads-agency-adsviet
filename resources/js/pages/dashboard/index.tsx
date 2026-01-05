@@ -39,15 +39,25 @@ const breadcrumbs: IBreadcrumbItem[] = [
     },
 ];
 
+type ProfitByPlatformData = {
+    platform: number;
+    platform_name: string;
+    revenue: string;
+    cost: string;
+    profit: string;
+    profit_margin: string;
+};
+
 type Props = {
     dashboardData?: DashboardData | null;
     adminDashboardData?: AdminDashboardData | null;
     adminPendingTransactions?: AdminPendingTransactions | null;
     dashboardError?: string | null;
     selectedPlatform?: string; // 'meta' hoặc 'google_ads'
+    profitByPlatform?: ProfitByPlatformData[] | null;
 };
 
-export default function Index({ dashboardData, adminDashboardData, adminPendingTransactions, dashboardError, selectedPlatform = 'meta' }: Props) {
+export default function Index({ dashboardData, adminDashboardData, adminPendingTransactions, dashboardError, selectedPlatform = 'meta', profitByPlatform }: Props) {
     const { t } = useTranslation();
     const { props } = usePage();
     const authUser = useMemo(() => {
@@ -218,7 +228,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         <AdminStatCard
                             label={t('dashboard.admin_total_customers')}
                             value={adminDashboardData.total_customers}
-                            icon={<Users className="h-5 w-5 text-blue-600" />}
+                            icon={<Users className="h-5 w-5 text-[#eb4e23]" />}
                         />
                         <AdminStatCard
                             label={t('dashboard.admin_active_customers')}
@@ -239,6 +249,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                 platform="meta"
                                 activeAccounts={adminDashboardData.platform_accounts.meta.active_accounts}
                                 totalBalance={adminDashboardData.platform_accounts.meta.total_balance}
+                                profitData={profitByPlatform?.find(p => p.platform === 1)} // PlatformType::META = 1
                                 t={t}
                                 formatCurrency={formatCurrency}
                             />
@@ -246,6 +257,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                 platform="google"
                                 activeAccounts={adminDashboardData.platform_accounts.google.active_accounts}
                                 totalBalance={adminDashboardData.platform_accounts.google.total_balance}
+                                profitData={profitByPlatform?.find(p => p.platform === 2)} // PlatformType::GOOGLE = 2
                                 t={t}
                                 formatCurrency={formatCurrency}
                             />
@@ -256,7 +268,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                     {adminDashboardData.pending_tickets_by_type && (
                         <Card>
                             <CardHeader>
-                                <CardTitle className="text-lg font-semibold text-[#083e96]">
+                                <CardTitle className="text-lg font-semibold text-[#eb4e23]">
                                     {t('dashboard.pending_tickets_title')}
                                 </CardTitle>
                             </CardHeader>
@@ -292,7 +304,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         <Card>
                             <CardHeader>
                                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                                    <CardTitle className="text-lg font-semibold text-[#083e96]">
+                                    <CardTitle className="text-lg font-semibold text-[#eb4e23]">
                                         {t('spend_report.ranking_title')}
                                     </CardTitle>
                                     <div className="flex gap-3">
@@ -921,11 +933,12 @@ type PlatformAccountCardProps = {
     platform: 'meta' | 'google';
     activeAccounts: number;
     totalBalance: string;
+    profitData?: ProfitByPlatformData | null;
     t: (key: string, options?: any) => string;
     formatCurrency: (value: string | number) => string;
 };
 
-function PlatformAccountCard({ platform, activeAccounts, totalBalance, t, formatCurrency }: PlatformAccountCardProps) {
+function PlatformAccountCard({ platform, activeAccounts, totalBalance, profitData, t, formatCurrency }: PlatformAccountCardProps) {
     const platformLabel = platform === 'meta' 
         ? t('dashboard.platform_meta')
         : t('dashboard.platform_google_ads');
@@ -933,14 +946,14 @@ function PlatformAccountCard({ platform, activeAccounts, totalBalance, t, format
     return (
         <Card>
             <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold text-[#083e96]">{platformLabel}</CardTitle>
+                <CardTitle className="text-base font-semibold text-[#eb4e23]">{platformLabel}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div>
                     <div className="text-sm text-muted-foreground mb-1">
-                        {t('dashboard.platform_active_accounts')}
+                        {t('dashboard.platform_active_accounts', { defaultValue: 'Số lượng tài khoản Active' })}
                     </div>
-                    <div className="text-3xl font-bold text-[#083e96]">{activeAccounts}</div>
+                    <div className="text-3xl font-bold text-[#eb4e23]">{activeAccounts}</div>
                 </div>
                 <div>
                     <div className="text-sm text-muted-foreground mb-1">
@@ -950,6 +963,27 @@ function PlatformAccountCard({ platform, activeAccounts, totalBalance, t, format
                         {formatCurrency(totalBalance)}
                     </div>
                 </div>
+                {profitData && (
+                    <>
+                        <div className="pt-2 border-t">
+                            <div className="text-sm text-muted-foreground mb-1">
+                                {t('profit.profit', { defaultValue: 'Lợi nhuận' })} (30 ngày)
+                            </div>
+                            <div className={`text-2xl font-bold ${parseFloat(profitData.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {parseFloat(profitData.profit) >= 0 ? '+' : ''}
+                                {formatCurrency(profitData.profit)}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                                {t('profit.revenue', { defaultValue: 'Doanh thu' })}: {formatCurrency(profitData.revenue)} | {' '}
+                                {t('profit.cost', { defaultValue: 'Chi phí' })}: {formatCurrency(profitData.cost)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                {t('profit.profit_margin', { defaultValue: 'Tỷ suất' })}: {parseFloat(profitData.profit_margin) >= 0 ? '+' : ''}
+                                {parseFloat(profitData.profit_margin).toFixed(2)}%
+                            </div>
+                        </div>
+                    </>
+                )}
             </CardContent>
         </Card>
     );
@@ -966,7 +1000,7 @@ function PendingTicketCard({ label, value }: PendingTicketCardProps) {
             <div className="text-sm font-semibold mb-2 text-center min-h-10 flex items-center justify-center">
                 {label}
             </div>
-            <div className="h-px bg-[#083e96] mb-3"></div>
+            <div className="h-px bg-[#eb4e23] mb-3"></div>
             <div className="text-3xl font-bold text-center">{value}</div>
         </div>
     );

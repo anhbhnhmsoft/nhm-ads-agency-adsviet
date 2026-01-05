@@ -12,7 +12,10 @@ use App\Http\Requests\Ticket\CreateRefundRequest;
 use App\Http\Requests\Ticket\CreateAppealRequest;
 use App\Http\Requests\Ticket\CreateShareRequest;
 use App\Http\Requests\Ticket\UpdateTicketStatusRequest;
+use App\Http\Requests\Ticket\CreateAccountRequest;
 use App\Service\TicketService;
+use App\Service\ServicePackageService;
+use App\Service\ConfigService;
 use App\Service\MetaService;
 use App\Service\GoogleAdsService;
 use App\Service\WalletTransactionService;
@@ -28,6 +31,8 @@ class TicketController extends Controller
         protected MetaService $metaService,
         protected GoogleAdsService $googleAdsService,
         protected WalletTransactionService $walletTransactionService,
+        protected ServicePackageService $servicePackageService,
+        protected ConfigService $configService,
     ) {
     }
 
@@ -536,7 +541,7 @@ class TicketController extends Controller
     public function storeShare(CreateShareRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        
+
         $result = $this->ticketService->createShareRequest([
             'platform' => $validated['platform'],
             'account_id' => $validated['account_id'],
@@ -550,6 +555,60 @@ class TicketController extends Controller
 
         return redirect()->route('ticket_share')
             ->with('success', __('ticket.share.create_success'));
+    }
+
+    /**
+     * Trang tạo tài khoản - hiển thị form tạo tài khoản mới (không tạo đơn dịch vụ)
+     */
+    public function createAccount(): Response|RedirectResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $result = $this->servicePackageService->getListServicePackage(new \App\Core\QueryListDTO(
+            perPage: 100,
+            page: 1,
+            filter: [],
+            sortBy: 'created_at',
+            sortDirection: 'desc',
+        ));
+
+        $packages = collect();
+        if ($result->isSuccess()) {
+            $paginator = $result->getData();
+            $items = method_exists($paginator, 'items') ? $paginator->items() : (array) $paginator;
+            $packages = collect($items)
+                ->filter(fn ($pkg) => !$pkg->disabled)
+                ->values();
+        }
+
+        $meta_timezones = \App\Common\Helpers\TimezoneHelper::getMetaTimezoneOptions();
+        $google_timezones = \App\Common\Helpers\TimezoneHelper::getGoogleTimezoneOptions();
+
+        return $this->rendering('ticket/create-account', [
+            'packages' => fn() => \App\Http\Resources\ServicePackageListResource::collection($packages),
+            'meta_timezones' => $meta_timezones,
+            'google_timezones' => $google_timezones,
+        ]);
+    }
+
+    /**
+     * Tạo yêu cầu tạo tài khoản mới (chỉ lưu ticket, không tạo đơn dịch vụ)
+     */
+    public function storeCreateAccount(CreateAccountRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $result = $this->ticketService->createAccountRequest($validated);
+
+        if ($result->isError()) {
+            return back()->withErrors(['error' => $result->getMessage()]);
+        }
+
+        return redirect()->route('ticket_create_account')
+            ->with('success', __('ticket.create_account.create_success'));
     }
 }
 

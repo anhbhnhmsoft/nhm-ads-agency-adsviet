@@ -794,8 +794,89 @@ class TicketService
             ->whereNotNull('email')
             ->whereNotNull('email_verified_at')
             ->first();
-        
+
         return $admin?->email;
+    }
+
+    /**
+     * Tạo yêu cầu tạo tài khoản mới (không tạo đơn dịch vụ/transaction)
+     */
+    public function createAccountRequest(array $data): ServiceReturn
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            // Chỉ Customer/Agency mới được tạo yêu cầu
+            if (!in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
+            // Tạo description từ notes (user mô tả vấn đề)
+            $description = $data['notes'] ?? '';
+
+            // Chuẩn bị config account từ accounts array hoặc single fields
+            $configAccount = [];
+            if (isset($data['accounts']) && is_array($data['accounts']) && !empty($data['accounts'])) {
+                $configAccount['accounts'] = $data['accounts'];
+            } else {
+                $allowedKeys = [
+                    'meta_email',
+                    'display_name',
+                    'bm_id',
+                    'info_fanpage',
+                    'info_website',
+                    'asset_access',
+                    'timezone_bm'
+                ];
+
+                foreach ($allowedKeys as $key) {
+                    if (isset($data[$key])) {
+                        $configAccount[$key] = $data[$key];
+                    }
+                }
+            }
+
+            // Lưu metadata đầy đủ
+            $metadata = [
+                'type' => 'create_account',
+                'package_id' => $data['package_id'],
+                'budget' => $data['budget'],
+                'config_account' => $configAccount,
+                'notes' => $data['notes'] ?? null,
+            ];
+
+            $ticket = $this->ticketRepository->create([
+                'user_id' => $user->id,
+                'subject' => 'create_account_request',
+                'description' => $description,
+                'status' => TicketStatus::PENDING->value,
+                'priority' => TicketPriority::HIGH->value,
+                'assigned_to' => null,
+                'metadata' => $metadata,
+            ]);
+
+            // Tạo conversation
+            $this->ticketConversationRepository->create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'message' => $description,
+                'reply_side' => TicketReplySide::CUSTOMER->value,
+            ]);
+
+            // Gửi thông báo Telegram
+            $this->sendTicketCreatedNotification($ticket);
+
+            return ServiceReturn::success(data: $ticket->load(['user', 'conversations']));
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'TicketService@createAccountRequest error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
     }
 }
 

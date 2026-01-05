@@ -6,12 +6,18 @@ use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Http\Resources\BusinessManagerListResource;
 use App\Service\BusinessManagerService;
+use App\Service\TicketService;
+use App\Common\Constants\Ticket\TicketMetadataType;
+use App\Common\Constants\Ticket\TicketPriority;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Validator;
 
 class BusinessManagerController extends Controller
 {
     public function __construct(
         protected BusinessManagerService $businessManagerService,
+        protected TicketService $ticketService,
     ) {
     }
 
@@ -23,7 +29,7 @@ class BusinessManagerController extends Controller
     public function index(Request $request): \Inertia\Response
     {
         $params = $this->extractQueryPagination($request);
-        
+
         $result = $this->businessManagerService->getListBusinessManagers(
             new QueryListDTO(
                 perPage: $params->get('per_page'),
@@ -33,7 +39,7 @@ class BusinessManagerController extends Controller
                 sortDirection: $params->get('direction'),
             )
         );
-        
+
         $data = $result->isError() ? null : $result->getData();
         $paginator = null;
         $stats = [
@@ -83,7 +89,7 @@ class BusinessManagerController extends Controller
 
         // Convert LengthAwarePaginator to LaravelPaginator format that frontend expects
         $laravelArray = $paginator->toArray();
-        
+
         // Transform to frontend expected format
         $paginatorArray = [
             'data' => $laravelArray['data'] ?? [],
@@ -110,7 +116,7 @@ class BusinessManagerController extends Controller
                 'total' => $laravelArray['total'] ?? 0,
             ],
         ];
-        
+
         return $this->rendering(
             view: 'business-manager/index',
             data: [
@@ -129,20 +135,79 @@ class BusinessManagerController extends Controller
     public function getAccounts(string $bmId, Request $request)
     {
         $platform = $request->input('platform') ? (int) $request->input('platform') : null;
-        
+
         $result = $this->businessManagerService->getAccountsByBmId($bmId, $platform);
-        
+
         if ($result->isError()) {
             return response()->json([
                 'success' => false,
                 'message' => $result->getMessage(),
             ], 500);
         }
-        
+
         return response()->json([
             'success' => true,
             'data' => $result->getData(),
         ]);
+    }
+
+    /**
+     * Nạp tiền vào BM/MCC (tạo ticket)
+     */
+    public function topUp(string $bmId, Request $request): RedirectResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator->errors());
+        }
+
+        // Lấy thông tin BM/MCC để lấy platform
+        $bmResult = $this->businessManagerService->getAccountsByBmId($bmId);
+        if ($bmResult->isError() || !$bmResult->getData()) {
+            return back()->withErrors(['error' => __('business_manager.top_up_dialog.bm_not_found', ['default' => 'Không tìm thấy BM/MCC'])]);
+        }
+
+        $accounts = $bmResult->getData();
+        if (empty($accounts)) {
+            return back()->withErrors(['error' => __('business_manager.top_up_dialog.no_accounts', ['default' => 'BM/MCC chưa có tài khoản'])]);
+        }
+
+        // Lấy platform từ account đầu tiên
+        $firstAccount = $accounts[0];
+        $platform = $firstAccount['platform'] ?? null;
+
+        if (!$platform) {
+            return back()->withErrors(['error' => __('business_manager.top_up_dialog.platform_not_found', ['default' => 'Không xác định được platform'])]);
+        }
+
+        // Tạo ticket tương tự như deposit-app
+        $ticketData = [
+            'subject' => __('business_manager.top_up_dialog.ticket_subject', [
+                'default' => 'Yêu cầu nạp tiền vào BM/MCC',
+                'bm_id' => $bmId,
+            ]),
+            'description' => $request->input('note', ''),
+            'priority' => TicketPriority::HIGH->value,
+            'metadata' => [
+                'type' => TicketMetadataType::WALLET_DEPOSIT_APP->value,
+                'platform' => (int) $platform,
+                'bm_id' => $bmId,
+                'amount' => (float) $request->input('amount'),
+                'notes' => $request->input('note'),
+            ],
+        ];
+
+        $result = $this->ticketService->createTicket($ticketData);
+
+        if ($result->isError()) {
+            return back()->withErrors(['error' => $result->getMessage()]);
+        }
+
+        return back()->with('success', __('business_manager.top_up_dialog.success'));
     }
 }
 

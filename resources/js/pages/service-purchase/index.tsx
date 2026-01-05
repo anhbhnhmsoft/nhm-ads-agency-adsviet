@@ -7,7 +7,8 @@ import FacebookIcon from '@/images/facebook_icon.png';
 import GoogleIcon from '@/images/google_icon.png';
 import AppLayout from '@/layouts/app-layout';
 import { _PlatformType } from '@/lib/types/constants';
-import { useServicePurchaseForm } from '@/pages/service-purchase/hooks/use-form';
+import { useServicePurchaseForm, type AccountFormData } from '@/pages/service-purchase/hooks/use-form';
+import { AccountForm } from '@/pages/service-purchase/components/AccountForm';
 import type { ServicePackage, ServicePurchasePageProps } from '@/pages/service-purchase/types/type';
 import { Head } from '@inertiajs/react';
 import {
@@ -16,6 +17,7 @@ import {
     CheckCircle,
     DollarSign,
     Info,
+    Plus,
     Search,
     ShoppingCart,
     Wallet,
@@ -51,6 +53,17 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [platformFilter, setPlatformFilter] = useState<string>('all');
     const [touchedFields, setTouchedFields] = useState<{ topUpAmount?: boolean; budget?: boolean }>({});
+    const [accounts, setAccounts] = useState<AccountFormData[]>([
+        {
+            meta_email: '',
+            display_name: '',
+            bm_ids: [],
+            fanpages: [],
+            websites: [],
+            timezone_bm: '',
+            asset_access: 'full_asset',
+        },
+    ]);
     const previousPlatformRef = useRef<number | undefined>(undefined);
     const packageList = useMemo<ServicePackage[]>(() => {
         if (Array.isArray(packages)) {
@@ -91,6 +104,18 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 purchaseForm.setData('info_website', '');
             }
 
+            setAccounts([
+                {
+                    meta_email: '',
+                    display_name: '',
+                    bm_ids: [],
+                    fanpages: currentPlatform === _PlatformType.META ? [] : [],
+                    websites: [],
+                    timezone_bm: '',
+                    asset_access: 'full_asset',
+                },
+            ]);
+
             setTimeout(() => {
                 setTouchedFields({});
             }, 0);
@@ -106,7 +131,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 purchaseForm.setData('payment_type', 'prepay');
             }
         }
-    }, [selectedPackage?.id, postpay_permissions, paymentType, purchaseForm]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedPackage?.id, postpay_permissions, paymentType]);
 
     // Filter packages
     const filteredPackages = useMemo(() => {
@@ -138,13 +164,13 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 return {
                     name: 'Google Ads',
                     icon: <img src={GoogleIcon} alt="Google" className="w-8 h-8" />,
-                    color: 'bg-blue-500',
+                    color: 'bg-[#eb4e23]',
                 };
             case _PlatformType.META:
                 return {
                     name: 'Facebook Ads',
                     icon: <img src={FacebookIcon} alt="Facebook" className="w-8 h-8" />,
-                    color: 'bg-blue-600',
+                    color: 'bg-[#eb4e23]',
                 };
             default:
                 return {
@@ -245,7 +271,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         setTouchedFields({ topUpAmount: true, budget: true });
 
         // Kiểm tra quyền trả sau - chỉ true mới được phép
-        const isPostpayAllowed = selectedPackage 
+        const isPostpayAllowed = selectedPackage
             ? (postpay_permissions[selectedPackage.id] === true)
             : false;
 
@@ -289,6 +315,10 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         const sanitizedBudget = normalizeCurrencyInput(budgetValue);
         const payloadBudget = sanitizedBudget ? sanitizedBudget : '0';
 
+        const hasAccounts = accounts.some(
+            acc => acc.meta_email || acc.display_name || (acc.bm_ids && acc.bm_ids.length > 0)
+        );
+
         const bmMccConfig = {
             bm_id: bm_id || undefined,
             info_fanpage: info_fanpage || undefined,
@@ -305,18 +335,31 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             purchaseForm.data.timezone_bm,
             payloadBudget,
             bmMccConfig,
+            hasAccounts ? accounts : undefined,
             () => {
-            setSelectedPackage(null);
-            setShowCalculator(false);
-            setTouchedFields({});
-            purchaseForm.reset();
-            purchaseForm.setData({
-                payment_type: 'prepay',
-                budget: '0',
-                top_up_amount: '',
-                asset_access: 'full_asset',
-            });
-        });
+                setSelectedPackage(null);
+                setShowCalculator(false);
+                setTouchedFields({});
+                setAccounts([
+                    {
+                        meta_email: '',
+                        display_name: '',
+                        bm_ids: [],
+                        fanpages: [],
+                        websites: [],
+                        timezone_bm: '',
+                        asset_access: 'full_asset',
+                    },
+                ]);
+                purchaseForm.reset();
+                purchaseForm.setData({
+                    payment_type: 'prepay',
+                    budget: '0',
+                    top_up_amount: '',
+                    asset_access: 'full_asset',
+                });
+            }
+        );
     };
 
     const featureLabelMap = useMemo<Record<string, string>>(() => ({
@@ -375,8 +418,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                     {/* Pricing Info */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="text-center p-3 bg-blue-50 rounded-lg">
-                            <div className="text-xl font-bold text-blue-600">
+                        <div className="text-center p-3 bg-orange-50 rounded-lg">
+                            <div className="text-xl font-bold text-[#eb4e23]">
                                 {formatUSDT(parseFloat(pkg.open_fee))}
                             </div>
                             <div className="text-xs text-gray-600">
@@ -407,7 +450,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                     {/* Features */}
                     {features.length > 0 && (
-                        <div className="min-h-[192px]">
+                        <div className="min-h-48">
                             <div className="text-sm font-medium text-gray-700 mb-2">
                                 {t('service_purchase.features')}:
                             </div>
@@ -479,7 +522,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                 <CardContent className="space-y-6">
                     {/* Wallet Balance */}
-                    <div className="p-4 bg-linear-to-r from-green-50 to-blue-50 rounded-lg">
+                    <div className="p-4 bg-linear-to-r from-green-50 to-orange-50 rounded-lg">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Wallet className="h-5 w-5 text-green-600" />
@@ -510,8 +553,75 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                     {showAccountInfo && (
                         <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                            <div className="font-medium text-gray-800">{accountInfoTitle}</div>
-                            <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <div className="font-medium text-gray-800">{accountInfoTitle}</div>
+                                {accounts.length < 3 && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            setAccounts([
+                                                ...accounts,
+                                                {
+                                                    meta_email: '',
+                                                    display_name: '',
+                                                    bm_ids: [],
+                                                    fanpages: selectedPackage.platform === _PlatformType.META ? [] : [],
+                                                    websites: [],
+                                                    timezone_bm: '',
+                                                    asset_access: 'full_asset',
+                                                },
+                                            ]);
+                                        }}
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* Render accounts using AccountForm component */}
+                            <div className="space-y-4">
+                                {accounts.map((account, idx) => (
+                                    <AccountForm
+                                        key={idx}
+                                        account={account}
+                                        accountIndex={idx}
+                                        platform={selectedPackage.platform}
+                                        metaTimezones={meta_timezones}
+                                        googleTimezones={google_timezones}
+                                        onUpdate={(index, updater) => {
+                                            setAccounts((prevAccounts) => {
+                                                const newAccounts = [...prevAccounts];
+                                                const currentAccount = newAccounts[index] || {
+                                                    meta_email: '',
+                                                    display_name: '',
+                                                    bm_ids: [],
+                                                    fanpages: [],
+                                                    websites: [],
+                                                    timezone_bm: '',
+                                                    asset_access: 'full_asset',
+                                                };
+                                                if (typeof updater === 'function') {
+                                                    newAccounts[index] = updater(currentAccount);
+                                                } else {
+                                                    newAccounts[index] = updater;
+                                                }
+                                                return newAccounts;
+                                            });
+                                        }}
+                                        onRemove={(index) => {
+                                            setAccounts(accounts.filter((_, i) => i !== index));
+                                        }}
+                                        canRemove={accounts.length > 1}
+                                    />
+                                ))}
+                            </div>
+
+                            {/* Cấu trúc cũ (backward compatible - ẩn đi nhưng vẫn giữ để tương thích) */}
+                            <div className="hidden">
+                                <div className="space-y-2">
                                 <Label htmlFor="metaEmail">
                                     {t('service_purchase.meta_email')}:
                                 </Label>
@@ -649,6 +759,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                     <p className="text-xs text-red-500">{purchaseForm.errors.timezone_bm}</p>
                                 )}
                             </div>
+                            </div>
                         </div>
                     )}
 
@@ -707,8 +818,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                 const permission = postpay_permissions[packageId];
                                 // Chỉ hiển thị nếu permission === true (rõ ràng là true)
                                 // Nếu undefined hoặc false => ẩn nút
-                                const isAllowed = permission === true;
-                                return isAllowed;
+                                return permission === true;
                             })() && (
                                 <Button
                                     type="button"
@@ -819,8 +929,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                     {/* Fee Calculator */}
                     {(showCalculator || topUpAmount || paymentType === 'postpay') && (
-                        <div className="p-4 bg-blue-50 rounded-lg space-y-3">
-                            <div className="font-medium text-blue-800">{t('service_purchase.calculate_fee')}:</div>
+                        <div className="p-4 bg-orange-50 rounded-lg space-y-3">
+                            <div className="font-medium text-[#eb4e23]">{t('service_purchase.calculate_fee')}:</div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="flex justify-between">
                                         <span>{t('service_purchase.account_opening_fee')}:</span>
@@ -914,7 +1024,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 ) : (
                     <>
                         <div className="flex items-center gap-2 mb-4">
-                            <Info className="h-5 w-5 text-blue-500" />
+                            <Info className="h-5 w-5 text-[#eb4e23]" />
                             <span className="text-gray-600">{t('service_purchase.info_message')}</span>
                         </div>
 

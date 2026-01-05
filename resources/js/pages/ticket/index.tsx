@@ -153,6 +153,7 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
             refund_request: t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' }),
             appeal_request: t('ticket.appeal.title', { defaultValue: 'Kháng tài khoản' }),
             share_request: t('ticket.share.title', { defaultValue: 'Share BM/MCC' }),
+            create_account_request: t('ticket.create_account.title', { defaultValue: 'Tạo tài khoản' }),
         };
         return map[subject] ?? subject;
     };
