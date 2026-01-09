@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { router } from '@inertiajs/react';
-import type { ServiceOrder } from '@/pages/service-order/types/type';
+import type { ServiceOrder, AccountConfig } from '@/pages/service-order/types/type';
 import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
 import { service_orders_update_config } from '@/routes';
 import { _PlatformType } from '@/lib/types/constants';
@@ -19,7 +19,31 @@ export const useServiceOrderEditConfigDialog = () => {
     const [assetAccess, setAssetAccess] = useState<'full_asset' | 'basic_asset'>('full_asset');
     const [timezoneBm, setTimezoneBm] = useState('');
 
+    const resetFormState = useCallback(() => {
+        setAccounts([]);
+        setUseAccountsStructure(false);
+        setMetaEmail('');
+        setDisplayName('');
+        setBmId('');
+        setInfoFanpage('');
+        setInfoWebsite('');
+        setPaymentType('');
+        setAssetAccess('full_asset');
+        setTimezoneBm('');
+    }, []);
+
+    const cleanAccountData = useCallback((account: AccountConfig): AccountFormData => {
+        return {
+            ...account,
+            bm_ids: account.bm_ids?.filter((id: string) => id?.trim()) || [],
+            fanpages: account.fanpages?.filter((fp: string) => fp?.trim()) || [],
+            websites: account.websites?.filter((ws: string) => ws?.trim()) || [],
+        };
+    }, []);
+
     const openDialogForOrder = useCallback((order: ServiceOrder) => {
+        resetFormState();
+        
         const config = order.config_account || {};
         const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
         setSelectedOrder(order);
@@ -27,11 +51,10 @@ export const useServiceOrderEditConfigDialog = () => {
         const configAccounts = config.accounts;
         if (Array.isArray(configAccounts) && configAccounts.length > 0) {
             setUseAccountsStructure(true);
-            setAccounts(configAccounts);
+            setAccounts(configAccounts.map(cleanAccountData));
             setPaymentType((config.payment_type as string) || '');
         } else {
             setUseAccountsStructure(false);
-            setAccounts([]);
             setMetaEmail((config.meta_email as string) || '');
             setDisplayName((config.display_name as string) || '');
             setBmId((config.bm_id as string) || '');
@@ -42,7 +65,7 @@ export const useServiceOrderEditConfigDialog = () => {
             setTimezoneBm((config.timezone_bm as string) || '');
         }
         setDialogOpen(true);
-    }, []);
+    }, [resetFormState, cleanAccountData]);
 
     const handleSubmitUpdate = useCallback(() => {
         if (!selectedOrder) return;
@@ -64,7 +87,7 @@ export const useServiceOrderEditConfigDialog = () => {
         };
 
         if (useAccountsStructure && accounts.length > 0) {
-            payload.accounts = accounts;
+            payload.accounts = accounts.map(cleanAccountData);
         } else {
             payload.meta_email = metaEmail || undefined;
             payload.display_name = displayName || undefined;
@@ -83,16 +106,26 @@ export const useServiceOrderEditConfigDialog = () => {
                 onSuccess: () => {
                     setDialogOpen(false);
                     setSelectedOrder(null);
-                    setAccounts([]);
-                    setUseAccountsStructure(false);
+                    resetFormState();
+                },
+                onError: (errors) => {
+                    console.error('Update config error:', errors);
                 },
             },
         );
-    }, [bmId, displayName, metaEmail, infoFanpage, infoWebsite, paymentType, assetAccess, timezoneBm, selectedOrder, useAccountsStructure, accounts]);
+    }, [bmId, displayName, metaEmail, infoFanpage, infoWebsite, paymentType, assetAccess, timezoneBm, selectedOrder, useAccountsStructure, accounts, cleanAccountData, resetFormState]);
+
+    const handleDialogOpenChange = useCallback((open: boolean) => {
+        setDialogOpen(open);
+        if (!open) {
+            setSelectedOrder(null);
+            resetFormState();
+        }
+    }, [resetFormState]);
 
     return {
         dialogOpen,
-        setDialogOpen,
+        setDialogOpen: handleDialogOpenChange,
         selectedOrder,
         useAccountsStructure,
         accounts,

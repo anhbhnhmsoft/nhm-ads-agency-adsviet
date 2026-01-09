@@ -49,6 +49,7 @@ export const useServicePurchaseForm = () => {
             info_fanpage?: string;
             info_website?: string;
             payment_type?: 'prepay' | 'postpay';
+            postpay_days?: number;
             asset_access?: 'full_asset' | 'basic_asset';
         },
         accounts?: AccountFormData[],

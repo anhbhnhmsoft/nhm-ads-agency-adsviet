@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 import type { ServiceOrder } from '@/pages/service-order/types/type';
 import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
@@ -10,6 +10,8 @@ export const useServiceOrderAdminDialog = () => {
     const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
     const [accounts, setAccounts] = useState<AccountFormData[]>([]);
     const [useAccountsStructure, setUseAccountsStructure] = useState(false);
+    const accountsRef = useRef<AccountFormData[]>([]);
+    
     const form = useForm({
         meta_email: '',
         display_name: '',
@@ -22,21 +24,48 @@ export const useServiceOrderAdminDialog = () => {
         accounts: [] as AccountFormData[],
     });
 
+    useEffect(() => {
+        accountsRef.current = accounts;
+    }, [accounts]);
+
     const openDialogForOrder = useCallback((order: ServiceOrder) => {
+        form.reset();
+        form.clearErrors();
+        
+        setAccounts([]);
+        setUseAccountsStructure(false);
+        accountsRef.current = [];
+        
         const config = order.config_account || {};
         setSelectedOrder(order);
         const isGoogle = order.package?.platform === _PlatformType.GOOGLE;        
         const configAccounts = config.accounts;
+        
         if (Array.isArray(configAccounts) && configAccounts.length > 0) {
             setUseAccountsStructure(true);
-            setAccounts(configAccounts);
+            const cleanedAccounts = configAccounts.map((acc: any) => ({
+                ...acc,
+                bm_ids: acc.bm_ids?.filter((id: string) => id?.trim()) || [],
+                fanpages: acc.fanpages?.filter((fp: string) => fp?.trim()) || [],
+                websites: acc.websites?.filter((ws: string) => ws?.trim()) || [],
+            }));
+            setAccounts(cleanedAccounts);
+            accountsRef.current = cleanedAccounts;
             form.setData({
+                meta_email: '',
+                display_name: '',
+                bm_id: '',
+                info_fanpage: '',
+                info_website: '',
                 payment_type: (config.payment_type as string) || '',
-                accounts: configAccounts,
+                asset_access: 'full_asset',
+                timezone_bm: '',
+                accounts: cleanedAccounts,
             });
         } else {
             setUseAccountsStructure(false);
             setAccounts([]);
+            accountsRef.current = [];
             form.setData({
                 meta_email: (config.meta_email as string) || '',
                 display_name: (config.display_name as string) || '',
@@ -49,16 +78,30 @@ export const useServiceOrderAdminDialog = () => {
                 accounts: [],
             });
         }
-        form.clearErrors();
         setDialogOpen(true);
     }, [form]);
 
     const handleSubmitApprove = useCallback(() => {
         if (!selectedOrder) return;
 
-        if (useAccountsStructure && accounts.length > 0) {
-            form.setData('accounts', accounts);
+        const currentAccounts = accountsRef.current;
+        
+        let accountsToSubmit: AccountFormData[] = [];
+        
+        if (useAccountsStructure && currentAccounts.length > 0) {
+            accountsToSubmit = currentAccounts.map((acc) => ({
+                ...acc,
+                bm_ids: (acc.bm_ids || []).filter((id: string) => id != null && String(id).trim() !== ''),
+                fanpages: (acc.fanpages || []).filter((fp: string) => fp && String(fp).trim() !== ''),
+                websites: (acc.websites || []).filter((ws: string) => ws && String(ws).trim() !== ''),
+            }));
         }
+
+        form.transform(() => ({
+            ...form.data,
+            accounts: accountsToSubmit,
+            payment_type: form.data.payment_type || 'prepay',
+        }));
 
         form.post(
             service_orders_approve({ id: selectedOrder.id }).url,
@@ -68,17 +111,32 @@ export const useServiceOrderAdminDialog = () => {
                     setDialogOpen(false);
                     setSelectedOrder(null);
                     setAccounts([]);
+                    accountsRef.current = [];
                     setUseAccountsStructure(false);
                     form.reset();
                     form.clearErrors();
                 },
+                onError: (errors: any) => {
+                    console.error('Approve error:', errors);
+                },
             },
         );
-    }, [form, selectedOrder, useAccountsStructure, accounts]);
+    }, [form, selectedOrder, useAccountsStructure]);
+
+    const handleDialogOpenChange = useCallback((open: boolean) => {
+        setDialogOpen(open);
+        if (!open) {
+            setSelectedOrder(null);
+            setAccounts([]);
+            setUseAccountsStructure(false);
+            form.reset();
+            form.clearErrors();
+        }
+    }, [form]);
 
     return {
         dialogOpen,
-        setDialogOpen,
+        setDialogOpen: handleDialogOpenChange,
         selectedOrder,
         useAccountsStructure,
         accounts,

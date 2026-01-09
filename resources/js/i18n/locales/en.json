@@ -375,7 +375,8 @@
     "table_title": "Business Manager / MCC List",
     "table": {
       "account_name": "Account Name",
-      "account_id": "BM ID",
+      "account_id": "Account ID",
+      "bm_id": "BM ID",
       "account_info": "Account Info",
       "owner": "Account Owner",
       "spend": "Spend",

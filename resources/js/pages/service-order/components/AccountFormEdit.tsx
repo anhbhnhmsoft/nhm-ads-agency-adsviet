@@ -13,6 +13,7 @@ import { X, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { _PlatformType } from '@/lib/types/constants';
 import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
+import { useEffect, useState } from 'react';
 
 type AccountFormEditProps = {
     account: AccountFormData;
@@ -38,65 +39,118 @@ export const AccountFormEdit = ({
     const { t } = useTranslation();
     const isMeta = platform === _PlatformType.META;
 
+    const [localBmIds, setLocalBmIds] = useState<string[]>(account.bm_ids || []);
+    const [localFanpages, setLocalFanpages] = useState<string[]>(account.fanpages || []);
+    const [localWebsites, setLocalWebsites] = useState<string[]>(account.websites || []);
+
+    useEffect(() => {
+        setLocalBmIds(account.bm_ids || []);
+        setLocalFanpages(account.fanpages || []);
+        setLocalWebsites(account.websites || []);
+    }, [account.bm_ids, account.fanpages, account.websites, accountIndex]);
+
     const updateField = <K extends keyof AccountFormData>(field: K, value: AccountFormData[K]) => {
-        onUpdate(accountIndex, { ...account, [field]: value });
+        const updatedAccount = { ...account, [field]: value };
+        onUpdate(accountIndex, updatedAccount);
+    };
+
+    const commitBmIds = () => {
+        const cleaned = (localBmIds || [])
+            .map((id) => id?.trim())
+            .filter((id): id is string => !!id);
+        updateField('bm_ids', cleaned);
     };
 
     const addBmId = () => {
-        const bmIds = account.bm_ids || [];
-        if (bmIds.length < 3) {
-            updateField('bm_ids', [...bmIds, '']);
-        }
+        setLocalBmIds((prev) => {
+            const base = prev && prev.length > 0 ? [...prev] : [''];
+            if (base.length >= 3) return base;
+            return [...base, ''];
+        });
     };
 
     const removeBmId = (index: number) => {
-        const bmIds = account.bm_ids || [];
-        updateField('bm_ids', bmIds.filter((_, i) => i !== index));
+        setLocalBmIds((prev) => {
+            const next = prev.filter((_, i) => i !== index);
+            const cleaned = next.map((id) => id?.trim()).filter((id): id is string => !!id);
+            updateField('bm_ids', cleaned);
+            return next;
+        });
     };
 
     const updateBmId = (index: number, value: string) => {
-        const bmIds = account.bm_ids || [];
-        const newBmIds = [...bmIds];
-        newBmIds[index] = value;
-        updateField('bm_ids', newBmIds);
+        setLocalBmIds((prev) => {
+            const base = prev && prev.length > 0 ? [...prev] : [''];
+            const next = [...base];
+            next[index] = value;
+            return next;
+        });
+    };
+
+    const commitFanpages = () => {
+        const cleaned = (localFanpages || [])
+            .map((fp) => fp?.trim())
+            .filter((fp): fp is string => !!fp);
+        updateField('fanpages', cleaned);
     };
 
     const addFanpage = () => {
-        const fanpages = account.fanpages || [];
-        if (fanpages.length < 3) {
-            updateField('fanpages', [...fanpages, '']);
-        }
+        setLocalFanpages((prev) => {
+            const base = prev && prev.length > 0 ? [...prev] : [''];
+            if (base.length >= 3) return base;
+            return [...base, ''];
+        });
     };
 
     const removeFanpage = (index: number) => {
-        const fanpages = account.fanpages || [];
-        updateField('fanpages', fanpages.filter((_, i) => i !== index));
+        setLocalFanpages((prev) => {
+            const next = prev.filter((_, i) => i !== index);
+            const cleaned = next.map((fp) => fp?.trim()).filter((fp): fp is string => !!fp);
+            updateField('fanpages', cleaned);
+            return next;
+        });
     };
 
     const updateFanpage = (index: number, value: string) => {
-        const fanpages = account.fanpages || [];
-        const newFanpages = [...fanpages];
-        newFanpages[index] = value;
-        updateField('fanpages', newFanpages);
+        setLocalFanpages((prev) => {
+            const base = prev && prev.length > 0 ? [...prev] : [''];
+            const next = [...base];
+            next[index] = value;
+            return next;
+        });
+    };
+
+    const commitWebsites = () => {
+        const cleaned = (localWebsites || [])
+            .map((ws) => ws?.trim())
+            .filter((ws): ws is string => !!ws);
+        updateField('websites', cleaned);
     };
 
     const addWebsite = () => {
-        const websites = account.websites || [];
-        if (websites.length < 3) {
-            updateField('websites', [...websites, '']);
-        }
+        setLocalWebsites((prev) => {
+            const base = prev && prev.length > 0 ? [...prev] : [''];
+            if (base.length >= 3) return base;
+            return [...base, ''];
+        });
     };
 
     const removeWebsite = (index: number) => {
-        const websites = account.websites || [];
-        updateField('websites', websites.filter((_, i) => i !== index));
+        setLocalWebsites((prev) => {
+            const next = prev.filter((_, i) => i !== index);
+            const cleaned = next.map((ws) => ws?.trim()).filter((ws): ws is string => !!ws);
+            updateField('websites', cleaned);
+            return next;
+        });
     };
 
     const updateWebsite = (index: number, value: string) => {
-        const websites = account.websites || [];
-        const newWebsites = [...websites];
-        newWebsites[index] = value;
-        updateField('websites', newWebsites);
+        setLocalWebsites((prev) => {
+            const base = prev && prev.length > 0 ? [...prev] : [''];
+            const next = [...base];
+            next[index] = value;
+            return next;
+        });
     };
 
     return (
@@ -151,7 +205,7 @@ export const AccountFormEdit = ({
                             ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
                             : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}:
                     </Label>
-                    {(account.bm_ids?.length || 0) < 3 && (
+                    {(localBmIds?.length || 0) < 3 && (
                         <Button
                             type="button"
                             variant="outline"
@@ -164,43 +218,35 @@ export const AccountFormEdit = ({
                         </Button>
                     )}
                 </div>
-                {account.bm_ids && account.bm_ids.length > 0 ? (
-                    <div className="space-y-2">
-                        {account.bm_ids.map((bmId, idx) => (
-                            <div key={idx} className="flex gap-2">
-                                <Input
-                                    type="text"
-                                    placeholder="1234567890"
-                                    value={bmId}
-                                    onChange={(e) => updateBmId(idx, e.target.value)}
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeBmId(idx)}
-                                    className="text-red-600 h-9"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
+                {(localBmIds && localBmIds.length > 0 ? localBmIds : ['']).map((bmId, idx) => (
+                    <div key={idx} className="flex gap-2">
+                        <Input
+                            type="text"
+                            placeholder="1234567890"
+                            value={bmId}
+                            onChange={(e) => updateBmId(idx, e.target.value)}
+                            onBlur={commitBmIds}
+                        />
+                        {localBmIds.length > 1 && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeBmId(idx)}
+                                className="text-red-600 h-9"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
                     </div>
-                ) : (
-                    <Input
-                        type="text"
-                        placeholder="1234567890"
-                        value=""
-                        onChange={(e) => updateField('bm_ids', [e.target.value])}
-                    />
-                )}
+                ))}
             </div>
 
             {isMeta && (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <Label>{t('service_purchase.info_fanpage', { defaultValue: 'Thông tin fanpage' })}:</Label>
-                        {(account.fanpages?.length || 0) < 3 && (
+                        {(localFanpages?.length || 0) < 3 && (
                             <Button
                                 type="button"
                                 variant="outline"
@@ -213,16 +259,17 @@ export const AccountFormEdit = ({
                             </Button>
                         )}
                     </div>
-                    {account.fanpages && account.fanpages.length > 0 ? (
-                        <div className="space-y-2">
-                            {account.fanpages.map((fanpage, idx) => (
-                                <div key={idx} className="flex gap-2">
-                                    <Input
-                                        type="text"
-                                        placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
-                                        value={fanpage}
-                                        onChange={(e) => updateFanpage(idx, e.target.value)}
-                                    />
+                    <div className="space-y-2">
+                        {(localFanpages && localFanpages.length > 0 ? localFanpages : ['']).map((fanpage, idx) => (
+                            <div key={idx} className="flex gap-2">
+                                <Input
+                                    type="text"
+                                    placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
+                                    value={fanpage}
+                                    onChange={(e) => updateFanpage(idx, e.target.value)}
+                                    onBlur={commitFanpages}
+                                />
+                                {localFanpages.length > 1 && (
                                     <Button
                                         type="button"
                                         variant="ghost"
@@ -232,24 +279,17 @@ export const AccountFormEdit = ({
                                     >
                                         <X className="h-4 w-4" />
                                     </Button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <Input
-                            type="text"
-                            placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
-                            value=""
-                            onChange={(e) => updateField('fanpages', [e.target.value])}
-                        />
-                    )}
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <Label>{t('service_purchase.info_website', { defaultValue: 'Thông tin website' })}:</Label>
-                    {(account.websites?.length || 0) < 3 && (
+                    {(localWebsites?.length || 0) < 3 && (
                         <Button
                             type="button"
                             variant="outline"
@@ -262,16 +302,17 @@ export const AccountFormEdit = ({
                         </Button>
                     )}
                 </div>
-                {account.websites && account.websites.length > 0 ? (
-                    <div className="space-y-2">
-                        {account.websites.map((website, idx) => (
-                            <div key={idx} className="flex gap-2">
-                                <Input
-                                    type="text"
-                                    placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
-                                    value={website}
-                                    onChange={(e) => updateWebsite(idx, e.target.value)}
-                                />
+                <div className="space-y-2">
+                    {(localWebsites && localWebsites.length > 0 ? localWebsites : ['']).map((website, idx) => (
+                        <div key={idx} className="flex gap-2">
+                            <Input
+                                type="text"
+                                placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
+                                value={website}
+                                onChange={(e) => updateWebsite(idx, e.target.value)}
+                                onBlur={commitWebsites}
+                            />
+                            {localWebsites.length > 1 && (
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -281,17 +322,10 @@ export const AccountFormEdit = ({
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <Input
-                        type="text"
-                        placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
-                        value=""
-                        onChange={(e) => updateField('websites', [e.target.value])}
-                    />
-                )}
+                            )}
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="space-y-2">

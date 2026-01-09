@@ -21,6 +21,10 @@ class ServiceUserRepository extends BaseRepository
             $query->where('user_id', $filters['user_id']);
         }
 
+        if (!empty($filters['service_user_id'])) {
+            $query->where('id', $filters['service_user_id']);
+        }
+
         if (isset($filters['status'])) {
             $query->where('status', (int) $filters['status']);
         }
