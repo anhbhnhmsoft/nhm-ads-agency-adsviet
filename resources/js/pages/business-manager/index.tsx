@@ -86,16 +86,28 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
     const columns: ColumnDef<BusinessManagerItem>[] = useMemo(
         () => [
             {
-                accessorKey: 'name',
+                accessorKey: 'account_name',
                 header: t('business_manager.table.account_name', { defaultValue: 'Tên tài khoản' }),
                 cell: ({ row }) => {
-                    const displayName = row.original.config_account?.display_name || row.original.name;
+                    const displayName = row.original.account_name || row.original.name;
                     return <span className="font-medium">{displayName}</span>;
                 },
             },
             {
-                accessorKey: 'id',
-                header: t('business_manager.table.account_id', { defaultValue: 'ID BM' }),
+                accessorKey: 'account_id',
+                header: t('business_manager.table.account_id', { defaultValue: 'ID tài khoản' }),
+            },
+            {
+                id: 'bm_ids',
+                header: t('business_manager.table.bm_id', { defaultValue: 'ID BM' }),
+                cell: ({ row }) => {
+                    const bmIds = row.original.bm_ids;
+                    return (
+                        <span className="text-xs text-muted-foreground">
+                            {bmIds && bmIds.length ? bmIds.join(', ') : '-'}
+                        </span>
+                    );
+                },
             },
             {
                 accessorKey: 'platform',
@@ -127,10 +139,7 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                     );
                 },
             },
-            {
-                accessorKey: 'owner_name',
-                header: t('business_manager.table.owner', { defaultValue: 'Người sở hữu tài khoản' }),
-            },
+            
             {
                 accessorKey: 'total_spend',
                 header: t('business_manager.table.spend', { defaultValue: 'Chi tiêu' }),
@@ -192,7 +201,7 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                                 }}
                             >
                                 <Wallet className="h-4 w-4 mr-1" />
-                                {t('service_management.campaign_update_budget')}
+                                {t('business_manager.top_up', { defaultValue: 'Nạp tiền' })}
                             </Button>
                             <Button
                                 variant="outline"
@@ -200,7 +209,7 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                                 onClick={() => {
                                     router.get('/service-management', {
                                         filter: {
-                                            keyword: row.original.id,
+                                            service_user_id: row.original.service_user_id,
                                         },
                                     }, {
                                         replace: true,

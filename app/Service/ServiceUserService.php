@@ -91,10 +91,38 @@ class ServiceUserService
             $platform = $serviceUser->package->platform ?? null;
 
             if (is_array($config['accounts']) && !empty($config['accounts'])) {
+                $accounts = $config['accounts'];
+                
                 $newConfig = array_merge($currentConfig, [
-                    'accounts' => $config['accounts'],
+                    'accounts' => $accounts,
                     'payment_type' => $config['payment_type'] ?? ($currentConfig['payment_type'] ?? 'prepay'),
                 ]);
+                
+                // Lưu bm_id vào google_manager_id nếu là Google Ads
+                if ($platform === PlatformType::GOOGLE->value) {
+                    $bmId = $config['bm_id'] ?? null;
+                    
+                    if (empty($bmId) && !empty($accounts[0]['bm_ids']) && is_array($accounts[0]['bm_ids']) && !empty($accounts[0]['bm_ids'][0])) {
+                        $bmId = trim((string) $accounts[0]['bm_ids'][0]);
+                    }
+                    
+                    if (!empty($bmId)) {
+                        $newConfig['google_manager_id'] = $bmId;
+                    } elseif (isset($currentConfig['google_manager_id'])) {
+                        $newConfig['google_manager_id'] = $currentConfig['google_manager_id'];
+                    }
+                }
+                
+                // Lưu bm_id vào config nếu có 
+                $bmIdForConfig = $config['bm_id'] ?? null;
+                if (empty($bmIdForConfig) && !empty($accounts[0]['bm_ids']) && is_array($accounts[0]['bm_ids']) && !empty($accounts[0]['bm_ids'][0])) {
+                    $bmIdForConfig = trim((string) $accounts[0]['bm_ids'][0]);
+                }
+                if (!empty($bmIdForConfig)) {
+                    $newConfig['bm_id'] = $bmIdForConfig;
+                } elseif (isset($currentConfig['bm_id'])) {
+                    $newConfig['bm_id'] = $currentConfig['bm_id'];
+                }
             } else {
                 $newConfig = array_merge($currentConfig, [
                     'meta_email' => $config['meta_email'] ?? ($currentConfig['meta_email'] ?? ''),

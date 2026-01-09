@@ -123,6 +123,11 @@ class ServicePurchaseController extends Controller
             $configAccount['payment_type'] = $data['payment_type'];
         }
 
+        // Thêm postpay_days nếu có
+        if (isset($data['postpay_days'])) {
+            $configAccount['postpay_days'] = $data['postpay_days'];
+        }
+
         $result = $this->servicePurchaseService->createPurchaseOrder(
             userId: $user->id,
             packageId: $data['package_id'],

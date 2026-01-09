@@ -25,17 +25,18 @@ type UserSelectProps = {
     id?: string;
 };
 
-const { t } = useTranslation();
-
 export function UserSelect({
     value,
     onValueChange,
     options,
-    placeholder = t('service_packages.postpay_users_placeholder', { defaultValue: 'Chọn người dùng được phép trả sau' }),
+    placeholder,
     id,
 }: UserSelectProps) {
+    const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = React.useState('');
     const [open, setOpen] = React.useState(false);
+    
+    const displayPlaceholder = placeholder || t('service_packages.postpay_users_placeholder', { defaultValue: 'Chọn người dùng được phép trả sau' });
 
     const filteredOptions = React.useMemo(() => {
         if (!searchQuery.trim()) {
@@ -86,7 +87,7 @@ export function UserSelect({
                         className="flex min-h-9 w-full items-center gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                     >
                         {selectedUsers.length === 0 ? (
-                            <span className="text-muted-foreground">{placeholder}</span>
+                            <span className="text-muted-foreground">{displayPlaceholder}</span>
                         ) : (
                             <div className="flex flex-wrap gap-1">
                                 {selectedUsers.slice(0, 3).map((user) => (

@@ -29,7 +29,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { TimezoneSelect } from '@/components/timezone-select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -92,6 +91,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
     const paymentType: 'prepay' | 'postpay' = (payment_type as 'prepay' | 'postpay') || 'prepay';
     const topUpAmount = top_up_amount || '';
     const budgetValue = budget || '';
+    const [postpayDays, setPostpayDays] = useState<number>(7);
 
     useEffect(() => {
         const currentPlatform = selectedPackage?.platform;
@@ -239,19 +239,6 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         return null;
     };
 
-    // Validate budget
-    const validateBudget = (amount: string) => {
-        if (!amount) return null;
-        const numAmount = parseCurrencyInput(amount);
-        if (numAmount <= 0) {
-            return t('service_purchase.budget_invalid');
-        }
-        if (numAmount < 50) {
-            return t('service_purchase.budget_min_required', { min: 50 });
-        }
-        return null;
-    };
-
     // Calculate total cost: open fee + top-up + service fee
     const calculateTotalCost = (pkg: ServicePackage, topUpAmountStr: string, paymentType: 'prepay' | 'postpay') => {
         const isPrepay = paymentType === 'prepay';
@@ -307,11 +294,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             return;
         }
 
-        if (budgetValue && validateBudget(budgetValue)) {
-            alert(validateBudget(budgetValue));
-            return;
-        }
-
+        // Budget không bắt buộc, 0 hoặc trống = unlimited
         const sanitizedBudget = normalizeCurrencyInput(budgetValue);
         const payloadBudget = sanitizedBudget ? sanitizedBudget : '0';
 
@@ -324,6 +307,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             info_fanpage: info_fanpage || undefined,
             info_website: info_website || undefined,
             payment_type: paymentType,
+            postpay_days: paymentType === 'postpay' ? postpayDays : undefined,
             asset_access: asset_access || 'full_asset',
         };
 
@@ -358,6 +342,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                     top_up_amount: '',
                     asset_access: 'full_asset',
                 });
+                setPostpayDays(7); // Reset về mặc định
             }
         );
     };
@@ -488,7 +473,6 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
         const platformInfo = getPlatformInfo(selectedPackage.platform);
         const topUpError = touchedFields.topUpAmount && topUpAmount ? validateTopUpAmount(topUpAmount) : null;
-        const budgetError = touchedFields.budget && budgetValue ? validateBudget(budgetValue) : null;
         const { serviceFee, totalCost, chargeOpenFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount, paymentType);
         const minTopUpAmount = Number(selectedPackage.range_min_top_up || '0');
         const hasInsufficientBalance = wallet_balance < totalCost;
@@ -500,8 +484,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' });
         const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
         const budgetNum = parseCurrencyInput(budgetValue);
+        // Nếu budget = 0 hoặc không có, không tính monthly fee (unlimited)
         const monthlyFeePercent =
-            paymentType === 'postpay' && monthlySpendingTiers.length > 0
+            paymentType === 'postpay' && monthlySpendingTiers.length > 0 && budgetNum > 0
                 ? getMonthlyFeePercent(budgetNum, monthlySpendingTiers)
                 : null;
         const monthlyFee = monthlyFeePercent ? (budgetNum * monthlyFeePercent) / 100 : 0;
@@ -618,148 +603,6 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                     />
                                 ))}
                             </div>
-
-                            {/* Cấu trúc cũ (backward compatible - ẩn đi nhưng vẫn giữ để tương thích) */}
-                            <div className="hidden">
-                                <div className="space-y-2">
-                                <Label htmlFor="metaEmail">
-                                    {t('service_purchase.meta_email')}:
-                                </Label>
-                                <Input
-                                    id="metaEmail"
-                                    type="email"
-                                    placeholder="abc123@gmail.com"
-                                    value={meta_email || ''}
-                                    onChange={(e) => {
-                                        purchaseForm.setData('meta_email', e.target.value);
-                                        if (purchaseForm.errors.meta_email) {
-                                            purchaseForm.clearErrors('meta_email');
-                                        }
-                                    }}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    {selectedPackage.platform === _PlatformType.META
-                                        ? t('service_purchase.email_note_meta', { defaultValue: 'Nếu không có BM' })
-                                        : t('service_purchase.email_note_google', { defaultValue: 'Nếu không có MCC' })}
-                                </p>
-                                {purchaseForm.errors.meta_email && (
-                                    <p className="text-xs text-red-500">{purchaseForm.errors.meta_email}</p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="bm_id">
-                                    {selectedPackage.platform === _PlatformType.META
-                                        ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
-                                        : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}:
-                                </Label>
-                                <Input
-                                    id="bm_id"
-                                    type="text"
-                                    placeholder="1234567890"
-                                    value={bm_id || ''}
-                                    onChange={(e) => purchaseForm.setData('bm_id', e.target.value)}
-                                />
-
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="asset_access">
-                                    {t('service_purchase.asset_access_label', { defaultValue: 'Chia sẻ quyền truy cập' })}
-                                </Label>
-                                <Select
-                                    value={asset_access || 'full_asset'}
-                                    onValueChange={(value: 'full_asset' | 'basic_asset') => purchaseForm.setData('asset_access', value)}
-                                >
-                                    <SelectTrigger id="asset_access">
-                                        <SelectValue placeholder={t('service_purchase.asset_access_placeholder', { defaultValue: 'Chọn quyền' })} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="full_asset">
-                                            {t('service_purchase.asset_access_full', { defaultValue: 'Full access' })}
-                                        </SelectItem>
-                                        <SelectItem value="basic_asset">
-                                            {t('service_purchase.asset_access_basic', { defaultValue: 'Basic access' })}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {selectedPackage.platform === _PlatformType.META && (
-                                <>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="info_fanpage">
-                                            {t('service_purchase.info_fanpage', { defaultValue: 'Thông tin fanpage' })}:
-                                        </Label>
-                                    <Input
-                                        id="info_fanpage"
-                                        type="text"
-                                        placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
-                                        value={info_fanpage || ''}
-                                        onChange={(e) => purchaseForm.setData('info_fanpage', e.target.value)}
-                                    />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="info_website">
-                                            {t('service_purchase.info_website', { defaultValue: 'Thông tin website' })}:
-                                        </Label>
-                                        <Input
-                                            id="info_website"
-                                            type="text"
-                                            placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
-                                            value={info_website || ''}
-                                            onChange={(e) => purchaseForm.setData('info_website', e.target.value)}
-                                        />
-                                    </div>
-                                </>
-                            )}
-                            <div className="space-y-2">
-                                <Label htmlFor="displayName">
-                                    {t('service_purchase.display_name')}:
-                                </Label>
-                                <Input
-                                    id="displayName"
-                                    type="text"
-                                    placeholder="abc"
-                                    value={display_name || ''}
-                                    onChange={(e) => {
-                                        purchaseForm.setData('display_name', e.target.value);
-                                        if (purchaseForm.errors.display_name) {
-                                            purchaseForm.clearErrors('display_name');
-                                        }
-                                    }}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    {t('service_purchase.display_name_note', { defaultValue: 'Bạn có thể đặt tên của bạn' })}
-                                </p>
-                                {purchaseForm.errors.display_name && (
-                                    <p className="text-xs text-red-500">{purchaseForm.errors.display_name}</p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="timezone_bm">
-                                    {selectedPackage?.platform === _PlatformType.META
-                                        ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
-                                        : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
-                                </Label>
-                                <TimezoneSelect
-                                    id="timezone_bm"
-                                    value={purchaseForm.data.timezone_bm || ''}
-                                    onValueChange={(value) => purchaseForm.setData('timezone_bm', value)}
-                                    options={
-                                        selectedPackage?.platform === _PlatformType.META
-                                            ? meta_timezones
-                                            : selectedPackage?.platform === _PlatformType.GOOGLE
-                                            ? google_timezones
-                                            : []
-                                    }
-                                    placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    {t('service_purchase.timezone_bm_description', { defaultValue: 'Múi giờ BM là múi giờ được sử dụng để tính toán thời gian và thời điểm của dịch vụ.' })}
-                                </p>
-                                {purchaseForm.errors.timezone_bm && (
-                                    <p className="text-xs text-red-500">{purchaseForm.errors.timezone_bm}</p>
-                                )}
-                            </div>
-                            </div>
                         </div>
                     )}
 
@@ -828,23 +671,111 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                     onClick={() => {
                                         purchaseForm.setData('payment_type', 'postpay');
                                         purchaseForm.setData('top_up_amount', ''); // Trả sau không thu top-up upfront
+                                        setPostpayDays(7); // Reset về mặc định khi chọn postpay
                                     }}
                                 >
                                     {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
                                 </Button>
                             )}
                         </div>
+                        {paymentType === 'postpay' && (
+                            <div className="space-y-3">
+                                {/* Chọn số ngày trả sau */}
+                                <div className="space-y-2">
+                                    <Label>{t('service_purchase.postpay_days_label', { defaultValue: 'Chọn số ngày trả sau' })}</Label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant={postpayDays === 1 ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setPostpayDays(1)}
+                                        >
+                                            1 {t('service_purchase.days', { defaultValue: 'ngày' })}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={postpayDays === 3 ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setPostpayDays(3)}
+                                        >
+                                            3 {t('service_purchase.days', { defaultValue: 'ngày' })}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={postpayDays === 7 ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setPostpayDays(7)}
+                                        >
+                                            7 {t('service_purchase.days', { defaultValue: 'ngày' })}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Thông tin */}
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                                    <div className="flex items-start gap-2">
+                                        <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                                        <div className="flex-1 space-y-1">
+                                            <p className="text-sm text-blue-800 font-medium">
+                                                {t('service_purchase.postpay_info_title', { defaultValue: 'Thông tin thanh toán trả sau' })}
+                                            </p>
+                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                                <li>
+                                                    {t('service_purchase.postpay_info_1', {
+                                                        defaultValue: 'Phí dịch vụ sẽ được tính dựa trên chi tiêu thực tế hàng tháng',
+                                                    })}
+                                                </li>
+                                                <li>
+                                                    {t('service_purchase.postpay_info_2', {
+                                                        defaultValue: 'Ngày thanh toán dự kiến: {{date}} (sau {{days}} ngày kể từ ngày tạo)',
+                                                        date: new Date(Date.now() + postpayDays * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN', {
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric',
+                                                        }),
+                                                        days: postpayDays,
+                                                    })}
+                                                </li>
+                                                <li>
+                                                    {t('service_purchase.postpay_info_3', {
+                                                        defaultValue: 'Hệ thống sẽ tự động trừ tiền từ ví vào ngày đến hạn',
+                                                    })}
+                                                </li>
+                                                <li>
+                                                    {t('service_purchase.postpay_info_4', {
+                                                        defaultValue: 'Nếu số dư không đủ, hệ thống sẽ tự động tạm dừng các chiến dịch quảng cáo',
+                                                    })}
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {paymentType === 'postpay' && wallet_balance < postpayMinBalance && (
+                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <div className="flex items-center gap-2 text-amber-800">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <span className="text-sm font-medium">
+                                        {t('service_purchase.postpay_min_wallet_warning', {
+                                            defaultValue: 'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau',
+                                            amount: postpayMinBalance,
+                                        })}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Budget */}
                     <div className="space-y-2">
                         <Label htmlFor="budget">
-                            {t('service_purchase.budget')} ({t('service_purchase.required')})
+                            {t('service_purchase.budget')} ({t('service_purchase.optional', { defaultValue: 'Tùy chọn' })})
                         </Label>
                         <Input
                             id="budget"
                             type="number"
-                            placeholder="0.00"
+                            placeholder="0 (Unlimited)"
                             value={budgetValue}
                             onChange={(e) => {
                                 purchaseForm.setData('budget', e.target.value);
@@ -855,15 +786,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             onBlur={() => setTouchedFields(prev => ({ ...prev, budget: true }))}
                             step="0.01"
                             min="0"
-                            max="50"
-                            required
                         />
-                        {budgetError && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm">
-                                <AlertTriangle className="h-4 w-4" />
-                                {budgetError}
-                            </div>
-                        )}
                         {purchaseForm.errors.budget && (
                             <div className="flex items-center gap-2 text-red-600 text-sm">
                                 <AlertTriangle className="h-4 w-4" />
@@ -871,7 +794,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            {t('service_purchase.budget_hint', { min: 50 })}
+                            {t('service_purchase.budget_hint_unlimited', {
+                                defaultValue: 'Để trống hoặc nhập 0 để không giới hạn ngân sách'
+                            })}
                         </p>
                     </div>
 
@@ -988,8 +913,6 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                         disabled={
                             hasInsufficientBalance ||
                             !!topUpError ||
-                            !!validateBudget(budgetValue) ||
-                            !budgetValue ||
                             purchaseForm.processing
                         }
                     >

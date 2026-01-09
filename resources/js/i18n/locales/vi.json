@@ -875,7 +875,8 @@
         "table_title": "Danh sách Business Manager / MCC",
         "table": {
             "account_name": "Tên tài khoản",
-            "account_id": "ID BM",
+            "account_id": "ID tài khoản",
+            "bm_id": "ID BM",
             "account_info": "Thông tin tài khoản",
             "owner": "Người sở hữu tài khoản",
             "spend": "Chi tiêu",

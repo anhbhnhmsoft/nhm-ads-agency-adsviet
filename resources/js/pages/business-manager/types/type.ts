@@ -20,8 +20,12 @@ export type BusinessManagerConfigAccount = {
 // Item in the BM/MCC list
 export type BusinessManagerItem = {
     id: string;
+    account_id?: string;
+    account_name?: string | null;
+    bm_ids?: string[];
     name: string;
     platform: _PlatformType | number;
+    service_user_id?: string;
     owner_name?: string | null;
     owner_id?: string | null;
     total_accounts: number;

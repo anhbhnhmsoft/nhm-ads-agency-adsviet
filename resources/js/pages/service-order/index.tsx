@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -116,12 +116,15 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
     const isApproveMeta = selectedOrder?.package?.platform === _PlatformType.META;
     const isEditMeta = selectedEditOrder?.package?.platform === _PlatformType.META;
 
-    const getStatusInfo = (statusLabel?: string | null) => {
-        if (!statusLabel) return { label: t('service_orders.status.unknown'), className: 'bg-muted' };
-        const className = STATUS_COLORS[statusLabel] || 'bg-muted';
-        const label = t(`service_orders.status.${statusLabel.toLowerCase()}`, { defaultValue: statusLabel });
-        return { className, label };
-    };
+    const getStatusInfo = useCallback(
+        (statusLabel?: string | null) => {
+            if (!statusLabel) return { label: t('service_orders.status.unknown'), className: 'bg-muted' };
+            const className = STATUS_COLORS[statusLabel] || 'bg-muted';
+            const label = t(`service_orders.status.${statusLabel.toLowerCase()}`, { defaultValue: statusLabel });
+            return { className, label };
+        },
+        [t],
+    );
 
     const formatDateTime = (value?: string | null) => {
         if (!value) return '';
@@ -214,11 +217,14 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                 cell: ({ row }) => {
                     const budget = row.original.budget;
                     if (!budget) {
-                        return <span className="text-xs text-muted-foreground">-</span>;
+                        return <span className="text-xs text-muted-foreground">{t('service_orders.table.budget_unlimited', { defaultValue: 'Không giới hạn' })}</span>;
                     }
                     const budgetValue = parseFloat(budget);
                     if (Number.isNaN(budgetValue)) {
                         return <span className="text-xs text-muted-foreground">-</span>;
+                    }
+                    if (budgetValue === 0) {
+                        return <span className="text-xs font-medium text-muted-foreground">{t('service_orders.table.budget_unlimited', { defaultValue: 'Không giới hạn' })}</span>;
                     }
                     return <span className="text-xs font-medium">{budgetValue.toFixed(2)} USD</span>;
                 },
@@ -305,7 +311,7 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
         }
 
         return baseColumns;
-    }, [t, is_admin_view, openDialogForOrder, openEditDialogForOrder]);
+    }, [t, is_admin_view, openDialogForOrder, openEditDialogForOrder, getStatusInfo]);
 
     return (
         <AppLayout>
@@ -419,7 +425,13 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                                     googleTimezones={google_timezones}
                                                     onUpdate={(index, data) => {
                                                         const newAccounts = [...approveAccounts];
-                                                        newAccounts[index] = data;
+                                                        const updatedAccount = {
+                                                            ...data,
+                                                            bm_ids: Array.isArray(data.bm_ids) ? data.bm_ids : (data.bm_ids ? [data.bm_ids] : []),
+                                                            fanpages: Array.isArray(data.fanpages) ? data.fanpages : (data.fanpages ? [data.fanpages] : []),
+                                                            websites: Array.isArray(data.websites) ? data.websites : (data.websites ? [data.websites] : []),
+                                                        };
+                                                        newAccounts[index] = updatedAccount;
                                                         setApproveAccounts(newAccounts);
                                                     }}
                                                     onRemove={(index) => {
@@ -533,7 +545,9 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                                     {t('common.back')}
                                 </Button>
-                                <Button onClick={handleSubmitApprove} disabled={approveProcessing}>
+                                <Button onClick={() => {
+                                    handleSubmitApprove();
+                                }} disabled={approveProcessing}>
                                     {approveProcessing ? t('common.processing') : t('common.confirm')}
                                 </Button>
                             </DialogFooter>

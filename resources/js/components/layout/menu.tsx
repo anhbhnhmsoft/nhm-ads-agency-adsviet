@@ -24,6 +24,10 @@ import {
     business_managers_index,
     contact_index,
     ticket_create_account,
+    profit_by_customer,
+    profit_by_platform,
+    profit_over_time,
+    profit_by_bm_mcc,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
@@ -38,6 +42,7 @@ import {
     MessageSquare,
     DollarSign,
     Phone,
+    TrendingUp,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -311,6 +316,45 @@ const useMenu = () => {
                 is_menu: true,
                 active: isActive(config_index()),
                 can_show: checkRole([_UserRole.ADMIN]),
+            },
+            {
+                title: t('menu.profit', { defaultValue: 'Lợi nhuận' }),
+                icon: <TrendingUp />,
+                is_menu: true,
+                active: isActive(profit_by_customer()) || 
+                        isActive(profit_by_platform()) || 
+                        isActive(profit_over_time()) || 
+                        isActive(profit_by_bm_mcc()),
+                can_show: checkRole([
+                    _UserRole.ADMIN,
+                    _UserRole.AGENCY,
+                ]),
+                items: [
+                    {
+                        title: t('menu.profit_by_customer', { defaultValue: 'Lợi nhuận theo khách hàng' }),
+                        url: profit_by_customer().url,
+                        active: isActive(profit_by_customer()),
+                        can_show: checkRole([_UserRole.AGENCY]),
+                    },
+                    {
+                        title: t('menu.profit_by_platform', { defaultValue: 'Lợi nhuận theo nền tảng' }),
+                        url: profit_by_platform().url,
+                        active: isActive(profit_by_platform()),
+                        can_show: checkRole([_UserRole.ADMIN, _UserRole.AGENCY]),
+                    },
+                    {
+                        title: t('menu.profit_over_time', { defaultValue: 'Lợi nhuận tổng theo thời gian' }),
+                        url: profit_over_time().url,
+                        active: isActive(profit_over_time()),
+                        can_show: checkRole([_UserRole.ADMIN, _UserRole.AGENCY]),
+                    },
+                    {
+                        title: t('menu.profit_by_bm_mcc', { defaultValue: 'Lợi nhuận theo BM/MCC' }),
+                        url: profit_by_bm_mcc().url,
+                        active: isActive(profit_by_bm_mcc()),
+                        can_show: checkRole([_UserRole.ADMIN]),
+                    },
+                ],
             },
             
 

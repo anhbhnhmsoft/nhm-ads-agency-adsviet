@@ -6,13 +6,18 @@ use App\Common\Constants\ServiceUser\ServiceUserTransactionStatus;
 use App\Common\Constants\ServiceUser\ServiceUserTransactionType;
 use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
+use App\Common\Constants\Google\GoogleCampaignStatus;
 use App\Core\Logging;
 use App\Models\ServiceUserTransactionLog;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\WalletRepository;
+use App\Repositories\MetaAdsCampaignRepository;
+use App\Repositories\GoogleAdsCampaignRepository;
 use App\Service\TelegramService;
 use App\Service\MailService;
+use App\Service\MetaService;
+use App\Service\GoogleAdsService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -26,8 +31,12 @@ class ServicesBillPostpay extends Command
         protected ServiceUserRepository $serviceUserRepository,
         protected WalletRepository $walletRepository,
         protected UserWalletTransactionRepository $walletTransactionRepository,
+        protected MetaAdsCampaignRepository $metaAdsCampaignRepository,
+        protected GoogleAdsCampaignRepository $googleAdsCampaignRepository,
         protected TelegramService $telegramService,
         protected MailService $mailService,
+        protected MetaService $metaService,
+        protected GoogleAdsService $googleAdsService,
     ) {
         parent::__construct();
     }
@@ -42,15 +51,33 @@ class ServicesBillPostpay extends Command
             ->chunkById(100, function ($serviceUsers) use ($today) {
                 foreach ($serviceUsers as $serviceUser) {
                     try {
+                        $config = $serviceUser->config_account ?? [];
+                        $postPaymentDate = $config['post_payment_date'] ?? null;
+                        $postpayDays = isset($config['postpay_days']) && is_numeric($config['postpay_days']) 
+                            ? (int) $config['postpay_days'] 
+                            : 30; // Mặc định 30 ngày
+
+                        if (!$postPaymentDate) {
+                            $baseDate = $serviceUser->last_postpay_billed_at 
+                                ? $serviceUser->last_postpay_billed_at 
+                                : $serviceUser->created_at;
+                            $postPaymentDate = $baseDate->copy()->addDays($postpayDays)->format('Y-m-d');
+                            $config['post_payment_date'] = $postPaymentDate;
+                            $config['postpay_days'] = $postpayDays;
+                            $serviceUser->config_account = $config;
+                            $serviceUser->save();
+                        }
+
+                        $postPaymentDateCarbon = Carbon::parse($postPaymentDate);
+                        
+                        // Chỉ bill khi đã đến hoặc quá ngày thanh toán
+                        if ($today->lt($postPaymentDateCarbon)) {
+                            continue;
+                        }
+
                         $windowStartDate = $serviceUser->last_postpay_billed_at
                             ? $serviceUser->last_postpay_billed_at->toDateString()
                             : $serviceUser->created_at->toDateString();
-
-                        // Chỉ bill khi đã đủ 30 ngày kể từ mốc windowStartDate
-                        $daysElapsed = Carbon::parse($windowStartDate)->diffInDays($today);
-                        if ($daysElapsed < 30) {
-                            continue;
-                        }
 
                         $spending = $this->getSpendingBetween($serviceUser->id, $windowStartDate, $today->toDateString());
                         $package = $serviceUser->package;
@@ -70,7 +97,6 @@ class ServicesBillPostpay extends Command
                         $monthlyFee = $spending * ($feePercent / 100);
 
                         // Thu phí mở tài khoản ở kỳ postpay đầu tiên
-                        $config = $serviceUser->config_account ?? [];
                         $paymentType = $config['payment_type'] ?? 'prepay';
                         $openFeePaid = $config['open_fee_paid'] ?? ($paymentType === 'prepay');
                         $openFee = (!$openFeePaid && $paymentType === 'postpay') ? (float) $package->open_fee : 0;
@@ -94,8 +120,8 @@ class ServicesBillPostpay extends Command
                         }
 
                         if ((float) $wallet->balance < $chargeAmount) {
-                            // Phương án A: cảnh báo và bỏ qua (không cập nhật last_postpay_billed_at để lần sau thử lại)
-                            Logging::web('services:bill-postpay insufficient balance, skip', [
+                            // Số dư không đủ: cảnh báo, pause campaign, và bỏ qua (không cập nhật last_postpay_billed_at để lần sau thử lại)
+                            Logging::web('services:bill-postpay insufficient balance, pause campaigns', [
                                 'service_user_id' => $serviceUser->id,
                                 'user_id' => $serviceUser->user_id,
                                 'balance' => $wallet->balance,
@@ -103,6 +129,9 @@ class ServicesBillPostpay extends Command
                                 'open_fee' => $openFee,
                                 'charge_amount' => $chargeAmount,
                             ]);
+
+                            // Pause tất cả campaigns của service_user này
+                            $this->pauseAllCampaignsForServiceUser($serviceUser);
 
                             // Gửi thông báo cho khách (Telegram hoặc email)
                             $user = $wallet->user;
@@ -133,8 +162,6 @@ class ServicesBillPostpay extends Command
                                 }
                             }
 
-                            $serviceUser->last_postpay_billed_at = $today;
-                            $serviceUser->save();
                             continue;
                         }
 
@@ -162,9 +189,14 @@ class ServicesBillPostpay extends Command
                             // Đánh dấu đã thu phí mở tài khoản (chỉ một lần cho trả sau)
                             if (!$openFeePaid && $openFee > 0) {
                                 $config['open_fee_paid'] = true;
-                                $serviceUser->config_account = $config;
                             }
 
+                            // Cập nhật post_payment_date cho kỳ tiếp theo (dùng postpay_days từ config)
+                            $postpayDays = isset($config['postpay_days']) && is_numeric($config['postpay_days']) 
+                                ? (int) $config['postpay_days'] 
+                                : 30; // Mặc định 30 ngày nếu không có
+                            $config['post_payment_date'] = $today->copy()->addDays($postpayDays)->format('Y-m-d');
+                            $serviceUser->config_account = $config;
                             $serviceUser->last_postpay_billed_at = $today;
                             $serviceUser->save();
                         });
@@ -256,6 +288,68 @@ class ServicesBillPostpay extends Command
         }
         $parsed = (float) $clean;
         return is_finite($parsed) ? $parsed : null;
+    }
+
+    /**
+     * Pause tất cả campaigns của service_user khi số dư không đủ
+     */
+    private function pauseAllCampaignsForServiceUser($serviceUser): void
+    {
+        try {
+            $serviceUserId = (string) $serviceUser->id;
+
+            $metaCampaigns = $this->metaAdsCampaignRepository->query()
+                ->where('service_user_id', $serviceUserId)
+                ->where('status', '!=', 'PAUSED')
+                ->where('status', '!=', 'DELETED')
+                ->get(['id']);
+
+            foreach ($metaCampaigns as $campaign) {
+                $result = $this->metaService->updateCampaignStatus(
+                    $serviceUserId,
+                    (string) $campaign->id,
+                    'PAUSED'
+                );
+                if ($result->isError()) {
+                    Logging::web('ServicesBillPostpay: Failed to pause Meta campaign', [
+                        'service_user_id' => $serviceUserId,
+                        'campaign_id' => $campaign->id,
+                        'error' => $result->getMessage(),
+                    ]);
+                }
+            }
+
+            $googleCampaigns = $this->googleAdsCampaignRepository->query()
+                ->where('service_user_id', $serviceUserId)
+                ->where('status', '!=', GoogleCampaignStatus::PAUSED->value)
+                ->where('status', '!=', GoogleCampaignStatus::REMOVED->value)
+                ->get(['id']);
+
+            foreach ($googleCampaigns as $campaign) {
+                $result = $this->googleAdsService->updateCampaignStatus(
+                    $serviceUserId,
+                    (string) $campaign->id,
+                    GoogleCampaignStatus::PAUSED->value
+                );
+                if ($result->isError()) {
+                    Logging::web('ServicesBillPostpay: Failed to pause Google campaign', [
+                        'service_user_id' => $serviceUserId,
+                        'campaign_id' => $campaign->id,
+                        'error' => $result->getMessage(),
+                    ]);
+                }
+            }
+
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'ServicesBillPostpay: Error pausing campaigns',
+                context: [
+                    'service_user_id' => $serviceUser->id,
+                    'error' => $e->getMessage(),
+                ],
+                exception: $e
+            );
+        }
     }
 }
 

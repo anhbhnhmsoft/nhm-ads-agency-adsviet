@@ -18,6 +18,7 @@ use App\Repositories\ServiceUserRepository;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Repositories\WalletRepository;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class ServicePurchaseService
 {
@@ -112,6 +113,20 @@ class ServicePurchaseService
                 if (!isset($configAccount['open_fee_paid'])) {
                     $configAccount['open_fee_paid'] = $configAccount['payment_type'] === 'prepay';
                 }
+                // Thêm post_payment_date và postpay_days cho trả sau
+                if ($configAccount['payment_type'] === 'postpay') {
+                    $postpayDays = isset($configAccount['postpay_days']) && is_numeric($configAccount['postpay_days'])
+                        ? (int) $configAccount['postpay_days']
+                        : 30; // Mặc định 30 ngày
+
+                    // Lưu postpay_days vào config
+                    $configAccount['postpay_days'] = $postpayDays;
+
+                    // Tính post_payment_date
+                    if (!isset($configAccount['post_payment_date'])) {
+                        $configAccount['post_payment_date'] = now()->addDays($postpayDays)->format('Y-m-d');
+                    }
+                }
 
 
                 $defaultConfig = $this->getDefaultConfigAccount($package->platform, $configAccount);
@@ -160,7 +175,7 @@ class ServicePurchaseService
                     'total_cost' => $totalCost,
                 ]);
             });
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Logging::error(
                 message: 'ServicePurchaseService@createPurchaseOrder error: ' . $e->getMessage(),
                 exception: $e
@@ -188,11 +203,9 @@ class ServicePurchaseService
                     'asset_access' => $account['asset_access'] ?? 'full_asset',
                 ];
 
+                $accountData['websites'] = $account['websites'] ?? [];
                 if ($platform === PlatformType::META->value) {
                     $accountData['fanpages'] = $account['fanpages'] ?? [];
-                    $accountData['websites'] = $account['websites'] ?? [];
-                } else {
-                    $accountData['websites'] = $account['websites'] ?? [];
                 }
 
                 $accountData['bm_ids'] = array_filter($accountData['bm_ids'], fn($v) => !empty(trim($v ?? '')));
@@ -206,12 +219,18 @@ class ServicePurchaseService
                 $accounts[] = $accountData;
             }
 
-            return [
+            $config = [
                 'payment_type' => $userConfig['payment_type'] ?? 'prepay',
                 'top_up_amount' => $userConfig['top_up_amount'] ?? 0,
                 'open_fee_paid' => $userConfig['open_fee_paid'] ?? false,
                 'accounts' => $accounts,
             ];
+
+            if (isset($userConfig['postpay_days'])) {
+                $config['postpay_days'] = $userConfig['postpay_days'];
+            }
+
+            return $config;
         }
 
         $config = [
@@ -224,6 +243,10 @@ class ServicePurchaseService
             'timezone_bm' => $userConfig['timezone_bm'] ?? null,
             'open_fee_paid' => $userConfig['open_fee_paid'] ?? false,
         ];
+
+        if (isset($userConfig['postpay_days'])) {
+            $config['postpay_days'] = $userConfig['postpay_days'];
+        }
 
         // Meta Ads: thêm info_fanpage và info_website
         if ($platform === PlatformType::META->value) {
