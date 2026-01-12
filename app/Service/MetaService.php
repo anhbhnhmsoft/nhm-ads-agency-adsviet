@@ -749,6 +749,94 @@ class MetaService
     }
 
     /**
+     * Đồng bộ tài khoản quảng cáo trực tiếp từ một Business Manager ID
+     */
+    public function syncFromBusinessManagerId(string $bmId): ServiceReturn
+    {
+        try {
+            // Reset API để đảm bảo sử dụng config mới nhất khi sync
+            $this->metaBusinessService->resetApi();
+
+            // Đồng bộ owned_ad_accounts
+            $this->syncMetaAccountsFromManagerEdge($bmId, 'owner');
+            // Đồng bộ client_ad_accounts (được share vào BM)
+            $this->syncMetaAccountsFromManagerEdge($bmId, 'client');
+
+            return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'MetaService@syncFromBusinessManagerId error: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Đồng bộ tài khoản quảng cáo từ một edge cụ thể
+     */
+    private function syncMetaAccountsFromManagerEdge(string $bmId, string $type = 'owner'): void
+    {
+        $after = null;
+        do {
+            $result = $type === 'client'
+                ? $this->metaBusinessService->getClientAdsAccountPaginated(
+                    bmId: $bmId,
+                    limit: 100,
+                    after: $after
+                )
+                : $this->metaBusinessService->getOwnerAdsAccountPaginated(
+                    bmId: $bmId,
+                    limit: 100,
+                    after: $after
+                );
+
+            if ($result->isError()) {
+                Logging::error('Error sync ads account from manager edge ' . $type . ': ' . $result->getMessage());
+                return;
+            }
+
+            $data = $result->getData();
+            $accounts = $data['data'] ?? [];
+
+            foreach ($accounts as $adsAccountData) {
+                $detailResponse = $this->metaBusinessService->getDetailAdsAccount($adsAccountData['id']);
+                if ($detailResponse->isError()) {
+                    continue;
+                }
+                $detail = $detailResponse->getData();
+
+                try {
+                    $this->metaAccountRepository->query()->updateOrCreate(
+                        [
+                            'account_id' => $detail['id'],
+                        ],
+                        [
+                            'service_user_id' => null,
+                            'account_name' => $detail['name'],
+                            'account_status' => $detail['account_status'],
+                            'disable_reason' => $detail['disable_reason'] ?? null,
+                            'spend_cap' => $detail['spend_cap'],
+                            'amount_spent' => $detail['amount_spent'],
+                            'balance' => $detail['balance'],
+                            'currency' => $detail['currency'],
+                            'created_time' => $detail['created_time'] ? Carbon::parse($detail['created_time']) : null,
+                            'is_prepay_account' => (bool)$detail['is_prepay_account'],
+                            'timezone_id' => $detail['timezone_id'],
+                            'timezone_name' => $detail['timezone_name'],
+                            'last_synced_at' => now(),
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    Logging::error('Error sync manager ads account: ' . $e->getMessage());
+                }
+            }
+
+            $after = $data['paging']['cursors']['after'] ?? null;
+        } while ($after);
+    }
+
+    /**
      * Đồng bộ tài khoản quảng cáo từ một edge cụ thể (owned hoặc client)
      */
     private function syncMetaAccountsFromEdge(ServiceUser $serviceUser, string $bmId, string $type = 'owner'): void
@@ -787,9 +875,9 @@ class MetaService
                     $this->metaAccountRepository->query()->updateOrCreate(
                         [
                             'account_id' => $detail['id'],
-                            'service_user_id' => $serviceUser->id,
                         ],
                         [
+                            'service_user_id' => $serviceUser->id,
                             'account_name' => $detail['name'],
                             'account_status' => $detail['account_status'],
                             'disable_reason' => $detail['disable_reason'] ?? null,

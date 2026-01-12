@@ -228,7 +228,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         <AdminStatCard
                             label={t('dashboard.admin_total_customers')}
                             value={adminDashboardData.total_customers}
-                            icon={<Users className="h-5 w-5 text-[#eb4e23]" />}
+                            icon={<Users className="h-5 w-5 text-[#4285f4]" />}
                         />
                         <AdminStatCard
                             label={t('dashboard.admin_active_customers')}
@@ -268,7 +268,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                     {adminDashboardData.pending_tickets_by_type && (
                         <Card>
                             <CardHeader>
-                                <CardTitle className="text-lg font-semibold text-[#eb4e23]">
+                                <CardTitle className="text-lg font-semibold text-[#4285f4]">
                                     {t('dashboard.pending_tickets_title')}
                                 </CardTitle>
                             </CardHeader>
@@ -304,7 +304,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         <Card>
                             <CardHeader>
                                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                                    <CardTitle className="text-lg font-semibold text-[#eb4e23]">
+                                    <CardTitle className="text-lg font-semibold text-[#4285f4]">
                                         {t('spend_report.ranking_title')}
                                     </CardTitle>
                                     <div className="flex gap-3">
@@ -946,14 +946,14 @@ function PlatformAccountCard({ platform, activeAccounts, totalBalance, profitDat
     return (
         <Card>
             <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold text-[#eb4e23]">{platformLabel}</CardTitle>
+                <CardTitle className="text-base font-semibold text-[#4285f4]">{platformLabel}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div>
                     <div className="text-sm text-muted-foreground mb-1">
                         {t('dashboard.platform_active_accounts', { defaultValue: 'Số lượng tài khoản Active' })}
                     </div>
-                    <div className="text-3xl font-bold text-[#eb4e23]">{activeAccounts}</div>
+                    <div className="text-3xl font-bold text-[#4285f4]">{activeAccounts}</div>
                 </div>
                 <div>
                     <div className="text-sm text-muted-foreground mb-1">
@@ -1000,7 +1000,7 @@ function PendingTicketCard({ label, value }: PendingTicketCardProps) {
             <div className="text-sm font-semibold mb-2 text-center min-h-10 flex items-center justify-center">
                 {label}
             </div>
-            <div className="h-px bg-[#eb4e23] mb-3"></div>
+            <div className="h-px bg-[#4285f4] mb-3"></div>
             <div className="text-3xl font-bold text-center">{value}</div>
         </div>
     );

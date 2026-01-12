@@ -181,7 +181,7 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
                             return (
                                 <Card key={platformProfit.platform}>
                                     <CardHeader>
-                                        <CardTitle className="text-lg font-semibold text-[#eb4e23]">
+                                        <CardTitle className="text-lg font-semibold text-[#4285f4]">
                                             {platformProfit.platform_name}
                                         </CardTitle>
                                     </CardHeader>

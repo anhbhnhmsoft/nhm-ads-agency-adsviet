@@ -164,13 +164,13 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 return {
                     name: 'Google Ads',
                     icon: <img src={GoogleIcon} alt="Google" className="w-8 h-8" />,
-                    color: 'bg-[#eb4e23]',
+                    color: 'bg-[#4285f4]',
                 };
             case _PlatformType.META:
                 return {
                     name: 'Facebook Ads',
                     icon: <img src={FacebookIcon} alt="Facebook" className="w-8 h-8" />,
-                    color: 'bg-[#eb4e23]',
+                    color: 'bg-[#4285f4]',
                 };
             default:
                 return {
@@ -404,7 +404,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                     {/* Pricing Info */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="text-center p-3 bg-orange-50 rounded-lg">
-                            <div className="text-xl font-bold text-[#eb4e23]">
+                            <div className="text-xl font-bold text-[#4285f4]">
                                 {formatUSDT(parseFloat(pkg.open_fee))}
                             </div>
                             <div className="text-xs text-gray-600">
@@ -855,7 +855,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                     {/* Fee Calculator */}
                     {(showCalculator || topUpAmount || paymentType === 'postpay') && (
                         <div className="p-4 bg-orange-50 rounded-lg space-y-3">
-                            <div className="font-medium text-[#eb4e23]">{t('service_purchase.calculate_fee')}:</div>
+                            <div className="font-medium text-[#4285f4]">{t('service_purchase.calculate_fee')}:</div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="flex justify-between">
                                         <span>{t('service_purchase.account_opening_fee')}:</span>
@@ -947,7 +947,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 ) : (
                     <>
                         <div className="flex items-center gap-2 mb-4">
-                            <Info className="h-5 w-5 text-[#eb4e23]" />
+                            <Info className="h-5 w-5 text-[#4285f4]" />
                             <span className="text-gray-600">{t('service_purchase.info_message')}</span>
                         </div>
 

@@ -30,12 +30,36 @@ class MetaBusinessService
     }
 
     /**
+     * Reset API instance với config mới nhất
+     */
+    public function resetApi(): void
+    {
+        $this->api = null;
+        $this->config = null;
+    }
+
+    /**
      * @throws Exception
      */
-    public function initApi(): void
+    public function initApi(bool $force = false): void
     {
-        if ($this->api instanceof Api) {
-            return;
+        if ($this->api instanceof Api && !$force) {
+            $platformSetting = $this->platformSettingService->findPlatformActive(
+                platform: PlatformType::META->value
+            );
+            if (!$platformSetting->isError()) {
+                $platformData = $platformSetting->getData();
+                $newConfig = $platformData->config;
+                if ($this->config &&
+                    isset($newConfig['app_id'], $newConfig['app_secret'], $newConfig['access_token']) &&
+                    $this->config['app_id'] === $newConfig['app_id'] &&
+                    $this->config['app_secret'] === $newConfig['app_secret'] &&
+                    $this->config['access_token'] === $newConfig['access_token']
+                ) {
+                    return;
+                }
+            }
+            $this->resetApi();
         }
 
         $platformSetting = $this->platformSettingService->findPlatformActive(

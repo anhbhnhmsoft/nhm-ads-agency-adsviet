@@ -695,10 +695,10 @@ GAQL;
 
                             $this->googleAccountRepository->query()->updateOrCreate(
                                 [
-                                    'service_user_id' => $serviceUser->id,
                                     'account_id' => (string) $accountId,
                                 ],
                                 [
+                                    'service_user_id' => $serviceUser->id,
                                     'account_name' => $customer->getDescriptiveName(),
                                     'account_status' => $mappedStatus,
                                     'currency' => $customer->getCurrencyCode(),
@@ -1487,6 +1487,80 @@ GAQL;
             'cpm' => $avgCpm,
             'roas' => $roas,
         ];
+    }
+
+    /**
+     * Đồng bộ danh sách tài khoản quảng cáo trực tiếp từ một Google Ads Manager
+     */
+    public function syncFromManagerId(string $managerId): ServiceReturn
+    {
+        try {
+            $client = $this->buildGoogleAdsClient($managerId);
+            $googleAdsService = $client->getGoogleAdsServiceClient();
+
+            $query = <<<GAQL
+SELECT
+  customer.id,
+  customer.descriptive_name,
+  customer.currency_code,
+  customer.time_zone,
+  customer.status
+FROM customer
+GAQL;
+
+            $syncedCount = 0;
+            $request = new SearchGoogleAdsStreamRequest([
+                'customer_id' => (string) $managerId,
+                'query' => $query,
+            ]);
+
+            $stream = $googleAdsService->searchStream($request);
+            foreach ($stream->readAll() as $response) {
+                foreach ($response->getResults() as $row) {
+                    $customer = $row->getCustomer();
+                    $accountId = $customer->getId() ?? $this->extractIdFromResource($customer->getResourceName());
+                    if (!$accountId) {
+                        continue;
+                    }
+
+                    $mappedStatus = $this->mapStatusToInt($customer->getStatus());
+
+                    // Lấy balance từ API
+                    $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $managerId);
+                    $balance = $balanceData['balance'] ?? null;
+                    $balanceExhausted = $balanceData['exhausted'] ?? false;
+
+                    $this->googleAccountRepository->query()->updateOrCreate(
+                        [
+                            'account_id' => (string) $accountId,
+                        ],
+                        [
+                            'service_user_id' => null,
+                            'account_name' => $customer->getDescriptiveName(),
+                            'account_status' => $mappedStatus,
+                            'currency' => $customer->getCurrencyCode(),
+                            'customer_manager_id' => $managerId,
+                            'time_zone' => $customer->getTimeZone(),
+                            'balance' => $balance,
+                            'balance_exhausted' => $balanceExhausted,
+                            'last_synced_at' => now(),
+                        ]
+                    );
+
+                    $syncedCount++;
+                }
+            }
+
+            return ServiceReturn::success(data: [
+                'synced_count' => $syncedCount,
+            ]);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'GoogleAdsService@syncFromManagerId error: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
     }
 
     protected function fetchCampaignDailyMetrics(
