@@ -19,6 +19,7 @@ use App\Core\Logging;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use App\Repositories\PlatformSettingRepository;
 
 class BusinessManagerService
 {
@@ -29,6 +30,7 @@ class BusinessManagerService
         protected MetaAdsAccountInsightRepository $metaAdsAccountInsightRepository,
         protected GoogleAdsAccountInsightRepository $googleAdsAccountInsightRepository,
         protected UserReferralRepository $userReferralRepository,
+        protected PlatformSettingRepository $platformSettingRepository,
     ) {
     }
 
@@ -86,6 +88,12 @@ class BusinessManagerService
 
             // Danh sách tài khoản quảng cáo
             $accountsList = [];
+
+            // Lấy accounts từ platform config
+            if ($user && $user->role === UserRole::ADMIN->value) {
+                $platformConfigAccounts = $this->getAccountsFromPlatformConfig($dateStart, $dateEnd, $filter['platform'] ?? null);
+                $accountsList = array_merge($accountsList, $platformConfigAccounts);
+            }
 
             // Tính thống kê tổng
             $stats = [
@@ -452,6 +460,131 @@ class BusinessManagerService
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
+    }
+
+    /**
+     * Lấy accounts từ platform config
+     */
+    private function getAccountsFromPlatformConfig(?Carbon $dateStart, ?Carbon $dateEnd, ?int $platformFilter): array
+    {
+        $accountsList = [];
+
+        // Lấy platform configs active
+        $platforms = $platformFilter ? [$platformFilter] : [PlatformType::META->value, PlatformType::GOOGLE->value];
+
+        foreach ($platforms as $platform) {
+            $platformSetting = $this->platformSettingRepository->findActiveByPlatform($platform);
+            if (!$platformSetting || !$platformSetting->config) {
+                continue;
+            }
+
+            $config = $platformSetting->config;
+
+            if ($platform === PlatformType::META->value) {
+                $bmId = $config['business_manager_id'] ?? null;
+                if (!$bmId) {
+                    continue;
+                }
+
+                // Lấy tất cả accounts từ Meta mà có account_id thuộc BM gốc
+                // Tìm accounts có service_user_id = null (chưa được gán cho user nào)
+                // Hoặc có thể lấy tất cả accounts và đánh dấu những account chưa có service_user_id
+                $metaAccounts = $this->metaAccountRepository->query()
+                    ->whereNull('service_user_id')
+                    ->get();
+
+                foreach ($metaAccounts as $account) {
+                    // Tính spend cho từng account
+                    if ($dateStart && $dateEnd) {
+                        $spend = $this->metaAdsAccountInsightRepository->query()
+                            ->where('meta_account_id', $account->id)
+                            ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
+                            ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
+                            ->first();
+                        $spendValue = $spend && isset($spend->total_spend) ? (string) $spend->total_spend : '0';
+                    } else {
+                        $spendValue = (string) ($account->amount_spent ?? '0');
+                    }
+
+                    $balanceValue = (string) ($account->balance ?? '0');
+                    $status = $account->account_status !== null ? (int) $account->account_status : null;
+                    $isActive = $this->isAccountActive((int) $platform, $status);
+
+                    $accountsList[] = [
+                        'id' => (string) $account->account_id,
+                        'account_id' => $account->account_id,
+                        'account_name' => $account->account_name,
+                        'service_user_id' => null,
+                        'bm_ids' => [$bmId],
+                        'name' => $account->account_name,
+                        'platform' => $platform,
+                        'owner_name' => $platformSetting->name,
+                        'owner_id' => null,
+                        'total_accounts' => 1,
+                        'active_accounts' => $isActive ? 1 : 0,
+                        'disabled_accounts' => $isActive ? 0 : 1,
+                        'total_spend' => $spendValue,
+                        'total_balance' => $balanceValue,
+                        'currency' => $account->currency ?? 'USD',
+                        'accounts' => [
+                            ['currency' => $account->currency ?? 'USD'],
+                        ],
+                    ];
+                }
+            } elseif ($platform === PlatformType::GOOGLE->value) {
+                $mccId = $config['login_customer_id'] ?? null;
+                if (!$mccId) {
+                    continue;
+                }
+
+                // Lấy tất cả accounts từ Google mà có account_id thuộc MCC gốc
+                // Tìm accounts có service_user_id = null (chưa được gán cho user nào)
+                $googleAccounts = $this->googleAccountRepository->query()
+                    ->whereNull('service_user_id')
+                    ->get();
+
+                foreach ($googleAccounts as $account) {
+                    // Tính spend từ insights nếu có date range
+                    if ($dateStart && $dateEnd) {
+                        $spend = $this->googleAdsAccountInsightRepository->query()
+                            ->where('google_account_id', $account->id)
+                            ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
+                            ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
+                            ->first();
+                        $spendValue = $spend && isset($spend->total_spend) ? (string) $spend->total_spend : '0';
+                    } else {
+                        $spendValue = '0';
+                    }
+
+                    $balanceValue = (string) ($account->balance ?? '0');
+                    $status = $account->account_status !== null ? (int) $account->account_status : null;
+                    $isActive = $this->isAccountActive((int) $platform, $status);
+
+                    $accountsList[] = [
+                        'id' => (string) $account->account_id,
+                        'account_id' => $account->account_id,
+                        'account_name' => $account->account_name,
+                        'service_user_id' => null, // Chưa được gán cho user nào
+                        'bm_ids' => [$mccId],
+                        'name' => $account->account_name,
+                        'platform' => $platform,
+                        'owner_name' => 'System (Chưa gán)',
+                        'owner_id' => null,
+                        'total_accounts' => 1,
+                        'active_accounts' => $isActive ? 1 : 0,
+                        'disabled_accounts' => $isActive ? 0 : 1,
+                        'total_spend' => $spendValue,
+                        'total_balance' => $balanceValue,
+                        'currency' => $account->currency ?? 'USD',
+                        'accounts' => [
+                            ['currency' => $account->currency ?? 'USD'],
+                        ],
+                    ];
+                }
+            }
+        }
+
+        return $accountsList;
     }
 }
 

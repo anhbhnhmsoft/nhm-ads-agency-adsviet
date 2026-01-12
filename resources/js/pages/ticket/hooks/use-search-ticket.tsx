@@ -10,14 +10,16 @@ export type TicketListQuery = {
     };
 };
 
+type TicketListFilter = NonNullable<TicketListQuery['filter']>;
+
 export const useSearchTicketList = () => {
-    const [query, setQuery] = useNestedState<TicketListQuery['filter']>({
+    const [query, setQuery] = useNestedState<TicketListFilter>({
         keyword: '',
     });
 
     const handleSearch = () => {
-        const filterPayload: Record<string, any> = {};
-        
+        const filterPayload: TicketListFilter = {};
+
         if (query.keyword) {
             filterPayload.keyword = query.keyword;
         }
@@ -31,7 +33,7 @@ export const useSearchTicketList = () => {
         }
 
         router.get(
-            ticket_index(),
+            ticket_index().url,
             {
                 filter: filterPayload,
             },
@@ -39,7 +41,7 @@ export const useSearchTicketList = () => {
                 replace: true,
                 preserveState: true,
                 only: ['tickets'],
-            }
+            },
         );
     };
 

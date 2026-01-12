@@ -207,6 +207,12 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
+                                    if (!row.original.service_user_id) {
+                                        toast.error(t('business_manager.account_not_assigned', { 
+                                            defaultValue: 'Tài khoản này chưa được gán với user nào' 
+                                        }));
+                                        return;
+                                    }
                                     router.get('/service-management', {
                                         filter: {
                                             service_user_id: row.original.service_user_id,

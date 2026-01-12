@@ -228,7 +228,7 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                                         <Legend />
                                         <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} name={t('profit.revenue', { defaultValue: 'Doanh thu' })} />
                                         <Line type="monotone" dataKey="cost" stroke="#ef4444" strokeWidth={2} name={t('profit.cost', { defaultValue: 'Chi phí' })} />
-                                        <Line type="monotone" dataKey="profit" stroke="#eb4e23" strokeWidth={2} name={t('profit.profit', { defaultValue: 'Lợi nhuận' })} />
+                                        <Line type="monotone" dataKey="profit" stroke="#4285f4" strokeWidth={2} name={t('profit.profit', { defaultValue: 'Lợi nhuận' })} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </CardContent>
@@ -247,7 +247,7 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                                         <Tooltip
                                             formatter={(value: number) => [`${value.toFixed(2)}%`, t('profit.profit_margin', { defaultValue: 'Tỷ suất lợi nhuận' })]}
                                         />
-                                        <Bar dataKey="profitMargin" fill="#eb4e23" name={t('profit.profit_margin', { defaultValue: 'Tỷ suất lợi nhuận' })} />
+                                        <Bar dataKey="profitMargin" fill="#4285f4" name={t('profit.profit_margin', { defaultValue: 'Tỷ suất lợi nhuận' })} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </CardContent>

@@ -33,9 +33,9 @@ const RoleSystemCard = ({role, setRole}: Props) => {
            })}>
                <div className="p-4">
                    <div className="text-center">
-                       <Shield className="h-8 w-8 text-[#eb4e23] mx-auto mb-2"/>
-                       <h3 className="font-bold text-[#eb4e23]">{t('auth.components.admin')}</h3>
-                       <p className="hidden sm:block text-xs text-[#eb4e23] mt-1">{t('auth.components.admin_desc')}</p>
+                       <Shield className="h-8 w-8 text-[#4285f4] mx-auto mb-2"/>
+                       <h3 className="font-bold text-[#4285f4]">{t('auth.components.admin')}</h3>
+                       <p className="hidden sm:block text-xs text-[#4285f4] mt-1">{t('auth.components.admin_desc')}</p>
                    </div>
                </div>
            </div>
