@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CommonController;
+use App\Http\Controllers\API\ConfigController;
 use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
 use App\Http\Controllers\API\NotificationController;
@@ -40,6 +41,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // API change password
         Route::put('/change-password', [ProfileController::class, 'changePassword'])
             ->middleware('throttle:5,1');
+    });
+
+    Route::prefix('config')->group(function () {
+        Route::get('postpay-min-balance', [ConfigController::class, 'getPostpayMinBalance']);
     });
 
     Route::prefix('service')->group(function () {

@@ -555,7 +555,7 @@
         "invalid_amount": "Số tiền không hợp lệ",
         "amount_too_low": "Số tiền quá thấp",
         "amount_too_high": "Số tiền quá cao",
-        "budget": "Ngân sách (USD)",
+        "budget": "Ngân sách (USDT)",
         "required": "Bắt buộc",
         "budget_hint": "Nhập ngân sách tối thiểu {{min}} USD",
         "choose_access": "Chọn Full access hoặc basic access",
