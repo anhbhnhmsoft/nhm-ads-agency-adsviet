@@ -826,7 +826,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                             </div>
                                         </div>
                                         <Progress value={parseFloat(budget.usage_percent)} className="mb-2" />
-                                        <div className="flex items-center justify_between text-sm">
+                                        <div className="flex w-full items-center justify-between text-sm">
                                             <span className="text-muted-foreground">
                                                 {budget.usage_percent}% {t('dashboard.used')}
                                             </span>
