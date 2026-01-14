@@ -19,6 +19,7 @@ export default function AuthLayout({
 }) {
     const {t} = useTranslation();
     const { flash } = usePage().props;
+    const { logo_path } = usePage().props as { logo_path?: string };
 
     useEffect(() => {
         if (flash?.success) {
@@ -40,7 +41,9 @@ export default function AuthLayout({
             <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-[#e8f0fe] p-3 md:p-10">
                 <div className="flex w-full max-w-md flex-col gap-6">
                     <div className="flex flex-col gap-2 items-center justify-center">
-                        <Shield className="w-12 h-12 text-[#4285f4]" />
+                        <div className="flex items-center justify-center">
+                            <img src={`${logo_path}`} alt="logo" className="w-15 h-15" />
+                        </div>
                         <h1 className="text-2xl font-bold text-center">{t(title)}</h1>
                         <p className="text-sm text-gray-500 text-center">{t(description)}</p>
                     </div>
