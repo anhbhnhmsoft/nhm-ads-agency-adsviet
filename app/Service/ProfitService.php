@@ -89,35 +89,47 @@ class ProfitService
                     continue;
                 }
 
-                // Tính doanh thu (revenue) từ các giao dịch nạp tiền của customer
-                $revenueQuery = $this->walletTransactionRepository->query()
+                // Tính doanh thu (revenue) từ các giao dịch admin nhận tiền:
+                $revenueDepositQuery = $this->walletTransactionRepository->query()
                     ->whereHas('wallet', function ($q) use ($customerId) {
                         $q->where('user_id', $customerId);
                     })
-                    ->where('type', WalletTransactionType::DEPOSIT->value) // Loại giao dịch nạp tiền
+                    ->where('type', WalletTransactionType::DEPOSIT->value)
+                    ->where('status', WalletTransactionStatus::COMPLETED->value);
+
+                $revenuePurchaseQuery = $this->walletTransactionRepository->query()
+                    ->whereHas('wallet', function ($q) use ($customerId) {
+                        $q->where('user_id', $customerId);
+                    })
+                    ->where('type', WalletTransactionType::SERVICE_PURCHASE->value)
                     ->where('status', WalletTransactionStatus::COMPLETED->value);
 
                 if ($startDate && $endDate) {
-                    $revenueQuery->whereBetween('created_at', [$startDate, $endDate]);
+                    $revenueDepositQuery->whereBetween('created_at', [$startDate, $endDate]);
+                    $revenuePurchaseQuery->whereBetween('created_at', [$startDate, $endDate]);
                 }
 
-                $revenue = (float) $revenueQuery->sum('amount') ?? 0;
+                $revenueDeposit = (float) $revenueDepositQuery->sum('amount') ?? 0;
+                $revenuePurchaseRaw = (float) $revenuePurchaseQuery->sum('amount') ?? 0;
+                $revenuePurchase = abs($revenuePurchaseRaw);
+                $revenue = $revenueDeposit + $revenuePurchase;
 
-                // Tính chi phí (cost) từ các giao dịch mua dịch vụ
-                // Chi phí = Giá dịch vụ agency phải trả cho nhà cung cấp khi khách hàng mua dịch vụ
+                // Tính chi phí (cost) từ các giao dịch admin chi tiền:
                 $costQuery = $this->walletTransactionRepository->query()
                     ->whereHas('wallet', function ($q) use ($customerId) {
                         $q->where('user_id', $customerId);
                     })
-                    ->where('type', WalletTransactionType::SERVICE_PURCHASE->value) // Loại giao dịch mua dịch vụ
+                    ->whereIn('type', [
+                        WalletTransactionType::WITHDRAW->value,
+                        WalletTransactionType::REFUND->value,
+                    ])
                     ->where('status', WalletTransactionStatus::COMPLETED->value);
 
                 if ($startDate && $endDate) {
                     $costQuery->whereBetween('created_at', [$startDate, $endDate]);
                 }
 
-                // SERVICE_PURCHASE có amount là số âm trong DB (vì là chi phí trừ tiền)
-                // Ta cần lấy giá trị tuyệt đối để tính cost
+                // WITHDRAW và REFUND có amount là số âm trong DB, lấy giá trị tuyệt đối
                 $costRaw = (float) $costQuery->sum('amount') ?? 0;
                 $cost = abs($costRaw);
 
@@ -208,22 +220,15 @@ class ProfitService
                 foreach ($serviceUsers as $serviceUser) {
                     $userId = $serviceUser->user_id;
 
-                    // Tính doanh thu từ nạp tiền
-                    $revenueQuery = $this->walletTransactionRepository->query()
+                    // Tính doanh thu từ các giao dịch admin nhận tiền: DEPOSIT + SERVICE_PURCHASE
+                    $revenueDepositQuery = $this->walletTransactionRepository->query()
                         ->whereHas('wallet', function ($q) use ($userId) {
                             $q->where('user_id', $userId);
                         })
                         ->where('type', WalletTransactionType::DEPOSIT->value)
                         ->where('status', WalletTransactionStatus::COMPLETED->value);
 
-                    if ($startDate && $endDate) {
-                        $revenueQuery->whereBetween('created_at', [$startDate, $endDate]);
-                    }
-
-                    $revenue += (float) $revenueQuery->sum('amount') ?? 0;
-
-                    // Tính chi phí từ mua dịch vụ
-                    $costQuery = $this->walletTransactionRepository->query()
+                    $revenuePurchaseQuery = $this->walletTransactionRepository->query()
                         ->whereHas('wallet', function ($q) use ($userId) {
                             $q->where('user_id', $userId);
                         })
@@ -231,10 +236,30 @@ class ProfitService
                         ->where('status', WalletTransactionStatus::COMPLETED->value);
 
                     if ($startDate && $endDate) {
+                        $revenueDepositQuery->whereBetween('created_at', [$startDate, $endDate]);
+                        $revenuePurchaseQuery->whereBetween('created_at', [$startDate, $endDate]);
+                    }
+
+                    $revenueDeposit = (float) $revenueDepositQuery->sum('amount') ?? 0;
+                    $revenuePurchaseRaw = (float) $revenuePurchaseQuery->sum('amount') ?? 0;
+                    $revenuePurchase = abs($revenuePurchaseRaw);
+                    $revenue += $revenueDeposit + $revenuePurchase;
+
+                    // Tính chi phí từ các giao dịch admin chi tiền: WITHDRAW + REFUND
+                    $costQuery = $this->walletTransactionRepository->query()
+                        ->whereHas('wallet', function ($q) use ($userId) {
+                            $q->where('user_id', $userId);
+                        })
+                        ->whereIn('type', [
+                            WalletTransactionType::WITHDRAW->value,
+                            WalletTransactionType::REFUND->value,
+                        ])
+                        ->where('status', WalletTransactionStatus::COMPLETED->value);
+
+                    if ($startDate && $endDate) {
                         $costQuery->whereBetween('created_at', [$startDate, $endDate]);
                     }
 
-                    // SERVICE_PURCHASE có amount là số âm trong DB,thif lấy giá trị tuyệt đối
                     $costRaw = (float) $costQuery->sum('amount') ?? 0;
                     $cost += abs($costRaw);
                 }
@@ -282,20 +307,15 @@ class ProfitService
         $metaRevenue = 0;
         $metaCost = 0;
         foreach ($metaServiceUsers as $serviceUser) {
-            $revenueQuery = $this->walletTransactionRepository->query()
+            // Tính doanh thu
+            $revenueDepositQuery = $this->walletTransactionRepository->query()
                 ->whereHas('wallet', function ($q) use ($customerId) {
                     $q->where('user_id', $customerId);
                 })
                 ->where('type', WalletTransactionType::DEPOSIT->value)
                 ->where('status', WalletTransactionStatus::COMPLETED->value);
 
-            if ($startDate && $endDate) {
-                $revenueQuery->whereBetween('created_at', [$startDate, $endDate]);
-            }
-
-            $metaRevenue += (float) $revenueQuery->sum('amount') ?? 0;
-
-            $costQuery = $this->walletTransactionRepository->query()
+            $revenuePurchaseQuery = $this->walletTransactionRepository->query()
                 ->whereHas('wallet', function ($q) use ($customerId) {
                     $q->where('user_id', $customerId);
                 })
@@ -303,10 +323,30 @@ class ProfitService
                 ->where('status', WalletTransactionStatus::COMPLETED->value);
 
             if ($startDate && $endDate) {
+                $revenueDepositQuery->whereBetween('created_at', [$startDate, $endDate]);
+                $revenuePurchaseQuery->whereBetween('created_at', [$startDate, $endDate]);
+            }
+
+            $revenueDeposit = (float) $revenueDepositQuery->sum('amount') ?? 0;
+            $revenuePurchaseRaw = (float) $revenuePurchaseQuery->sum('amount') ?? 0;
+            $revenuePurchase = abs($revenuePurchaseRaw);
+            $metaRevenue += $revenueDeposit + $revenuePurchase;
+
+            // Tính chi phí
+            $costQuery = $this->walletTransactionRepository->query()
+                ->whereHas('wallet', function ($q) use ($customerId) {
+                    $q->where('user_id', $customerId);
+                })
+                ->whereIn('type', [
+                    WalletTransactionType::WITHDRAW->value,
+                    WalletTransactionType::REFUND->value,
+                ])
+                ->where('status', WalletTransactionStatus::COMPLETED->value);
+
+            if ($startDate && $endDate) {
                 $costQuery->whereBetween('created_at', [$startDate, $endDate]);
             }
 
-            // SERVICE_PURCHASE có amount là số âm trong DB, lấy giá trị tuyệt đối
             $costRaw = (float) $costQuery->sum('amount') ?? 0;
             $metaCost += abs($costRaw);
         }
@@ -328,20 +368,15 @@ class ProfitService
         $googleRevenue = 0;
         $googleCost = 0;
         foreach ($googleServiceUsers as $serviceUser) {
-            $revenueQuery = $this->walletTransactionRepository->query()
+            // Tính doanh thu
+            $revenueDepositQuery = $this->walletTransactionRepository->query()
                 ->whereHas('wallet', function ($q) use ($customerId) {
                     $q->where('user_id', $customerId);
                 })
                 ->where('type', WalletTransactionType::DEPOSIT->value)
                 ->where('status', WalletTransactionStatus::COMPLETED->value);
 
-            if ($startDate && $endDate) {
-                $revenueQuery->whereBetween('created_at', [$startDate, $endDate]);
-            }
-
-            $googleRevenue += (float) $revenueQuery->sum('amount') ?? 0;
-
-            $costQuery = $this->walletTransactionRepository->query()
+            $revenuePurchaseQuery = $this->walletTransactionRepository->query()
                 ->whereHas('wallet', function ($q) use ($customerId) {
                     $q->where('user_id', $customerId);
                 })
@@ -349,10 +384,30 @@ class ProfitService
                 ->where('status', WalletTransactionStatus::COMPLETED->value);
 
             if ($startDate && $endDate) {
+                $revenueDepositQuery->whereBetween('created_at', [$startDate, $endDate]);
+                $revenuePurchaseQuery->whereBetween('created_at', [$startDate, $endDate]);
+            }
+
+            $revenueDeposit = (float) $revenueDepositQuery->sum('amount') ?? 0;
+            $revenuePurchaseRaw = (float) $revenuePurchaseQuery->sum('amount') ?? 0;
+            $revenuePurchase = abs($revenuePurchaseRaw);
+            $googleRevenue += $revenueDeposit + $revenuePurchase;
+
+            // Tính chi phí
+            $costQuery = $this->walletTransactionRepository->query()
+                ->whereHas('wallet', function ($q) use ($customerId) {
+                    $q->where('user_id', $customerId);
+                })
+                ->whereIn('type', [
+                    WalletTransactionType::WITHDRAW->value,
+                    WalletTransactionType::REFUND->value,
+                ])
+                ->where('status', WalletTransactionStatus::COMPLETED->value);
+
+            if ($startDate && $endDate) {
                 $costQuery->whereBetween('created_at', [$startDate, $endDate]);
             }
 
-            // SERVICE_PURCHASE có amount là số âm trong DB,thif lấy giá trị tuyệt đối
             $costRaw = (float) $costQuery->sum('amount') ?? 0;
             $googleCost += abs($costRaw);
         }
@@ -405,27 +460,57 @@ class ProfitService
             };
 
             // Tính doanh thu theo thời gian
-            $revenueQuery = $this->walletTransactionRepository->query()
+            $revenueDepositQuery = $this->walletTransactionRepository->query()
                 ->where('type', WalletTransactionType::DEPOSIT->value)
                 ->where('status', WalletTransactionStatus::COMPLETED->value)
                 ->whereBetween('created_at', [$startDate, $endDate]);
 
+            $revenuePurchaseQuery = $this->walletTransactionRepository->query()
+                ->where('type', WalletTransactionType::SERVICE_PURCHASE->value)
+                ->where('status', WalletTransactionStatus::COMPLETED->value)
+                ->whereBetween('created_at', [$startDate, $endDate]);
+
             if (!empty($customerIds)) {
-                $revenueQuery->whereHas('wallet', function ($q) use ($customerIds) {
+                $revenueDepositQuery->whereHas('wallet', function ($q) use ($customerIds) {
+                    $q->whereIn('user_id', $customerIds);
+                });
+                $revenuePurchaseQuery->whereHas('wallet', function ($q) use ($customerIds) {
                     $q->whereIn('user_id', $customerIds);
                 });
             }
 
-            $revenues = $revenueQuery
+            $revenuesDeposit = $revenueDepositQuery
                 ->selectRaw("to_char(created_at, '{$dateFormat}') as period, SUM(amount) as total")
                 ->groupBy('period')
                 ->orderBy('period')
                 ->get()
                 ->keyBy('period');
 
+            $revenuesPurchase = $revenuePurchaseQuery
+                ->selectRaw("to_char(created_at, '{$dateFormat}') as period, SUM(ABS(amount)) as total")
+                ->groupBy('period')
+                ->orderBy('period')
+                ->get()
+                ->keyBy('period');
+
+            $allPeriods = $revenuesDeposit->keys()->merge($revenuesPurchase->keys())->unique();
+            $revenues = collect();
+            
+            foreach ($allPeriods as $period) {
+                $depositTotal = (float) ($revenuesDeposit->get($period)->total ?? 0);
+                $purchaseTotal = (float) ($revenuesPurchase->get($period)->total ?? 0);
+                $revenues->put($period, (object) [
+                    'period' => $period,
+                    'total' => $depositTotal + $purchaseTotal,
+                ]);
+            }
+
             // Tính chi phí theo thời gian
             $costQuery = $this->walletTransactionRepository->query()
-                ->where('type', WalletTransactionType::SERVICE_PURCHASE->value)
+                ->whereIn('type', [
+                    WalletTransactionType::WITHDRAW->value,
+                    WalletTransactionType::REFUND->value,
+                ])
                 ->where('status', WalletTransactionStatus::COMPLETED->value)
                 ->whereBetween('created_at', [$startDate, $endDate]);
 
@@ -560,7 +645,7 @@ class ProfitService
 
                 // Tính doanh thu từ các user liên quan
                 foreach ($bmMcc['user_ids'] as $userId) {
-                    $revenueQuery = $this->walletTransactionRepository->query()
+                    $revenueDepositQuery = $this->walletTransactionRepository->query()
                         ->whereHas('wallet', function ($q) use ($userId) {
                             $q->where('user_id', $userId);
                         })
@@ -568,9 +653,7 @@ class ProfitService
                         ->where('status', WalletTransactionStatus::COMPLETED->value)
                         ->whereBetween('created_at', [$startDate, $endDate]);
 
-                    $revenue += (float) $revenueQuery->sum('amount') ?? 0;
-
-                    $costQuery = $this->walletTransactionRepository->query()
+                    $revenuePurchaseQuery = $this->walletTransactionRepository->query()
                         ->whereHas('wallet', function ($q) use ($userId) {
                             $q->where('user_id', $userId);
                         })
@@ -578,7 +661,23 @@ class ProfitService
                         ->where('status', WalletTransactionStatus::COMPLETED->value)
                         ->whereBetween('created_at', [$startDate, $endDate]);
 
-                    // SERVICE_PURCHASE có amount là số âm trong DB, lấy giá trị tuyệt đối
+                    $revenueDeposit = (float) $revenueDepositQuery->sum('amount') ?? 0;
+                    $revenuePurchaseRaw = (float) $revenuePurchaseQuery->sum('amount') ?? 0;
+                    $revenuePurchase = abs($revenuePurchaseRaw);
+                    $revenue += $revenueDeposit + $revenuePurchase;
+
+                    // Tính chi phí
+                    $costQuery = $this->walletTransactionRepository->query()
+                        ->whereHas('wallet', function ($q) use ($userId) {
+                            $q->where('user_id', $userId);
+                        })
+                        ->whereIn('type', [
+                            WalletTransactionType::WITHDRAW->value,
+                            WalletTransactionType::REFUND->value,
+                        ])
+                        ->where('status', WalletTransactionStatus::COMPLETED->value)
+                        ->whereBetween('created_at', [$startDate, $endDate]);
+
                     $costRaw = (float) $costQuery->sum('amount') ?? 0;
                     $cost += abs($costRaw);
                 }

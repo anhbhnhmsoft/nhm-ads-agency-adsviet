@@ -16,7 +16,7 @@ class ServicePurchaseApiRequest extends FormRequest
         return [
             'package_id' => ['required', 'string'],
             'top_up_amount' => ['nullable', 'numeric', 'min:0'],
-            'budget' => ['nullable', 'numeric', 'min:0'],
+            // 'budget' => ['nullable', 'numeric', 'min:0'],
             'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],
             'postpay_days' => ['nullable', 'integer', 'in:1,3,7'],
             'meta_email' => ['nullable', 'string', 'email', 'max:255'],

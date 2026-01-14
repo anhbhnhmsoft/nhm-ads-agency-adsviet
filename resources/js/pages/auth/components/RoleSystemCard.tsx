@@ -15,7 +15,7 @@ const RoleSystemCard = ({role, setRole}: Props) => {
        <div className="grid grid-cols-2 gap-2 mb-4">
            <div
                onClick={() => setRole(_RoleSystemRequest.USER)}
-               className={cn('rounded-lg border text-card-foreground shadow-sm transition-all duration-200 cursor-pointer hover:bg-[#DAF278] hover:border-green-300 bg-[#DAF278] border-green-200', {
+               className={cn('rounded-lg border text-card-foreground shadow-sm transition-all duration-200 cursor-pointer hover:bg-[#ecfda8] hover:border-green-300 bg-[#d5e78d] border-green-200', {
                'bg-[#DAF278] border-[#c3e92d]': role === _RoleSystemRequest.USER
            })}>
                <div className="p-4">
@@ -33,9 +33,9 @@ const RoleSystemCard = ({role, setRole}: Props) => {
            })}>
                <div className="p-4">
                    <div className="text-center">
-                       <Shield className="h-8 w-8 text-[#4285f4] mx-auto mb-2"/>
-                       <h3 className="font-bold text-[#4285f4]">{t('auth.components.admin')}</h3>
-                       <p className="hidden sm:block text-xs text-[#4285f4] mt-1">{t('auth.components.admin_desc')}</p>
+                       <Shield className="h-8 w-8 text-[#eb4e23] mx-auto mb-2"/>
+                       <h3 className="font-bold text-[#eb4e23]">{t('auth.components.admin')}</h3>
+                       <p className="hidden sm:block text-xs text-[#eb4e23] mt-1">{t('auth.components.admin_desc')}</p>
                    </div>
                </div>
            </div>

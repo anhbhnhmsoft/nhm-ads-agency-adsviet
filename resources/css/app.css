@@ -66,7 +66,7 @@
     --card-foreground: #0d1a2b;
     --popover: #ffffff;
     --popover-foreground: #0d1a2b;
-    --primary: #1a73e8;
+    --primary: #eb4e23;
     --primary-foreground: #ffffff;
     --secondary: #e8f0fe;
     --secondary-foreground: #0d1a2b;
@@ -89,10 +89,11 @@
     --sidebar-foreground: #0d1a2b;
     --sidebar-primary: #3367d6;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #4285f4;
+    --sidebar-accent: #eb4e23;
     --sidebar-accent-foreground: #ffffff;
+    --sidebar-accent-light: rgba(235, 78, 35, 0.1);
     --sidebar-border: #dadce0;
-    --sidebar-ring: #4285f4;
+    --sidebar-ring: #eb4e23;
 }
 
 .dark {
@@ -102,7 +103,7 @@
     --card-foreground: oklch(0.985 0 0);
     --popover: oklch(0.145 0 0);
     --popover-foreground: oklch(0.985 0 0);
-    --primary: #1a73e8;
+    --primary: #eb4e23;
     --primary-foreground: #ffffff;
     --secondary: oklch(0.269 0 0);
     --secondary-foreground: oklch(0.985 0 0);
@@ -124,10 +125,11 @@
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: #3367d6;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #4285f4;
+    --sidebar-accent: #eb4e23;
     --sidebar-accent-foreground: #ffffff;
+    --sidebar-accent-light: rgba(235, 78, 35, 0.1);
     --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: #4285f4;
+    --sidebar-ring: #eb4e23;
 }
 
 @layer base {
@@ -155,6 +157,33 @@
     }
     
     .text-sidebar-accent-foreground {
+        color: var(--sidebar-accent-foreground) !important;
+    }
+    
+    .border-sidebar-border {
+        border-color: var(--sidebar-border) !important;
+    }
+    
+    .ring-sidebar-ring {
+        --tw-ring-color: var(--sidebar-ring) !important;
+    }
+    
+    /* Đảm bảo text và icon trắng khi sidebar button active hoặc hover */
+    [data-sidebar="menu-button"][data-active="true"],
+    [data-sidebar="menu-button"][data-active="true"] > span,
+    [data-sidebar="menu-button"][data-active="true"] > svg,
+    [data-sidebar="menu-button"]:hover,
+    [data-sidebar="menu-button"]:hover > span,
+    [data-sidebar="menu-button"]:hover > svg {
+        color: var(--sidebar-accent-foreground) !important;
+    }
+    
+    [data-sidebar="menu-sub-button"][data-active="true"],
+    [data-sidebar="menu-sub-button"][data-active="true"] > span,
+    [data-sidebar="menu-sub-button"][data-active="true"] > svg,
+    [data-sidebar="menu-sub-button"]:hover,
+    [data-sidebar="menu-sub-button"]:hover > span,
+    [data-sidebar="menu-sub-button"]:hover > svg {
         color: var(--sidebar-accent-foreground) !important;
     }
 }

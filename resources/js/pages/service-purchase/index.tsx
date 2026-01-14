@@ -255,7 +255,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         if (!selectedPackage) return;
 
         // Mark all fields as touched on submit
-        setTouchedFields({ topUpAmount: true, budget: true });
+        setTouchedFields({ topUpAmount: true /*, budget: true */ });
 
         // Kiểm tra quyền trả sau - chỉ true mới được phép
         const isPostpayAllowed = selectedPackage
@@ -294,9 +294,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             return;
         }
 
-        // Budget không bắt buộc, 0 hoặc trống = unlimited
-        const sanitizedBudget = normalizeCurrencyInput(budgetValue);
-        const payloadBudget = sanitizedBudget ? sanitizedBudget : '0';
+        const payloadBudget = '0';
 
         const hasAccounts = accounts.some(
             acc => acc.meta_email || acc.display_name || (acc.bm_ids && acc.bm_ids.length > 0)
@@ -767,7 +765,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                         )}
                     </div>
 
-                    {/* Budget */}
+                    {/* 
                     <div className="space-y-2">
                         <Label htmlFor="budget">
                             {t('service_purchase.budget')} ({t('service_purchase.optional', { defaultValue: 'Tùy chọn' })})
@@ -799,6 +797,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             })}
                         </p>
                     </div>
+                    */}
 
                     {/* Top-up Amount */}
                     <div className="space-y-2">
