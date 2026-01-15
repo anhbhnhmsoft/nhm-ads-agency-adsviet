@@ -50,6 +50,8 @@ class ServicePurchaseRequest extends FormRequest
             // 'budget.min' => __('services.validation.budget_min', ['min' => 0]),
             'meta_email.email' => __('services.validation.meta_email_email'),
             'meta_email.max' => __('services.validation.meta_email_max', ['max' => 255]),
+            'accounts.*.meta_email.email' => __('services.validation.meta_email_email'),
+            'accounts.*.meta_email.max' => __('services.validation.meta_email_max', ['max' => 255]),
             'display_name.max' => __('services.validation.display_name_max', ['max' => 255]),
         ];
     }

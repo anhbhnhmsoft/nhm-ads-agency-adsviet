@@ -22,6 +22,33 @@ class ServiceOrderResource extends JsonResource
         $user = $this->whenLoaded('user');
         $referral = $user?->referredBy?->referrer;
 
+        // Tính tổng chi phí
+        $totalCost = 0.0;
+        $config = $this->config_account ?? [];
+        $paymentType = strtolower($config['payment_type'] ?? 'prepay');
+        $topUpAmount = 0.0;
+        $serviceFee = 0.0;
+        
+        if (isset($config['top_up_amount'])) {
+            $topUpAmount = (float) $config['top_up_amount'];
+        }
+        
+        $openFee = (float) ($package?->open_fee ?? 0);
+        $topUpFeePercent = (float) ($package?->top_up_fee ?? 0);
+        
+        $isPostpay = $paymentType === 'postpay';
+        
+        if ($topUpAmount > 0) {
+            $serviceFee = $topUpAmount * $topUpFeePercent / 100;
+            if ($isPostpay) {
+                $totalCost = $topUpAmount + $serviceFee;
+            } else {
+                $totalCost = $openFee + $topUpAmount + $serviceFee;
+            }
+        } else if (!$isPostpay) {
+            $totalCost = $openFee;
+        }
+
         return [
             'id' => (string) $this->id,
             'status' => $this->status,
@@ -40,6 +67,7 @@ class ServiceOrderResource extends JsonResource
             'budget' => $this->budget,
             'open_fee' => $package?->open_fee,
             'top_up_fee' => $package?->top_up_fee,
+            'total_cost' => $totalCost,
             'config_account' => $this->config_account,
             'description' => $this->description,
             'created_at' => optional($this->created_at)->toIso8601String(),

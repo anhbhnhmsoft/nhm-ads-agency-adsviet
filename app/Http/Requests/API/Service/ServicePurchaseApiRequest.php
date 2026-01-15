@@ -39,5 +39,19 @@ class ServicePurchaseApiRequest extends FormRequest
             'accounts.*.asset_access' => ['nullable', 'string', 'in:full_asset,basic_asset'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'package_id.required' => __('services.validation.package_required'),
+            'top_up_amount.numeric' => __('services.validation.top_up_numeric'),
+            'top_up_amount.min' => __('services.validation.top_up_min'),
+            'meta_email.email' => __('services.validation.meta_email_email'),
+            'meta_email.max' => __('services.validation.meta_email_max', ['max' => 255]),
+            'accounts.*.meta_email.email' => __('services.validation.meta_email_email'),
+            'accounts.*.meta_email.max' => __('services.validation.meta_email_max', ['max' => 255]),
+            'display_name.max' => __('services.validation.display_name_max', ['max' => 255]),
+        ];
+    }
 }
 

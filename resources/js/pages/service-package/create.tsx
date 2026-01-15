@@ -19,11 +19,15 @@ import { service_packages_index } from '@/routes';
 import { ReactNode, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { UserSelect } from '@/components/user-select';
+import { UserOption } from '@/pages/service-package/types/type';
+
 type Props = {
     meta_features: ServicePackageOption[];
     google_features: ServicePackageOption[];
+    all_users?: UserOption[];
 };
-const Create = ({ meta_features, google_features }: Props) => {
+const Create = ({ meta_features, google_features, all_users = [] }: Props) => {
     const { t } = useTranslation();
 
     const { form, submit } = useFormCreateServicePackage();
@@ -428,6 +432,32 @@ const Create = ({ meta_features, google_features }: Props) => {
                     )}
                 </div>
 
+                {/* Supplier fee percent */}
+                <div className="flex flex-col gap-2">
+                    <Label>{t('service_packages.supplier_fee_percent', { defaultValue: 'Chi phí nhà cung cấp (%)' })}</Label>
+                    <Input
+                        value={data.supplier_fee_percent || '0'}
+                        placeholder={t('service_packages.supplier_fee_percent_placeholder', { defaultValue: '0' })}
+                        type="number"
+                        step={'0.01'}
+                        min="0"
+                        max="100"
+                        onChange={(e) => {
+                            setData('supplier_fee_percent', e.target.value);
+                        }}
+                    />
+                    <span className="text-sm text-slate-400">
+                        {t('service_packages.supplier_fee_percent_desc', { 
+                            defaultValue: 'Chi phí nhà cung cấp để tính lợi nhuận. Ví dụ: Giá bán 10%, chi phí nhà cung cấp 8% → Lợi nhuận 2%' 
+                        })}
+                    </span>
+                    {errors.supplier_fee_percent && (
+                        <span className="text-sm text-red-500">
+                            {errors.supplier_fee_percent}
+                        </span>
+                    )}
+                </div>
+
                 {/* Set up time */}
                 <div className="flex flex-col gap-2">
                     <Label>{t('service_packages.set_up_time')}</Label>
@@ -639,6 +669,35 @@ const Create = ({ meta_features, google_features }: Props) => {
                     )}
                 </div>
             )}
+
+            {/* Section chọn users được phép trả sau */}
+            <div className="space-y-4 rounded-lg border p-4">
+                <div>
+                    <h3 className="text-lg font-semibold mb-2">
+                        {t('service_packages.postpay_users_title', { defaultValue: 'Người dùng được phép trả sau' })}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        {t('service_packages.postpay_users_description', { 
+                            defaultValue: 'Chọn các người dùng được phép sử dụng hình thức trả sau cho gói dịch vụ này. Nếu không chọn ai, tất cả người dùng đều có thể trả sau.' 
+                        })}
+                    </p>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="postpay_user_ids">
+                        {t('service_packages.postpay_users_label', { defaultValue: 'Chọn người dùng' })}
+                    </Label>
+                    <UserSelect
+                        id="postpay_user_ids"
+                        value={data.postpay_user_ids || []}
+                        onValueChange={(value) => setData('postpay_user_ids', value)}
+                        options={all_users}
+                        placeholder={t('service_packages.postpay_users_placeholder', { defaultValue: 'Chọn người dùng được phép trả sau' })}
+                    />
+                    {errors.postpay_user_ids && (
+                        <p className="text-sm text-red-500">{errors.postpay_user_ids}</p>
+                    )}
+                </div>
+            </div>
 
             <Button type="submit" disabled={processing}>
                 {t('common.save')}

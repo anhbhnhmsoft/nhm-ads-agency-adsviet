@@ -550,7 +550,8 @@
     "id_mcc": "ID MCC",
     "email_note_meta": "If you don't have BM",
     "email_note_google": "If you don't have MCC",
-    "display_name_note": "You can set your own name"
+    "display_name_note": "You can set your own name",
+    "meta_email_invalid": "Invalid email, please enter a valid address, e.g. abc@gmail.com"
   },
   "service_user": {
     "title": "User services",
@@ -671,6 +672,7 @@
       "info_website": "Website",
       "platform": "Platform",
       "top_up_amount": "Top-up amount",
+      "total_cost": "Total cost",
       "postpay_label": "Postpaid customer",
       "budget": "Budget",
       "status": "Order status",

@@ -25,9 +25,11 @@ export type CreateServicePackageForm = {
     open_fee: string;
     range_min_top_up: string;
     top_up_fee: string;
+    supplier_fee_percent?: string;
     set_up_time: string;
     disabled: boolean;
     monthly_spending_fee_structure: MonthlySpendingFeeItem[];
+    postpay_user_ids?: string[];
 };
 
 export type ServicePackageFeatureValue = {
@@ -42,6 +44,7 @@ export type ServicePackageItem = {
     features: ServicePackageFeatureValue[];
     open_fee: string;
     top_up_fee: string;
+    supplier_fee_percent?: string;
     set_up_time: number;
     disabled: boolean;
     description: string;

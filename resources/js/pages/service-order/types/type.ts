@@ -54,6 +54,7 @@ export type ServiceOrder = {
     budget: string;
     open_fee?: string;
     top_up_fee?: number;
+    total_cost?: number; // Tổng chi phí được tính ở backend
     config_account?: ServiceOrderConfigAccount | null;
     description?: string | null;
     created_at?: string | null;

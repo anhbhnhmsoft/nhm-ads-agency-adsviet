@@ -58,7 +58,7 @@ class ServiceUserRepository extends BaseRepository
     public function withListRelations(Builder $query): Builder
     {
         return $query->with([
-            'package:id,name,platform',
+            'package:id,name,platform,open_fee,top_up_fee',
             'user' => function ($userQuery) {
                 $userQuery->select('id', 'name', 'referral_code')
                     ->with([

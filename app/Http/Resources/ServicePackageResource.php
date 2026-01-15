@@ -24,6 +24,7 @@ class ServicePackageResource extends JsonResource
             'open_fee' => $this->open_fee,
             'range_min_top_up' => $this->range_min_top_up,
             'top_up_fee' => $this->top_up_fee,
+            'supplier_fee_percent' => $this->supplier_fee_percent,
             'set_up_time' => $this->set_up_time,
             'disabled' => $this->disabled,
             'created_at' => $this->created_at,
