@@ -211,6 +211,20 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                 },
             },
             {
+                id: 'total_cost',
+                header: t('service_orders.table.total_cost'),
+                meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+                cell: ({ row }) => {
+                    const totalCost = row.original.total_cost;
+                    
+                    if (totalCost === undefined || totalCost === null || totalCost === 0) {
+                        return <span className="text-xs text-muted-foreground">-</span>;
+                    }
+                    
+                    return <span className="text-xs font-medium">{Number(totalCost).toFixed(2)} USDT</span>;
+                },
+            },
+            {
                 id: 'budget',
                 header: t('service_orders.table.budget'),
                 meta: { headerClassName: 'text-right', cellClassName: 'text-right' },

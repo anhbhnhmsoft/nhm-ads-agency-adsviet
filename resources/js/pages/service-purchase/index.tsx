@@ -10,7 +10,7 @@ import { _PlatformType } from '@/lib/types/constants';
 import { useServicePurchaseForm, type AccountFormData } from '@/pages/service-purchase/hooks/use-form';
 import { AccountForm } from '@/pages/service-purchase/components/AccountForm';
 import type { ServicePackage, ServicePurchasePageProps } from '@/pages/service-purchase/types/type';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     Calculator,
@@ -46,6 +46,7 @@ const parseCurrencyInput = (value: string): number => {
 
 const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, meta_timezones = [], google_timezones = [], postpay_permissions = {} }: ServicePurchasePageProps) => {
     const { t } = useTranslation();
+    const page = usePage();
     const postpayMinBalance = typeof postpay_min_balance === 'number' ? postpay_min_balance : 200;
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
     const [showCalculator, setShowCalculator] = useState(false);
@@ -75,6 +76,16 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
     }, [packages]);
 
     const { form: purchaseForm, submit: submitPurchase } = useServicePurchaseForm();
+
+    useEffect(() => {
+        const currentLocale = (page.props as any)?.locale || 'unknown';
+        console.log('[Frontend] ServicePurchaseIndex render - Locale Debug', {
+            current_locale: currentLocale,
+            form_errors: purchaseForm.errors,
+            has_meta_email_error: !!(purchaseForm.errors.meta_email || purchaseForm.errors['accounts.0.meta_email']),
+            meta_email_error_value: purchaseForm.errors.meta_email || purchaseForm.errors['accounts.0.meta_email'],
+        });
+    }, [purchaseForm.errors, page.props]);
 
     const {
         top_up_amount,
@@ -566,15 +577,20 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                             {/* Render accounts using AccountForm component */}
                             <div className="space-y-4">
-                                {accounts.map((account, idx) => (
-                                    <AccountForm
-                                        key={idx}
-                                        account={account}
-                                        accountIndex={idx}
-                                        platform={selectedPackage.platform}
-                                        metaTimezones={meta_timezones}
-                                        googleTimezones={google_timezones}
-                                        onUpdate={(index, updater) => {
+                                {accounts.map((account, idx) => {
+                                    const metaEmailError =
+                                        (purchaseForm.errors as any)?.[`accounts.${idx}.meta_email`];
+
+                                    return (
+                                        <AccountForm
+                                            key={idx}
+                                            account={account}
+                                            accountIndex={idx}
+                                            platform={selectedPackage.platform}
+                                            metaTimezones={meta_timezones}
+                                            googleTimezones={google_timezones}
+                                            metaEmailError={metaEmailError}
+                                            onUpdate={(index, updater) => {
                                             setAccounts((prevAccounts) => {
                                                 const newAccounts = [...prevAccounts];
                                                 const currentAccount = newAccounts[index] || {
@@ -594,12 +610,13 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                                 return newAccounts;
                                             });
                                         }}
-                                        onRemove={(index) => {
-                                            setAccounts(accounts.filter((_, i) => i !== index));
-                                        }}
-                                        canRemove={accounts.length > 1}
-                                    />
-                                ))}
+                                            onRemove={(index) => {
+                                                setAccounts(accounts.filter((_, i) => i !== index));
+                                            }}
+                                            canRemove={accounts.length > 1}
+                                        />
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

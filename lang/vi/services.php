@@ -19,7 +19,7 @@ return [
         'disabled_invalid' => 'Trạng thái không hợp lệ',
         'service_package_invalid' => 'Gói dịch vụ không hợp lệ',
         'meta_email_required' => 'Vui lòng nhập Email Meta',
-        'meta_email_email' => 'Email Meta không hợp lệ',
+        'meta_email_email' => 'Email không hợp lệ, vui lòng nhập đúng dạng, ví dụ: abc@gmail.com',
         'meta_email_max' => 'Email Meta không được vượt quá :max ký tự',
         'display_name_required' => 'Vui lòng nhập tên hiển thị',
         'display_name_string' => 'Tên hiển thị phải là chuỗi',

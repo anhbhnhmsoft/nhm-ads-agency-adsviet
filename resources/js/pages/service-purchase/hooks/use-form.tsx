@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import React from 'react';
 import { service_purchase_purchase } from '@/routes';
 
@@ -28,6 +29,7 @@ type ServicePurchaseFormData = {
 };
 
 export const useServicePurchaseForm = () => {
+    const page = usePage();
     const form = useForm<ServicePurchaseFormData>({
         package_id: '',
         top_up_amount: '',
@@ -89,10 +91,28 @@ export const useServicePurchaseForm = () => {
         }
 
         form.transform(() => payload);
+        
+        // Log để debug
+        const currentLocale = (page.props as any)?.locale || 'unknown';
+        console.log('[Frontend] ServicePurchaseForm submit - Locale Debug', {
+            current_locale: currentLocale,
+            payload: payload,
+            url: service_purchase_purchase().url,
+        });
+        
         form.post(service_purchase_purchase().url, {
             onSuccess: () => {
                 form.reset();
                 onSuccess?.();
+            },
+            onError: (errors) => {
+                const currentLocale = (page.props as any)?.locale || 'unknown';
+                console.log('[Frontend] ServicePurchaseForm errors received', {
+                    errors: errors,
+                    current_locale: currentLocale,
+                    error_keys: Object.keys(errors),
+                    meta_email_error: errors.meta_email || errors['accounts.0.meta_email'],
+                });
             },
         });
     };

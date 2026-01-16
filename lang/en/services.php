@@ -19,7 +19,7 @@ return [
         'disabled_invalid' => 'Status is invalid.',
         'service_package_invalid' => 'Service package is invalid.',
         'meta_email_required' => 'Please enter Meta email.',
-        'meta_email_email' => 'Meta email is invalid.',
+        'meta_email_email' => 'Invalid email, please enter a valid address, e.g. abc@gmail.com',
         'meta_email_max' => 'Meta email may not exceed :max characters.',
         'display_name_required' => 'Display name is required.',
         'display_name_string' => 'Display name must be a string.',

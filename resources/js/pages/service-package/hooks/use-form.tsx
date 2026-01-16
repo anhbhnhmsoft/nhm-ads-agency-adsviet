@@ -27,9 +27,11 @@ export const useFormCreateServicePackage = () => {
         open_fee: '0',
         range_min_top_up: '0',
         top_up_fee: '0',
+        supplier_fee_percent: '0',
         set_up_time: '0',
         disabled: false,
         monthly_spending_fee_structure: DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
+        postpay_user_ids: [],
     });
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -52,6 +54,7 @@ export const useFormEditServicePackage = (id: string, item: ServicePackageItem, 
         open_fee: item.open_fee,
         range_min_top_up: item.range_min_top_up,
         top_up_fee: item.top_up_fee,
+        supplier_fee_percent: item.supplier_fee_percent || '0',
         set_up_time: item.set_up_time.toString(),
         disabled: item.disabled,
         monthly_spending_fee_structure:

@@ -9,7 +9,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { TimezoneSelect } from '@/components/timezone-select';
-import { X, Plus } from 'lucide-react';
+import { AlertTriangle, X, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { _PlatformType } from '@/lib/types/constants';
 import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
@@ -23,6 +23,7 @@ type AccountFormProps = {
     onUpdate: (index: number, data: AccountFormData | ((prev: AccountFormData) => AccountFormData)) => void;
     onRemove: (index: number) => void;
     canRemove: boolean;
+    metaEmailError?: string;
 };
 
 export const AccountForm = ({
@@ -34,6 +35,7 @@ export const AccountForm = ({
     onUpdate,
     onRemove,
     canRemove,
+    metaEmailError,
 }: AccountFormProps) => {
     const { t } = useTranslation();
     const isMeta = platform === _PlatformType.META;
@@ -111,6 +113,14 @@ export const AccountForm = ({
                     value={account.meta_email || ''}
                     onChange={(e) => updateField('meta_email', e.target.value)}
                 />
+                {metaEmailError && (
+                    <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span>
+                            {metaEmailError}
+                        </span>
+                    </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                     {isMeta
                         ? t('service_purchase.email_note_meta', { defaultValue: 'Nếu không có BM' })

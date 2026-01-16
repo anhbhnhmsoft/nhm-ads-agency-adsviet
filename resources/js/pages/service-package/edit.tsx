@@ -439,6 +439,32 @@ const Edit = ({ meta_features, google_features, service_package, all_users = [],
                     )}
                 </div>
 
+                {/* Supplier fee percent */}
+                <div className="flex flex-col gap-2">
+                    <Label>{t('service_packages.supplier_fee_percent', { defaultValue: 'Chi phí nhà cung cấp (%)' })}</Label>
+                    <Input
+                        value={data.supplier_fee_percent || '0'}
+                        placeholder={t('service_packages.supplier_fee_percent_placeholder', { defaultValue: '0' })}
+                        type="number"
+                        step={'1'}
+                        min="0"
+                        max="100"
+                        onChange={(e) => {
+                            setData('supplier_fee_percent', e.target.value);
+                        }}
+                    />
+                    <span className="text-sm text-slate-400">
+                        {t('service_packages.supplier_fee_percent_desc', { 
+                            defaultValue: 'Chi phí nhà cung cấp để tính lợi nhuận. Ví dụ: Giá bán 7%, chi phí nhà cung cấp 5% → Lợi nhuận 2%' 
+                        })}
+                    </span>
+                    {errors.supplier_fee_percent && (
+                        <span className="text-sm text-red-500">
+                            {errors.supplier_fee_percent}
+                        </span>
+                    )}
+                </div>
+
                 {/* Set up time */}
                 <div className="flex flex-col gap-2">
                     <Label>{t('service_packages.set_up_time')}</Label>

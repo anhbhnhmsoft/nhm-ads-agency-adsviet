@@ -57,6 +57,12 @@ class ServicePackageController extends Controller
      */
     public function createView(): \Inertia\Response
     {
+        $allUsersResult = $this->userService->getUsersByRoles([
+            UserRole::AGENCY->value,
+            UserRole::CUSTOMER->value,
+        ]);
+        $allUsers = $allUsersResult->isError() ? [] : $allUsersResult->getData();
+
         return $this->rendering(
             view: 'service-package/create',
             data: [
@@ -64,6 +70,7 @@ class ServicePackageController extends Controller
                 'google_features' => ServicePackageFeature::getOptionsByPlatform('google'),
                 'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
                 'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
+                'all_users' => $allUsers,
             ]
         );
     }
@@ -89,8 +96,11 @@ class ServicePackageController extends Controller
             'open_fee' => ['required', 'numeric', 'min:0'],
             'range_min_top_up' => ['required', 'numeric', 'min:0'],
             'top_up_fee' => ['required', 'numeric', 'min:0'],
+            'supplier_fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'set_up_time' => ['required', 'numeric', 'min:0'],
             'disabled' => ['required', 'boolean'],
+            'postpay_user_ids' => ['nullable', 'array'],
+            'postpay_user_ids.*' => ['string'],
         ],
             [
             'name.required' => __('services.validation.name_invalid'),
@@ -108,9 +118,13 @@ class ServicePackageController extends Controller
             'open_fee.required' => __('services.validation.open_fee_invalid'),
             'range_min_top_up.required' => __('services.validation.range_min_top_up_invalid'),
             'top_up_fee.required' => __('services.validation.top_up_fee_invalid'),
+            'supplier_fee_percent.numeric' => __('services.validation.supplier_fee_percent_invalid', ['default' => 'Chi phí nhà cung cấp phải là số']),
+            'supplier_fee_percent.min' => __('services.validation.supplier_fee_percent_min', ['default' => 'Chi phí nhà cung cấp không được nhỏ hơn 0']),
+            'supplier_fee_percent.max' => __('services.validation.supplier_fee_percent_max', ['default' => 'Chi phí nhà cung cấp không được lớn hơn 100']),
             'set_up_time.required' => __('services.validation.set_up_time_invalid'),
             'disabled.required' => __('services.validation.disabled_invalid'),
             'disabled.boolean' => __('services.validation.disabled_invalid'),
+            'postpay_user_ids.array' => __('services.validation.postpay_user_ids_invalid', ['default' => 'Danh sách người dùng được phép trả sau không hợp lệ']),
         ]
         );
         //logic validate features
@@ -152,11 +166,27 @@ class ServicePackageController extends Controller
         $form = $validator->validated();
         $form = $this->prepareMonthlySpendingData($form);
 
+        $postpayUserIds = $request->input('postpay_user_ids', []);
+        if (!is_array($postpayUserIds)) {
+            $postpayUserIds = [];
+        }
+
         // Tạo service package
         $result = $this->servicePackageService->createServicePackage($form);
 
         // Xử lý kết quả
         if($result->isSuccess()){
+            $packageId = $result->getData()->id;
+            
+            // Đồng bộ danh sách users được phép trả sau
+            if (!empty($postpayUserIds)) {
+                $syncResult = $this->servicePackageService->syncPostpayUsers($packageId, $postpayUserIds);
+                if ($syncResult->isError()) {
+                    FlashMessage::error($syncResult->getMessage());
+                    return redirect()->back()->withInput();
+                }
+            }
+
             FlashMessage::success(__('common_success.add_success'));
             return redirect()->route('service_packages_index');
         }else{
@@ -223,6 +253,7 @@ class ServicePackageController extends Controller
                 'open_fee' => ['required', 'numeric', 'min:0'],
                 'range_min_top_up' => ['required', 'numeric', 'min:0'],
                 'top_up_fee' => ['required', 'numeric', 'min:0'],
+                'supplier_fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
                 'set_up_time' => ['required', 'numeric', 'min:0'],
                 'disabled' => ['required', 'boolean'],
             ],
@@ -245,6 +276,9 @@ class ServicePackageController extends Controller
                 'range_min_top_up.numeric' => __('services.validation.range_min_top_up_invalid'),
                 'top_up_fee.required' => __('services.validation.top_up_fee_invalid'),
                 'top_up_fee.numeric' => __('services.validation.top_up_fee_invalid'),
+                'supplier_fee_percent.numeric' => __('services.validation.supplier_fee_percent_invalid', ['default' => 'Chi phí nhà cung cấp phải là số']),
+                'supplier_fee_percent.min' => __('services.validation.supplier_fee_percent_min', ['default' => 'Chi phí nhà cung cấp không được nhỏ hơn 0']),
+                'supplier_fee_percent.max' => __('services.validation.supplier_fee_percent_max', ['default' => 'Chi phí nhà cung cấp không được lớn hơn 100']),
                 'set_up_time.required' => __('services.validation.set_up_time_invalid'),
                 'set_up_time.numeric' => __('services.validation.set_up_time_invalid'),
                 'disabled.required' => __('services.validation.disabled_invalid'),
