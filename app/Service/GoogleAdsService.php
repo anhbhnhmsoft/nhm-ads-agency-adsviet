@@ -1498,14 +1498,18 @@ GAQL;
             $client = $this->buildGoogleAdsClient($managerId);
             $googleAdsService = $client->getGoogleAdsServiceClient();
 
+            // Query customer_client để lấy tất cả các sub-accounts được quản lý bởi manager
             $query = <<<GAQL
 SELECT
-  customer.id,
-  customer.descriptive_name,
-  customer.currency_code,
-  customer.time_zone,
-  customer.status
-FROM customer
+  customer_client.client_customer,
+  customer_client.manager,
+  customer_client.descriptive_name,
+  customer_client.status,
+  customer_client.currency_code,
+  customer_client.time_zone
+FROM customer_client
+WHERE customer_client.manager = FALSE
+  AND customer_client.status != 'CANCELED'
 GAQL;
 
             $syncedCount = 0;
@@ -1517,13 +1521,19 @@ GAQL;
             $stream = $googleAdsService->searchStream($request);
             foreach ($stream->readAll() as $response) {
                 foreach ($response->getResults() as $row) {
-                    $customer = $row->getCustomer();
-                    $accountId = $customer->getId() ?? $this->extractIdFromResource($customer->getResourceName());
+                    $customerClient = $row->getCustomerClient();
+                    $clientCustomer = $customerClient?->getClientCustomer();
+                    
+                    if (!$clientCustomer) {
+                        continue;
+                    }
+                    
+                    $accountId = $this->extractIdFromResource($clientCustomer);
                     if (!$accountId) {
                         continue;
                     }
 
-                    $mappedStatus = $this->mapStatusToInt($customer->getStatus());
+                    $mappedStatus = $this->mapStatusToInt($customerClient->getStatus());
 
                     // Lấy balance từ API
                     $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $managerId);
@@ -1536,11 +1546,11 @@ GAQL;
                         ],
                         [
                             'service_user_id' => null,
-                            'account_name' => $customer->getDescriptiveName(),
+                            'account_name' => $customerClient->getDescriptiveName() ?? 'N/A',
                             'account_status' => $mappedStatus,
-                            'currency' => $customer->getCurrencyCode(),
+                            'currency' => $customerClient->getCurrencyCode() ?? null,
                             'customer_manager_id' => $managerId,
-                            'time_zone' => $customer->getTimeZone(),
+                            'time_zone' => $customerClient->getTimeZone() ?? null,
                             'balance' => $balance,
                             'balance_exhausted' => $balanceExhausted,
                             'last_synced_at' => now(),
