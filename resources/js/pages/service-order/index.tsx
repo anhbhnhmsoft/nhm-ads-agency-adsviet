@@ -231,14 +231,14 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                 cell: ({ row }) => {
                     const budget = row.original.budget;
                     if (!budget) {
-                        return <span className="text-xs text-muted-foreground">{t('service_orders.table.budget_unlimited', { defaultValue: 'Không giới hạn' })}</span>;
+                        return <span className="text-xs text-muted-foreground">{t('service_orders.table.budget_unlimited')}</span>;
                     }
                     const budgetValue = parseFloat(budget);
                     if (Number.isNaN(budgetValue)) {
                         return <span className="text-xs text-muted-foreground">-</span>;
                     }
                     if (budgetValue === 0) {
-                        return <span className="text-xs font-medium text-muted-foreground">{t('service_orders.table.budget_unlimited', { defaultValue: 'Không giới hạn' })}</span>;
+                        return <span className="text-xs font-medium text-muted-foreground">{t('service_orders.table.budget_unlimited')}</span>;
                     }
                     return <span className="text-xs font-medium">{budgetValue.toFixed(2)} USD</span>;
                 },

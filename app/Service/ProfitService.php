@@ -39,6 +39,10 @@ class ProfitService
     /**
      * Tính lợi nhuận theo từng khách hàng cho agency
      * 
+     * - Doanh thu mỗi order = open_fee + top_up_amount + top_up_amount * top_up_fee%
+     * - Chi phí mỗi order   = top_up_amount * supplier_fee_percent%
+     * - Lợi nhuận           = Doanh thu - Chi phí
+     * 
      * @param int|null $customerId - Nếu null thì lấy tất cả customer
      * @param Carbon|null $startDate
      * @param Carbon|null $endDate
@@ -89,49 +93,56 @@ class ProfitService
                     continue;
                 }
 
-                // Tính doanh thu (revenue) từ các giao dịch admin nhận tiền:
-                $revenueDepositQuery = $this->walletTransactionRepository->query()
-                    ->whereHas('wallet', function ($q) use ($customerId) {
-                        $q->where('user_id', $customerId);
-                    })
-                    ->where('type', WalletTransactionType::DEPOSIT->value)
-                    ->where('status', WalletTransactionStatus::COMPLETED->value);
-
-                $revenuePurchaseQuery = $this->walletTransactionRepository->query()
-                    ->whereHas('wallet', function ($q) use ($customerId) {
-                        $q->where('user_id', $customerId);
-                    })
-                    ->where('type', WalletTransactionType::SERVICE_PURCHASE->value)
-                    ->where('status', WalletTransactionStatus::COMPLETED->value);
+                // Lấy tất cả service_users của customer này
+                $query = $this->serviceUserRepository->query()
+                    ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
+                    ->where('user_id', $customerId)
+                    ->whereHas('package');
 
                 if ($startDate && $endDate) {
-                    $revenueDepositQuery->whereBetween('created_at', [$startDate, $endDate]);
-                    $revenuePurchaseQuery->whereBetween('created_at', [$startDate, $endDate]);
+                    $query->whereBetween('created_at', [$startDate, $endDate]);
                 }
 
-                $revenueDeposit = (float) $revenueDepositQuery->sum('amount') ?? 0;
-                $revenuePurchaseRaw = (float) $revenuePurchaseQuery->sum('amount') ?? 0;
-                $revenuePurchase = abs($revenuePurchaseRaw);
-                $revenue = $revenueDeposit + $revenuePurchase;
+                $serviceUsers = $query->get();
 
-                // Tính chi phí (cost) từ các giao dịch admin chi tiền:
-                $costQuery = $this->walletTransactionRepository->query()
-                    ->whereHas('wallet', function ($q) use ($customerId) {
-                        $q->where('user_id', $customerId);
-                    })
-                    ->whereIn('type', [
-                        WalletTransactionType::WITHDRAW->value,
-                        WalletTransactionType::REFUND->value,
-                    ])
-                    ->where('status', WalletTransactionStatus::COMPLETED->value);
+                $revenue = 0.0;
+                $cost = 0.0;
 
-                if ($startDate && $endDate) {
-                    $costQuery->whereBetween('created_at', [$startDate, $endDate]);
+                foreach ($serviceUsers as $serviceUser) {
+                    $package = $serviceUser->package;
+                    if (!$package) {
+                        continue;
+                    }
+
+                    $config = $serviceUser->config_account ?? [];
+                    $topUpAmount = 0.0;
+                    if (is_array($config)) {
+                        $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
+                    }
+
+                    $openFee = (float) $package->open_fee;
+                    $topUpFeePercent = (float) $package->top_up_fee;
+                    $supplierFeePercent = (float) ($package->supplier_fee_percent ?? 0);
+
+                    // Doanh thu = tổng số tiền khách hàng đã trả
+                    // = open_fee + top_up_amount + top_up_amount * top_up_fee%
+                    $itemRevenue = $openFee;
+                    if ($topUpAmount > 0) {
+                        $itemRevenue += $topUpAmount;
+                        if ($topUpFeePercent !== 0.0) {
+                            $itemRevenue += $topUpAmount * $topUpFeePercent / 100;
+                        }
+                    }
+
+                    // Chi phí nhà cung cấp (chỉ áp trên top_up_amount)
+                    $itemCost = 0.0;
+                    if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
+                        $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                    }
+
+                    $revenue += $itemRevenue;
+                    $cost += $itemCost;
                 }
-
-                // WITHDRAW và REFUND có amount là số âm trong DB, lấy giá trị tuyệt đối
-                $costRaw = (float) $costQuery->sum('amount') ?? 0;
-                $cost = abs($costRaw);
 
                 // Tính lợi nhuận = doanh thu - chi phí
                 $profit = $revenue - $cost;
@@ -213,7 +224,7 @@ class ProfitService
             foreach ($platforms as $platformType) {
                 // Lấy service_users theo platform
                 $query = $this->serviceUserRepository->query()
-                    ->with('package')
+                    ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
                     ->whereHas('package', function ($q) use ($platformType) {
                         $q->where('platform', $platformType);
                     });
@@ -301,58 +312,55 @@ class ProfitService
         $stats = [];
 
         // Meta/Facebook
-        $metaServiceUsers = $this->serviceUserRepository->query()
+        $query = $this->serviceUserRepository->query()
+            ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
             ->where('user_id', $customerId)
             ->whereHas('package', function ($q) {
                 $q->where('platform', PlatformType::META->value);
-            })
-            ->get();
+            });
 
-        $metaRevenue = 0;
-        $metaCost = 0;
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        }
+
+        $metaServiceUsers = $query->get();
+
+        $metaRevenue = 0.0;
+        $metaCost = 0.0;
         foreach ($metaServiceUsers as $serviceUser) {
-            // Tính doanh thu
-            $revenueDepositQuery = $this->walletTransactionRepository->query()
-                ->whereHas('wallet', function ($q) use ($customerId) {
-                    $q->where('user_id', $customerId);
-                })
-                ->where('type', WalletTransactionType::DEPOSIT->value)
-                ->where('status', WalletTransactionStatus::COMPLETED->value);
-
-            $revenuePurchaseQuery = $this->walletTransactionRepository->query()
-                ->whereHas('wallet', function ($q) use ($customerId) {
-                    $q->where('user_id', $customerId);
-                })
-                ->where('type', WalletTransactionType::SERVICE_PURCHASE->value)
-                ->where('status', WalletTransactionStatus::COMPLETED->value);
-
-            if ($startDate && $endDate) {
-                $revenueDepositQuery->whereBetween('created_at', [$startDate, $endDate]);
-                $revenuePurchaseQuery->whereBetween('created_at', [$startDate, $endDate]);
+            $package = $serviceUser->package;
+            if (!$package) {
+                continue;
             }
 
-            $revenueDeposit = (float) $revenueDepositQuery->sum('amount') ?? 0;
-            $revenuePurchaseRaw = (float) $revenuePurchaseQuery->sum('amount') ?? 0;
-            $revenuePurchase = abs($revenuePurchaseRaw);
-            $metaRevenue += $revenueDeposit + $revenuePurchase;
-
-            // Tính chi phí
-            $costQuery = $this->walletTransactionRepository->query()
-                ->whereHas('wallet', function ($q) use ($customerId) {
-                    $q->where('user_id', $customerId);
-                })
-                ->whereIn('type', [
-                    WalletTransactionType::WITHDRAW->value,
-                    WalletTransactionType::REFUND->value,
-                ])
-                ->where('status', WalletTransactionStatus::COMPLETED->value);
-
-            if ($startDate && $endDate) {
-                $costQuery->whereBetween('created_at', [$startDate, $endDate]);
+            $config = $serviceUser->config_account ?? [];
+            $topUpAmount = 0.0;
+            if (is_array($config)) {
+                $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
             }
 
-            $costRaw = (float) $costQuery->sum('amount') ?? 0;
-            $metaCost += abs($costRaw);
+            $openFee = (float) $package->open_fee;
+            $topUpFeePercent = (float) $package->top_up_fee;
+            $supplierFeePercent = (float) ($package->supplier_fee_percent ?? 0);
+
+            // Doanh thu = tổng số tiền khách hàng đã trả
+            // = open_fee + top_up_amount + top_up_amount * top_up_fee%
+            $itemRevenue = $openFee;
+            if ($topUpAmount > 0) {
+                $itemRevenue += $topUpAmount;
+                if ($topUpFeePercent !== 0.0) {
+                    $itemRevenue += $topUpAmount * $topUpFeePercent / 100;
+                }
+            }
+
+            // Chi phí nhà cung cấp 
+            $itemCost = 0.0;
+            if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
+                $itemCost += $topUpAmount * $supplierFeePercent / 100;
+            }
+
+            $metaRevenue += $itemRevenue;
+            $metaCost += $itemCost;
         }
 
         $stats['meta'] = [
@@ -362,58 +370,55 @@ class ProfitService
         ];
 
         // Google
-        $googleServiceUsers = $this->serviceUserRepository->query()
+        $query = $this->serviceUserRepository->query()
+            ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
             ->where('user_id', $customerId)
             ->whereHas('package', function ($q) {
                 $q->where('platform', PlatformType::GOOGLE->value);
-            })
-            ->get();
+            });
 
-        $googleRevenue = 0;
-        $googleCost = 0;
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        }
+
+        $googleServiceUsers = $query->get();
+
+        $googleRevenue = 0.0;
+        $googleCost = 0.0;
         foreach ($googleServiceUsers as $serviceUser) {
-            // Tính doanh thu
-            $revenueDepositQuery = $this->walletTransactionRepository->query()
-                ->whereHas('wallet', function ($q) use ($customerId) {
-                    $q->where('user_id', $customerId);
-                })
-                ->where('type', WalletTransactionType::DEPOSIT->value)
-                ->where('status', WalletTransactionStatus::COMPLETED->value);
-
-            $revenuePurchaseQuery = $this->walletTransactionRepository->query()
-                ->whereHas('wallet', function ($q) use ($customerId) {
-                    $q->where('user_id', $customerId);
-                })
-                ->where('type', WalletTransactionType::SERVICE_PURCHASE->value)
-                ->where('status', WalletTransactionStatus::COMPLETED->value);
-
-            if ($startDate && $endDate) {
-                $revenueDepositQuery->whereBetween('created_at', [$startDate, $endDate]);
-                $revenuePurchaseQuery->whereBetween('created_at', [$startDate, $endDate]);
+            $package = $serviceUser->package;
+            if (!$package) {
+                continue;
             }
 
-            $revenueDeposit = (float) $revenueDepositQuery->sum('amount') ?? 0;
-            $revenuePurchaseRaw = (float) $revenuePurchaseQuery->sum('amount') ?? 0;
-            $revenuePurchase = abs($revenuePurchaseRaw);
-            $googleRevenue += $revenueDeposit + $revenuePurchase;
-
-            // Tính chi phí
-            $costQuery = $this->walletTransactionRepository->query()
-                ->whereHas('wallet', function ($q) use ($customerId) {
-                    $q->where('user_id', $customerId);
-                })
-                ->whereIn('type', [
-                    WalletTransactionType::WITHDRAW->value,
-                    WalletTransactionType::REFUND->value,
-                ])
-                ->where('status', WalletTransactionStatus::COMPLETED->value);
-
-            if ($startDate && $endDate) {
-                $costQuery->whereBetween('created_at', [$startDate, $endDate]);
+            $config = $serviceUser->config_account ?? [];
+            $topUpAmount = 0.0;
+            if (is_array($config)) {
+                $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
             }
 
-            $costRaw = (float) $costQuery->sum('amount') ?? 0;
-            $googleCost += abs($costRaw);
+            $openFee = (float) $package->open_fee;
+            $topUpFeePercent = (float) $package->top_up_fee;
+            $supplierFeePercent = (float) ($package->supplier_fee_percent ?? 0);
+
+            // Doanh thu = tổng số tiền khách hàng đã trả
+            // = open_fee + top_up_amount + top_up_amount * top_up_fee%
+            $itemRevenue = $openFee;
+            if ($topUpAmount > 0) {
+                $itemRevenue += $topUpAmount;
+                if ($topUpFeePercent !== 0.0) {
+                    $itemRevenue += $topUpAmount * $topUpFeePercent / 100;
+                }
+            }
+
+            // Chi phí nhà cung cấp (chỉ áp trên top_up_amount)
+            $itemCost = 0.0;
+            if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
+                $itemCost += $topUpAmount * $supplierFeePercent / 100;
+            }
+
+            $googleRevenue += $itemRevenue;
+            $googleCost += $itemCost;
         }
 
         $stats['google'] = [
@@ -463,7 +468,7 @@ class ProfitService
 
             // Lấy toàn bộ service_users trong khoảng thời gian
             $query = $this->serviceUserRepository->query()
-                ->with('package')
+                ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
                 ->whereBetween('created_at', [$startDate, $endDate])
                 ->whereHas('package');
 

@@ -675,6 +675,7 @@
       "total_cost": "Total cost",
       "postpay_label": "Postpaid customer",
       "budget": "Budget",
+      "budget_unlimited": "Unlimited",
       "status": "Order status",
       "created_at": "Created at",
       "actions": "Actions"

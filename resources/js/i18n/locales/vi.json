@@ -640,6 +640,7 @@
             "total_cost": "Tổng tiền",
             "postpay_label": "Khách hàng trả sau",
             "budget": "Ngân sách",
+            "budget_unlimited": "Không giới hạn",
             "status": "Trạng thái đơn",
             "availability": "Trạng thái sử dụng",
             "created_at": "Thời gian tạo",
