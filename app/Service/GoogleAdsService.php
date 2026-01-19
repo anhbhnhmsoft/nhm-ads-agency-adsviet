@@ -1540,21 +1540,34 @@ GAQL;
                     $balance = $balanceData['balance'] ?? null;
                     $balanceExhausted = $balanceData['exhausted'] ?? false;
 
+                    // Tìm account hiện tại để kiểm tra service_user_id
+                    $existingAccount = $this->googleAccountRepository->query()
+                        ->where('account_id', (string) $accountId)
+                        ->first();
+
+                    // Chỉ set service_user_id = null nếu account chưa được gán cho service_user nào
+                    // Nếu đã có service_user_id, giữ nguyên để không ghi đè dữ liệu của user
+                    $updateData = [
+                        'account_name' => $customerClient->getDescriptiveName() ?? 'N/A',
+                        'account_status' => $mappedStatus,
+                        'currency' => $customerClient->getCurrencyCode() ?? null,
+                        'customer_manager_id' => $managerId,
+                        'time_zone' => $customerClient->getTimeZone() ?? null,
+                        'balance' => $balance,
+                        'balance_exhausted' => $balanceExhausted,
+                        'last_synced_at' => now(),
+                    ];
+
+                    // Chỉ set service_user_id = null nếu account chưa có service_user_id
+                    if (!$existingAccount || !$existingAccount->service_user_id) {
+                        $updateData['service_user_id'] = null;
+                    }
+
                     $this->googleAccountRepository->query()->updateOrCreate(
                         [
                             'account_id' => (string) $accountId,
                         ],
-                        [
-                            'service_user_id' => null,
-                            'account_name' => $customerClient->getDescriptiveName() ?? 'N/A',
-                            'account_status' => $mappedStatus,
-                            'currency' => $customerClient->getCurrencyCode() ?? null,
-                            'customer_manager_id' => $managerId,
-                            'time_zone' => $customerClient->getTimeZone() ?? null,
-                            'balance' => $balance,
-                            'balance_exhausted' => $balanceExhausted,
-                            'last_synced_at' => now(),
-                        ]
+                        $updateData
                     );
 
                     $syncedCount++;

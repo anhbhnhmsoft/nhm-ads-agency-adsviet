@@ -192,7 +192,7 @@ class ServicePurchaseService
      */
     private function getDefaultConfigAccount(int $platform, array $userConfig = []): array
     {
-        if (is_array($userConfig['accounts']) && !empty($userConfig['accounts'])) {
+        if (isset($userConfig['accounts']) && is_array($userConfig['accounts']) && !empty($userConfig['accounts'])) {
             $accounts = [];
             foreach ($userConfig['accounts'] as $account) {
                 $accountData = [

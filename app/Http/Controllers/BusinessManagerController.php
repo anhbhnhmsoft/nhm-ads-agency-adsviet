@@ -152,6 +152,26 @@ class BusinessManagerController extends Controller
     }
 
     /**
+     * Lấy danh sách BM con của một BM gốc
+     */
+    public function getChildBusinessManagers(string $parentBmId)
+    {
+        $result = $this->businessManagerService->getChildBusinessManagers($parentBmId);
+
+        if ($result->isError()) {
+            return response()->json([
+                'success' => false,
+                'message' => $result->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $result->getData(),
+        ]);
+    }
+
+    /**
      * Nạp tiền vào BM/MCC (tạo ticket)
      */
     public function topUp(string $bmId, Request $request): RedirectResponse
