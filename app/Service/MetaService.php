@@ -16,6 +16,7 @@ use App\Models\ServiceUser;
 use App\Repositories\MetaAccountRepository;
 use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\MetaAdsCampaignRepository;
+use App\Repositories\MetaBusinessManagerRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\WalletRepository;
 use Carbon\Carbon;
@@ -38,6 +39,7 @@ class MetaService
         protected MetaAdsAccountInsightRepository $metaAdsAccountInsightRepository,
         protected WalletRepository          $walletRepository,
         protected MetaAdsNotificationService $metaAdsNotificationService,
+        protected MetaBusinessManagerRepository $metaBusinessManagerRepository,
     )
     {
     }
@@ -727,19 +729,33 @@ class MetaService
         $serviceUserConfig = $serviceUser->config_account ?? [];
 
         $bmId = null;
-        if (is_array($serviceUserConfig['accounts']) && !empty($serviceUserConfig['accounts'])) {
-            $firstAccount = $serviceUserConfig['accounts'][0];
-            if (is_array($firstAccount['bm_ids']) && !empty($firstAccount['bm_ids'])) {
-                $bmId = $firstAccount['bm_ids'][0];
-            }
+        $childBmId = $serviceUserConfig['child_bm_id'] ?? null;
+        
+        if ($childBmId) {
+            // Nếu có BM con được chọn, sử dụng BM con
+            $bmId = $childBmId;
         } else {
-            $bmId = $serviceUserConfig['bm_id'] ?? null;
+            // Nếu không có BM con, sử dụng BM gốc
+            if (isset($serviceUserConfig['accounts']) && is_array($serviceUserConfig['accounts']) && !empty($serviceUserConfig['accounts'])) {
+                $firstAccount = $serviceUserConfig['accounts'][0];
+                if (isset($firstAccount['bm_ids']) && is_array($firstAccount['bm_ids']) && !empty($firstAccount['bm_ids'])) {
+                    $bmId = $firstAccount['bm_ids'][0];
+                }
+            } else {
+                $bmId = $serviceUserConfig['bm_id'] ?? null;
+            }
         }
 
         // Nếu không có bmId thì thoát
         if (!$bmId) {
             return ServiceReturn::error('Missing bm_id in service user config');
         }
+
+        // Đồng bộ danh sách BM con trước
+        if (!$childBmId) {
+            $this->syncBusinessManagers($bmId);
+        }
+
         // Đồng bộ danh sách tài khoản quảng cáo:
         // owned_ad_accounts
         $this->syncMetaAccountsFromEdge($serviceUser, $bmId, 'owner');
@@ -757,6 +773,9 @@ class MetaService
             // Reset API để đảm bảo sử dụng config mới nhất khi sync
             $this->metaBusinessService->resetApi();
 
+            // Đồng bộ BM con trước
+            $this->syncBusinessManagers($bmId);
+
             // Đồng bộ owned_ad_accounts
             $this->syncMetaAccountsFromManagerEdge($bmId, 'owner');
             // Đồng bộ client_ad_accounts (được share vào BM)
@@ -770,6 +789,82 @@ class MetaService
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
+    }
+
+    /**
+     * Đồng bộ danh sách BM con từ một BM gốc
+     */
+    private function syncBusinessManagers(string $parentBmId): void
+    {
+        // Lưu BM gốc nếu chưa có
+        $this->metaBusinessManagerRepository->updateOrCreate(
+            ['bm_id' => $parentBmId],
+            [
+                'parent_bm_id' => null,
+                'is_primary' => true,
+                'last_synced_at' => now(),
+            ]
+        );
+
+        // Đồng bộ owned_businesses
+        $this->syncBusinessManagersFromEdge($parentBmId, 'owned');
+        // Đồng bộ client_businesses
+        $this->syncBusinessManagersFromEdge($parentBmId, 'client');
+    }
+
+    /**
+     * Đồng bộ BM con từ một edge cụ thể
+     */
+    private function syncBusinessManagersFromEdge(string $parentBmId, string $type = 'owned'): void
+    {
+        $after = null;
+        do {
+            $result = $type === 'client'
+                ? $this->metaBusinessService->getClientBusinessesPaginated(
+                    bmId: $parentBmId,
+                    limit: 100,
+                    after: $after
+                )
+                : $this->metaBusinessService->getOwnedBusinessesPaginated(
+                    bmId: $parentBmId,
+                    limit: 100,
+                    after: $after
+                );
+
+            if ($result->isError()) {
+                Logging::error('Error sync business managers from ' . $type . ' edge: ' . $result->getMessage());
+                return;
+            }
+
+            $data = $result->getData();
+            $businesses = $data['data'] ?? [];
+
+            foreach ($businesses as $businessData) {
+                try {
+                    $primaryPage = $businessData['primary_page'] ?? null;
+                    $this->metaBusinessManagerRepository->updateOrCreate(
+                        [
+                            'bm_id' => $businessData['id'],
+                        ],
+                        [
+                            'parent_bm_id' => $parentBmId,
+                            'name' => $businessData['name'] ?? null,
+                            'primary_page_id' => $primaryPage['id'] ?? null,
+                            'primary_page_name' => $primaryPage['name'] ?? null,
+                            'verification_status' => $businessData['verification_status'] ?? null,
+                            'timezone_id' => $businessData['timezone_id'] ?? null,
+                            'currency' => $businessData['currency'] ?? null,
+                            'is_primary' => false,
+                            'last_synced_at' => now(),
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    Logging::error('Error sync business manager: ' . $e->getMessage());
+                }
+            }
+
+            $after = $data['paging']['cursors']['after'] ?? null;
+        } while ($after);
     }
 
     /**
@@ -807,25 +902,38 @@ class MetaService
                 $detail = $detailResponse->getData();
 
                 try {
+                    // Tìm account hiện tại để kiểm tra service_user_id
+                    $existingAccount = $this->metaAccountRepository->query()
+                        ->where('account_id', $detail['id'])
+                        ->first();
+
+                    // Chỉ set service_user_id = null nếu account chưa được gán cho service_user nào
+                    // Nếu đã có service_user_id, giữ nguyên để không ghi đè dữ liệu của user
+                    $updateData = [
+                        'account_name' => $detail['name'],
+                        'account_status' => $detail['account_status'],
+                        'disable_reason' => $detail['disable_reason'] ?? null,
+                        'spend_cap' => $detail['spend_cap'],
+                        'amount_spent' => $detail['amount_spent'],
+                        'balance' => $detail['balance'],
+                        'currency' => $detail['currency'],
+                        'created_time' => $detail['created_time'] ? Carbon::parse($detail['created_time']) : null,
+                        'is_prepay_account' => (bool)$detail['is_prepay_account'],
+                        'timezone_id' => $detail['timezone_id'],
+                        'timezone_name' => $detail['timezone_name'],
+                        'last_synced_at' => now(),
+                    ];
+
+                    // Chỉ set service_user_id = null nếu account chưa có service_user_id
+                    if (!$existingAccount || !$existingAccount->service_user_id) {
+                        $updateData['service_user_id'] = null;
+                    }
+
                     $this->metaAccountRepository->query()->updateOrCreate(
                         [
                             'account_id' => $detail['id'],
                         ],
-                        [
-                            'service_user_id' => null,
-                            'account_name' => $detail['name'],
-                            'account_status' => $detail['account_status'],
-                            'disable_reason' => $detail['disable_reason'] ?? null,
-                            'spend_cap' => $detail['spend_cap'],
-                            'amount_spent' => $detail['amount_spent'],
-                            'balance' => $detail['balance'],
-                            'currency' => $detail['currency'],
-                            'created_time' => $detail['created_time'] ? Carbon::parse($detail['created_time']) : null,
-                            'is_prepay_account' => (bool)$detail['is_prepay_account'],
-                            'timezone_id' => $detail['timezone_id'],
-                            'timezone_name' => $detail['timezone_name'],
-                            'last_synced_at' => now(),
-                        ]
+                        $updateData
                     );
                 } catch (\Exception $e) {
                     Logging::error('Error sync manager ads account: ' . $e->getMessage());

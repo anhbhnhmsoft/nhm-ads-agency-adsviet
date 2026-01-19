@@ -25,6 +25,7 @@ export type ServiceOrderConfigAccount = {
     meta_email?: string;
     display_name?: string;
     bm_id?: string;
+    child_bm_id?: string;
     info_fanpage?: string;
     info_website?: string;
     timezone_bm?: string;

@@ -16,6 +16,7 @@ use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\GoogleAdsAccountInsightRepository;
 use App\Repositories\UserReferralRepository;
 use App\Core\Logging;
+use App\Repositories\MetaBusinessManagerRepository;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,7 @@ class BusinessManagerService
         protected GoogleAdsAccountInsightRepository $googleAdsAccountInsightRepository,
         protected UserReferralRepository $userReferralRepository,
         protected PlatformSettingRepository $platformSettingRepository,
+        protected MetaBusinessManagerRepository $metaBusinessManagerRepository,
     ) {
     }
 
@@ -95,6 +97,37 @@ class BusinessManagerService
                 $accountsList = array_merge($accountsList, $platformConfigAccounts);
             }
 
+            // Lấy BM con từ database và thêm vào danh sách
+            if (empty($filter['platform']) || (int) $filter['platform'] === PlatformType::META->value) {
+                $childBMs = $this->metaBusinessManagerRepository->query()
+                    ->whereNotNull('parent_bm_id')
+                    ->get();
+
+                foreach ($childBMs as $childBM) {
+                    // Hiển thị BM con như một row riêng biệt
+                    $accountsList[] = [
+                        'id' => 'bm_' . $childBM->bm_id,
+                        'account_id' => $childBM->bm_id,
+                        'account_name' => $childBM->name ?? $childBM->bm_id,
+                        'service_user_id' => null,
+                        'bm_ids' => [$childBM->bm_id],
+                        'name' => $childBM->name ?? $childBM->bm_id,
+                        'platform' => PlatformType::META->value,
+                        'owner_name' => 'System',
+                        'owner_id' => null,
+                        'total_accounts' => 0,
+                        'active_accounts' => 0,
+                        'disabled_accounts' => 0,
+                        'total_spend' => '0',
+                        'total_balance' => '0',
+                        'currency' => $childBM->currency ?? 'USD',
+                        'accounts' => [],
+                        'is_business_manager' => true,
+                        'parent_bm_id' => $childBM->parent_bm_id,
+                    ];
+                }
+            }
+
             // Tính thống kê tổng
             $stats = [
                 'total_accounts' => 0,
@@ -124,17 +157,26 @@ class BusinessManagerService
                 }
 
                 // Lấy danh sách BM IDs từ config_account
+                // Ưu tiên hiển thị BM con nếu có, nếu không thì hiển thị BM gốc
                 $bmIds = [];
-                if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
-                    foreach ($config['accounts'] as $accountConfig) {
-                        if (isset($accountConfig['bm_ids']) && is_array($accountConfig['bm_ids'])) {
-                            $bmIds = array_merge($bmIds, array_filter($accountConfig['bm_ids'], fn($id) => !empty(trim($id ?? ''))));
-                        }
-                    }
+                $childBmId = $config['child_bm_id'] ?? null;
+                
+                if ($childBmId) {
+                    // Nếu có BM con, hiển thị BM con
+                    $bmIds[] = $childBmId;
                 } else {
-                    $bmId = $config['bm_id'] ?? null;
-                    if ($bmId) {
-                        $bmIds[] = $bmId;
+                    // Nếu không có BM con, lấy từ accounts hoặc bm_id
+                    if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
+                        foreach ($config['accounts'] as $accountConfig) {
+                            if (isset($accountConfig['bm_ids']) && is_array($accountConfig['bm_ids'])) {
+                                $bmIds = array_merge($bmIds, array_filter($accountConfig['bm_ids'], fn($id) => !empty(trim($id ?? ''))));
+                            }
+                        }
+                    } else {
+                        $bmId = $config['bm_id'] ?? null;
+                        if ($bmId) {
+                            $bmIds[] = $bmId;
+                        }
                     }
                 }
 
@@ -172,7 +214,7 @@ class BusinessManagerService
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
-                            'bm_ids' => $bmIds,
+                            'bm_ids' => $bmIds, // Hiển thị BM con nếu có, nếu không thì BM gốc
                             'name' => $account->account_name ?? $config['display_name'] ?? $ownerName,
                             'platform' => $platform,
                             'owner_name' => $ownerName,
@@ -186,6 +228,7 @@ class BusinessManagerService
                             'accounts' => [
                                 ['currency' => $account->currency ?? 'USD'],
                             ],
+                            'child_bm_id' => $childBmId,
                         ];
 
                     }
@@ -351,6 +394,34 @@ class BusinessManagerService
     /**
      * Lấy danh sách accounts của một BM/MCC
      */
+    /**
+     * Lấy danh sách BM con của một BM gốc
+     */
+    public function getChildBusinessManagers(string $parentBmId): ServiceReturn
+    {
+        try {
+            $childBMs = $this->metaBusinessManagerRepository->findByParentBmId($parentBmId);
+
+            $data = $childBMs->map(function ($bm) {
+                return [
+                    'bm_id' => $bm->bm_id,
+                    'name' => $bm->name ?? $bm->bm_id,
+                    'parent_bm_id' => $bm->parent_bm_id,
+                    'verification_status' => $bm->verification_status,
+                    'currency' => $bm->currency,
+                ];
+            })->toArray();
+
+            return ServiceReturn::success(data: $data);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'BusinessManagerService@getChildBusinessManagers error: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     public function getAccountsByBmId(string $bmId, ?int $platform = null): ServiceReturn
     {
         try {
@@ -379,6 +450,12 @@ class BusinessManagerService
 
             $serviceUsers = $query->get()->filter(function ($serviceUser) use ($bmId) {
                 $config = $serviceUser->config_account ?? [];
+
+                // Kiểm tra child_bm_id trước (nếu user được gán cho BM con)
+                $childBmId = $config['child_bm_id'] ?? null;
+                if ($childBmId && $childBmId === $bmId) {
+                    return true;
+                }
 
                 $configBmIds = [];
                 if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {

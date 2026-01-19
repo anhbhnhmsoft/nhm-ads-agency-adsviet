@@ -270,6 +270,54 @@ class MetaBusinessService
     }
 
     /**
+     * Lấy danh sách BM con (owned businesses) từ một BM gốc
+     */
+    public function getOwnedBusinessesPaginated(string $bmId, int $limit = 25, ?string $after = null): ServiceReturn
+    {
+        try {
+            $this->initApi();
+            $endpoint = "/{$bmId}/owned_businesses";
+            $params = [
+                'fields' => 'id,name,primary_page{id,name},verification_status,timezone_id,currency',
+                'limit' => $limit,
+            ];
+            if ($after) {
+                $params['after'] = $after;
+            }
+
+            $response = $this->api->call($endpoint, 'GET', $params)->getContent();
+
+            return ServiceReturn::success(data: $response);
+        } catch (Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
+     * Lấy danh sách BM con (client businesses) từ một BM gốc
+     */
+    public function getClientBusinessesPaginated(string $bmId, int $limit = 25, ?string $after = null): ServiceReturn
+    {
+        try {
+            $this->initApi();
+            $endpoint = "/{$bmId}/client_businesses";
+            $params = [
+                'fields' => 'id,name,primary_page{id,name},verification_status,timezone_id,currency',
+                'limit' => $limit,
+            ];
+            if ($after) {
+                $params['after'] = $after;
+            }
+
+            $response = $this->api->call($endpoint, 'GET', $params)->getContent();
+
+            return ServiceReturn::success(data: $response);
+        } catch (Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
      * Lấy chi tiết ads account theo id (Lưu ý: id acount phải có act_ ở đầu)
      * @param string $accountId
      * @return ServiceReturn

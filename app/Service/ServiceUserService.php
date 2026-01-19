@@ -124,10 +124,14 @@ class ServiceUserService
                     $newConfig['bm_id'] = $currentConfig['bm_id'];
                 }
             } else {
+                $bmIdValue = $config['bm_id'] ?? ($currentConfig['bm_id'] ?? '');
+                $childBmId = $config['child_bm_id'] ?? null;
+                
                 $newConfig = array_merge($currentConfig, [
                     'meta_email' => $config['meta_email'] ?? ($currentConfig['meta_email'] ?? ''),
                     'display_name' => $config['display_name'] ?? ($currentConfig['display_name'] ?? ''),
-                    'bm_id' => $config['bm_id'] ?? ($currentConfig['bm_id'] ?? ''),
+                    'bm_id' => $bmIdValue,
+                    'child_bm_id' => $childBmId,
                     'uid' => $config['uid'] ?? ($currentConfig['uid'] ?? null),
                     'account_name' => $config['account_name'] ?? ($currentConfig['account_name'] ?? null),
                     'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),

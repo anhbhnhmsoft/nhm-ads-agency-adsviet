@@ -102,10 +102,20 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                 header: t('business_manager.table.bm_id', { defaultValue: 'ID BM' }),
                 cell: ({ row }) => {
                     const bmIds = row.original.bm_ids;
+                    const isBusinessManager = row.original.is_business_manager;
+                    const parentBmId = row.original.parent_bm_id;
+                    
                     return (
-                        <span className="text-xs text-muted-foreground">
-                            {bmIds && bmIds.length ? bmIds.join(', ') : '-'}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground">
+                                {bmIds && bmIds.length ? bmIds.join(', ') : '-'}
+                            </span>
+                            {isBusinessManager && parentBmId && (
+                                <span className="text-xs text-blue-600 dark:text-blue-400">
+                                    {t('business_manager.table.child_bm', { defaultValue: 'BM con' })} ({parentBmId})
+                                </span>
+                            )}
+                        </div>
                     );
                 },
             },

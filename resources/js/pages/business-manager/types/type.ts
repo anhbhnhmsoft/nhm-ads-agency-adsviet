@@ -38,6 +38,17 @@ export type BusinessManagerItem = {
         currency?: string | null;
     }>;
     config_account?: BusinessManagerConfigAccount | null;
+    is_business_manager?: boolean;
+    parent_bm_id?: string | null;
+    child_bm_id?: string | null;
+};
+
+export type ChildBusinessManager = {
+    bm_id: string;
+    name: string;
+    parent_bm_id: string;
+    verification_status?: string | null;
+    currency?: string | null;
 };
 
 // Detail account item inside dialog

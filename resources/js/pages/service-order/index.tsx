@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import type { ServiceOrderPagination, ServiceOrder } from '@/pages/service-order/types/type';
+import type { ChildBusinessManager } from '@/pages/business-manager/types/type';
 import { service_purchase_index, service_orders_cancel, service_orders_destroy } from '@/routes';
 import { Package, ShoppingBag, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/table/data-table';
@@ -80,6 +81,10 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
         setAssetAccess,
         timezoneBm,
         setTimezoneBm,
+        childBusinessManagers,
+        selectedChildBmId,
+        setSelectedChildBmId,
+        loadingChildBMs,
         openDialogForOrder,
         handleSubmitApprove,
         formErrors,
@@ -499,6 +504,35 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                                 <p className="text-xs text-red-500">{formErrors.bm_id}</p>
                                             )}
                                         </div>
+                                        {isApproveMeta && childBusinessManagers.length > 0 && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="child_bm_id">
+                                                    {t('service_orders.form.child_bm_label', { defaultValue: 'Chọn BM con (tùy chọn)' })}
+                                                </Label>
+                                                <Select
+                                                    value={selectedChildBmId}
+                                                    onValueChange={(value) => setSelectedChildBmId(value)}
+                                                    disabled={loadingChildBMs}
+                                                >
+                                                    <SelectTrigger id="child_bm_id">
+                                                        <SelectValue placeholder={loadingChildBMs ? t('service_orders.form.loading_child_bms', { defaultValue: 'Đang tải...' }) : t('service_orders.form.select_child_bm', { defaultValue: 'Chọn BM con' })} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="">
+                                                            {t('service_orders.form.use_parent_bm', { defaultValue: 'Sử dụng BM gốc' })}
+                                                        </SelectItem>
+                                                        {childBusinessManagers.map((childBM: ChildBusinessManager) => (
+                                                            <SelectItem key={childBM.bm_id} value={childBM.bm_id}>
+                                                                {childBM.name || childBM.bm_id}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {t('service_orders.form.child_bm_hint', { defaultValue: 'Nếu không chọn, hệ thống sẽ sử dụng BM gốc' })}
+                                                </p>
+                                            </div>
+                                        )}
                                         <div className="space-y-2">
                                             <Label htmlFor="approve_asset_access">{t('service_purchase.asset_access_label')}</Label>
                                             <Select

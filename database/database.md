@@ -266,6 +266,27 @@
     - softDeletes
     - timestamps
 
+# bảng meta_business_managers
+    # note
+    - lưu trữ thông tin Business Manager (BM) và BM con từ Meta API
+    - Dùng để quản lý và hiển thị BM con trong trang quản lý BM/MCC
+    # quan hệ
+    - 1-n với bảng meta_business_managers qua parent_bm_id (BM cha có nhiều BM con)
+    # cấu trúc
+    - id (int, primary key, auto-increment)
+    - bm_id (varchar, index, not null) -- ID Business Manager
+    - parent_bm_id (varchar, nullable, index) -- ID Business Manager cha (nếu là BM con)
+    - name (varchar, nullable) -- Tên Business Manager
+    - primary_page_id (varchar, nullable) -- ID trang chính
+    - primary_page_name (varchar, nullable) -- Tên trang chính
+    - verification_status (varchar, nullable) -- Trạng thái xác minh
+    - timezone_id (varchar, nullable) -- Múi giờ
+    - currency (varchar, nullable) -- Tiền tệ
+    - is_primary (boolean, default false) -- Có phải BM chính không
+    - last_synced_at (timestamp, nullable) -- Thời gian đồng bộ cuối cùng
+    - timestamps
+    - softDeletes
+
 # bảng google_accounts
     # note
     - lưu trữ thông tin tài khoản Google Ads cho từng service user (nền tảng Google)
