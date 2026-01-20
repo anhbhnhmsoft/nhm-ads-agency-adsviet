@@ -17,6 +17,7 @@ use App\Repositories\GoogleAdsAccountInsightRepository;
 use App\Repositories\UserReferralRepository;
 use App\Core\Logging;
 use App\Repositories\MetaBusinessManagerRepository;
+use App\Repositories\GoogleMccManagerRepository;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +34,7 @@ class BusinessManagerService
         protected UserReferralRepository $userReferralRepository,
         protected PlatformSettingRepository $platformSettingRepository,
         protected MetaBusinessManagerRepository $metaBusinessManagerRepository,
+        protected GoogleMccManagerRepository $googleMccManagerRepository,
     ) {
     }
 
@@ -88,44 +90,37 @@ class BusinessManagerService
 
             $serviceUsers = $query->get();
 
+            $bmNameMap = $this->metaBusinessManagerRepository->query()
+                ->pluck('name', 'bm_id')
+                ->toArray();
+
+            $bmParentMap = $this->metaBusinessManagerRepository->query()
+                ->pluck('parent_bm_id', 'bm_id')
+                ->toArray();
+
+            $mccNameMap = $this->googleMccManagerRepository->query()
+                ->pluck('name', 'mcc_id')
+                ->toArray();
+
+            $mccParentMap = $this->googleMccManagerRepository->query()
+                ->pluck('parent_mcc_id', 'mcc_id')
+                ->toArray();
+
             // Danh sách tài khoản quảng cáo
             $accountsList = [];
 
             // Lấy accounts từ platform config
             if ($user && $user->role === UserRole::ADMIN->value) {
-                $platformConfigAccounts = $this->getAccountsFromPlatformConfig($dateStart, $dateEnd, $filter['platform'] ?? null);
+                $platformConfigAccounts = $this->getAccountsFromPlatformConfig(
+                    $dateStart,
+                    $dateEnd,
+                    $filter['platform'] ?? null,
+                    $bmNameMap,
+                    $mccNameMap,
+                    $bmParentMap,
+                    $mccParentMap
+                );
                 $accountsList = array_merge($accountsList, $platformConfigAccounts);
-            }
-
-            // Lấy BM con từ database và thêm vào danh sách
-            if (empty($filter['platform']) || (int) $filter['platform'] === PlatformType::META->value) {
-                $childBMs = $this->metaBusinessManagerRepository->query()
-                    ->whereNotNull('parent_bm_id')
-                    ->get();
-
-                foreach ($childBMs as $childBM) {
-                    // Hiển thị BM con như một row riêng biệt
-                    $accountsList[] = [
-                        'id' => 'bm_' . $childBM->bm_id,
-                        'account_id' => $childBM->bm_id,
-                        'account_name' => $childBM->name ?? $childBM->bm_id,
-                        'service_user_id' => null,
-                        'bm_ids' => [$childBM->bm_id],
-                        'name' => $childBM->name ?? $childBM->bm_id,
-                        'platform' => PlatformType::META->value,
-                        'owner_name' => 'System',
-                        'owner_id' => null,
-                        'total_accounts' => 0,
-                        'active_accounts' => 0,
-                        'disabled_accounts' => 0,
-                        'total_spend' => '0',
-                        'total_balance' => '0',
-                        'currency' => $childBM->currency ?? 'USD',
-                        'accounts' => [],
-                        'is_business_manager' => true,
-                        'parent_bm_id' => $childBM->parent_bm_id,
-                    ];
-                }
             }
 
             // Tính thống kê tổng
@@ -209,12 +204,24 @@ class BusinessManagerService
                         $status = $account->account_status !== null ? (int) $account->account_status : null;
                         $isActive = $this->isAccountActive((int) $platform, $status);
 
+                        $accountBmId = $account->business_manager_id ?? null;
+                        $bmIdsForRow = $accountBmId ? [$accountBmId] : $bmIds;
+                        $parentBmIdForRow = $accountBmId
+                            ? ($bmParentMap[$accountBmId] ?? null)
+                            : (isset($bmIdsForRow[0]) ? ($bmParentMap[$bmIdsForRow[0]] ?? null) : null);
+
+                        $bmDisplayName = $accountBmId && isset($bmNameMap[$accountBmId])
+                            ? $bmNameMap[$accountBmId]
+                            : $this->resolveBmName($bmIdsForRow, $bmNameMap);
+
                         $accountsList[] = [
                             'id' => (string) $account->account_id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
-                            'bm_ids' => $bmIds, // Hiển thị BM con nếu có, nếu không thì BM gốc
+                            'bm_ids' => $bmIdsForRow,
+                            'bm_name' => $bmDisplayName,
+                            'parent_bm_id' => $parentBmIdForRow,
                             'name' => $account->account_name ?? $config['display_name'] ?? $ownerName,
                             'platform' => $platform,
                             'owner_name' => $ownerName,
@@ -255,12 +262,26 @@ class BusinessManagerService
                         $status = $account->account_status !== null ? (int) $account->account_status : null;
                         $isActive = $this->isAccountActive((int) $platform, $status);
 
+                        $mccDisplayName = null;
+                        $customerManagerId = $account->customer_manager_id ?? null;
+                        if ($customerManagerId && isset($mccNameMap[$customerManagerId])) {
+                            $mccDisplayName = $mccNameMap[$customerManagerId];
+                        } elseif (!empty($bmIds)) {
+                            $mccDisplayName = $this->resolveMccName($bmIds, $mccNameMap);
+                        }
+
+                        $parentMccId = $customerManagerId
+                            ? ($mccParentMap[$customerManagerId] ?? null)
+                            : (isset($bmIds[0]) ? ($mccParentMap[$bmIds[0]] ?? null) : null);
+
                         $accountsList[] = [
                             'id' => (string) $account->account_id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
                             'bm_ids' => $bmIds,
+                            'bm_name' => $mccDisplayName,
+                            'parent_bm_id' => $parentMccId,
                             'name' => $account->account_name ?? $config['display_name'] ?? $ownerName,
                             'platform' => $platform,
                             'owner_name' => $ownerName,
@@ -542,7 +563,7 @@ class BusinessManagerService
     /**
      * Lấy accounts từ platform config
      */
-    private function getAccountsFromPlatformConfig(?Carbon $dateStart, ?Carbon $dateEnd, ?int $platformFilter): array
+    private function getAccountsFromPlatformConfig(?Carbon $dateStart, ?Carbon $dateEnd, ?int $platformFilter, array $bmNameMap, array $mccNameMap, ?array $bmParentMap = null, ?array $mccParentMap = null): array
     {
         $accountsList = [];
 
@@ -563,14 +584,17 @@ class BusinessManagerService
                     continue;
                 }
 
-                // Lấy tất cả accounts từ Meta mà có account_id thuộc BM gốc
-                // Tìm accounts có service_user_id = null (chưa được gán cho user nào)
-                // Hoặc có thể lấy tất cả accounts và đánh dấu những account chưa có service_user_id
                 $metaAccounts = $this->metaAccountRepository->query()
                     ->whereNull('service_user_id')
                     ->get();
 
                 foreach ($metaAccounts as $account) {
+                    $accountBmId = $account->business_manager_id ?? $bmId;
+                    $parentBmId = $accountBmId && $bmParentMap ? ($bmParentMap[$accountBmId] ?? null) : null;
+                    $bmDisplayName = $accountBmId && isset($bmNameMap[$accountBmId])
+                        ? $bmNameMap[$accountBmId]
+                        : ($bmNameMap[$bmId] ?? null);
+
                     // Tính spend cho từng account
                     if ($dateStart && $dateEnd) {
                         $spend = $this->metaAdsAccountInsightRepository->query()
@@ -587,12 +611,14 @@ class BusinessManagerService
                     $status = $account->account_status !== null ? (int) $account->account_status : null;
                     $isActive = $this->isAccountActive((int) $platform, $status);
 
-                    $accountsList[] = [
+                        $accountsList[] = [
                         'id' => (string) $account->account_id,
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
                         'service_user_id' => null,
-                        'bm_ids' => [$bmId],
+                        'bm_ids' => [$accountBmId],
+                        'bm_name' => $bmDisplayName,
+                        'parent_bm_id' => $parentBmId,
                         'name' => $account->account_name,
                         'platform' => $platform,
                         'owner_name' => $platformSetting->name,
@@ -637,12 +663,17 @@ class BusinessManagerService
                     $status = $account->account_status !== null ? (int) $account->account_status : null;
                     $isActive = $this->isAccountActive((int) $platform, $status);
 
+                    $mccDisplayName = $mccNameMap[$mccId] ?? null;
+                    $parentMccId = $mccParentMap[$mccId] ?? null;
+
                     $accountsList[] = [
                         'id' => (string) $account->account_id,
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
                         'service_user_id' => null, // Chưa được gán cho user nào
                         'bm_ids' => [$mccId],
+                        'bm_name' => $mccDisplayName,
+                        'parent_bm_id' => $parentMccId,
                         'name' => $account->account_name,
                         'platform' => $platform,
                         'owner_name' => 'System (Chưa gán)',
@@ -662,6 +693,32 @@ class BusinessManagerService
         }
 
         return $accountsList;
+    }
+
+    /**
+     * Lấy tên BM theo bm_ids
+     */
+    private function resolveBmName(array $bmIds, array $bmNameMap): ?string
+    {
+        $firstBmId = $bmIds[0] ?? null;
+        if (!$firstBmId) {
+            return null;
+        }
+
+        return $bmNameMap[$firstBmId] ?? null;
+    }
+
+    /**
+     * Lấy tên MCC theo mcc_ids
+     */
+    private function resolveMccName(array $mccIds, array $mccNameMap): ?string
+    {
+        $firstMccId = $mccIds[0] ?? null;
+        if (!$firstMccId) {
+            return null;
+        }
+
+        return $mccNameMap[$firstMccId] ?? null;
     }
 }
 

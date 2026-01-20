@@ -16,6 +16,8 @@ use App\Service\PlatformSettingService;
 use App\Service\GoogleAdsService;
 use App\Service\MetaService;
 use App\Http\Resources\PlatformSettingListResource;
+use App\Jobs\GoogleAds\SyncGooglePlatformJob;
+use App\Jobs\MetaApi\SyncMetaPlatformJob;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use App\Core\Logging;
@@ -130,12 +132,12 @@ class PlatformSettingController extends Controller
             if ($platform === PlatformType::GOOGLE->value) {
                 $loginCustomerId = $config['login_customer_id'] ?? null;
                 if ($loginCustomerId) {
-                    $this->googleAdsService->syncFromManagerId((string) $loginCustomerId);
+                    SyncGooglePlatformJob::dispatch((string) $loginCustomerId);
                 }
             } elseif ($platform === PlatformType::META->value) {
                 $bmId = $config['business_manager_id'] ?? null;
                 if ($bmId) {
-                    $this->metaService->syncFromBusinessManagerId((string) $bmId);
+                    SyncMetaPlatformJob::dispatch((string) $bmId);
                 }
             }
         } catch (\Throwable $e) {

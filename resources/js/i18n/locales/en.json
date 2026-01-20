@@ -59,7 +59,9 @@
     "reset": "Reset",
     "showing": "Showing {{from}} to {{to}} of {{total}} results",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "platform": "Platform",
+    "view_account": "View account"
   },
   "user_menu": {
     "profile": "Profile",
@@ -113,7 +115,13 @@
     "financial_management": "Financial Management",
     "support": "Support",
     "support_customer": "Customer Support",
-    "transfer_money": "Transfer Money"
+    "transfer_money": "Transfer Money",
+    "profit": "Profit",
+    "profit_by_customer": "Profit by customer",
+    "profit_by_platform": "Profit by platform",
+    "profit_over_time": "Profit over time",
+    "profit_by_bm_mcc": "Profit by BM/MCC",
+    "business_managers": "Business Manager / MCC Management"
   },
   "user": {
     "edit_employee": "Edit employee",
@@ -375,12 +383,21 @@
     "table_title": "Business Manager / MCC List",
     "table": {
       "account_name": "Account Name",
+      "bm_name": "BM Name",
       "account_id": "Account ID",
-      "bm_id": "BM ID",
+      "bm_id": "BM/MCC ID",
       "account_info": "Account Info",
       "owner": "Account Owner",
       "spend": "Spend",
-      "balance": "Balance"
+      "balance": "Balance",
+      "child_bm": "BM belongs to",
+      "child_mcc": "MCC belongs to",
+      "total": "Total"
+    },
+    "stats": {
+      "total": "Total",
+      "active": "Active",
+      "disabled": "Disabled"
     },
     "detail": {
       "title": "BM/BCC Details",
@@ -390,6 +407,28 @@
       "spend": "Spend",
       "total_campaign": "Total campaign",
       "no_accounts": "No accounts yet"
+    },
+    "top_up": "Top up",
+    "top_up_dialog": {
+      "title": "Top up BM/MCC",
+      "description": "Enter the amount to top up the BM/MCC",
+      "amount_label": "Amount (USDT)",
+      "submit": "Top up",
+      "success": "Top up request has been created successfully. You will be redirected to the Support page.",
+      "error": "Failed to create top up request.",
+      "bm_not_found": "BM/MCC not found",
+      "no_accounts": "BM/MCC has no accounts",
+      "platform_not_found": "Platform not found",
+      "ticket_subject": "Top up request for BM/MCC"
+    },
+    "filter": {
+      "period": "Period of time",
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "date": "Date",
+      "start_date": "Start date",
+      "end_date": "End date"
     }
   },
   "spend_report": {
@@ -900,7 +939,9 @@
     "bep20_wallet_address": "BEP20 wallet address",
     "trc20_wallet_address": "TRC20 wallet address",
     "bep20_placeholder": "Enter Binance Smart Chain (BEP20) wallet address",
-    "trc20_placeholder": "Enter Tron (TRC20) wallet address"
+    "trc20_placeholder": "Enter Tron (TRC20) wallet address",
+    "postpay_min_balance": "Minimum balance to register postpaid payment",
+    "postpay_min_balance_placeholder": "Enter minimum balance to register postpaid payment"
   },
   "auth": {
     "components": {
@@ -928,6 +969,59 @@
     "name": "Name",
     "telegram_id": "Telegram ID",
     "telegram_info_unavailable": "Unable to retrieve information from Telegram. Telegram ID: "
+  },
+  "profit":{
+    "profit": "Profit",
+    "revenue": "Revenue",
+    "platform": "Platform",
+    "all_platforms": "All platforms",
+    "meta_ads": "Meta Ads",
+    "google_ads": "Google Ads",
+    "cost": "Cost",
+    "profit_margin": "Profit margin",
+    "profit_chart": "Profit chart",
+    "profit_margin_chart": "Profit margin chart",
+    "over_time" : {
+      "title": "Profit over time",
+      "description": "Profit over time chart",
+      "chart": "Profit over time chart",
+      "profit_margin_chart": "Profit margin over time chart"
+    },
+    "by_customer": "Profit by customer",
+    "by_platform": {
+      "title": "Profit by platform",
+      "description": "Profit by platform chart",
+      "chart": "Profit by platform chart",
+      "profit_margin_chart": "Profit margin by platform chart"
+    },
+    "by_bm_mcc": {
+      "title": "Profit by BM/MCC",
+      "description": "Profit by BM/MCC chart",
+      "chart": "Profit by BM/MCC chart",
+      "profit_margin_chart": "Profit margin by BM/MCC chart"
+    },
+    "business_managers": "Business Manager / MCC Management",
+    "date_range": "Date range",
+    "group_by": "Group by",
+    "group_by_day": "Day",
+    "group_by_week": "Week",
+    "group_by_month": "Month",
+    "total_revenue": "Total revenue",
+    "total_cost": "Total cost",
+    "total_profit": "Total profit",
+    "total_profit_margin": "Total profit margin",
+    "total_revenue_chrt": "Total revenue chart",
+    "total_profit_margin_chart": "Total profit margin chart",
+    "total_profit_chart": "Total profit chart",
+    "total_cost_chart": "Total cost chart",
+    "total_revenue_chart": "Total revenue chart",
+    "bm_mcc_list": "BM/MCC list",
+    "no_data": "No data",
+    "bm_mcc_id": "BM/MCC ID",
+    "platform_name": "Platform name",
+    "user": "User",
+    "user_count": "User count",
+    "service_user_count": "Service user count"
   }
 }
 

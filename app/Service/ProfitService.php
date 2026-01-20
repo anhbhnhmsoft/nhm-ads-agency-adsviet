@@ -319,7 +319,7 @@ class ProfitService
                 $q->where('platform', PlatformType::META->value);
             });
 
-        if ($startDate && $endDate) {
+            if ($startDate && $endDate) {
             $query->whereBetween('created_at', [$startDate, $endDate]);
         }
 
@@ -377,7 +377,7 @@ class ProfitService
                 $q->where('platform', PlatformType::GOOGLE->value);
             });
 
-        if ($startDate && $endDate) {
+            if ($startDate && $endDate) {
             $query->whereBetween('created_at', [$startDate, $endDate]);
         }
 
