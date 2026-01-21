@@ -883,13 +883,16 @@
         "table_title": "Danh sách Business Manager / MCC",
         "table": {
             "account_name": "Tên tài khoản",
+            "bm_name": "Tên BM/ MCC",
             "account_id": "ID tài khoản",
-            "bm_id": "ID BM",
-            "child_bm": "BM con",
+            "bm_id": "ID BM/MCC",
             "account_info": "Thông tin tài khoản",
             "owner": "Người sở hữu tài khoản",
             "spend": "Chi tiêu",
-            "balance": "Số dư"
+            "balance": "Số dư",
+            "child_bm": "BM thuộc",
+            "child_mcc": "MCC thuộc",
+            "total": "Tổng"
         },
         "detail": {
             "title": "Chi tiết BM/BCC",
@@ -1025,5 +1028,11 @@
         "name": "Tên",
         "telegram_id": "Telegram ID",
         "telegram_info_unavailable": "Không thể lấy thông tin từ Telegram. Telegram ID: "
+    },
+    "profit":{
+        "profit": "Lợi nhuận",
+        "revenue": "Doanh thu",
+        "cost": "Chi phí",
+        "profit_margin": "Tỷ suất lợi nhuận"
     }
 }

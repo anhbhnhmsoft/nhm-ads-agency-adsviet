@@ -89,30 +89,38 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                 accessorKey: 'account_name',
                 header: t('business_manager.table.account_name', { defaultValue: 'Tên tài khoản' }),
                 cell: ({ row }) => {
-                    const displayName = row.original.account_name || row.original.name;
+                    const displayName = row.original.account_name || row.original.name || (row.original.bm_ids?.[0] ?? '-');
                     return <span className="font-medium">{displayName}</span>;
                 },
             },
             {
-                accessorKey: 'account_id',
-                header: t('business_manager.table.account_id', { defaultValue: 'ID tài khoản' }),
+                id: 'bm_name',
+                header: t('business_manager.table.bm_name', { defaultValue: 'Tên BM/ MCC' }),
+                cell: ({ row }) => {
+                    const bmName = row.original.bm_name || row.original.name || (row.original.bm_ids?.[0] ?? '-');
+                    return <span className="text-sm">{bmName}</span>;
+                },
             },
             {
                 id: 'bm_ids',
-                header: t('business_manager.table.bm_id', { defaultValue: 'ID BM' }),
+                header: t('business_manager.table.bm_id', { defaultValue: 'ID BM/MCC' }),
                 cell: ({ row }) => {
                     const bmIds = row.original.bm_ids;
-                    const isBusinessManager = row.original.is_business_manager;
                     const parentBmId = row.original.parent_bm_id;
+                    const platform = row.original.platform;
                     
                     return (
                         <div className="flex flex-col gap-1">
                             <span className="text-xs text-muted-foreground">
                                 {bmIds && bmIds.length ? bmIds.join(', ') : '-'}
                             </span>
-                            {isBusinessManager && parentBmId && (
+                            {parentBmId && (
                                 <span className="text-xs text-blue-600 dark:text-blue-400">
-                                    {t('business_manager.table.child_bm', { defaultValue: 'BM con' })} ({parentBmId})
+                                    {platform === _PlatformType.GOOGLE
+                                        ? t('business_manager.table.child_mcc', { defaultValue: 'MCC thuộc' })
+                                        : t('business_manager.table.child_bm', { defaultValue: 'BM thuộc' })}
+                                    {' '}
+                                    ({parentBmId})
                                 </span>
                             )}
                         </div>
@@ -141,7 +149,7 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                                 </Avatar>
                             )}
                             <div className="text-sm">
-                                <div>Tổng: {totalAccounts}</div>
+                                <div>{t('business_manager.table.total', { defaultValue: 'Tổng' })}: {totalAccounts}</div>
                                 <div className="text-green-600">Active: {activeAccounts}</div>
                                 <div className="text-red-600">Disabled: {disabledAccounts}</div>
                             </div>
@@ -234,7 +242,7 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                                 }}
                             >
                                 <Eye className="h-4 w-4 mr-1" />
-                                {t('common.view', { defaultValue: 'Xem tài khoản' })}
+                                {t('common.view_account', { defaultValue: 'Xem tài khoản' })}
                             </Button>
                         </div>
                     );

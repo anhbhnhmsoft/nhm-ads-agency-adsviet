@@ -198,6 +198,7 @@
     # cấu trúc
     - id (int, primary key, auto-increment)
     - service_user_id (int, foreign key to service_users.id, not null)
+    - business_manager_id (varchar, nullable, index) -- BM/BM con quản lý account
     - account_id (varchar, index, not null) -- ID tài khoản Meta Ads
     - account_name (varchar, not null) -- Tên tài khoản Meta Ads
     - account_status (smallint, not null, default 0) -- Trạng thái tài khoản (trong enum MetaAdsAccountStatus)
@@ -284,6 +285,24 @@
     - currency (varchar, nullable) -- Tiền tệ
     - is_primary (boolean, default false) -- Có phải BM chính không
     - last_synced_at (timestamp, nullable) -- Thời gian đồng bộ cuối cùng
+    - timestamps
+    - softDeletes
+
+# bảng google_mcc_managers
+    # note
+    - lưu trữ thông tin Google MCC gốc và MCC con (manager accounts) từ Google Ads API
+    - dùng để hiển thị MCC con và ánh xạ tên MCC cho các tài khoản Google Ads
+    # quan hệ
+    - 1-n với chính nó qua parent_mcc_id (MCC cha có nhiều MCC con)
+    # cấu trúc
+    - id (int, primary key, auto-increment)
+    - mcc_id (varchar, index, not null) -- ID MCC
+    - parent_mcc_id (varchar, nullable, index) -- ID MCC cha (nếu là MCC con)
+    - name (varchar, nullable) -- Tên MCC (descriptive_name, fallback "MCC {id}")
+    - time_zone (varchar, nullable) -- múi giờ
+    - currency (varchar, nullable) -- tiền tệ
+    - is_primary (boolean, default false) -- MCC gốc cấu hình trong platform settings
+    - last_synced_at (timestamp, nullable) -- thời gian đồng bộ cuối
     - timestamps
     - softDeletes
 

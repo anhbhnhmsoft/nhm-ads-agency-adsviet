@@ -794,23 +794,38 @@ class MetaService
     /**
      * Đồng bộ danh sách BM con từ một BM gốc
      */
-    private function syncBusinessManagers(string $parentBmId): void
-    {
-        // Lưu BM gốc nếu chưa có
+private function syncBusinessManagers(string $parentBmId): void
+{
+    //Lấy thông tin BM gốc
+    // Fields hợp lệ: id, name, verification_status, primary_page
+    $parentInfo = $this->metaBusinessService->getBusinessById($parentBmId);
+
+    if ($parentInfo->isSuccess()) {
+        $data = $parentInfo->getData();
+        $primaryPage = $data['primary_page'] ?? null;
+
         $this->metaBusinessManagerRepository->updateOrCreate(
             ['bm_id' => $parentBmId],
             [
                 'parent_bm_id' => null,
+                'name' => $data['name'] ?? 'N/A',
+                'primary_page_id' => $primaryPage['id'] ?? null,
+                'primary_page_name' => $primaryPage['name'] ?? null,
+                'verification_status' => $data['verification_status'] ?? null,
                 'is_primary' => true,
                 'last_synced_at' => now(),
             ]
         );
-
-        // Đồng bộ owned_businesses
-        $this->syncBusinessManagersFromEdge($parentBmId, 'owned');
-        // Đồng bộ client_businesses
-        $this->syncBusinessManagersFromEdge($parentBmId, 'client');
+    } else {
+        Logging::error('MetaService@syncBusinessManagers: cannot fetch parent BM info: ' . $parentInfo->getMessage());
     }
+
+    // Đồng bộ BM con:
+    // - owned_businesses  -> type = 'owned'
+    // - clients (client BMs) -> type = 'client' để đi vào nhánh getClientBusinessesPaginated()
+    $this->syncBusinessManagersFromEdge($parentBmId, 'owned');
+    $this->syncBusinessManagersFromEdge($parentBmId, 'client');
+}
 
     /**
      * Đồng bộ BM con từ một edge cụ thể
@@ -832,7 +847,10 @@ class MetaService
                 );
 
             if ($result->isError()) {
-                Logging::error('Error sync business managers from ' . $type . ' edge: ' . $result->getMessage());
+                Logging::error('Error sync business managers from ' . $type . ' edge: ' . $result->getMessage(), [
+                    'bm_id' => $parentBmId,
+                    'edge' => $type,
+                ]);
                 return;
             }
 
@@ -928,6 +946,7 @@ class MetaService
                     if (!$existingAccount || !$existingAccount->service_user_id) {
                         $updateData['service_user_id'] = null;
                     }
+                    $updateData['business_manager_id'] = $bmId;
 
                     $this->metaAccountRepository->query()->updateOrCreate(
                         [
@@ -986,6 +1005,7 @@ class MetaService
                         ],
                         [
                             'service_user_id' => $serviceUser->id,
+                            'business_manager_id' => $bmId,
                             'account_name' => $detail['name'],
                             'account_status' => $detail['account_status'],
                             'disable_reason' => $detail['disable_reason'] ?? null,

@@ -134,6 +134,26 @@ class MetaBusinessService
     }
 
     /**
+     * Lấy thông tin 1 business theo BM ID (dùng để sync tên BM gốc/ con).
+     */
+    public function getBusinessById(string $bmId): ServiceReturn
+    {
+        try {
+            $this->initApi();
+            $response = $this->api->call(
+                '/' . $bmId,
+                'GET',
+                [
+                    'fields' => 'id,name,primary_page{id,name},verification_status,timezone_id',
+                ]
+            )->getContent();
+            return ServiceReturn::success(data: $response);
+        } catch (Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
      * Tạo mới một business
      * @param string $userId
      * @param array $params
@@ -300,7 +320,8 @@ class MetaBusinessService
     {
         try {
             $this->initApi();
-            $endpoint = "/{$bmId}/client_businesses";
+            // Theo Graph API, BM clients nằm ở edge /{business-id}/clients
+            $endpoint = "/{$bmId}/clients";
             $params = [
                 'fields' => 'id,name,primary_page{id,name},verification_status,timezone_id,currency',
                 'limit' => $limit,

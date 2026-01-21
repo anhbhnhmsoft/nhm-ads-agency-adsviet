@@ -23,6 +23,7 @@ export type BusinessManagerItem = {
     account_id?: string;
     account_name?: string | null;
     bm_ids?: string[];
+    bm_name?: string | null;
     name: string;
     platform: _PlatformType | number;
     service_user_id?: string;

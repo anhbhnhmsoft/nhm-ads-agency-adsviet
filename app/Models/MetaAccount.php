@@ -15,6 +15,7 @@ class MetaAccount extends Model
 
     protected $fillable = [
         'service_user_id',
+        'business_manager_id',
         'account_id',
         'account_name',
         'account_status',

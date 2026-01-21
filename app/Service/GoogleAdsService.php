@@ -20,6 +20,7 @@ use App\Common\Constants\User\UserRole;
 use App\Repositories\ServiceUserRepository;
 use Illuminate\Database\Eloquent\Collection;
 use App\Repositories\GoogleAccountRepository;
+use App\Repositories\GoogleMccManagerRepository;
 use App\Common\Constants\Platform\PlatformType;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Google\Ads\GoogleAds\Lib\OAuth2TokenBuilder;
@@ -59,6 +60,7 @@ class GoogleAdsService
     public function __construct(
         protected ServiceUserRepository $serviceUserRepository,
         protected GoogleAccountRepository $googleAccountRepository,
+        protected GoogleMccManagerRepository $googleMccManagerRepository,
         protected GoogleAdsAccountInsightRepository $googleAdsAccountInsightRepository,
         protected GoogleAdsCampaignRepository $googleAdsCampaignRepository,
         protected WalletRepository $walletRepository,
@@ -1498,6 +1500,8 @@ GAQL;
             $client = $this->buildGoogleAdsClient($managerId);
             $googleAdsService = $client->getGoogleAdsServiceClient();
 
+            $this->syncMccManagers($googleAdsService, $managerId);
+
             // Query customer_client để lấy tất cả các sub-accounts được quản lý bởi manager
             $query = <<<GAQL
 SELECT
@@ -1583,6 +1587,119 @@ GAQL;
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Đồng bộ MCC gốc + MCC con trực tiếp vào bảng google_mcc_managers.
+     */
+    private function syncMccManagers(GoogleAdsServiceClient $googleAdsService, string $managerId): void
+    {
+        // Lưu MCC gốc (lấy từ customer)
+        try {
+            $queryParent = <<<GAQL
+SELECT
+  customer.id,
+  customer.descriptive_name,
+  customer.currency_code,
+  customer.time_zone
+FROM customer
+WHERE customer.id = {$managerId}
+LIMIT 1
+GAQL;
+            $requestParent = new SearchGoogleAdsStreamRequest([
+                'customer_id' => (string) $managerId,
+                'query' => $queryParent,
+            ]);
+            foreach ($googleAdsService->searchStream($requestParent)->readAll() as $response) {
+                foreach ($response->getResults() as $row) {
+                    $customer = $row->getCustomer();
+                    if (!$customer) {
+                        continue;
+                    }
+                    $name = $customer->getDescriptiveName();
+                    if (!$name) {
+                        // Fallback: dùng MCC ID làm tên nếu API không trả descriptive_name
+                        $name = 'MCC ' . $managerId;
+                    }
+
+                    $this->googleMccManagerRepository->updateOrCreate(
+                        ['mcc_id' => (string) $managerId],
+                        [
+                            'parent_mcc_id' => null,
+                            'name' => $name,
+                            'currency' => $customer->getCurrencyCode() ?? null,
+                            'time_zone' => $customer->getTimeZone() ?? null,
+                            'is_primary' => true,
+                            'last_synced_at' => now(),
+                        ]
+                    );
+                    break 2;
+                }
+            }
+        } catch (\Throwable $e) {
+            Logging::error('GoogleAdsService@syncMccManagers: cannot fetch parent MCC info: ' . $e->getMessage(), [
+                'manager_id' => $managerId,
+            ]);
+        }
+
+        // 2) Lưu MCC con trực tiếp (customer_client.level = 1, manager = TRUE)
+        try {
+            $queryChildren = <<<GAQL
+SELECT
+  customer_client.id,
+  customer_client.descriptive_name,
+  customer_client.currency_code,
+  customer_client.time_zone,
+  customer_client.level,
+  customer_client.manager
+FROM customer_client
+WHERE customer_client.level = 1
+  AND customer_client.manager = TRUE
+GAQL;
+            $requestChildren = new SearchGoogleAdsStreamRequest([
+                'customer_id' => (string) $managerId,
+                'query' => $queryChildren,
+            ]);
+
+            foreach ($googleAdsService->searchStream($requestChildren)->readAll() as $response) {
+                foreach ($response->getResults() as $row) {
+                    $cc = $row->getCustomerClient();
+                    if (!$cc) {
+                        continue;
+                    }
+                    $childId = $cc->getId();
+                    if (!$childId) {
+                        continue;
+                    }
+
+                    $name = $cc->getDescriptiveName();
+                    if (!$name) {
+                        $name = 'MCC ' . $childId;
+                    }
+
+                    $updateData = [
+                        'parent_mcc_id' => (string) $managerId,
+                        'currency' => $cc->getCurrencyCode() ?? null,
+                        'time_zone' => $cc->getTimeZone() ?? null,
+                        'is_primary' => false,
+                        'last_synced_at' => now(),
+                    ];
+
+                    if ($name) {
+                        $updateData['name'] = $name;
+                    }
+
+                    $this->googleMccManagerRepository->updateOrCreate(
+                        ['mcc_id' => (string) $childId],
+                        $updateData
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            Logging::error('GoogleAdsService@syncMccManagers: cannot sync child MCCs: ' . $e->getMessage(), [
+                'manager_id' => $managerId,
+            ]);
         }
     }
 
