@@ -95,7 +95,7 @@ class ProfitService
 
                 // Lấy tất cả service_users của customer này
                 $query = $this->serviceUserRepository->query()
-                    ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
+                    ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
                     ->where('user_id', $customerId)
                     ->whereHas('package');
 
@@ -122,7 +122,14 @@ class ProfitService
 
                     $openFee = (float) $package->open_fee;
                     $topUpFeePercent = (float) $package->top_up_fee;
-                    $supplierFeePercent = (float) ($package->supplier_fee_percent ?? 0);
+                    // Lấy supplier_fee_percent từ supplier
+                    $supplier = $package->supplier;
+                    $supplierFeePercent = 0.0;
+                    if ($supplier && isset($supplier->supplier_fee_percent)) {
+                        $supplierFeePercent = (float) $supplier->supplier_fee_percent;
+                    } elseif (isset($package->supplier_fee_percent)) {
+                        $supplierFeePercent = (float) $package->supplier_fee_percent;
+                    }
 
                     // Doanh thu = tổng số tiền khách hàng đã trả
                     // = open_fee + top_up_amount + top_up_amount * top_up_fee%
@@ -134,10 +141,20 @@ class ProfitService
                         }
                     }
 
-                    // Chi phí nhà cung cấp (chỉ áp trên top_up_amount)
+                    // Chi phí nhà cung cấp = supplier_open_fee + top_up_amount * supplier_fee_percent%
+                    // (Áp dụng cho cả trả trước và trả sau, nếu open_fee = 0 thì không tính)
                     $itemCost = 0.0;
-                    if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                        $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                    $supplier = $package->supplier;
+                    if ($supplier) {
+                        // Chi phí mở tài khoản (nếu > 0)
+                        $supplierOpenFee = (float) $supplier->open_fee;
+                        if ($supplierOpenFee > 0) {
+                            $itemCost += $supplierOpenFee;
+                        }
+                        // Chi phí nhà cung cấp trên số tiền nạp
+                        if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
+                            $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                        }
                     }
 
                     $revenue += $itemRevenue;
@@ -213,8 +230,8 @@ class ProfitService
             // - Công thức cho 1 lần mua gói (1 service_user):
             //   + Doanh thu (revenue_item) = open_fee + top_up_amount + top_up_amount * top_up_fee%
             //     (Tổng số tiền khách hàng đã trả: phí mở + số tiền nạp + phí dịch vụ)
-            //   + Chi phí (cost_item) = top_up_amount * supplier_fee_percent%
-            //     (Chi phí nhà cung cấp tính trên số tiền nạp)
+            //   + Chi phí (cost_item) = supplier_open_fee + top_up_amount * supplier_fee_percent%
+            //     (Chi phí mở tài khoản của nhà cung cấp + chi phí nhà cung cấp tính trên số tiền nạp)
             //   + Lợi nhuận (profit_item) = revenue_item - cost_item
             //   Trong đó top_up_amount được lưu trong config_account của service_users.
 
@@ -224,7 +241,7 @@ class ProfitService
             foreach ($platforms as $platformType) {
                 // Lấy service_users theo platform
                 $query = $this->serviceUserRepository->query()
-                    ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
+                    ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
                     ->whereHas('package', function ($q) use ($platformType) {
                         $q->where('platform', $platformType);
                     });
@@ -256,7 +273,14 @@ class ProfitService
 
                     $openFee = (float) $package->open_fee;
                     $topUpFeePercent = (float) $package->top_up_fee;
-                    $supplierFeePercent = (float) ($package->supplier_fee_percent ?? 0);
+                    // Lấy supplier_fee_percent từ supplier
+                    $supplier = $package->supplier;
+                    $supplierFeePercent = 0.0;
+                    if ($supplier && isset($supplier->supplier_fee_percent)) {
+                        $supplierFeePercent = (float) $supplier->supplier_fee_percent;
+                    } elseif (isset($package->supplier_fee_percent)) {
+                        $supplierFeePercent = (float) $package->supplier_fee_percent;
+                    }
 
                     // Doanh thu = tổng số tiền khách hàng đã trả
                     // = open_fee + top_up_amount + top_up_amount * top_up_fee%
@@ -269,10 +293,20 @@ class ProfitService
                         }
                     }
 
-                    // Chi phí nhà cung cấp (chỉ áp trên top_up_amount)
+                    // Chi phí nhà cung cấp = supplier_open_fee + top_up_amount * supplier_fee_percent%
+                    // (Áp dụng cho cả trả trước và trả sau, nếu open_fee = 0 thì không tính)
                     $itemCost = 0.0;
-                    if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                        $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                    $supplier = $package->supplier;
+                    if ($supplier) {
+                        // Chi phí mở tài khoản (nếu > 0)
+                        $supplierOpenFee = (float) $supplier->open_fee;
+                        if ($supplierOpenFee > 0) {
+                            $itemCost += $supplierOpenFee;
+                        }
+                        // Chi phí nhà cung cấp trên số tiền nạp
+                        if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
+                            $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                        }
                     }
 
                     $revenue += $itemRevenue;
@@ -313,7 +347,7 @@ class ProfitService
 
         // Meta/Facebook
         $query = $this->serviceUserRepository->query()
-            ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
+            ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
             ->where('user_id', $customerId)
             ->whereHas('package', function ($q) {
                 $q->where('platform', PlatformType::META->value);
@@ -341,7 +375,14 @@ class ProfitService
 
             $openFee = (float) $package->open_fee;
             $topUpFeePercent = (float) $package->top_up_fee;
-            $supplierFeePercent = (float) ($package->supplier_fee_percent ?? 0);
+            // Lấy supplier_fee_percent từ supplier
+            $supplier = $package->supplier;
+            $supplierFeePercent = 0.0;
+            if ($supplier && isset($supplier->supplier_fee_percent)) {
+                $supplierFeePercent = (float) $supplier->supplier_fee_percent;
+            } elseif (isset($package->supplier_fee_percent)) {
+                $supplierFeePercent = (float) $package->supplier_fee_percent;
+            }
 
             // Doanh thu = tổng số tiền khách hàng đã trả
             // = open_fee + top_up_amount + top_up_amount * top_up_fee%
@@ -353,10 +394,22 @@ class ProfitService
                 }
             }
 
-            // Chi phí nhà cung cấp 
+            // Chi phí nhà cung cấp: phân biệt trả trước và trả sau
             $itemCost = 0.0;
-            if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                $itemCost += $topUpAmount * $supplierFeePercent / 100;
+            if ($supplier) {
+                // Kiểm tra xem user có phải postpay không
+                $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
+                
+                if ($isPostpay) {
+                    // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
+                    if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
+                        $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                    }
+                } else {
+                    // Trả trước: chỉ tính chi phí mở tài khoản
+                    $supplierOpenFee = (float) $supplier->open_fee;
+                    $itemCost += $supplierOpenFee;
+                }
             }
 
             $metaRevenue += $itemRevenue;
@@ -371,7 +424,7 @@ class ProfitService
 
         // Google
         $query = $this->serviceUserRepository->query()
-            ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
+            ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
             ->where('user_id', $customerId)
             ->whereHas('package', function ($q) {
                 $q->where('platform', PlatformType::GOOGLE->value);
@@ -399,7 +452,14 @@ class ProfitService
 
             $openFee = (float) $package->open_fee;
             $topUpFeePercent = (float) $package->top_up_fee;
-            $supplierFeePercent = (float) ($package->supplier_fee_percent ?? 0);
+            // Lấy supplier_fee_percent từ supplier
+            $supplier = $package->supplier ?? null;
+            $supplierFeePercent = 0.0;
+            if ($supplier && isset($supplier->supplier_fee_percent)) {
+                $supplierFeePercent = (float) $supplier->supplier_fee_percent;
+            } elseif (isset($package->supplier_fee_percent)) {
+                $supplierFeePercent = (float) $package->supplier_fee_percent;
+            }
 
             // Doanh thu = tổng số tiền khách hàng đã trả
             // = open_fee + top_up_amount + top_up_amount * top_up_fee%
@@ -411,10 +471,22 @@ class ProfitService
                 }
             }
 
-            // Chi phí nhà cung cấp (chỉ áp trên top_up_amount)
+            // Chi phí nhà cung cấp: phân biệt trả trước và trả sau
             $itemCost = 0.0;
-            if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                $itemCost += $topUpAmount * $supplierFeePercent / 100;
+            if ($supplier) {
+                // Kiểm tra xem user có phải postpay không
+                $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
+                
+                if ($isPostpay) {
+                    // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
+                    if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
+                        $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                    }
+                } else {
+                    // Trả trước: chỉ tính chi phí mở tài khoản
+                    $supplierOpenFee = (float) $supplier->open_fee;
+                    $itemCost += $supplierOpenFee;
+                }
             }
 
             $googleRevenue += $itemRevenue;
@@ -468,7 +540,7 @@ class ProfitService
 
             // Lấy toàn bộ service_users trong khoảng thời gian
             $query = $this->serviceUserRepository->query()
-                ->with('package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent')
+                ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
                 ->whereBetween('created_at', [$startDate, $endDate])
                 ->whereHas('package');
 
@@ -512,7 +584,14 @@ class ProfitService
 
                 $openFee = (float) $package->open_fee;
                 $topUpFeePercent = (float) $package->top_up_fee;
-                $supplierFeePercent = (float) ($package->supplier_fee_percent ?? 0);
+                // Lấy supplier_fee_percent từ supplier
+                $supplier = $package->supplier;
+                $supplierFeePercent = 0.0;
+                if ($supplier && isset($supplier->supplier_fee_percent)) {
+                    $supplierFeePercent = (float) $supplier->supplier_fee_percent;
+                } elseif (isset($package->supplier_fee_percent)) {
+                    $supplierFeePercent = (float) $package->supplier_fee_percent;
+                }
 
                 // Doanh thu = tổng số tiền khách hàng đã trả
                 // = open_fee + top_up_amount + top_up_amount * top_up_fee%
@@ -524,9 +603,22 @@ class ProfitService
                     }
                 }
 
+                // Chi phí nhà cung cấp: phân biệt trả trước và trả sau
                 $itemCost = 0.0;
-                if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                    $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                if ($supplier) {
+                    // Kiểm tra xem user có phải postpay không
+                    $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
+                    
+                    if ($isPostpay) {
+                        // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
+                        if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
+                            $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                        }
+                    } else {
+                        // Trả trước: chỉ tính chi phí mở tài khoản
+                        $supplierOpenFee = (float) $supplier->open_fee;
+                        $itemCost += $supplierOpenFee;
+                    }
                 }
 
                 $buckets[$period]['revenue'] += $itemRevenue;
@@ -586,7 +678,7 @@ class ProfitService
 
             // Lấy tất cả service_users active
             $serviceUsers = $this->serviceUserRepository->query()
-                ->with(['user:id,name,username,email', 'package:id,platform,name,open_fee,top_up_fee,supplier_fee_percent'])
+                ->with(['user:id,name,username,email', 'package:id,platform,name,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
                 ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
                 ->whereHas('package')
                 ->get();
@@ -608,9 +700,17 @@ class ProfitService
                     $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
                 }
 
-                $openFee = (float) $serviceUser->package->open_fee;
-                $topUpFeePercent = (float) $serviceUser->package->top_up_fee;
-                $supplierFeePercent = (float) ($serviceUser->package->supplier_fee_percent ?? 0);
+                $package = $serviceUser->package;
+                $openFee = (float) $package->open_fee;
+                $topUpFeePercent = (float) $package->top_up_fee;
+                // Lấy supplier_fee_percent từ supplier
+                $supplier = $package->supplier ?? null;
+                $supplierFeePercent = 0.0;
+                if ($supplier && isset($supplier->supplier_fee_percent)) {
+                    $supplierFeePercent = (float) $supplier->supplier_fee_percent;
+                } elseif (isset($package->supplier_fee_percent)) {
+                    $supplierFeePercent = (float) $package->supplier_fee_percent;
+                }
 
                 // Doanh thu = tổng số tiền khách hàng đã trả
                 // = open_fee + top_up_amount + top_up_amount * top_up_fee%
@@ -622,9 +722,22 @@ class ProfitService
                     }
                 }
 
+                // Chi phí nhà cung cấp: phân biệt trả trước và trả sau
                 $itemCost = 0.0;
-                if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                    $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                if ($supplier) {
+                    // Kiểm tra xem user có phải postpay không
+                    $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
+                    
+                    if ($isPostpay) {
+                        // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
+                        if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
+                            $itemCost += $topUpAmount * $supplierFeePercent / 100;
+                        }
+                    } else {
+                        // Trả trước: chỉ tính chi phí mở tài khoản
+                        $supplierOpenFee = (float) $supplier->open_fee;
+                        $itemCost += $supplierOpenFee;
+                    }
                 }
 
                 $bmIds = [];

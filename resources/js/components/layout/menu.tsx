@@ -6,6 +6,8 @@ import {
     dashboard,
     service_packages_create_view,
     service_packages_index,
+    suppliers_index,
+    suppliers_create_view,
     user_list,
     user_list_employee,
     config_index,
@@ -43,6 +45,7 @@ import {
     DollarSign,
     Phone,
     TrendingUp,
+    Building2,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -299,6 +302,16 @@ const useMenu = () => {
                 active:
                     isActive(service_packages_index()) ||
                     isActive(service_packages_create_view()),
+                can_show: checkRole([_UserRole.ADMIN]),
+            },
+            {
+                title: t('menu.suppliers', { defaultValue: 'Nhà cung cấp' }),
+                url: suppliers_index().url,
+                icon: <Building2 />,
+                is_menu: true,
+                active:
+                    isActive(suppliers_index()) ||
+                    isActive(suppliers_create_view()),
                 can_show: checkRole([_UserRole.ADMIN]),
             },
             {

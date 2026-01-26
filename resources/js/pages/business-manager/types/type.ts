@@ -7,6 +7,7 @@ export type BusinessManagerListQuery = {
         platform?: _PlatformType | number | undefined;
         start_date?: string;
         end_date?: string;
+        child_manager_id?: string;
     };
     sort_by?: string;
     direction?: 'asc' | 'desc';
@@ -29,9 +30,12 @@ export type BusinessManagerItem = {
     service_user_id?: string;
     owner_name?: string | null;
     owner_id?: string | null;
-    total_accounts: number;
-    active_accounts: number;
-    disabled_accounts: number;
+    total_campaigns?: number;
+    active_campaigns?: number;
+    disabled_campaigns?: number;
+    total_accounts?: number;
+    active_accounts?: number;
+    disabled_accounts?: number;
     total_spend?: string | null;
     total_balance?: string | null;
     currency?: string | null;

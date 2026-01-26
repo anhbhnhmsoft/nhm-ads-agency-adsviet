@@ -20,6 +20,7 @@ class ServicePackage extends Model
         'open_fee',
         'top_up_fee',
         'supplier_fee_percent',
+        'supplier_id',
         'set_up_time',
         'disabled',
         'description',
@@ -48,5 +49,10 @@ class ServicePackage extends Model
     {
         return $this->belongsToMany(User::class, 'service_package_postpay_users', 'service_package_id', 'user_id')
             ->withTimestamps();
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 }

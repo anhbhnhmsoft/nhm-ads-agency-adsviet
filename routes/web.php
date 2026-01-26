@@ -21,6 +21,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\BusinessManagerController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ProfitController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -127,6 +128,16 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::put('/{id}', [ServicePackageController::class, 'update'])->name('service_packages_update');
         Route::delete('/{id}', [ServicePackageController::class, 'destroy'])->name('service_packages_destroy');
         Route::post('/{id}/toggle-disable', [ServicePackageController::class, 'toggleDisable'])->name('service_packages_toggle_disable');
+    });
+
+    Route::prefix('/suppliers')->group(function (){
+        Route::get('/', [SupplierController::class, 'index'])->name('suppliers_index');
+        Route::get('/create', [SupplierController::class, 'createView'])->name('suppliers_create_view');
+        Route::post('/create', [SupplierController::class, 'create'])->name('suppliers_create');
+        Route::get('/{id}/edit', [SupplierController::class, 'editView'])->name('suppliers_edit_view');
+        Route::put('/{id}', [SupplierController::class, 'update'])->name('suppliers_update');
+        Route::delete('/{id}', [SupplierController::class, 'destroy'])->name('suppliers_destroy');
+        Route::post('/{id}/toggle-disable', [SupplierController::class, 'toggleDisable'])->name('suppliers_toggle_disable');
     });
 
     Route::prefix('/service-purchase')->group(function (){

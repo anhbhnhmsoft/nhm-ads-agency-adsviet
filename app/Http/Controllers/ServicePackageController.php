@@ -12,6 +12,7 @@ use App\Core\QueryListDTO;
 use App\Http\Resources\ServicePackageListResource;
 use App\Http\Resources\ServicePackageResource;
 use App\Service\ServicePackageService;
+use App\Service\SupplierService;
 use App\Service\UserService;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class ServicePackageController extends Controller
 
     public function __construct(
         protected ServicePackageService $servicePackageService,
+        protected SupplierService $supplierService,
         protected UserService $userService,
     )
     {
@@ -63,6 +65,9 @@ class ServicePackageController extends Controller
         ]);
         $allUsers = $allUsersResult->isError() ? [] : $allUsersResult->getData();
 
+        $suppliersResult = $this->supplierService->getAllActiveSuppliers();
+        $suppliers = $suppliersResult->isError() ? [] : $suppliersResult->getData();
+
         return $this->rendering(
             view: 'service-package/create',
             data: [
@@ -71,6 +76,7 @@ class ServicePackageController extends Controller
                 'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
                 'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
                 'all_users' => $allUsers,
+                'suppliers' => $suppliers,
             ]
         );
     }
@@ -97,6 +103,7 @@ class ServicePackageController extends Controller
             'range_min_top_up' => ['required', 'numeric', 'min:0'],
             'top_up_fee' => ['required', 'numeric', 'min:0'],
             'supplier_fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'supplier_id' => ['nullable', 'string', 'exists:suppliers,id'],
             'set_up_time' => ['required', 'numeric', 'min:0'],
             'disabled' => ['required', 'boolean'],
             'postpay_user_ids' => ['nullable', 'array'],
@@ -166,6 +173,14 @@ class ServicePackageController extends Controller
         $form = $validator->validated();
         $form = $this->prepareMonthlySpendingData($form);
 
+        // Tự động lấy supplier_fee_percent từ supplier nếu có supplier_id
+        if (!empty($form['supplier_id'])) {
+            $supplierResult = $this->supplierService->getSupplierById($form['supplier_id']);
+            if ($supplierResult->isSuccess() && $supplier = $supplierResult->getData()) {
+                $form['supplier_fee_percent'] = $supplier->supplier_fee_percent ?? 0;
+            }
+        }
+
         $postpayUserIds = $request->input('postpay_user_ids', []);
         if (!is_array($postpayUserIds)) {
             $postpayUserIds = [];
@@ -218,6 +233,9 @@ class ServicePackageController extends Controller
         ]);
         $allUsers = $allUsersResult->isError() ? [] : $allUsersResult->getData();
 
+        $suppliersResult = $this->supplierService->getAllActiveSuppliers();
+        $suppliers = $suppliersResult->isError() ? [] : $suppliersResult->getData();
+
         return $this->rendering(
             view: 'service-package/edit',
             data: [
@@ -228,6 +246,7 @@ class ServicePackageController extends Controller
                 'service_package' => fn () => ServicePackageResource::make($result->getData())->toArray(request()),
                 'all_users' => $allUsers,
                 'postpay_user_ids' => $postpayUserIds,
+                'suppliers' => $suppliers,
             ]
         );
     }
@@ -323,6 +342,14 @@ class ServicePackageController extends Controller
         // Lấy dữ liệu đã validate
         $form = $validator->validated();
         $form = $this->prepareMonthlySpendingData($form);
+
+        // Tự động lấy supplier_fee_percent từ supplier nếu có supplier_id
+        if (!empty($form['supplier_id'])) {
+            $supplierResult = $this->supplierService->getSupplierById($form['supplier_id']);
+            if ($supplierResult->isSuccess() && $supplier = $supplierResult->getData()) {
+                $form['supplier_fee_percent'] = $supplier->supplier_fee_percent ?? 0;
+            }
+        }
 
         $postpayUserIds = $request->input('postpay_user_ids', []);
         if (!is_array($postpayUserIds)) {

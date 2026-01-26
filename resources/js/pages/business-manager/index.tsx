@@ -29,12 +29,22 @@ import {
     meta_update_campaign_spend_cap,
     google_ads_update_campaign_budget,
 } from '@/routes';
+type ChildManagerOption = {
+    id: string;
+    name: string;
+    parent_id: string;
+};
+
 type Props = {
     paginator: BusinessManagerPagination;
     stats?: BusinessManagerStats;
+    childManagers?: {
+        meta?: ChildManagerOption[];
+        google?: ChildManagerOption[];
+    };
 };
 
-const BusinessManagerIndex = ({ paginator, stats }: Props) => {
+const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
     const { t } = useTranslation();
     const [selectedBM] = useState<BusinessManagerItem | null>(null);
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -129,12 +139,12 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
             },
             {
                 accessorKey: 'platform',
-                header: t('business_manager.table.account_info', { defaultValue: 'Thông tin tài khoản' }),
+                header: t('business_manager.table.campaign_info', { defaultValue: 'Thông tin chiến dịch' }),
                 cell: ({ row }) => {
                     const platform = row.original.platform;
-                    const totalAccounts = row.original.total_accounts;
-                    const activeAccounts = row.original.active_accounts;
-                    const disabledAccounts = row.original.disabled_accounts;
+                    const totalCampaigns = row.original.total_campaigns ?? 0;
+                    const activeCampaigns = row.original.active_campaigns ?? 0;
+                    const disabledCampaigns = row.original.disabled_campaigns ?? 0;
 
                     return (
                         <div className="flex items-center gap-2">
@@ -149,9 +159,9 @@ const BusinessManagerIndex = ({ paginator, stats }: Props) => {
                                 </Avatar>
                             )}
                             <div className="text-sm">
-                                <div>{t('business_manager.table.total', { defaultValue: 'Tổng' })}: {totalAccounts}</div>
-                                <div className="text-green-600">Active: {activeAccounts}</div>
-                                <div className="text-red-600">Disabled: {disabledAccounts}</div>
+                                <div>{t('business_manager.table.total', { defaultValue: 'Tổng' })}: {totalCampaigns}</div>
+                                <div className="text-green-600">Active: {activeCampaigns}</div>
+                                <div className="text-red-600">Disabled: {disabledCampaigns}</div>
                             </div>
                         </div>
                     );

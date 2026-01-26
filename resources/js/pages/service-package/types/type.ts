@@ -26,6 +26,7 @@ export type CreateServicePackageForm = {
     range_min_top_up: string;
     top_up_fee: string;
     supplier_fee_percent?: string;
+    supplier_id?: string | null;
     set_up_time: string;
     disabled: boolean;
     monthly_spending_fee_structure: MonthlySpendingFeeItem[];
@@ -45,6 +46,7 @@ export type ServicePackageItem = {
     open_fee: string;
     top_up_fee: string;
     supplier_fee_percent?: string;
+    supplier_id?: string | null;
     set_up_time: number;
     disabled: boolean;
     description: string;
@@ -58,6 +60,14 @@ export type UserOption = {
     username: string;
     email: string;
     label: string;
+};
+
+export type SupplierOption = {
+    id: string;
+    name: string;
+    open_fee: string;
+    postpay_fee: string;
+    monthly_spending_fee_structure?: MonthlySpendingFeeItem[];
 };
 
 export type ServicePackageListQuery = BaseSearchRequest<{
