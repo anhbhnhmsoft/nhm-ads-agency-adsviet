@@ -20,7 +20,7 @@ import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { UserSelect } from '@/components/user-select';
-import { UserOption } from '@/pages/service-package/types/type';
+import { UserOption, SupplierOption } from '@/pages/service-package/types/type';
 
 type Props = {
     meta_features: ServicePackageOption[];
@@ -28,8 +28,9 @@ type Props = {
     service_package: ServicePackageItem;
     all_users?: UserOption[];
     postpay_user_ids?: string[];
+    suppliers?: SupplierOption[];
 };
-const Edit = ({ meta_features, google_features, service_package, all_users = [], postpay_user_ids = [] }: Props) => {
+const Edit = ({ meta_features, google_features, service_package, all_users = [], postpay_user_ids = [], suppliers = [] }: Props) => {
     const { t } = useTranslation();
     const { form, submit } = useFormEditServicePackage(service_package.id, service_package, postpay_user_ids);
 
@@ -264,6 +265,35 @@ const Edit = ({ meta_features, google_features, service_package, all_users = [],
                     )}
                 </div>
 
+                {/* Supplier */}
+                <div className="flex flex-col gap-2">
+                    <Label>{t('service_packages.supplier', { defaultValue: 'Nhà cung cấp' })}</Label>
+                    <Select
+                        value={data.supplier_id || undefined}
+                        onValueChange={(value) => {
+                            setData('supplier_id', value || null);
+                        }}
+                    >
+                        <SelectTrigger>
+                            <SelectValue
+                                placeholder={t('service_packages.supplier_placeholder', { defaultValue: 'Chọn nhà cung cấp' })}
+                            />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {suppliers.map((supplier) => (
+                                <SelectItem key={supplier.id} value={supplier.id}>
+                                    {supplier.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {errors.supplier_id && (
+                        <span className="text-sm text-red-500">
+                            {errors.supplier_id}
+                        </span>
+                    )}
+                </div>
+
                 {/* Monthly spending & fee structure */}
                 <div className="md:col-span-2 space-y-3 rounded-lg border p-4">
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -435,32 +465,6 @@ const Edit = ({ meta_features, google_features, service_package, all_users = [],
                     {errors.top_up_fee && (
                         <span className="text-sm text-red-500">
                             {errors.top_up_fee}
-                        </span>
-                    )}
-                </div>
-
-                {/* Supplier fee percent */}
-                <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.supplier_fee_percent', { defaultValue: 'Chi phí nhà cung cấp (%)' })}</Label>
-                    <Input
-                        value={data.supplier_fee_percent || '0'}
-                        placeholder={t('service_packages.supplier_fee_percent_placeholder', { defaultValue: '0' })}
-                        type="number"
-                        step={'1'}
-                        min="0"
-                        max="100"
-                        onChange={(e) => {
-                            setData('supplier_fee_percent', e.target.value);
-                        }}
-                    />
-                    <span className="text-sm text-slate-400">
-                        {t('service_packages.supplier_fee_percent_desc', { 
-                            defaultValue: 'Chi phí nhà cung cấp để tính lợi nhuận. Ví dụ: Giá bán 7%, chi phí nhà cung cấp 5% → Lợi nhuận 2%' 
-                        })}
-                    </span>
-                    {errors.supplier_fee_percent && (
-                        <span className="text-sm text-red-500">
-                            {errors.supplier_fee_percent}
                         </span>
                     )}
                 </div>

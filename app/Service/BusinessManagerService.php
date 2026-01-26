@@ -18,6 +18,8 @@ use App\Repositories\UserReferralRepository;
 use App\Core\Logging;
 use App\Repositories\MetaBusinessManagerRepository;
 use App\Repositories\GoogleMccManagerRepository;
+use App\Repositories\MetaAdsCampaignRepository;
+use App\Repositories\GoogleAdsCampaignRepository;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -35,7 +37,40 @@ class BusinessManagerService
         protected PlatformSettingRepository $platformSettingRepository,
         protected MetaBusinessManagerRepository $metaBusinessManagerRepository,
         protected GoogleMccManagerRepository $googleMccManagerRepository,
+        protected MetaAdsCampaignRepository $metaAdsCampaignRepository,
+        protected GoogleAdsCampaignRepository $googleAdsCampaignRepository,
     ) {
+    }
+
+    /**
+     * Lấy danh sách BM/MCC con
+     */
+    public function getChildManagersForFilter(): array
+    {
+        $metaChildren = $this->metaBusinessManagerRepository->query()
+            ->whereNotNull('parent_bm_id')
+            ->get(['bm_id', 'name', 'parent_bm_id'])
+            ->map(fn ($bm) => [
+                'id' => (string) $bm->bm_id,
+                'name' => $bm->name ?? (string) $bm->bm_id,
+                'parent_id' => (string) $bm->parent_bm_id,
+            ])
+            ->toArray();
+
+        $googleChildren = $this->googleMccManagerRepository->query()
+            ->whereNotNull('parent_mcc_id')
+            ->get(['mcc_id', 'name', 'parent_mcc_id'])
+            ->map(fn ($mcc) => [
+                'id' => (string) $mcc->mcc_id,
+                'name' => $mcc->name ?? (string) $mcc->mcc_id,
+                'parent_id' => (string) $mcc->parent_mcc_id,
+            ])
+            ->toArray();
+
+        return [
+            'meta' => $metaChildren,
+            'google' => $googleChildren,
+        ];
     }
 
     /**
@@ -89,6 +124,11 @@ class BusinessManagerService
             }
 
             $serviceUsers = $query->get();
+
+            // Filter theo BM/MCC con nếu có
+            $childManagerId = isset($filter['child_manager_id']) && $filter['child_manager_id'] !== ''
+                ? (string) $filter['child_manager_id']
+                : null;
 
             $bmNameMap = $this->metaBusinessManagerRepository->query()
                 ->pluck('name', 'bm_id')
@@ -204,6 +244,20 @@ class BusinessManagerService
                         $status = $account->account_status !== null ? (int) $account->account_status : null;
                         $isActive = $this->isAccountActive((int) $platform, $status);
 
+                        // Đếm số campaigns cho account này
+                        $totalCampaigns = $this->metaAdsCampaignRepository->query()
+                            ->where('meta_account_id', $account->id)
+                            ->count();
+                        // Active campaigns: status = 'ACTIVE' hoặc effective_status = 'ACTIVE'
+                        $activeCampaigns = $this->metaAdsCampaignRepository->query()
+                            ->where('meta_account_id', $account->id)
+                            ->where(function ($q) {
+                                $q->where('status', 'ACTIVE')
+                                  ->orWhere('effective_status', 'ACTIVE');
+                            })
+                            ->count();
+                        $disabledCampaigns = $totalCampaigns - $activeCampaigns;
+
                         $accountBmId = $account->business_manager_id ?? null;
                         $bmIdsForRow = $accountBmId ? [$accountBmId] : $bmIds;
                         $parentBmIdForRow = $accountBmId
@@ -226,9 +280,9 @@ class BusinessManagerService
                             'platform' => $platform,
                             'owner_name' => $ownerName,
                             'owner_id' => $serviceUser->user_id,
-                            'total_accounts' => 1,
-                            'active_accounts' => $isActive ? 1 : 0,
-                            'disabled_accounts' => $isActive ? 0 : 1,
+                            'total_campaigns' => $totalCampaigns,
+                            'active_campaigns' => $activeCampaigns,
+                            'disabled_campaigns' => $disabledCampaigns,
                             'total_spend' => $spendValue,
                             'total_balance' => $balanceValue,
                             'currency' => $account->currency ?? 'USD',
@@ -262,33 +316,49 @@ class BusinessManagerService
                         $status = $account->account_status !== null ? (int) $account->account_status : null;
                         $isActive = $this->isAccountActive((int) $platform, $status);
 
+                        // Đếm số campaigns cho account này
+                        $totalCampaigns = $this->googleAdsCampaignRepository->query()
+                            ->where('google_account_id', $account->id)
+                            ->count();
+                        // Active campaigns: status = 'ENABLED' hoặc effective_status = 'ENABLED'
+                        $activeCampaigns = $this->googleAdsCampaignRepository->query()
+                            ->where('google_account_id', $account->id)
+                            ->where(function ($q) {
+                                $q->where('status', 'ENABLED')
+                                  ->orWhere('effective_status', 'ENABLED');
+                            })
+                            ->count();
+                        $disabledCampaigns = $totalCampaigns - $activeCampaigns;
+
                         $mccDisplayName = null;
                         $customerManagerId = $account->customer_manager_id ?? null;
+                        $bmIdsForRow = $customerManagerId ? [$customerManagerId] : $bmIds;
+
                         if ($customerManagerId && isset($mccNameMap[$customerManagerId])) {
                             $mccDisplayName = $mccNameMap[$customerManagerId];
-                        } elseif (!empty($bmIds)) {
-                            $mccDisplayName = $this->resolveMccName($bmIds, $mccNameMap);
+                        } elseif (!empty($bmIdsForRow)) {
+                            $mccDisplayName = $this->resolveMccName($bmIdsForRow, $mccNameMap);
                         }
 
                         $parentMccId = $customerManagerId
                             ? ($mccParentMap[$customerManagerId] ?? null)
-                            : (isset($bmIds[0]) ? ($mccParentMap[$bmIds[0]] ?? null) : null);
+                            : (isset($bmIdsForRow[0]) ? ($mccParentMap[$bmIdsForRow[0]] ?? null) : null);
 
                         $accountsList[] = [
                             'id' => (string) $account->account_id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
-                            'bm_ids' => $bmIds,
+                            'bm_ids' => $bmIdsForRow,
                             'bm_name' => $mccDisplayName,
                             'parent_bm_id' => $parentMccId,
                             'name' => $account->account_name ?? $config['display_name'] ?? $ownerName,
                             'platform' => $platform,
                             'owner_name' => $ownerName,
                             'owner_id' => $serviceUser->user_id,
-                            'total_accounts' => 1,
-                            'active_accounts' => $isActive ? 1 : 0,
-                            'disabled_accounts' => $isActive ? 0 : 1,
+                            'total_campaigns' => $totalCampaigns,
+                            'active_campaigns' => $activeCampaigns,
+                            'disabled_campaigns' => $disabledCampaigns,
                             'total_spend' => $spendValue,
                             'total_balance' => $balanceValue,
                             'currency' => $account->currency ?? 'USD',
@@ -301,6 +371,15 @@ class BusinessManagerService
                 }
             }
 
+            // Filter theo BM/MCC con sau khi đã build danh sách account
+            if ($childManagerId) {
+                $accountsList = array_values(array_filter(
+                    $accountsList,
+                    fn ($item) =>
+                        in_array($childManagerId, $item['bm_ids'] ?? [], true)
+                ));
+            }
+
             $keyword = trim((string) ($filter['keyword'] ?? ''));
             if ($keyword !== '') {
                 $needle = mb_strtolower($keyword);
@@ -310,7 +389,9 @@ class BusinessManagerService
                         str_contains($this->normalizeSearchValue($item['account_name'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['account_id'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['owner_name'] ?? null), $needle)
+                        || str_contains($this->normalizeSearchValue($item['bm_name'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['bm_ids'] ?? null), $needle)
+                        || str_contains($this->normalizeSearchValue($item['parent_bm_id'] ?? null), $needle)
                 ));
             }
 

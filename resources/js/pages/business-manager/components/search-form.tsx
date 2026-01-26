@@ -16,14 +16,45 @@ import {
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { useMemo } from 'react';
+import { usePage } from '@inertiajs/react';
+import type { _PlatformType as PlatformTypeEnum } from '@/lib/types/constants';
+
+type ChildManagerOption = {
+    id: string;
+    name: string;
+    parent_id: string;
+};
+
+type PageProps = {
+    childManagers?: {
+        meta?: ChildManagerOption[];
+        google?: ChildManagerOption[];
+    };
+};
 
 const BusinessManagerSearchForm = () => {
     const { t } = useTranslation();
     const { query, setQuery, handleSearch } = useSearchBusinessManager();
+    const { props } = usePage<PageProps>();
+
+    const childManagers = props.childManagers;
 
     const platformValue = query.platform 
         ? query.platform.toString() 
         : undefined;
+
+    const platformChildOptions: ChildManagerOption[] = useMemo(() => {
+        if (!childManagers || !query.platform) {
+            return [];
+        }
+        if (query.platform === _PlatformType.META) {
+            return childManagers.meta ?? [];
+        }
+        if (query.platform === _PlatformType.GOOGLE) {
+            return childManagers.google ?? [];
+        }
+        return [];
+    }, [childManagers, query.platform]);
 
     const dateRange: DateRange | undefined = useMemo(() => {
         if (query.start_date && query.end_date) {
@@ -78,7 +109,8 @@ const BusinessManagerSearchForm = () => {
                             value={platformValue}
                             onValueChange={(value) => {
                                 setQuery({ 
-                                    platform: value ? (Number(value) as _PlatformType) : undefined
+                                    platform: value ? (Number(value) as PlatformTypeEnum) : undefined,
+                                    child_manager_id: undefined,
                                 });
                             }}
                         >
@@ -92,6 +124,37 @@ const BusinessManagerSearchForm = () => {
                                 <SelectItem value={_PlatformType.GOOGLE.toString()}>
                                     {t('enum.PlatformType.GOOGLE', { defaultValue: 'Google Ads' })}
                                 </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </Field>
+                    <Field>
+                        <FieldLabel htmlFor="child-manager">
+                            {t('business_manager.filter.child_manager', { defaultValue: 'BM/MCC con' })}
+                        </FieldLabel>
+                        <Select
+                            value={query.child_manager_id || undefined}
+                            onValueChange={(value) => {
+                                setQuery({
+                                    child_manager_id: value || undefined,
+                                });
+                            }}
+                            disabled={!query.platform || platformChildOptions.length === 0}
+                        >
+                            <SelectTrigger id="child-manager">
+                                <SelectValue
+                                    placeholder={
+                                        query.platform
+                                            ? t('business_manager.filter.child_manager_placeholder', { defaultValue: 'Chọn BM/MCC con' })
+                                            : t('business_manager.filter.child_manager_disabled', { defaultValue: 'Chọn nền tảng trước' })
+                                    }
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {platformChildOptions.map((item) => (
+                                    <SelectItem key={item.id} value={item.id}>
+                                        {item.name} ({item.id})
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </Field>

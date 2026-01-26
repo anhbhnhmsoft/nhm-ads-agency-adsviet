@@ -9,6 +9,7 @@ export const useSearchBusinessManager = () => {
         platform: undefined,
         start_date: undefined,
         end_date: undefined,
+        child_manager_id: undefined,
     });
 
     const handleSearch = () => {
