@@ -5,22 +5,27 @@ namespace App\Console\Commands;
 use App\Core\Logging;
 use App\Service\WalletNotificationService;
 use Illuminate\Console\Command;
+use App\Common\Constants\Config\ConfigName;
+use App\Service\ConfigService;
+
 
 class NotifyWalletLowBalance extends Command
 {
-    protected $signature = 'notifications:wallet-low-balance {--amount=100 : Ngưỡng cảnh báo theo USDT}';
+    protected $signature = 'notifications:wallet-low-balance';
 
     protected $description = 'Gửi thông báo Telegram cho khách có số dư ví thấp hơn ngưỡng đặt sẵn';
 
     public function __construct(
         protected WalletNotificationService $walletNotificationService,
+        protected ConfigService $configService,
     ) {
         parent::__construct();
     }
 
     public function handle(): int
     {
-        $threshold = (float) $this->option('amount');
+        // Lấy ngưỡng tạm dừng từ cấu hình
+        $threshold = (float) $this->configService->getValue(ConfigName::THRESHOLD_PAUSE, 100);
 
         $this->info(sprintf('Kiểm tra ví với ngưỡng %.2f USDT ...', $threshold));
         $result = $this->walletNotificationService->sendLowBalanceAlerts($threshold);

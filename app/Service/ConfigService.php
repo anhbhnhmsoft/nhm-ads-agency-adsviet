@@ -35,10 +35,10 @@ class ConfigService
         }
     }
 
-    public function getValue(string $key, mixed $default = null): mixed
+    public function getValue(ConfigName $key, mixed $default = null): mixed
     {
         try {
-            $config = $this->configRepository->findByKey($key);
+            $config = $this->configRepository->findByKey($key->value);
             return $config?->value ?? $default;
         } catch (QueryException $e) {
             Logging::error(
@@ -55,7 +55,7 @@ class ConfigService
             // Validate: chỉ cho phép update các key hợp lệ từ enum ConfigName
             $validKeys = array_column(ConfigName::cases(), 'value');
             $invalidKeys = array_diff(array_keys($data), $validKeys);
-            
+
             if (!empty($invalidKeys)) {
                 return ServiceReturn::error(message: __('Cấu hình không hợp lệ: :key', ['key' => implode(', ', $invalidKeys)]));
             }

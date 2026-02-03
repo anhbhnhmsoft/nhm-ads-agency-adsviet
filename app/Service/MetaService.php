@@ -730,7 +730,7 @@ class MetaService
 
         $bmId = null;
         $childBmId = $serviceUserConfig['child_bm_id'] ?? null;
-        
+
         if ($childBmId) {
             // Nếu có BM con được chọn, sử dụng BM con
             $bmId = $childBmId;
@@ -794,38 +794,38 @@ class MetaService
     /**
      * Đồng bộ danh sách BM con từ một BM gốc
      */
-private function syncBusinessManagers(string $parentBmId): void
-{
-    //Lấy thông tin BM gốc
-    // Fields hợp lệ: id, name, verification_status, primary_page
-    $parentInfo = $this->metaBusinessService->getBusinessById($parentBmId);
+    private function syncBusinessManagers(string $parentBmId): void
+    {
+        //Lấy thông tin BM gốc
+        // Fields hợp lệ: id, name, verification_status, primary_page
+        $parentInfo = $this->metaBusinessService->getBusinessById($parentBmId);
 
-    if ($parentInfo->isSuccess()) {
-        $data = $parentInfo->getData();
-        $primaryPage = $data['primary_page'] ?? null;
+        if ($parentInfo->isSuccess()) {
+            $data = $parentInfo->getData();
+            $primaryPage = $data['primary_page'] ?? null;
 
-        $this->metaBusinessManagerRepository->updateOrCreate(
-            ['bm_id' => $parentBmId],
-            [
-                'parent_bm_id' => null,
-                'name' => $data['name'] ?? 'N/A',
-                'primary_page_id' => $primaryPage['id'] ?? null,
-                'primary_page_name' => $primaryPage['name'] ?? null,
-                'verification_status' => $data['verification_status'] ?? null,
-                'is_primary' => true,
-                'last_synced_at' => now(),
-            ]
-        );
-    } else {
-        Logging::error('MetaService@syncBusinessManagers: cannot fetch parent BM info: ' . $parentInfo->getMessage());
+            $this->metaBusinessManagerRepository->updateOrCreate(
+                ['bm_id' => $parentBmId],
+                [
+                    'parent_bm_id' => null,
+                    'name' => $data['name'] ?? 'N/A',
+                    'primary_page_id' => $primaryPage['id'] ?? null,
+                    'primary_page_name' => $primaryPage['name'] ?? null,
+                    'verification_status' => $data['verification_status'] ?? null,
+                    'is_primary' => true,
+                    'last_synced_at' => now(),
+                ]
+            );
+        } else {
+            Logging::error('MetaService@syncBusinessManagers: cannot fetch parent BM info: ' . $parentInfo->getMessage());
+        }
+
+        // Đồng bộ BM con:
+        // - owned_businesses  -> type = 'owned'
+        // - clients (client BMs) -> type = 'client' để đi vào nhánh getClientBusinessesPaginated()
+        $this->syncBusinessManagersFromEdge($parentBmId, 'owned');
+        $this->syncBusinessManagersFromEdge($parentBmId, 'client');
     }
-
-    // Đồng bộ BM con:
-    // - owned_businesses  -> type = 'owned'
-    // - clients (client BMs) -> type = 'client' để đi vào nhánh getClientBusinessesPaginated()
-    $this->syncBusinessManagersFromEdge($parentBmId, 'owned');
-    $this->syncBusinessManagersFromEdge($parentBmId, 'client');
-}
 
     /**
      * Đồng bộ BM con từ một edge cụ thể

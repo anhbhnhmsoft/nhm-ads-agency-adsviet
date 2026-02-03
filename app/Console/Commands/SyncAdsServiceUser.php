@@ -30,7 +30,6 @@ class SyncAdsServiceUser extends Command
     {
         $totalFound = 0;
         $totalDispatched = 0;
-
         $this->serviceUserRepository->query()
             ->with(['package'])
             ->where('status', ServiceUserStatus::ACTIVE->value)

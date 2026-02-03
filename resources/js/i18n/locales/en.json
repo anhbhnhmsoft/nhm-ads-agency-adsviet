@@ -934,14 +934,16 @@
     }
   },
   "config": {
-    "title": "Wallet address configuration",
-    "description": "Configure wallet addresses to receive funds from crypto transactions",
-    "bep20_wallet_address": "BEP20 wallet address",
-    "trc20_wallet_address": "TRC20 wallet address",
-    "bep20_placeholder": "Enter Binance Smart Chain (BEP20) wallet address",
-    "trc20_placeholder": "Enter Tron (TRC20) wallet address",
-    "postpay_min_balance": "Minimum balance to register postpaid payment",
-    "postpay_min_balance_placeholder": "Enter minimum balance to register postpaid payment"
+      "title": "Wallet address configuration",
+      "description": "Configure wallet addresses to receive funds from crypto transactions",
+      "bep20_wallet_address": "BEP20 wallet address",
+      "trc20_wallet_address": "TRC20 wallet address",
+      "bep20_placeholder": "Enter Binance Smart Chain (BEP20) wallet address",
+      "trc20_placeholder": "Enter Tron (TRC20) wallet address",
+      "postpay_min_balance": "Minimum balance to register postpaid payment",
+      "postpay_min_balance_placeholder": "Enter minimum balance to register postpaid payment",
+      "threshold_pause": "Threshold pause (USD)",
+      "threshold_pause_placeholder": "Enter threshold pause (USD)"
   },
   "auth": {
     "components": {

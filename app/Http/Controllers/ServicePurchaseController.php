@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Common\Constants\Config\ConfigName;
 use App\Common\Helpers\TimezoneHelper;
 use App\Core\Controller;
 use App\Core\FlashMessage;
@@ -51,7 +52,7 @@ class ServicePurchaseController extends Controller
         $walletResult = $this->walletService->getWalletForUser((int) $user->id);
         $wallet = $walletResult->isSuccess() ? $walletResult->getData() : null;
         $walletBalance = $wallet ? (float) $wallet['balance'] : 0;
-        $postpayMinBalanceRaw = $this->configService->getValue(\App\Common\Constants\Config\ConfigName::POSTPAY_MIN_BALANCE->value, 200);
+        $postpayMinBalanceRaw = $this->configService->getValue(ConfigName::POSTPAY_MIN_BALANCE, 200);
         $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 200;
 
         // Nếu package có danh sách users được phép trả sau và user hiện tại có trong danh sách => true

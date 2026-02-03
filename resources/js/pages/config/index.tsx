@@ -106,7 +106,29 @@ const ConfigIndex = ({ configs }: Props) => {
                                         defaultValue: 'Nhập số dư tối thiểu để đăng ký thanh toán trả sau',
                                     })}
                                 />
-                                <InputError message={errors[`configs.${_ConfigName.TRC20_WALLET_ADDRESS}`]} />
+                                <InputError message={errors[`configs.${_ConfigName.POSTPAY_MIN_BALANCE}`]} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor={_ConfigName.THRESHOLD_PAUSE}>
+                                    {t(configNameLabel[_ConfigName.THRESHOLD_PAUSE], {
+                                        defaultValue: 'Ngưỡng cảnh báo (USD) để tạm dừng tài khoản',
+                                    })}
+                                </Label>
+                                <Input
+                                    id={_ConfigName.THRESHOLD_PAUSE}
+                                    value={data.configs[_ConfigName.THRESHOLD_PAUSE] || ''}
+                                    onChange={(e) =>
+                                        setData('configs', {
+                                            ...data.configs,
+                                            [_ConfigName.THRESHOLD_PAUSE]: e.target.value,
+                                        })
+                                    }
+                                    placeholder={t('config.threshold_pause_placeholder', {
+                                        defaultValue: 'Nhập ngưỡng cảnh báo (USD) để tạm dừng tài khoản',
+                                    })}
+                                />
+                                <InputError message={errors[`configs.${_ConfigName.THRESHOLD_PAUSE}`]} />
                             </div>
                         </div>
 

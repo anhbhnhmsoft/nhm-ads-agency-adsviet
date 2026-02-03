@@ -16,7 +16,7 @@ class ConfigController extends Controller
 
     public function getPostpayMinBalance(): \Illuminate\Http\JsonResponse
     {
-        $value = $this->configService->getValue(ConfigName::POSTPAY_MIN_BALANCE->value);
+        $value = $this->configService->getValue(ConfigName::POSTPAY_MIN_BALANCE);
         $postpayMinBalance = is_numeric($value) ? (float) $value : null;
 
         return RestResponse::success([

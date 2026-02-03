@@ -6,22 +6,27 @@ use App\Core\Logging;
 use App\Models\MetaAccount;
 use App\Service\MetaAdsNotificationService;
 use Illuminate\Console\Command;
+use App\Common\Constants\Config\ConfigName;
+use App\Service\ConfigService;
+
 
 class NotifyMetaAdsLowBalance extends Command
 {
-    protected $signature = 'notifications:meta-ads-low-balance {--amount=100 : Ngưỡng cảnh báo theo đơn vị tiền tệ của tài khoản}';
+    protected $signature = 'notifications:meta-ads-low-balance';
 
     protected $description = 'Gửi thông báo Telegram/Email cho khách có Meta Ads account cạn tiền';
 
     public function __construct(
         protected MetaAdsNotificationService $metaAdsNotificationService,
+        protected ConfigService $configService,
     ) {
         parent::__construct();
     }
 
     public function handle(): int
     {
-        $threshold = (float) $this->option('amount');
+        // Lấy ngưỡng tạm dừng từ cấu hình
+        $threshold = (float) $this->configService->getValue(ConfigName::THRESHOLD_PAUSE, 100);
 
         $this->info(sprintf('Kiểm tra Meta Ads accounts với ngưỡng %.2f ...', $threshold));
 
