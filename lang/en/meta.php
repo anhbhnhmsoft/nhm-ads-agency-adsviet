@@ -60,6 +60,7 @@ return [
     ],
     'telegram' => [
         'low_balance' => "⚠️ Meta Ads low balance alert\n\nAccount \":accountName\" only has :balance :currency (threshold :threshold :currency).\nPlease top up Meta Business to avoid interruptions.",
+        'spending_exceeded' => "⚠️ Meta Ads spending exceeded alert\n\nAccount \":accountName\" has spent :spending :currency (threshold :threshold :currency, limit :limit :currency).\nPlease top up Meta Business to avoid interruptions.",
     ],
 ];
 

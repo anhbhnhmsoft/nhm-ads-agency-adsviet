@@ -688,7 +688,7 @@ const Edit = ({ meta_features, google_features, service_package, all_users = [],
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
                         {t('service_packages.postpay_users_description', { 
-                            defaultValue: 'Chọn các người dùng được phép sử dụng hình thức trả sau cho gói dịch vụ này. Nếu không chọn ai, tất cả người dùng đều có thể trả sau.' 
+                            defaultValue: 'Chọn các người dùng được phép sử dụng hình thức trả sau cho gói dịch vụ này. Nếu không chọn ai, tất cả người dùng đều không thể trả sau.' 
                         })}
                     </p>
                 </div>

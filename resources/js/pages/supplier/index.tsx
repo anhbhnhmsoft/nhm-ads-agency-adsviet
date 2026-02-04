@@ -82,12 +82,27 @@ const Index = ({ paginator }: Props) => {
                 },
             },
             {
-                accessorKey: 'postpay_fee',
-                header: t('supplier.postpay_fee', { defaultValue: 'Chi phí nhà cung cấp (trả sau)' }),
+                id: 'payment_type',
+                header: t('supplier.payment_type', { defaultValue: 'Hình thức thanh toán' }),
                 cell: ({ row }) => {
-                    const raw = row.original.postpay_fee;
-                    const num = Number(raw);
-                    return Number.isFinite(num) ? num.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 8 }) + ' USDT' : raw;
+                    const { supplier_fee_percent, monthly_spending_fee_structure } = row.original;
+                    const percent = supplier_fee_percent !== undefined && supplier_fee_percent !== null
+                        ? Number(supplier_fee_percent)
+                        : 0;
+                    const hasPercent = Number.isFinite(percent) && percent > 0;
+                    const hasMonthly =
+                        Array.isArray(monthly_spending_fee_structure) &&
+                        monthly_spending_fee_structure.length > 0;
+
+                    const isPostpay = hasPercent && hasMonthly;
+
+                    return (
+                        <Badge variant={isPostpay ? 'default' : 'outline'}>
+                            {isPostpay
+                                ? t('supplier.payment_type_postpay', { defaultValue: 'Trả sau' })
+                                : t('supplier.payment_type_prepay', { defaultValue: 'Trả trước' })}
+                        </Badge>
+                    );
                 },
             },
             {

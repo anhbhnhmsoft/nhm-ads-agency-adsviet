@@ -339,6 +339,30 @@ class MetaBusinessService
     }
 
     /**
+     * Lấy danh sách agency/partner businesses từ một BM gốc (edge /{business-id}/agencies)
+     */
+    public function getAgencyBusinessesPaginated(string $bmId, int $limit = 25, ?string $after = null): ServiceReturn
+    {
+        try {
+            $this->initApi();
+            $endpoint = "/{$bmId}/agencies";
+            $params = [
+                'fields' => 'id,name,primary_page{id,name},verification_status,timezone_id,currency,vertical',
+                'limit' => $limit,
+            ];
+            if ($after) {
+                $params['after'] = $after;
+            }
+
+            $response = $this->api->call($endpoint, 'GET', $params)->getContent();
+
+            return ServiceReturn::success(data: $response);
+        } catch (Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
      * Lấy chi tiết ads account theo id (Lưu ý: id acount phải có act_ ở đầu)
      * @param string $accountId
      * @return ServiceReturn

@@ -823,8 +823,10 @@ class MetaService
         // Đồng bộ BM con:
         // - owned_businesses  -> type = 'owned'
         // - clients (client BMs) -> type = 'client' để đi vào nhánh getClientBusinessesPaginated()
+        // - agencies (agency/partner BMs) -> type = 'agency' để đi vào nhánh getAgencyBusinessesPaginated()
         $this->syncBusinessManagersFromEdge($parentBmId, 'owned');
         $this->syncBusinessManagersFromEdge($parentBmId, 'client');
+        $this->syncBusinessManagersFromEdge($parentBmId, 'agency');
     }
 
     /**
@@ -834,17 +836,23 @@ class MetaService
     {
         $after = null;
         do {
-            $result = $type === 'client'
-                ? $this->metaBusinessService->getClientBusinessesPaginated(
+            $result = match ($type) {
+                'client' => $this->metaBusinessService->getClientBusinessesPaginated(
                     bmId: $parentBmId,
                     limit: 100,
                     after: $after
-                )
-                : $this->metaBusinessService->getOwnedBusinessesPaginated(
+                ),
+                'agency' => $this->metaBusinessService->getAgencyBusinessesPaginated(
                     bmId: $parentBmId,
                     limit: 100,
                     after: $after
-                );
+                ),
+                default => $this->metaBusinessService->getOwnedBusinessesPaginated(
+                    bmId: $parentBmId,
+                    limit: 100,
+                    after: $after
+                ),
+            };
 
             if ($result->isError()) {
                 Logging::error('Error sync business managers from ' . $type . ' edge: ' . $result->getMessage(), [
