@@ -19,6 +19,7 @@ use App\Repositories\MetaAdsCampaignRepository;
 use App\Repositories\MetaBusinessManagerRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\WalletRepository;
+use App\Common\Constants\Config\ConfigName;
 use Carbon\Carbon;
 use FacebookAds\Object\Values\AdDatePresetValues;
 use Illuminate\Database\Eloquent\Collection;
@@ -40,6 +41,7 @@ class MetaService
         protected WalletRepository          $walletRepository,
         protected MetaAdsNotificationService $metaAdsNotificationService,
         protected MetaBusinessManagerRepository $metaBusinessManagerRepository,
+        protected ConfigService             $configService,
     )
     {
     }
@@ -351,9 +353,9 @@ class MetaService
                 if (in_array($userRole, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
                     // Cho phép resume
                 } elseif (in_array($userRole, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
-                    // Customer/Agency: Kiểm tra spending > balance + 100
+                    // Customer/Agency: Kiểm tra spending > balance + threshold (lấy từ config)
                     $balance = (float) ($metaAccount->balance ?? 0);
-                    $threshold = 100.0;
+                    $threshold = (float) $this->configService->getValue(ConfigName::THRESHOLD_PAUSE, 100);
 
                     // Lấy chi tiêu tích lũy (lifetime)
                     $lifetimeSpending = (float) ($metaAccount->amount_spent ?? 0);

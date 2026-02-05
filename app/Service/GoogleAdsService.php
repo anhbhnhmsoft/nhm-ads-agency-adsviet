@@ -35,6 +35,7 @@ use App\Common\Constants\Google\GoogleCampaignStatus;
 use Google\Ads\GoogleAds\V22\Resources\CampaignBudget;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Repositories\GoogleAdsAccountInsightRepository;
+use App\Common\Constants\Config\ConfigName;
 use Google\Ads\GoogleAds\Lib\V22\GoogleAdsClientBuilder;
 use Google\Ads\GoogleAds\V22\Services\CampaignOperation;
 use Google\Ads\GoogleAds\V22\Services\MutateCampaignsRequest;
@@ -66,6 +67,7 @@ class GoogleAdsService
         protected WalletRepository $walletRepository,
         protected PlatformSettingService $platformSettingService,
         protected GoogleAdsNotificationService $googleAdsNotificationService,
+        protected ConfigService $configService,
     ) {
     }
 
@@ -2367,9 +2369,9 @@ GAQL;
                 if (in_array($userRole, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
                     // Cho phép cập nhập trạng thái của campaign
                 } elseif (in_array($userRole, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
-                    // Customer/Agency: Kiểm tra spending > balance + 100
+                    // Customer/Agency: Kiểm tra spending > balance + threshold (lấy từ config)
                     $balance = (float) ($googleAccount->balance ?? 0);
-                    $threshold = 100.0;
+                    $threshold = (float) $this->configService->getValue(ConfigName::THRESHOLD_PAUSE, 100);
 
                     // Lấy chi tiêu tích lũy từ database
                     $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(
