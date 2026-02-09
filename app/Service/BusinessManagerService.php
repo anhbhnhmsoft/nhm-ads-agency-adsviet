@@ -396,6 +396,7 @@ class BusinessManagerService
             }
 
             // Tính lại thống kê sau khi filter
+            // Stats phải đếm số lượng accounts trong danh sách, không phải tổng campaigns
             $stats = [
                 'total_accounts' => 0,
                 'active_accounts' => 0,
@@ -416,14 +417,26 @@ class BusinessManagerService
 
             foreach ($accountsList as $accountItem) {
                 $platform = $accountItem['platform'] ?? null;
-                $stats['total_accounts'] += $accountItem['total_accounts'] ?? 0;
-                $stats['active_accounts'] += $accountItem['active_accounts'] ?? 0;
-                $stats['disabled_accounts'] += $accountItem['disabled_accounts'] ?? 0;
+                if ($platform === null) {
+                    continue;
+                }
 
-                if ($platform !== null && isset($stats['by_platform'][$platform])) {
-                    $stats['by_platform'][$platform]['total_accounts'] += $accountItem['total_accounts'] ?? 0;
-                    $stats['by_platform'][$platform]['active_accounts'] += $accountItem['active_accounts'] ?? 0;
-                    $stats['by_platform'][$platform]['disabled_accounts'] += $accountItem['disabled_accounts'] ?? 0;
+                $status = $this->getAccountStatusByPlatform(
+                    (int) $platform,
+                    $accountItem['account_id'] ?? null
+                );
+
+                $isActive = $this->isAccountActive((int) $platform, $status);
+
+                // Tổng theo tất cả platform
+                $stats['total_accounts']++;
+                $key = $isActive ? 'active_accounts' : 'disabled_accounts';
+                $stats[$key]++;
+
+                // Tổng theo từng platform
+                if (isset($stats['by_platform'][$platform])) {
+                    $stats['by_platform'][$platform]['total_accounts']++;
+                    $stats['by_platform'][$platform][$key]++;
                 }
             }
 
@@ -476,6 +489,26 @@ class BusinessManagerService
         }
 
         return false;
+    }
+
+    /**
+     * Lấy status của account theo từng platform
+     */
+    private function getAccountStatusByPlatform(int $platform, ?string $accountId): ?int
+    {
+        if (!$accountId) {
+            return null;
+        }
+
+        return match ($platform) {
+            PlatformType::META->value => $this->metaAccountRepository->query()
+                ->where('account_id', $accountId)
+                ->value('account_status'),
+            PlatformType::GOOGLE->value => $this->googleAccountRepository->query()
+                ->where('account_id', $accountId)
+                ->value('account_status'),
+            default => null,
+        };
     }
 
     /**
@@ -725,6 +758,7 @@ class BusinessManagerService
                 // Tìm accounts có service_user_id = null (chưa được gán cho user nào)
                 $googleAccounts = $this->googleAccountRepository->query()
                     ->whereNull('service_user_id')
+                    ->where('customer_manager_id', $mccId)
                     ->get();
 
                 foreach ($googleAccounts as $account) {

@@ -769,27 +769,319 @@ class MetaService
     /**
      * Đồng bộ tài khoản quảng cáo trực tiếp từ một Business Manager ID
      */
-    public function syncFromBusinessManagerId(string $bmId): ServiceReturn
+    /**lấy bm gốc + Accounts của BM gốc
+     * BM con và insights/campaigns sẽ sync trong queue
+     */
+    public function syncFromBusinessManagerIdBasic(string $bmId): ServiceReturn
     {
         try {
             // Reset API để đảm bảo sử dụng config mới nhất khi sync
             $this->metaBusinessService->resetApi();
 
-            // Đồng bộ BM con trước
-            $this->syncBusinessManagers($bmId);
+            // CHỈ đồng bộ BM gốc
+            $parentInfo = $this->metaBusinessService->getBusinessById($bmId);
+            if ($parentInfo->isSuccess()) {
+                $data = $parentInfo->getData();
+                $primaryPage = $data['primary_page'] ?? null;
+                $this->metaBusinessManagerRepository->updateOrCreate(
+                    ['bm_id' => $bmId],
+                    [
+                        'parent_bm_id' => null,
+                        'name' => $data['name'] ?? 'N/A',
+                        'primary_page_id' => $primaryPage['id'] ?? null,
+                        'primary_page_name' => $primaryPage['name'] ?? null,
+                        'verification_status' => $data['verification_status'] ?? null,
+                        'is_primary' => true,
+                        'last_synced_at' => now(),
+                    ]
+                );
+            } else {
+                Logging::error('MetaService@syncFromBusinessManagerIdBasic: cannot fetch parent BM info: ' . $parentInfo->getMessage());
+            }
 
-            // Đồng bộ owned_ad_accounts
+            // đồng bộ account ads dưới BM gốc (owned + client)
+            $this->syncMetaAccountsFromManagerEdge($bmId, 'owner', maxAccounts: 20);
+            sleep(1); // 1 giây delay giữa các edge
+            $this->syncMetaAccountsFromManagerEdge($bmId, 'client', maxAccounts: 20);
+            return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'MetaService@syncFromBusinessManagerIdBasic error: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Đồng bộ đầy đủ: BM con + Accounts của BM con + Insights + Campaigns
+     */
+    public function syncInsightsAndCampaignsForBusinessManager(string $bmId): ServiceReturn
+    {
+        try {
+            //Đồng bộ BM con (owned + client + agency)
+            $this->syncBusinessManagersFromEdge($bmId, 'owned');
+            sleep(2);
+            $this->syncBusinessManagersFromEdge($bmId, 'client');
+            sleep(2);
+            $this->syncBusinessManagersFromEdge($bmId, 'agency');
+
+            // Đồng bộ TẤT CẢ accounts của BM gốc
             $this->syncMetaAccountsFromManagerEdge($bmId, 'owner');
-            // Đồng bộ client_ad_accounts (được share vào BM)
+            sleep(1);
             $this->syncMetaAccountsFromManagerEdge($bmId, 'client');
 
+            // Đồng bộ accounts cho TẤT CẢ BM con
+            $childBusinessManagers = $this->metaBusinessManagerRepository->query()
+                ->where('parent_bm_id', $bmId)
+                ->get();
+
+            $bmIdsForSync = [$bmId];
+            foreach ($childBusinessManagers as $childBm) {
+                $childBmId = (string) $childBm->bm_id;
+                if (!$childBmId) {
+                    continue;
+                }
+                $bmIdsForSync[] = $childBmId;
+
+                // Đồng bộ owned_ad_accounts của BM con
+                $this->syncMetaAccountsFromManagerEdge($childBmId, 'owner');
+                sleep(1);
+                // Đồng bộ client_ad_accounts (tài khoản được share vào BM con)
+                $this->syncMetaAccountsFromManagerEdge($childBmId, 'client');
+                sleep(1);
+            }
+
+            // Đồng bộ campaign & insights cho các tài khoản này
+            $this->syncInsightsAndCampaignsForBusinessManagers($bmIdsForSync);
+
             return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'MetaService@syncInsightsAndCampaignsForBusinessManager error: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Đồng bộ đầy đủ: BM + Accounts + Insights + Campaigns
+     */
+    public function syncFromBusinessManagerId(string $bmId): ServiceReturn
+    {
+        try {
+            $basicSync = $this->syncFromBusinessManagerIdBasic($bmId);
+            if ($basicSync->isError()) {
+                return $basicSync;
+            }
+
+            // Sync insights/campaigns
+            return $this->syncInsightsAndCampaignsForBusinessManager($bmId);
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'MetaService@syncFromBusinessManagerId error: ' . $e->getMessage(),
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Đồng bộ insights & campaign cho các tài khoản quảng cáo
+     * thuộc một danh sách Business Manager (gốc + BM con).
+     */
+    private function isPermissionError(string $errorMessage): bool
+    {
+        $permissionErrorKeywords = [
+            'NOT grant ads_management',
+            'NOT grant ads_read',
+            'permission',
+            'ads_management',
+            'ads_read',
+        ];
+        
+        foreach ($permissionErrorKeywords as $keyword) {
+            if (stripos($errorMessage, $keyword) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Log thông tin account thiếu quyền vào file riêng để dễ kiểm tra
+     */
+    private function logAccountPermissionIssue(object $metaAccount, string $errorType, string $errorMessage): void
+    {
+        $logData = [
+            'timestamp' => now()->toDateTimeString(),
+            'account_id' => $metaAccount->account_id,
+            'account_name' => $metaAccount->account_name,
+            'business_manager_id' => $metaAccount->business_manager_id,
+            'error_type' => $errorType,
+            'error_message' => $errorMessage,
+            'action_required' => "Cần cấp quyền ads_management hoặc ads_read cho account {$metaAccount->account_id} ({$metaAccount->account_name}) trong Business Manager {$metaAccount->business_manager_id}",
+        ];
+
+        $logPath = storage_path('logs/meta-permission-issues.log');
+        $logLine = json_encode($logData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n" . str_repeat('-', 80) . "\n";
+        file_put_contents($logPath, $logLine, FILE_APPEND);
+
+        Logging::web(
+            "Meta Account Permission Issue: Account {$metaAccount->account_id} ({$metaAccount->account_name}) " .
+            "thuộc BM {$metaAccount->business_manager_id} thiếu quyền ads_management/ads_read cho {$errorType}",
+            $logData
+        );
+    }
+
+    private function syncInsightsAndCampaignsForBusinessManagers(array $bmIds): void
+    {
+        $uniqueBmIds = array_values(array_unique(array_filter($bmIds)));
+        if (empty($uniqueBmIds)) {
+            return;
+        }
+
+        $accountsWithPermissionIssues = [];
+
+        $this->metaAccountRepository->query()
+            ->whereIn('business_manager_id', $uniqueBmIds)
+            ->chunkById(50, function (Collection $metaAccounts) use (&$accountsWithPermissionIssues) {
+                foreach ($metaAccounts as $metaAccount) {
+                    $accountHasPermissionIssue = false;
+
+                    $insightResult = $this->metaBusinessService->getAccountDailyInsights(
+                        accountId: $metaAccount->account_id,
+                    );
+                    if ($insightResult->isSuccess()) {
+                        $insights = $insightResult->getData()['data'] ?? [];
+                        foreach ($insights as $insight) {
+                            try {
+                                $roas = $this->getRoas($insight);
+                                $this->metaAdsAccountInsightRepository->query()->updateOrCreate(
+                                    [
+                                        'service_user_id' => $metaAccount->service_user_id,
+                                        'meta_account_id' => $metaAccount->id,
+                                        'date' => $insight['date_start'],
+                                    ],
+                                    [
+                                        'spend' => $insight['spend'] ?? null,
+                                        'impressions' => $insight['impressions'] ?? null,
+                                        'reach' => $insight['reach'] ?? null,
+                                        'frequency' => $insight['frequency'] ?? null,
+                                        'clicks' => $insight['clicks'] ?? null,
+                                        'inline_link_clicks' => $insight['inline_link_clicks'] ?? null,
+                                        'ctr' => $insight['ctr'] ?? null,
+                                        'cpc' => $insight['cpc'] ?? null,
+                                        'cpm' => $insight['cpm'] ?? null,
+                                        'actions' => $insight['actions'] ?? null,
+                                        'purchase_roas' => $roas ?? null,
+                                        'last_synced_at' => now(),
+                                    ]
+                                );
+                            } catch (\Exception $exception) {
+                                if (!$this->isPermissionError($exception->getMessage())) {
+                                    Logging::error('Error sync business-manager ads account insight: ' . $exception->getMessage());
+                                }
+                            }
+                        }
+                    } else {
+                        $errorMessage = $insightResult->getMessage();
+                        if ($this->isPermissionError($errorMessage)) {
+                            $this->logAccountPermissionIssue($metaAccount, 'insights', $errorMessage);
+                            $accountHasPermissionIssue = true;
+                            continue;
+                        } else {
+                            Logging::error('Error sync business-manager ads account insight: ' . $errorMessage);
+                        }
+                    }
+
+                    if ($accountHasPermissionIssue) {
+                        continue;
+                    }
+
+                    $after = null;
+                    $campaignResult = $this->metaBusinessService->getCampaignsPaginated(
+                        accountId: $metaAccount->account_id,
+                        limit: 100,
+                        after: $after
+                    );
+                    if ($campaignResult->isSuccess()) {
+                        $data = $campaignResult->getData();
+                        $campaigns = $data['data'] ?? [];
+                        foreach ($campaigns as $campaignData) {
+                            try {
+                                $this->metaAdsCampaignRepository->query()->updateOrCreate(
+                                    [
+                                        'campaign_id' => $campaignData['id'],
+                                        'service_user_id' => $metaAccount->service_user_id,
+                                        'meta_account_id' => $metaAccount->id,
+                                    ],
+                                    [
+                                        'name' => $campaignData['name'],
+                                        'status' => $campaignData['status'],
+                                        'effective_status' => $campaignData['effective_status'],
+                                        'objective' => $campaignData['objective'],
+                                        'daily_budget' => $campaignData['daily_budget'] ?? null,
+                                        'budget_remaining' => $campaignData['budget_remaining'] ?? null,
+                                        'created_time' => ($campaignData['created_time'] ?? null) ? Carbon::parse($campaignData['created_time']) : null,
+                                        'start_time' => ($campaignData['start_time'] ?? null) ? Carbon::parse($campaignData['start_time']) : null,
+                                        'stop_time' => ($campaignData['stop_time'] ?? null) ? Carbon::parse($campaignData['stop_time']) : null,
+                                        'last_synced_at' => now(),
+                                    ]
+                                );
+                            } catch (\Exception $e) {
+                                if (!$this->isPermissionError($e->getMessage())) {
+                                    Logging::error('Error sync business-manager ads campaign: ' . $e->getMessage());
+                                }
+                            }
+                        }
+                    } else {
+                        $errorMessage = $campaignResult->getMessage();
+                        if ($this->isPermissionError($errorMessage)) {
+                            $this->logAccountPermissionIssue($metaAccount, 'campaigns', $errorMessage);
+                            $accountsWithPermissionIssues[] = [
+                                'account_id' => $metaAccount->account_id,
+                                'account_name' => $metaAccount->account_name,
+                                'business_manager_id' => $metaAccount->business_manager_id,
+                            ];
+                        } else {
+                            Logging::error('Error sync business-manager ads campaign: ' . $errorMessage);
+                        }
+                    }
+                }
+            });
+
+        if (!empty($accountsWithPermissionIssues)) {
+            $uniqueAccounts = [];
+            foreach ($accountsWithPermissionIssues as $account) {
+                $key = $account['account_id'];
+                if (!isset($uniqueAccounts[$key])) {
+                    $uniqueAccounts[$key] = $account;
+                }
+            }
+
+            $summary = [
+                'timestamp' => now()->toDateTimeString(),
+                'total_accounts_with_permission_issues' => count($uniqueAccounts),
+                'accounts' => array_values($uniqueAccounts),
+                'summary_message' => "Tổng cộng có " . count($uniqueAccounts) . " account thiếu quyền ads_management/ads_read. " .
+                    "Vui lòng kiểm tra file meta-permission-issues.log để xem chi tiết từng account và cấp quyền trên Meta Business Manager.",
+            ];
+
+            $logPath = storage_path('logs/meta-permission-issues.log');
+            $summaryLine = "\n" . str_repeat('=', 80) . "\n";
+            $summaryLine .= "TỔNG HỢP ACCOUNT THIẾU QUYỀN\n";
+            $summaryLine .= str_repeat('=', 80) . "\n";
+            $summaryLine .= json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n";
+            $summaryLine .= str_repeat('=', 80) . "\n\n";
+            file_put_contents($logPath, $summaryLine, FILE_APPEND);
+
+            Logging::web(
+                "Meta Sync Permission Issues Summary: " . count($uniqueAccounts) . " accounts thiếu quyền",
+                $summary
+            );
         }
     }
 
@@ -889,19 +1181,56 @@ class MetaService
                 } catch (\Exception $e) {
                     Logging::error('Error sync business manager: ' . $e->getMessage());
                 }
+                
+                // Delay giữa các BM để tránh rate limit
+                usleep(500000); // 0.5 giây delay giữa các BM
             }
 
             $after = $data['paging']['cursors']['after'] ?? null;
+            if ($after) {
+                sleep(1);
+            }
         } while ($after);
     }
 
     /**
      * Đồng bộ tài khoản quảng cáo từ một edge cụ thể
+     * @param string $bmId
+     * @param string $type 'owner' hoặc 'client'
+     * @param int|null $maxAccounts Giới hạn số lượng accounts sync (null = không giới hạn, dùng trong queue)
      */
-    private function syncMetaAccountsFromManagerEdge(string $bmId, string $type = 'owner'): void
+    private function syncMetaAccountsFromManagerEdge(string $bmId, string $type = 'owner', ?int $maxAccounts = null): void
     {
         $after = null;
-        do {
+        $syncedCount = 0;
+        $rateLimitHit = false;
+
+        // Lặp qua từng trang account dưới BM (owned hoặc client)
+        while (true) {
+            if ($maxAccounts !== null && $syncedCount >= $maxAccounts) {
+                Logging::web('MetaService@syncMetaAccountsFromManagerEdge: Reached max accounts limit', [
+                    'bm_id'        => $bmId,
+                    'type'         => $type,
+                    'max_accounts' => $maxAccounts,
+                    'synced_count' => $syncedCount,
+                ]);
+                break;
+            }
+
+            // Nếu đã bị rate limit thì dừng luôn, tránh spam API
+            if ($rateLimitHit) {
+                Logging::error(
+                    message: 'MetaService@syncMetaAccountsFromManagerEdge: Rate limit hit, stopping sync',
+                    context: [
+                        'bm_id'        => $bmId,
+                        'type'         => $type,
+                        'synced_count' => $syncedCount,
+                    ],
+                );
+                break;
+            }
+
+            // Gọi API lấy 1 page danh sách tài khoản theo edge (owner/client)
             $result = $type === 'client'
                 ? $this->metaBusinessService->getClientAdsAccountPaginated(
                     bmId: $bmId,
@@ -919,7 +1248,7 @@ class MetaService
                 return;
             }
 
-            $data = $result->getData();
+            $data     = $result->getData();
             $accounts = $data['data'] ?? [];
 
             foreach ($accounts as $adsAccountData) {
@@ -929,48 +1258,51 @@ class MetaService
                 }
                 $detail = $detailResponse->getData();
 
-                try {
-                    // Tìm account hiện tại để kiểm tra service_user_id
-                    $existingAccount = $this->metaAccountRepository->query()
-                        ->where('account_id', $detail['id'])
-                        ->first();
+        try {
+            // Tìm account hiện tại để kiểm tra service_user_id
+            $existingAccount = $this->metaAccountRepository->query()
+                ->where('account_id', $detail['id'])
+                ->first();
 
-                    // Chỉ set service_user_id = null nếu account chưa được gán cho service_user nào
-                    // Nếu đã có service_user_id, giữ nguyên để không ghi đè dữ liệu của user
-                    $updateData = [
-                        'account_name' => $detail['name'],
-                        'account_status' => $detail['account_status'],
-                        'disable_reason' => $detail['disable_reason'] ?? null,
-                        'spend_cap' => $detail['spend_cap'],
-                        'amount_spent' => $detail['amount_spent'],
-                        'balance' => $detail['balance'],
-                        'currency' => $detail['currency'],
-                        'created_time' => $detail['created_time'] ? Carbon::parse($detail['created_time']) : null,
-                        'is_prepay_account' => (bool)$detail['is_prepay_account'],
-                        'timezone_id' => $detail['timezone_id'],
-                        'timezone_name' => $detail['timezone_name'],
-                        'last_synced_at' => now(),
-                    ];
+            $oldBusinessManagerId = $existingAccount ? $existingAccount->business_manager_id : null;
 
-                    // Chỉ set service_user_id = null nếu account chưa có service_user_id
-                    if (!$existingAccount || !$existingAccount->service_user_id) {
-                        $updateData['service_user_id'] = null;
-                    }
-                    $updateData['business_manager_id'] = $bmId;
+            $updateData = [
+                'account_name'       => $detail['name'],
+                'account_status'     => $detail['account_status'],
+                'disable_reason'     => $detail['disable_reason'] ?? null,
+                'spend_cap'          => $detail['spend_cap'],
+                'amount_spent'       => $detail['amount_spent'],
+                'balance'            => $detail['balance'],
+                'currency'           => $detail['currency'],
+                'created_time'       => $detail['created_time'] ? Carbon::parse($detail['created_time']) : null,
+                'is_prepay_account'  => (bool) $detail['is_prepay_account'],
+                'timezone_id'        => $detail['timezone_id'],
+                'timezone_name'      => $detail['timezone_name'],
+                'last_synced_at'     => now(),
+                'business_manager_id'=> $bmId,
+            ];
 
-                    $this->metaAccountRepository->query()->updateOrCreate(
-                        [
-                            'account_id' => $detail['id'],
-                        ],
-                        $updateData
-                    );
-                } catch (\Exception $e) {
-                    Logging::error('Error sync manager ads account: ' . $e->getMessage());
-                }
+            // Nếu account chưa gán cho service_user nào, đảm bảo service_user_id = null
+            if (!$existingAccount || !$existingAccount->service_user_id) {
+                $updateData['service_user_id'] = null;
             }
 
-            $after = $data['paging']['cursors']['after'] ?? null;
-        } while ($after);
+            $this->metaAccountRepository->query()->updateOrCreate(
+                [
+                    'account_id' => $detail['id'],
+                ],
+                $updateData
+            );
+
+            $syncedCount++;
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'Error sync manager ads account',
+                exception: $e
+            );
+            }
+        }
+    }
     }
 
     /**

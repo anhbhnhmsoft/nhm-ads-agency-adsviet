@@ -137,36 +137,6 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
                     );
                 },
             },
-            {
-                accessorKey: 'platform',
-                header: t('business_manager.table.campaign_info', { defaultValue: 'Thông tin chiến dịch' }),
-                cell: ({ row }) => {
-                    const platform = row.original.platform;
-                    const totalCampaigns = row.original.total_campaigns ?? 0;
-                    const activeCampaigns = row.original.active_campaigns ?? 0;
-                    const disabledCampaigns = row.original.disabled_campaigns ?? 0;
-
-                    return (
-                        <div className="flex items-center gap-2">
-                            {platform === _PlatformType.GOOGLE && (
-                                <Avatar className="h-6 w-6">
-                                    <AvatarImage src={GoogleIcon} />
-                                </Avatar>
-                            )}
-                            {platform === _PlatformType.META && (
-                                <Avatar className="h-6 w-6">
-                                    <AvatarImage src={FacebookIcon} />
-                                </Avatar>
-                            )}
-                            <div className="text-sm">
-                                <div>{t('business_manager.table.total', { defaultValue: 'Tổng' })}: {totalCampaigns}</div>
-                                <div className="text-green-600">Active: {activeCampaigns}</div>
-                                <div className="text-red-600">Disabled: {disabledCampaigns}</div>
-                            </div>
-                        </div>
-                    );
-                },
-            },
             
             {
                 accessorKey: 'total_spend',

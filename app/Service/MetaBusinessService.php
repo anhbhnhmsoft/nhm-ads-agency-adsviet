@@ -232,7 +232,7 @@ class MetaBusinessService
      * Lấy MỘT TRANG danh sách ads account thuộc business (BM OWNED)
      * Sử dụng edge /{business_id}/owned_ad_accounts theo đúng Graph API.
      */
-    public function getOwnerAdsAccountPaginated(string $bmId, int $limit = 25, ?string $after = null, ?string $before = null): ServiceReturn
+    public function getOwnerAdsAccountPaginated(string $bmId, int $limit = 100, ?string $after = null, ?string $before = null): ServiceReturn
     {
         try {
             $this->initApi();
@@ -265,7 +265,7 @@ class MetaBusinessService
     /**
      * Lấy MỘT TRANG danh sách ads account mà business được share (client_ad_accounts)
      */
-    public function getClientAdsAccountPaginated(string $bmId, int $limit = 25, ?string $after = null, ?string $before = null): ServiceReturn
+    public function getClientAdsAccountPaginated(string $bmId, int $limit = 100, ?string $after = null, ?string $before = null): ServiceReturn
     {
         try {
             $this->initApi();
@@ -292,7 +292,7 @@ class MetaBusinessService
     /**
      * Lấy danh sách BM con (owned businesses) từ một BM gốc
      */
-    public function getOwnedBusinessesPaginated(string $bmId, int $limit = 25, ?string $after = null): ServiceReturn
+    public function getOwnedBusinessesPaginated(string $bmId, int $limit = 100, ?string $after = null): ServiceReturn
     {
         try {
             $this->initApi();
@@ -316,7 +316,7 @@ class MetaBusinessService
     /**
      * Lấy danh sách BM con (client businesses) từ một BM gốc
      */
-    public function getClientBusinessesPaginated(string $bmId, int $limit = 25, ?string $after = null): ServiceReturn
+    public function getClientBusinessesPaginated(string $bmId, int $limit = 100, ?string $after = null): ServiceReturn
     {
         try {
             $this->initApi();
@@ -341,7 +341,7 @@ class MetaBusinessService
     /**
      * Lấy danh sách agency/partner businesses từ một BM gốc (edge /{business-id}/agencies)
      */
-    public function getAgencyBusinessesPaginated(string $bmId, int $limit = 25, ?string $after = null): ServiceReturn
+    public function getAgencyBusinessesPaginated(string $bmId, int $limit = 100, ?string $after = null): ServiceReturn
     {
         try {
             $this->initApi();
