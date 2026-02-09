@@ -21,6 +21,7 @@ use App\Repositories\WalletRepository;
 use App\Service\UserAlertService;
 use App\Service\MailService;
 use App\Jobs\MetaApi\SyncMetaJob;
+use App\Jobs\MetaApi\SyncMetaPlatformJob;
 use App\Jobs\GoogleAds\SyncGoogleServiceUserJob;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -284,7 +285,7 @@ class ServiceUserService
     public function updateConfigAccount(string $id, array $config): ServiceReturn
     {
         try {
-            $serviceUser = $this->serviceUserRepository->find($id);
+            $serviceUser = $this->serviceUserRepository->query()->with('package')->find($id);
             if (!$serviceUser) {
                 return ServiceReturn::error(message: __('common_error.not_found'));
             }
@@ -313,6 +314,56 @@ class ServiceUserService
                 ], fn($value) => $value !== null));
             }
             $serviceUser->save();
+
+            // Nếu là Meta, trigger sync để cập nhật business_manager_id trong meta_accounts
+            // Sync cả khi có bm_id trong config hoặc có accounts với bm_ids
+            if ($serviceUser->package && $serviceUser->package->platform === PlatformType::META->value) {
+                $bmId = $serviceUser->config_account['bm_id'] ?? null;
+                $hasAccountsWithBmIds = false;
+                
+                // Kiểm tra xem có accounts với bm_ids không
+                if (isset($serviceUser->config_account['accounts']) && is_array($serviceUser->config_account['accounts'])) {
+                    foreach ($serviceUser->config_account['accounts'] as $account) {
+                        if (isset($account['bm_ids']) && !empty($account['bm_ids'])) {
+                            $hasAccountsWithBmIds = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Dispatch sync nếu có bm_id hoặc có accounts với bm_ids
+                if ($bmId || $hasAccountsWithBmIds) {
+                    $serviceUser->refresh();
+                    
+                    try {
+                        if ($bmId) {
+                            SyncMetaPlatformJob::dispatch($bmId);
+                        } else {
+                            // Nếu chỉ có accounts với bm_ids, dispatch SyncMetaJob
+                            SyncMetaJob::dispatch($serviceUser);
+                        }
+                    } catch (\Throwable $dispatchError) {
+                        Logging::error('ServiceUserService@updateConfigAccount: Failed to dispatch Meta sync job', [
+                            'service_user_id' => $id,
+                            'error' => $dispatchError->getMessage(),
+                            'trace' => $dispatchError->getTraceAsString(),
+                        ]);
+                    }
+                } else {
+                    Logging::error('ServiceUserService@updateConfigAccount: NOT triggering Meta sync', [
+                        'service_user_id' => $id,
+                        'config_account' => $serviceUser->config_account,
+                    ]);
+                }
+            } else {
+                Logging::web(
+                    'ServiceUserService@updateConfigAccount: NOT Meta platform, skipping sync',
+                    [
+                        'service_user_id' => $id,
+                        'platform' => $serviceUser->package->platform ?? null,
+                    ]
+                );
+            }
 
             return ServiceReturn::success(data: $serviceUser);
         } catch (\Throwable $e) {

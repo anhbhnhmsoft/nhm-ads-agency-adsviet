@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Common\Constants\Platform\PlatformSettingFields;
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\QueueKey\QueueKey;
 use App\Common\Constants\User\UserRole;
 use App\Core\FlashMessage;
 use App\Core\Controller;
@@ -19,7 +20,6 @@ use App\Http\Resources\PlatformSettingListResource;
 use App\Jobs\GoogleAds\SyncGooglePlatformJob;
 use App\Jobs\MetaApi\SyncMetaPlatformJob;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use App\Core\Logging;
 
 class PlatformSettingController extends Controller
@@ -133,16 +133,40 @@ class PlatformSettingController extends Controller
                 $loginCustomerId = $config['login_customer_id'] ?? null;
                 if ($loginCustomerId) {
                     SyncGooglePlatformJob::dispatch((string) $loginCustomerId);
+                } else {
+                    Logging::web(
+                        'PlatformSettingController@syncPlatformAccounts: No login_customer_id, skipping Google sync'
+                    );
                 }
             } elseif ($platform === PlatformType::META->value) {
                 $bmId = $config['business_manager_id'] ?? null;
                 if ($bmId) {
-                    SyncMetaPlatformJob::dispatch((string) $bmId);
+                    $basicSyncResult = $this->metaService->syncFromBusinessManagerIdBasic((string) $bmId);
+                    
+                    if ($basicSyncResult->isSuccess()) {
+                        SyncMetaPlatformJob::dispatch((string) $bmId);
+                    } else {
+                        Logging::error(
+                            message: 'PlatformSettingController@syncPlatformAccounts: Basic Meta sync failed',
+                            context: [
+                                'bm_id' => $bmId,
+                                'error' => $basicSyncResult->getMessage(),
+                            ]
+                        );
+                    }
+                } else {
+                    Logging::web(
+                        'PlatformSettingController@syncPlatformAccounts: No business_manager_id, skipping Meta sync'
+                    );
                 }
             }
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'PlatformSettingController@syncPlatformAccounts error: ' . $e->getMessage(),
+                context: [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ],
                 exception: $e
             );
         }

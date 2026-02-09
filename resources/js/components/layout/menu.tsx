@@ -8,6 +8,7 @@ import {
     service_packages_index,
     suppliers_index,
     suppliers_create_view,
+    commissions_index,
     user_list,
     user_list_employee,
     config_index,
@@ -46,6 +47,7 @@ import {
     Phone,
     TrendingUp,
     Building2,
+    Percent,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -313,6 +315,22 @@ const useMenu = () => {
                     isActive(suppliers_index()) ||
                     isActive(suppliers_create_view()),
                 can_show: checkRole([_UserRole.ADMIN]),
+            },
+            {
+                title: t('menu.commissions', { defaultValue: 'Hoa hồng' }),
+                url: commissions_index().url,
+                icon: <Percent />,
+                is_menu: true,
+                active: isActive(commissions_index()),
+                can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER]),
+            },
+            {
+                title: t('menu.commissions_report', { defaultValue: 'Báo cáo hoa hồng' }),
+                url: '/commissions-report',
+                icon: <TrendingUp />,
+                is_menu: true,
+                active: isActive('/commissions-report'),
+                can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER]),
             },
             {
                 title: t('menu.business_managers', { defaultValue: 'Quản lý BM/MCC' }),

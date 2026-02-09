@@ -5,6 +5,7 @@ namespace App\Service;
 use Carbon\Carbon;
 use App\Core\Logging;
 use App\Common\Helper;
+use Illuminate\Support\Facades\Log;
 use App\Core\QueryListDTO;
 use App\Core\Cache\Caching;
 use App\Core\ServiceReturn;
@@ -948,15 +949,16 @@ GAQL;
                     $startTime = Carbon::parse($startDate);
                 }
             } catch (\Exception $e) {
-                // Log để debug nhưng không throw error
-                \Illuminate\Support\Facades\Log::info(
-                    'GoogleAdsService@persistCampaignRow: Could not parse start_date',
-                    [
+                // Ghi log debug nhưng không throw error
+                Logging::error(
+                    message: 'GoogleAdsService@persistCampaignRow: Could not parse start_date',
+                    context: [
                         'campaign_id' => $campaignId,
                         'start_date' => $startDate,
                         'start_date_type' => gettype($startDate),
                         'error' => $e->getMessage(),
-                    ]
+                    ],
+                    exception: $e
                 );
             }
         }
@@ -970,14 +972,15 @@ GAQL;
                     $stopTime = Carbon::parse($endDate);
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::info(
-                    'GoogleAdsService@persistCampaignRow: Could not parse end_date',
-                    [
+                Logging::error(
+                    message: 'GoogleAdsService@persistCampaignRow: Could not parse end_date',
+                    context: [
                         'campaign_id' => $campaignId,
                         'end_date' => $endDate,
                         'end_date_type' => gettype($endDate),
                         'error' => $e->getMessage(),
-                    ]
+                    ],
+                    exception: $e
                 );
             }
         }
@@ -1499,12 +1502,24 @@ GAQL;
     public function syncFromManagerId(string $managerId): ServiceReturn
     {
         try {
+            Logging::web('GoogleAdsService@syncFromManagerId: START', [
+                'manager_id' => $managerId,
+            ]);
+
             $client = $this->buildGoogleAdsClient($managerId);
             $googleAdsService = $client->getGoogleAdsServiceClient();
 
+            Logging::web('GoogleAdsService@syncFromManagerId: Syncing MCC managers', [
+                'manager_id' => $managerId,
+            ]);
             $this->syncMccManagers($googleAdsService, $managerId);
+            Logging::web('GoogleAdsService@syncFromManagerId: MCC managers synced', [
+                'manager_id' => $managerId,
+            ]);
 
             // Query customer_client để lấy tất cả các sub-accounts được quản lý bởi manager
+            // LƯU Ý: Chỉ loại bỏ CANCELED, sync tất cả các status khác (ENABLED, SUSPENDED, CLOSED, etc.)
+            // Điều này đảm bảo tất cả accounts hiển thị trên Google Ads đều được sync vào hệ thống
             $query = <<<GAQL
 SELECT
   customer_client.client_customer,
@@ -1539,12 +1554,27 @@ GAQL;
                         continue;
                     }
 
-                    $mappedStatus = $this->mapStatusToInt($customerClient->getStatus());
+                    $rawStatus = $customerClient->getStatus();
+                    $mappedStatus = $this->mapStatusToInt($rawStatus);
 
                     // Lấy balance từ API
-                    $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $managerId);
-                    $balance = $balanceData['balance'] ?? null;
-                    $balanceExhausted = $balanceData['exhausted'] ?? false;
+                    $balance = null;
+                    $balanceExhausted = false;
+                    try {
+                        $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $managerId);
+                        $balance = $balanceData['balance'] ?? null;
+                        $balanceExhausted = $balanceData['exhausted'] ?? false;
+                    } catch (\Throwable $balanceError) {
+                        Logging::error(
+                            message: 'GoogleAdsService@syncFromManagerId: Failed to get account balance, but will still sync account',
+                            context: [
+                                'manager_id' => $managerId,
+                                'account_id' => $accountId,
+                                'error' => $balanceError->getMessage(),
+                            ],
+                            exception: $balanceError
+                        );
+                    }
 
                     // Tìm account hiện tại để kiểm tra service_user_id
                     $existingAccount = $this->googleAccountRepository->query()
@@ -1586,6 +1616,9 @@ GAQL;
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'GoogleAdsService@syncFromManagerId error: ' . $e->getMessage(),
+                context: [
+                    'manager_id' => $managerId,
+                ],
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));

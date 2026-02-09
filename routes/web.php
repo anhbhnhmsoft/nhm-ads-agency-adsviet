@@ -22,6 +22,8 @@ use App\Http\Controllers\BusinessManagerController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ProfitController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\CommissionReportController;
+use App\Http\Controllers\CommissionController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -138,6 +140,20 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::put('/{id}', [SupplierController::class, 'update'])->name('suppliers_update');
         Route::delete('/{id}', [SupplierController::class, 'destroy'])->name('suppliers_destroy');
         Route::post('/{id}/toggle-disable', [SupplierController::class, 'toggleDisable'])->name('suppliers_toggle_disable');
+    });
+
+    Route::prefix('/commissions')->group(function (){
+        Route::get('/', [CommissionController::class, 'index'])->name('commissions_index');
+        Route::get('/create', [CommissionController::class, 'createView'])->name('commissions_create_view');
+        Route::post('/create', [CommissionController::class, 'create'])->name('commissions_create');
+        Route::get('/{id}/edit', [CommissionController::class, 'editView'])->name('commissions_edit_view');
+        Route::put('/{id}', [CommissionController::class, 'update'])->name('commissions_update');
+        Route::delete('/{id}', [CommissionController::class, 'destroy'])->name('commissions_destroy');
+    });
+
+    Route::prefix('/commissions-report')->group(function () {
+        Route::get('/', [CommissionReportController::class, 'index'])->name('commissions_report_index');
+        Route::post('/mark-paid', [CommissionReportController::class, 'markAsPaid'])->name('commissions_report_mark_paid');
     });
 
     Route::prefix('/service-purchase')->group(function (){

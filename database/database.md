@@ -519,3 +519,40 @@
     - description (varchar, nullable) -- mô tả cấu hình
     - softDeletes
     - timestamps
+
+# bảng employee_commissions
+    # note
+    - lưu cấu hình hoa hồng cho từng nhân viên (employee)
+    - dùng cho nhiều loại hoa hồng: dịch vụ, spending, ...
+    # cấu trúc
+    - id (string, primary key) -- mã cấu hình hoa hồng (UUID)
+    - employee_id (string, index) -- id nhân viên (users.id)
+    - type (string, index) -- loại hoa hồng (service, spending, ...)
+    - rate (decimal(8, 4), default 0) -- % hoa hồng
+    - min_amount (decimal(15, 2), nullable) -- ngưỡng min (nếu null hiểu là không giới hạn)
+    - max_amount (decimal(15, 2), nullable) -- ngưỡng max (nếu null hiểu là không giới hạn)
+    - is_active (boolean, default true) -- đang áp dụng hay không
+    - description (text, nullable) -- mô tả thêm
+    - timestamps
+    - softDeletes
+
+# bảng commission_transactions
+    # note
+    - lưu các dòng phát sinh hoa hồng theo từng nhân viên / khách hàng
+    - dùng cho màn báo cáo hoa hồng và chốt lương cuối kỳ
+    # cấu trúc
+    - id (string, primary key) -- mã giao dịch hoa hồng (UUID)
+    - employee_id (string, index) -- id nhân viên nhận hoa hồng
+    - customer_id (string, nullable, index) -- id khách hàng (nếu có)
+    - type (string, index) -- loại hoa hồng (service, spending, ...)
+    - reference_type (string, nullable) -- loại đối tượng tham chiếu (service_order, meta_account, ...)
+    - reference_id (string, nullable, index) -- id đối tượng tham chiếu (service_order_id, meta_account_id, ...)
+    - base_amount (decimal(15, 2)) -- số tiền gốc để tính hoa hồng
+    - commission_rate (decimal(8, 4)) -- % hoa hồng áp dụng
+    - commission_amount (decimal(15, 2)) -- số tiền hoa hồng thực nhận
+    - period (string, nullable, index) -- kỳ tính lương (vd: 2026-01)
+    - is_paid (boolean, default false, index) -- đã thanh toán cho nhân viên hay chưa
+    - paid_at (date, nullable) -- ngày chốt lương / thanh toán
+    - notes (text, nullable) -- ghi chú thêm
+    - timestamps
+    - softDeletes
