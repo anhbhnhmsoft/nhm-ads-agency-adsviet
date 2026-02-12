@@ -78,8 +78,15 @@ class ServicePurchaseService
                     );
                 }
 
-                $openFeePayable = $isPrepay ? $openFee : 0; // Trả sau không thu phí mở tài khoản upfront
-                // Tổng tiền phải trừ ví = (phí mở nếu trả trước) + số tiền top-up + phí dịch vụ top-up
+                $accountsCount = 1;
+                if (isset($configAccount['accounts']) && is_array($configAccount['accounts']) && count($configAccount['accounts']) > 0) {
+                    $accountsCount = count($configAccount['accounts']);
+                }
+
+                // Phí mở tài khoản được tính theo số tài khoản nếu trả trước; trả sau không thu upfront
+                $openFeePayable = $isPrepay ? $openFee * $accountsCount : 0;
+
+                // Tổng tiền phải trừ ví = (phí mở nếu trả trước * số tài khoản) + số tiền top-up + phí dịch vụ top-up
                 $totalCost = $openFeePayable + $topUpAmount + $serviceFee;
 
                 $wallet = $this->walletRepository->findByUserId($userId);

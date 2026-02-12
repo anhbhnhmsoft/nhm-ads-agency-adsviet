@@ -41,6 +41,7 @@ class CommissionTransactionResource extends JsonResource
             'is_paid' => (bool) $this->is_paid,
             'paid_at' => $this->paid_at?->toDateString(),
             'notes' => $this->notes,
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

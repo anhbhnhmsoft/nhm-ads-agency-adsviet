@@ -29,12 +29,14 @@ class BusinessManagerController extends Controller
     public function index(Request $request): \Inertia\Response
     {
         $params = $this->extractQueryPagination($request);
+        $filter = $params->get('filter') ?? [];
+        $filter['view'] = 'bm';
 
         $result = $this->businessManagerService->getListBusinessManagers(
             new QueryListDTO(
                 perPage: $params->get('per_page'),
                 page: $params->get('page'),
-                filter: $params->get('filter'),
+                filter: $filter,
                 sortBy: $params->get('sort_by'),
                 sortDirection: $params->get('direction'),
             )

@@ -250,12 +250,18 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         return null;
     };
 
-    // Calculate total cost: open fee + top-up + service fee
-    const calculateTotalCost = (pkg: ServicePackage, topUpAmountStr: string, paymentType: 'prepay' | 'postpay') => {
+    // Calculate total cost: open fee (theo số tài khoản) + top-up + service fee
+    const calculateTotalCost = (
+        pkg: ServicePackage,
+        topUpAmountStr: string,
+        paymentType: 'prepay' | 'postpay',
+        accountsCount: number,
+    ) => {
         const isPrepay = paymentType === 'prepay';
         const topUpNum = isPrepay ? parseCurrencyInput(topUpAmountStr) : 0;
         const openFee = parseFloat(pkg.open_fee);
-        const chargeOpenFee = isPrepay ? openFee : 0; // Trả sau không thu phí mở tài khoản upfront
+        const normalizedAccountsCount = Number.isFinite(accountsCount) && accountsCount > 0 ? accountsCount : 1;
+        const chargeOpenFee = isPrepay ? openFee * normalizedAccountsCount : 0; // Trả sau không thu phí mở tài khoản upfront
         const serviceFee = topUpNum > 0 ? calculateServiceFee(topUpNum, pkg.top_up_fee) : 0;
         const totalCost = chargeOpenFee + topUpNum + serviceFee;
         return { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum };
@@ -293,7 +299,15 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         const isPrepay = paymentType === 'prepay';
         const sanitizedTopUp = isPrepay ? normalizeCurrencyInput(topUpAmount) : '';
         const payloadTopUp = sanitizedTopUp ? sanitizedTopUp : '0';
-        const { totalCost } = calculateTotalCost(selectedPackage, topUpAmount, paymentType);
+        const accountsCountForFee = accounts.length > 0 ? accounts.length : 1;
+        const filteredAccounts = accounts.filter(
+            (acc) =>
+                acc.meta_email ||
+                acc.display_name ||
+                (acc.bm_ids && acc.bm_ids.some((id) => id != null && String(id).trim() !== '')),
+        );
+
+        const { totalCost } = calculateTotalCost(selectedPackage, topUpAmount, paymentType, accountsCountForFee);
 
         if (wallet_balance < totalCost) {
             alert(t('service_purchase.insufficient_balance'));
@@ -307,9 +321,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
         const payloadBudget = '0';
 
-        const hasAccounts = accounts.some(
-            acc => acc.meta_email || acc.display_name || (acc.bm_ids && acc.bm_ids.length > 0)
-        );
+        const hasAccounts = filteredAccounts.length > 0;
 
         const bmMccConfig = {
             bm_id: bm_id || undefined,
@@ -328,7 +340,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             purchaseForm.data.timezone_bm,
             payloadBudget,
             bmMccConfig,
-            hasAccounts ? accounts : undefined,
+            hasAccounts ? filteredAccounts : undefined,
             () => {
                 setSelectedPackage(null);
                 setShowCalculator(false);
@@ -482,7 +494,15 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
         const platformInfo = getPlatformInfo(selectedPackage.platform);
         const topUpError = touchedFields.topUpAmount && topUpAmount ? validateTopUpAmount(topUpAmount) : null;
-        const { serviceFee, totalCost, chargeOpenFee, topUpNum } = calculateTotalCost(selectedPackage, topUpAmount, paymentType);
+
+        const previewAccountsCount = accounts.length > 0 ? accounts.length : 1;
+
+        const { serviceFee, totalCost, chargeOpenFee, topUpNum } = calculateTotalCost(
+            selectedPackage,
+            topUpAmount,
+            paymentType,
+            previewAccountsCount,
+        );
         const minTopUpAmount = Number(selectedPackage.range_min_top_up || '0');
         const hasInsufficientBalance = wallet_balance < totalCost;
         const showAccountInfo =

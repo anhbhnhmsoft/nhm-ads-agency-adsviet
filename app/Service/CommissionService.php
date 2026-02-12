@@ -208,6 +208,7 @@ class CommissionService
                 'base_amount' => $serviceAmount,
                 'commission_rate' => $commissionConfig->rate,
                 'commission_amount' => $commissionAmount,
+                'period' => now()->format('Y-m'),
             ]);
 
             return ServiceReturn::success(data: $transaction);
@@ -290,13 +291,76 @@ class CommissionService
                 'base_amount' => $spendingAmount,
                 'commission_rate' => $commissionConfig->rate,
                 'commission_amount' => $commissionAmount,
-                'period' => $period,
+            'period' => $period,
             ]);
 
             return ServiceReturn::success(data: $transaction);
         } catch (\Exception $exception) {
             Logging::error(
                 message: 'CommissionService@calculateSpendingCommission error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Tính hoa hồng bán account (theo phí mở tài khoản * số tài khoản)
+     */
+    public function calculateAccountCommission(string $serviceUserId, int $accountsCount, float $openFee): ServiceReturn
+    {
+        try {
+            if ($accountsCount <= 0 || $openFee <= 0) {
+                return ServiceReturn::success();
+            }
+
+            $serviceUser = $this->serviceUserRepository->query()
+                ->with(['user', 'package'])
+                ->find($serviceUserId);
+            if (!$serviceUser) {
+                return ServiceReturn::error(message: 'Service user not found');
+            }
+
+            $customerId = $serviceUser->user_id;
+            $packageId  = $serviceUser->package_id;
+
+            if (!$packageId) {
+                return ServiceReturn::success();
+            }
+
+            $employeeId = $this->getEmployeeIdForCustomer($customerId);
+            if (!$employeeId) {
+                return ServiceReturn::success();
+            }
+
+            // Lấy cấu hình hoa hồng bán account từ package
+            $commissionConfig = $this->employeeCommissionRepository->getActiveCommissionByPackageAndType(
+                $packageId,
+                EmployeeCommission::TYPE_ACCOUNT
+            );
+            if (!$commissionConfig) {
+                return ServiceReturn::success();
+            }
+
+            $baseAmount       = $openFee * $accountsCount;
+            $commissionAmount = $baseAmount * ($commissionConfig->rate / 100);
+
+            $transaction = $this->commissionTransactionRepository->create([
+                'employee_id'        => $employeeId,
+                'customer_id'        => $customerId,
+                'type'               => EmployeeCommission::TYPE_ACCOUNT,
+                'reference_type'     => 'ServiceUser',
+                'reference_id'       => $serviceUserId,
+                'base_amount'        => $baseAmount,
+                'commission_rate'    => $commissionConfig->rate,
+                'commission_amount'  => $commissionAmount,
+            'period'             => now()->format('Y-m'),
+            ]);
+
+            return ServiceReturn::success(data: $transaction);
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'CommissionService@calculateAccountCommission error: ' . $exception->getMessage(),
                 exception: $exception
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
@@ -326,6 +390,32 @@ class CommissionService
         } catch (\Exception $exception) {
             Logging::error(
                 message: 'CommissionService@getCommissionReport error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Tổng hợp hoa hồng theo nhân viên/quản lý
+     */
+    public function getCommissionSummaryByEmployee(array $filter = []): ServiceReturn
+    {
+        try {
+            $query = $this->commissionTransactionRepository->filterQuery(
+                $this->commissionTransactionRepository->query()->with('employee'),
+                $filter
+            );
+
+            $summary = $query
+                ->selectRaw('employee_id, SUM(base_amount::numeric) as total_base_amount, SUM(commission_amount::numeric) as total_commission_amount')
+                ->groupBy('employee_id')
+                ->get();
+
+            return ServiceReturn::success(data: $summary);
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'CommissionService@getCommissionSummaryByEmployee error: ' . $exception->getMessage(),
                 exception: $exception
             );
             return ServiceReturn::error(message: __('common_error.server_error'));

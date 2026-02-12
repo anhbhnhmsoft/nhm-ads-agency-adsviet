@@ -68,9 +68,11 @@ export type CommissionTransactionItem = {
     is_paid: boolean;
     paid_at?: string;
     notes?: string;
+    created_at?: string;
 };
 
 export type CommissionReportQuery = BaseSearchRequest<{
+    keyword?: string;
     employee_id?: string;
     customer_id?: string;
     type?: CommissionType;
@@ -81,4 +83,15 @@ export type CommissionReportQuery = BaseSearchRequest<{
 }>;
 
 export type CommissionReportPagination = LaravelPaginator<CommissionTransactionItem>;
+
+export type CommissionSummaryItem = {
+    employee_id: string;
+    employee?: {
+        id: string;
+        name: string;
+        username: string;
+    } | null;
+    total_base_amount: string;
+    total_commission_amount: string;
+};
 

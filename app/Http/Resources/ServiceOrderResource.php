@@ -23,30 +23,29 @@ class ServiceOrderResource extends JsonResource
         $referral = $user?->referredBy?->referrer;
 
         // Tính tổng chi phí
-        $totalCost = 0.0;
-        $config = $this->config_account ?? [];
+        $totalCost   = 0.0;
+        $config      = $this->config_account ?? [];
         $paymentType = strtolower($config['payment_type'] ?? 'prepay');
-        $topUpAmount = 0.0;
-        $serviceFee = 0.0;
-        
-        if (isset($config['top_up_amount'])) {
-            $topUpAmount = (float) $config['top_up_amount'];
+        $topUpAmount = isset($config['top_up_amount']) ? (float) $config['top_up_amount'] : 0.0;
+        $serviceFee  = 0.0;
+
+        $openFee          = (float) ($package?->open_fee ?? 0);
+        $topUpFeePercent  = (float) ($package?->top_up_fee ?? 0);
+        $isPostpay        = $paymentType === 'postpay';
+
+        $accountsCount = 1;
+        if (isset($config['accounts']) && is_array($config['accounts']) && count($config['accounts']) > 0) {
+            $accountsCount = count($config['accounts']);
         }
-        
-        $openFee = (float) ($package?->open_fee ?? 0);
-        $topUpFeePercent = (float) ($package?->top_up_fee ?? 0);
-        
-        $isPostpay = $paymentType === 'postpay';
-        
+
+        // Phí mở tài khoản thực tế = open_fee * số tài khoản (nếu trả trước)
+        $openFeePayable = $isPostpay ? 0.0 : ($openFee * $accountsCount);
+
         if ($topUpAmount > 0) {
             $serviceFee = $topUpAmount * $topUpFeePercent / 100;
-            if ($isPostpay) {
-                $totalCost = $topUpAmount + $serviceFee;
-            } else {
-                $totalCost = $openFee + $topUpAmount + $serviceFee;
-            }
-        } else if (!$isPostpay) {
-            $totalCost = $openFee;
+            $totalCost  = $openFeePayable + $topUpAmount + $serviceFee;
+        } elseif (!$isPostpay) {
+            $totalCost = $openFeePayable;
         }
 
         return [

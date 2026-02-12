@@ -80,6 +80,7 @@ class BusinessManagerService
     {
         try {
             $filter = $queryListDTO->filter ?? [];
+            $viewMode = $filter['view'] ?? 'bm';
 
             // Xác định date range từ filter
             $dateStart = null;
@@ -269,7 +270,7 @@ class BusinessManagerService
                             : $this->resolveBmName($bmIdsForRow, $bmNameMap);
 
                         $accountsList[] = [
-                            'id' => (string) $account->account_id,
+                            'id' => (string) $account->id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
@@ -345,7 +346,7 @@ class BusinessManagerService
                             : (isset($bmIdsForRow[0]) ? ($mccParentMap[$bmIdsForRow[0]] ?? null) : null);
 
                         $accountsList[] = [
-                            'id' => (string) $account->account_id,
+                            'id' => (string) $account->id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
@@ -440,7 +441,58 @@ class BusinessManagerService
                 }
             }
 
-            $bmArray = array_values($accountsList);
+            if ($viewMode === 'bm') {
+                $bmMap = [];
+                foreach ($accountsList as $item) {
+                    $bmIds = $item['bm_ids'] ?? [];
+                    $primaryBmId = $bmIds[0] ?? $item['parent_bm_id'] ?? $item['account_id'] ?? $item['id'];
+                    if (!$primaryBmId) {
+                        continue;
+                    }
+
+                    $platform = $item['platform'] ?? null;
+                    if ($platform === null) {
+                        continue;
+                    }
+
+                    $key = $platform . '-' . $primaryBmId;
+
+                    $spendNum = isset($item['total_spend']) ? (float) $item['total_spend'] : 0.0;
+                    $balanceNum = isset($item['total_balance']) ? (float) $item['total_balance'] : 0.0;
+
+                    if (!isset($bmMap[$key])) {
+                        $bmMap[$key] = [
+                            'id' => $key,
+                            'account_id' => null,
+                            'account_name' => null,
+                            'bm_ids' => [$primaryBmId],
+                            'bm_name' => $item['bm_name'] ?? $item['name'] ?? $primaryBmId,
+                            'name' => $item['bm_name'] ?? $item['name'] ?? $primaryBmId,
+                            'platform' => $platform,
+                            'service_user_id' => $item['service_user_id'] ?? null,
+                            'owner_name' => $item['owner_name'] ?? null,
+                            'owner_id' => $item['owner_id'] ?? null,
+                            'total_accounts' => 1,
+                            'total_spend' => (string) $spendNum,
+                            'total_balance' => (string) $balanceNum,
+                            'currency' => $item['currency'] ?? 'USD',
+                            'parent_bm_id' => $item['parent_bm_id'] ?? null,
+                            'accounts' => $item['accounts'] ?? [],
+                            'child_bm_id' => $item['child_bm_id'] ?? null,
+                        ];
+                    } else {
+                        $bmMap[$key]['total_accounts'] = ($bmMap[$key]['total_accounts'] ?? 0) + 1;
+                        $currentSpend = isset($bmMap[$key]['total_spend']) ? (float) $bmMap[$key]['total_spend'] : 0.0;
+                        $currentBalance = isset($bmMap[$key]['total_balance']) ? (float) $bmMap[$key]['total_balance'] : 0.0;
+                        $bmMap[$key]['total_spend'] = (string) ($currentSpend + $spendNum);
+                        $bmMap[$key]['total_balance'] = (string) ($currentBalance + $balanceNum);
+                    }
+                }
+
+                $bmArray = array_values($bmMap);
+            } else {
+                $bmArray = array_values($accountsList);
+            }
 
             $perPage = $queryListDTO->perPage ?? 10;
             $page = $queryListDTO->page ?? 1;
@@ -726,7 +778,7 @@ class BusinessManagerService
                     $isActive = $this->isAccountActive((int) $platform, $status);
 
                         $accountsList[] = [
-                        'id' => (string) $account->account_id,
+                        'id' => (string) $account->id,
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
                         'service_user_id' => null,
@@ -782,7 +834,7 @@ class BusinessManagerService
                     $parentMccId = $mccParentMap[$mccId] ?? null;
 
                     $accountsList[] = [
-                        'id' => (string) $account->account_id,
+                        'id' => (string) $account->id,
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
                         'service_user_id' => null, // Chưa được gán cho user nào

@@ -237,8 +237,9 @@ class MetaBusinessService
         try {
             $this->initApi();
             $endpoint = "/{$bmId}/owned_ad_accounts";
+            // Lấy thêm business{id,name} để biết tài khoản thuộc BM con nào
             $params = [
-                'fields' => 'id,account_id,name,account_status',
+                'fields' => 'id,account_id,name,account_status,business{id,name}',
                 'limit' => $limit,
             ];
             // Nếu frontend gửi 'after' (để xem trang kế), thêm nó vào
@@ -270,8 +271,9 @@ class MetaBusinessService
         try {
             $this->initApi();
             $endpoint = "/{$bmId}/client_ad_accounts";
+            // Lấy thêm business{id,name} để biết tài khoản thuộc BM con nào
             $params = [
-                'fields' => 'id,account_id,name,account_status',
+                'fields' => 'id,account_id,name,account_status,business{id,name}',
                 'limit' => $limit,
             ];
             if ($after) {
