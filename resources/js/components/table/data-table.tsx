@@ -1,5 +1,6 @@
 
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { ColumnDef, flexRender, getCoreRowModel, useReactTable, RowSelectionState, OnChangeFn } from '@tanstack/react-table';
+import { useState } from 'react';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LaravelPaginator } from '@/lib/types/type';
@@ -17,13 +18,43 @@ interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     paginator: LaravelPaginator<TData>;
     onRowClick?: (row: TData) => void;
+    rowSelection?: RowSelectionState;
+    onRowSelectionChange?: OnChangeFn<RowSelectionState>;
 }
 
-export function DataTable<TData, TValue>({ columns, paginator, onRowClick }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({ 
+    columns, 
+    paginator, 
+    onRowClick,
+    rowSelection,
+    onRowSelectionChange,
+}: DataTableProps<TData, TValue>) {
+    const [internalRowSelection, setInternalRowSelection] = useState<RowSelectionState>({});
+    
+    const selectionState = rowSelection !== undefined ? rowSelection : internalRowSelection;
+
+    const handleRowSelectionChange: OnChangeFn<RowSelectionState> = (updaterOrValue) => {
+        if (onRowSelectionChange) {
+            onRowSelectionChange(updaterOrValue);
+            return;
+        }
+
+        setInternalRowSelection((prev) =>
+            typeof updaterOrValue === 'function'
+                ? (updaterOrValue as (old: RowSelectionState) => RowSelectionState)(prev)
+                : updaterOrValue,
+        );
+    };
+
     const table = useReactTable({
         data: paginator.data,
         columns,
         getCoreRowModel: getCoreRowModel(),
+        enableRowSelection: true,
+        onRowSelectionChange: handleRowSelectionChange,
+        state: {
+            rowSelection: selectionState,
+        },
     });
 
     return (

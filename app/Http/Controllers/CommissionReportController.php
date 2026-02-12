@@ -31,11 +31,13 @@ class CommissionReportController extends Controller
             sortBy: $params->get('sort_by'),
             sortDirection: $params->get('direction'),
         ));
+        $summaryResult = $this->commissionService->getCommissionSummaryByEmployee($params->get('filter') ?? []);
 
         return $this->rendering(
             view: 'commission/report',
             data: [
                 'paginator' => fn () => CommissionTransactionResource::collection($result->getData()),
+                'summary_by_employee' => fn () => $summaryResult->isSuccess() ? $summaryResult->getData() : [],
             ]
         );
     }

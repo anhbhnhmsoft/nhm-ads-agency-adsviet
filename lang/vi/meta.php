@@ -61,5 +61,6 @@ return [
     ],
     'telegram' => [
         'low_balance' => "⚠️ Cảnh báo số dư Meta Ads thấp\n\nTài khoản \":accountName\" hiện chỉ còn :balance :currency (ngưỡng cảnh báo :threshold :currency).\nVui lòng nạp thêm tiền vào Meta Business để tránh bị tạm dừng quảng cáo.",
+        'spending_exceeded' => "⚠️ Cảnh báo chi tiêu Meta Ads vượt quá\n\nTài khoản \":accountName\" đã chi :spending :currency (ngưỡng cảnh báo :threshold :currency, giới hạn :limit :currency).\nVui lòng nạp thêm tiền vào Meta Business để tránh bị tạm dừng quảng cáo.",
     ],
 ];

@@ -96,19 +96,14 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
     const columns: ColumnDef<BusinessManagerItem>[] = useMemo(
         () => [
             {
-                accessorKey: 'account_name',
-                header: t('business_manager.table.account_name', { defaultValue: 'Tên tài khoản' }),
+                accessorKey: 'bm_name',
+                header: t('business_manager.table.bm_name', { defaultValue: 'Tên BM/MCC' }),
                 cell: ({ row }) => {
-                    const displayName = row.original.account_name || row.original.name || (row.original.bm_ids?.[0] ?? '-');
+                    const displayName =
+                        row.original.bm_name ||
+                        row.original.name ||
+                        (row.original.bm_ids?.[0] ?? '-');
                     return <span className="font-medium">{displayName}</span>;
-                },
-            },
-            {
-                id: 'bm_name',
-                header: t('business_manager.table.bm_name', { defaultValue: 'Tên BM/ MCC' }),
-                cell: ({ row }) => {
-                    const bmName = row.original.bm_name || row.original.name || (row.original.bm_ids?.[0] ?? '-');
-                    return <span className="text-sm">{bmName}</span>;
                 },
             },
             {
@@ -137,7 +132,14 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
                     );
                 },
             },
-            
+            {
+                accessorKey: 'total_accounts',
+                header: t('business_manager.table.total_accounts', { defaultValue: 'Số tài khoản' }),
+                cell: ({ row }) => {
+                    const count = row.original.total_accounts ?? 0;
+                    return <span className="font-medium">{count}</span>;
+                },
+            },
             {
                 accessorKey: 'total_spend',
                 header: t('business_manager.table.spend', { defaultValue: 'Chi tiêu' }),
@@ -205,15 +207,20 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                    if (!row.original.service_user_id) {
-                                        toast.error(t('business_manager.account_not_assigned', { 
-                                            defaultValue: 'Tài khoản này chưa được gán với user nào' 
-                                        }));
+                                    const primaryBmId =
+                                        (row.original.bm_ids && row.original.bm_ids[0]) ||
+                                        row.original.parent_bm_id;
+                                    if (!primaryBmId) {
+                                        toast.error(
+                                            t('business_manager.bm_not_found', {
+                                                defaultValue: 'Không tìm thấy BM/MCC',
+                                            }),
+                                        );
                                         return;
                                     }
                                     router.get('/service-management', {
                                         filter: {
-                                            service_user_id: row.original.service_user_id,
+                                            keyword: primaryBmId,
                                         },
                                     }, {
                                         replace: true,
@@ -313,52 +320,17 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
                 {t('business_manager.title', { defaultValue: 'Quản lý Business Manager / MCC' })}
             </h1>
 
-            {/* Platform Tabs & Stats */}
-            <div className="mb-4 flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2">
-                    {platformTabs.map((tab) => (
-                        <Button
-                            key={tab.key}
-                            variant={selectedPlatform === tab.key ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => handleSelectPlatform(tab.key)}
-                        >
-                            {tab.label}
-                        </Button>
-                    ))}
-                </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm text-muted-foreground">
-                                {t('business_manager.stats.total', { defaultValue: 'Tổng số lượng tài khoản' })}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-2xl font-semibold">
-                            {currentStats.total_accounts || 0}
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm text-muted-foreground">
-                                {t('business_manager.stats.active', { defaultValue: 'Active' })}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-2xl font-semibold text-green-600">
-                            {currentStats.active_accounts || 0}
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm text-muted-foreground">
-                                {t('business_manager.stats.disabled', { defaultValue: 'Disabled' })}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-2xl font-semibold text-red-600">
-                            {currentStats.disabled_accounts || 0}
-                        </CardContent>
-                    </Card>
-                </div>
+            <div className="mb-4 flex flex-wrap gap-2">
+                {platformTabs.map((tab) => (
+                    <Button
+                        key={tab.key}
+                        variant={selectedPlatform === tab.key ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleSelectPlatform(tab.key)}
+                    >
+                        {tab.label}
+                    </Button>
+                ))}
             </div>
 
             <BusinessManagerSearchForm />
