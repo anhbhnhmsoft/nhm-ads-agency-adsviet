@@ -357,9 +357,8 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                                 return (
                                     <Card
                                         key={pkg.id}
-                                        className={`cursor-pointer transition-all ${
-                                            isSelected ? 'ring-2 ring-primary' : 'hover:shadow-md'
-                                        }`}
+                                        className={`cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary' : 'hover:shadow-md'
+                                            }`}
                                         onClick={() => handlePackageSelect(pkg)}
                                     >
                                         <CardContent className="p-4">

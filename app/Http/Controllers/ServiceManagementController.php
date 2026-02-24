@@ -108,6 +108,7 @@ class ServiceManagementController extends Controller
             data: [
                 'paginator' => fn () => $paginatorArray,
                 'stats' => fn () => $stats,
+                'childManagers' => fn () => $this->businessManagerService->getChildManagersForFilter(),
             ]
         );
     }

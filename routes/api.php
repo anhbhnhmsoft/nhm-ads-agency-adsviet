@@ -86,12 +86,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('tickets')->group(function () {
         Route::get('/', [TicketController::class, 'index']);
+        Route::get('/form-data', [TicketController::class, 'getFormData']);
         Route::get('/{id}', [TicketController::class, 'show']);
         Route::post('/', [TicketController::class, 'store']);
-        Route::post('/{id}/message', [TicketController::class, 'addMessage']);
-        Route::put('/{id}/status', [TicketController::class, 'updateStatus']);
-        Route::get('/create-account', [TicketController::class, 'createAccount']);
+        Route::post('/{id}/messages', [TicketController::class, 'addMessage']);
+        Route::post('/{id}/status', [TicketController::class, 'updateStatus']);
+        Route::post('/transfer', [TicketController::class, 'storeTransfer']);
+        Route::post('/refund', [TicketController::class, 'storeRefund']);
+        Route::post('/appeal', [TicketController::class, 'storeAppeal']);
+        Route::post('/share', [TicketController::class, 'storeShare']);
         Route::post('/create-account', [TicketController::class, 'storeCreateAccount']);
+        Route::post('/withdraw-app', [TicketController::class, 'storeWithdrawApp']);
+        Route::post('/deposit-app', [TicketController::class, 'storeDepositApp']);
     });
 
     Route::prefix('notifications')->group(function () {

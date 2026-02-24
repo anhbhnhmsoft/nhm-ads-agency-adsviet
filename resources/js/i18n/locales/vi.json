@@ -10,6 +10,7 @@
         "register": "Đăng ký",
         "refer_code": "Mã giới thiệu",
         "id": "ID",
+        "internal_wallet": "Ví nội bộ",
         "role": "Vai trò",
         "phone": "Số điện thoại",
         "email": "Email",
@@ -103,21 +104,21 @@
         "service_user": "Dịch vụ người dùng",
         "service_user_list": "Danh sách dịch vụ",
         "service_user_create": "Tạo dịch vụ người dùng",
-      "crypto_wallet_config": "Cấu hình ví",
-      "my_wallet": "Ví của tôi",
-      "service_purchase": "Mua gói dịch vụ",
-      "service_management": "Quản lý tài khoản",
-      "service_orders": "Đơn dịch vụ",
-      "service_orders_admin": "Quản lý đơn dịch vụ",
-      "transactions": "Quản lý giao dịch",
-      "contact": "Liên hệ",
-      "profile": "Thông tin cá nhân",
-      "spend_report": "Báo cáo chi tiêu",
-      "spend_report_ranking": "Xếp hạng chi tiêu",
-      "financial_management": "Quản lý tài chính",
-      "support": "Hỗ trợ",
-      "support_customer": "Hỗ trợ khách hàng",
-      "transfer_money": "Chuyển tiền"
+        "crypto_wallet_config": "Cấu hình ví",
+        "my_wallet": "Ví của tôi",
+        "service_purchase": "Mua gói dịch vụ",
+        "service_management": "Quản lý tài khoản",
+        "service_orders": "Đơn dịch vụ",
+        "service_orders_admin": "Quản lý đơn dịch vụ",
+        "transactions": "Quản lý giao dịch",
+        "contact": "Liên hệ",
+        "profile": "Thông tin cá nhân",
+        "spend_report": "Báo cáo chi tiêu",
+        "spend_report_ranking": "Xếp hạng chi tiêu",
+        "financial_management": "Quản lý tài chính",
+        "support": "Hỗ trợ",
+        "support_customer": "Hỗ trợ khách hàng",
+        "transfer_money": "Chuyển tiền"
     },
     "profile": {
         "title": "Thông tin cá nhân",
@@ -320,8 +321,7 @@
         }
     },
     "user": {
-        "list_employee": {
-        },
+        "list_employee": {},
         "edit_employee": "Chỉnh sửa nhân viên",
         "confirm_delete": "Bạn có chắc chắn muốn xóa nhân viên này?",
         "assign_employee": "Gán nhân viên",
@@ -629,6 +629,7 @@
         "choose_access": "Chọn Full access hoặc basic access",
         "asset_access_label": "Chia sẻ quyền truy cập",
         "asset_access_placeholder": "Chọn quyền truy cập",
+        "account_info": "Thông tin tài khoản",
         "asset_access_full": "Full access",
         "asset_access_basic": "Basic access",
         "budget_invalid": "Ngân sách không hợp lệ",
@@ -665,7 +666,7 @@
         "meta_email": "Email Tài Khoản",
         "display_name": "Tên hiển thị",
         "display_name_placeholder": "Nhập tên hiển thị",
-        "account_number": "Tài khoản {{number}}",
+        "account_number": "Số tài khoản {{number}}",
         "add_account": "Thêm tài khoản",
         "add_bm_mcc": "Thêm BM/MCC",
         "add_fanpage": "Thêm fanpage",
@@ -930,10 +931,26 @@
         "create_account": {
             "title": "Tạo tài khoản",
             "description": "Điền thông tin để tạo yêu cầu tạo tài khoản mới",
+            "detail": "Thông tin đơn mua tài khoản",
+            "package": "Gói dịch vụ",
+            "package_placeholder": "Chọn gói dịch vụ",
+            "package_required": "Vui lòng chọn gói dịch vụ",
+            "package_invalid": "Gói dịch vụ không hợp lệ",
+            "platform": "Kênh quảng cáo",
+            "platform_placeholder": "Chọn kênh quảng cáo",
+            "platform_required": "Vui lòng chọn kênh quảng cáo",
+            "platform_invalid": "Kênh quảng cáo không hợp lệ",
+            "account": "Tài khoản",
+            "account_placeholder": "Chọn tài khoản",
+            "account_required": "Vui lòng chọn tài khoản",
+            "account_invalid": "Tài khoản không hợp lệ",
             "notes": "Ghi chú",
             "notes_placeholder": "Nhập ghi chú (nếu có)",
             "submit": "Gửi yêu cầu",
-            "create_success": "Đã tạo yêu cầu tạo tài khoản thành công"
+            "create_success": "Đã tạo yêu cầu tạo tài khoản thành công",
+            "price": "Tiền nạp",
+            "quantity": "Số lượng",
+            "account_info": "Thông tin tài khoản"
         }
     },
     "config": {
@@ -1100,7 +1117,7 @@
         "telegram_id": "Telegram ID",
         "telegram_info_unavailable": "Không thể lấy thông tin từ Telegram. Telegram ID: "
     },
-    "profit":{
+    "profit": {
         "profit": "Lợi nhuận",
         "revenue": "Doanh thu",
         "cost": "Chi phí",
