@@ -1,26 +1,36 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { useTranslation } from 'react-i18next';
 import type { ColumnDef } from '@tanstack/react-table';
 import axios from 'axios';
-import { Search, ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 
 import { DataTable } from '@/components/table/data-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import { _PlatformType } from '@/lib/types/constants';
-import { service_management_index } from '@/routes';
 import type { BusinessManagerItem, BusinessManagerPagination, BusinessManagerStats } from '@/pages/business-manager/types/type';
 import type { Campaign, StatusSeverity } from '@/pages/service-management/types/types';
+import BusinessManagerSearchForm from '@/pages/business-manager/components/search-form';
+import { useSearchServiceManagement } from '@/pages/service-management/hooks/use-search';
+
+type ChildManagerOption = {
+    id: string;
+    name: string;
+    parent_id: string;
+};
 
 type Props = {
     paginator: BusinessManagerPagination;
     stats: BusinessManagerStats;
+    childManagers?: {
+        meta?: ChildManagerOption[];
+        google?: ChildManagerOption[];
+    };
 };
 
 const getSeverityBadge = (severity?: StatusSeverity | null) => {
@@ -36,25 +46,14 @@ const getSeverityBadge = (severity?: StatusSeverity | null) => {
     }
 };
 
-const ServiceManagementIndex = ({ paginator, stats }: Props) => {
+const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
     const { t } = useTranslation();
-    const keywordInputRef = useRef<HTMLInputElement | null>(null);
+    const { query, setQuery, handleSearch } = useSearchServiceManagement();
 
-    const accounts = paginator?.data ?? [];
     const [selectedAccount, setSelectedAccount] = useState<BusinessManagerItem | null>(null);
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [campaignLoading, setCampaignLoading] = useState(false);
     const [campaignError, setCampaignError] = useState<string | null>(null);
-
-    const urlKeyword =
-        typeof window !== 'undefined'
-            ? new URLSearchParams(window.location.search).get('filter[keyword]')
-            : null;
-
-    const onSearch = () => {
-        const value = keywordInputRef.current?.value || '';
-        window.location.href = service_management_index({ query: { filter: { keyword: value } } }).url;
-    };
 
     const loadCampaigns = async (account: BusinessManagerItem) => {
         if (!account?.service_user_id) {
@@ -127,7 +126,7 @@ const ServiceManagementIndex = ({ paginator, stats }: Props) => {
             {
                 accessorKey: 'owner_name',
                 header: t('service_management.owner', { defaultValue: 'Chủ' }),
-                cell: ({ row }) => row.original.owner_name || '-',
+                cell: ({ row }) => row.original.owner_name || 'System (Chưa gán)',
             },
             {
                 accessorKey: 'total_spend',
@@ -270,37 +269,11 @@ const ServiceManagementIndex = ({ paginator, stats }: Props) => {
                             </Card>
                         </div>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>{t('common.search', { defaultValue: 'Tìm kiếm' })}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                                    <div className="space-y-1">
-                                        <label className="text-sm font-medium">
-                                            {t('common.keyword', { defaultValue: 'Từ khóa' })}
-                                        </label>
-                                        <Input
-                                            ref={keywordInputRef}
-                                            autoComplete="off"
-                                            defaultValue={urlKeyword || ''}
-                                            placeholder={t('common.keyword', { defaultValue: 'Từ khóa' })}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    onSearch();
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Button type="button" onClick={onSearch}>
-                                        <Search className="mr-2 h-4 w-4" />
-                                        {t('common.search', { defaultValue: 'Tìm kiếm' })}
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <BusinessManagerSearchForm 
+                            query={query}
+                            setQuery={setQuery}
+                            handleSearch={handleSearch}
+                        />
 
                         <DataTable columns={accountColumns} paginator={paginator} />
                     </>
@@ -388,4 +361,3 @@ ServiceManagementIndex.layout = (page: React.ReactNode) => (
 );
 
 export default ServiceManagementIndex;
-

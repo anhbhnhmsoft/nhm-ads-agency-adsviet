@@ -787,7 +787,7 @@ class BusinessManagerService
                         'parent_bm_id' => $parentBmId,
                         'name' => $account->account_name,
                         'platform' => $platform,
-                        'owner_name' => $platformSetting->name,
+                        'owner_name' => $platformSetting->name ?: 'System (Chưa gán)',
                         'owner_id' => null,
                         'total_accounts' => 1,
                         'active_accounts' => $isActive ? 1 : 0,

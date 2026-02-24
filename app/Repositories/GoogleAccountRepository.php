@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Common\Constants\Google\GoogleCustomerStatus;
 use App\Core\BaseRepository;
 use App\Models\GoogleAccount;
 use Illuminate\Database\Eloquent\Builder;
@@ -51,6 +52,7 @@ class GoogleAccountRepository extends BaseRepository
         return $this->model()
             ->newQuery()
             ->with(['serviceUser.user'])
+            ->where('account_status', GoogleCustomerStatus::ENABLED->value)
             ->whereNotNull('balance')
             ->where('balance', '<=', $threshold)
             ->whereHas('serviceUser.user', function ($query) {

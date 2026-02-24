@@ -21,7 +21,7 @@ export const useSearchBusinessManager = () => {
             {
                 replace: true,
                 preserveState: true,
-                only: ['paginator', 'stats'],
+                only: ['paginator', 'stats', 'childManagers'],
             }
         );
     };

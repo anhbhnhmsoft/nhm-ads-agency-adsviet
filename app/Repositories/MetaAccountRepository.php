@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Common\Constants\ServicePackage\Meta\MetaAdsAccountStatus;
 use App\Core\BaseRepository;
 use App\Models\MetaAccount;
 use Illuminate\Database\Eloquent\Builder;
@@ -50,6 +51,13 @@ class MetaAccountRepository extends BaseRepository
         return $this->model()
             ->newQuery()
             ->with(['serviceUser.user'])
+            // Chỉ gửi cảnh báo cho các tài khoản còn đang hoạt động
+            ->whereNotIn('account_status', [
+                MetaAdsAccountStatus::DISABLED->value,
+                MetaAdsAccountStatus::CLOSED->value,
+                MetaAdsAccountStatus::PENDING_CLOSURE->value,
+                MetaAdsAccountStatus::ANY_CLOSED->value,
+            ])
             ->where(function ($query) use ($threshold) {
                 $query->where(function ($balanceQuery) use ($threshold) {
                     $balanceQuery->whereNotNull('balance')

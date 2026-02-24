@@ -192,7 +192,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     });
 
     Route::prefix('/tickets')->group(function () {
-        Route::get('/', [TicketController::class, 'index'])->name('ticket_index');
+        Route::get('/index', [TicketController::class, 'index'])->name('ticket_index');
         Route::get('/transfer', [TicketController::class, 'transfer'])->name('ticket_transfer');
         Route::post('/transfer', [TicketController::class, 'storeTransfer'])->name('ticket_transfer_store');
         Route::get('/refund', [TicketController::class, 'refund'])->name('ticket_refund');

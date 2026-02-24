@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { useSearchBusinessManager } from '@/pages/business-manager/hooks/use-search';
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -18,6 +17,7 @@ import { DateRange } from 'react-day-picker';
 import { useMemo } from 'react';
 import { usePage } from '@inertiajs/react';
 import type { _PlatformType as PlatformTypeEnum } from '@/lib/types/constants';
+import type { InertiaPageProps } from '@/lib/types';
 
 type ChildManagerOption = {
     id: string;
@@ -32,16 +32,27 @@ type PageProps = {
     };
 };
 
-const BusinessManagerSearchForm = () => {
+type SearchQuery = {
+    keyword?: string;
+    platform?: PlatformTypeEnum;
+    start_date?: string;
+    end_date?: string;
+    child_manager_id?: string;
+};
+
+type Props = {
+    query: SearchQuery;
+    setQuery: (query: Partial<SearchQuery>) => void;
+    handleSearch: () => void;
+};
+
+const BusinessManagerSearchForm = ({ query, setQuery, handleSearch }: Props) => {
     const { t } = useTranslation();
-    const { query, setQuery, handleSearch } = useSearchBusinessManager();
-    const { props } = usePage<PageProps>();
+    const { props } = usePage<InertiaPageProps<PageProps>>();
 
     const childManagers = props.childManagers;
 
-    const platformValue = query.platform 
-        ? query.platform.toString() 
-        : undefined;
+    const platformValue = query.platform ? query.platform.toString() : undefined;
 
     const platformChildOptions: ChildManagerOption[] = useMemo(() => {
         if (!childManagers || !query.platform) {
@@ -88,9 +99,7 @@ const BusinessManagerSearchForm = () => {
             <CardContent>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Field>
-                        <FieldLabel htmlFor="keyword">
-                            {t('common.keyword')}
-                        </FieldLabel>
+                        <FieldLabel htmlFor="keyword">{t('common.keyword')}</FieldLabel>
                         <Input
                             id="keyword"
                             autoComplete="off"
@@ -102,13 +111,11 @@ const BusinessManagerSearchForm = () => {
                         />
                     </Field>
                     <Field>
-                        <FieldLabel htmlFor="platform">
-                            {t('common.platform', { defaultValue: 'Nền tảng' })}
-                        </FieldLabel>
+                        <FieldLabel htmlFor="platform">{t('common.platform', { defaultValue: 'Nền tảng' })}</FieldLabel>
                         <Select
                             value={platformValue}
                             onValueChange={(value) => {
-                                setQuery({ 
+                                setQuery({
                                     platform: value ? (Number(value) as PlatformTypeEnum) : undefined,
                                     child_manager_id: undefined,
                                 });
@@ -144,8 +151,12 @@ const BusinessManagerSearchForm = () => {
                                 <SelectValue
                                     placeholder={
                                         query.platform
-                                            ? t('business_manager.filter.child_manager_placeholder', { defaultValue: 'Chọn BM/MCC con' })
-                                            : t('business_manager.filter.child_manager_disabled', { defaultValue: 'Chọn nền tảng trước' })
+                                            ? t('business_manager.filter.child_manager_placeholder', {
+                                                  defaultValue: 'Chọn BM/MCC con',
+                                              })
+                                            : t('business_manager.filter.child_manager_disabled', {
+                                                  defaultValue: 'Chọn nền tảng trước',
+                                              })
                                     }
                                 />
                             </SelectTrigger>
@@ -159,22 +170,14 @@ const BusinessManagerSearchForm = () => {
                         </Select>
                     </Field>
                     <Field>
-                        <FieldLabel>
-                            {t('business_manager.filter.period', { defaultValue: 'Khoảng thời gian' })}
-                        </FieldLabel>
-                        <DateRangePicker
-                            date={dateRange}
-                            onDateChange={handleDateRangeChange}
-                        />
+                        <FieldLabel>{t('business_manager.filter.period', { defaultValue: 'Khoảng thời gian' })}</FieldLabel>
+                        <DateRangePicker date={dateRange} onDateChange={handleDateRangeChange} />
                     </Field>
                 </div>
             </CardContent>
             <CardFooter>
                 <CardAction className="space-y-2 space-x-2">
-                    <Button
-                        className="cursor-pointer"
-                        onClick={() => handleSearch()}
-                    >
+                    <Button className="cursor-pointer" onClick={() => handleSearch()}>
                         <Search />
                         {t('common.search', { defaultValue: 'Search' })}
                     </Button>
@@ -182,7 +185,6 @@ const BusinessManagerSearchForm = () => {
             </CardFooter>
         </Card>
     );
-}
+};
 
 export default BusinessManagerSearchForm;
-

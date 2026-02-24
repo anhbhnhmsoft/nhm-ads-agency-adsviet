@@ -22,6 +22,10 @@ class ServicePackageRepository extends BaseRepository
             $query->where('disabled', false);
         }
 
+        if (isset($filters['platform'])) {
+            $query->where('platform', $filters['platform']);
+        }
+
         return $query;
     }
 

@@ -109,7 +109,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
         return (
             <div key={`account-${index}`} className="space-y-3 p-4 border rounded-lg bg-white">
                 <h4 className="font-medium text-gray-800">
-                    {t('service_purchase.account_number', { number: index + 1, defaultValue: `Tài khoản ${index + 1}` })}
+                    {t('service_purchase.account_number', { number: `${index + 1}`, defaultValue: `Tài khoản ${index + 1}` })}
                 </h4>
                 
                 <div className="grid gap-2 text-sm">
@@ -231,7 +231,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
                     </div>
                     {price !== '-' && (
                         <div>
-                            <span className="font-medium">{t('ticket.create_account.price', { defaultValue: 'Giá mua' })}:</span>{' '}
+                            <span className="font-medium">{t('ticket.create_account.price', { defaultValue: 'Tiền nạp' })}:</span>{' '}
                             <span>{price}</span>
                         </div>
                     )}

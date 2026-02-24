@@ -93,10 +93,10 @@ const useMenu = () => {
                 title: t('menu.financial_management'),
                 icon: <DollarSign />,
                 is_menu: true,
-                active: isActive('/transactions') || 
-                        isActive(spend_report_index()) || 
-                        isActive(wallet_index()) || 
-                        isActive(service_orders_index()),
+                active: isActive('/transactions') ||
+                    isActive(spend_report_index()) ||
+                    isActive(wallet_index()) ||
+                    isActive(service_orders_index()),
                 can_show: checkRole([
                     _UserRole.ADMIN,
                     _UserRole.MANAGER,
@@ -155,7 +155,14 @@ const useMenu = () => {
                     : t('menu.support'),
                 icon: <MessageSquare />,
                 is_menu: true,
-                active: isActive(ticket_index()) || isActive(ticket_transfer()) || isActive(ticket_refund()) || isActive(ticket_appeal()) || isActive(ticket_share()),
+                active: isActive(ticket_index()) ||
+                    isActive(ticket_create_account()) ||
+                    isActive(ticket_transfer()) ||
+                    isActive(ticket_refund()) ||
+                    isActive(ticket_appeal()) ||
+                    isActive(ticket_share()) ||
+                    isActive(ticket_withdraw_app()) ||
+                    isActive(ticket_deposit_app()),
                 can_show: checkRole([
                     _UserRole.ADMIN,
                     _UserRole.MANAGER,
@@ -352,10 +359,10 @@ const useMenu = () => {
                 title: t('menu.profit', { defaultValue: 'Lợi nhuận' }),
                 icon: <TrendingUp />,
                 is_menu: true,
-                active: isActive(profit_by_customer()) || 
-                        isActive(profit_by_platform()) || 
-                        isActive(profit_over_time()) || 
-                        isActive(profit_by_bm_mcc()),
+                active: isActive(profit_by_customer()) ||
+                    isActive(profit_by_platform()) ||
+                    isActive(profit_over_time()) ||
+                    isActive(profit_by_bm_mcc()),
                 can_show: checkRole([
                     _UserRole.ADMIN,
                     _UserRole.AGENCY,
@@ -387,7 +394,7 @@ const useMenu = () => {
                     },
                 ],
             },
-            
+
 
         ];
     }, [checkRole, t, isActive]);

@@ -106,7 +106,7 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                         </div>
                     </div>
                     <div className="col-span-full border-t pt-4 mt-2">
-                        <div className="text-base font-medium mb-2">Ví nội bộ</div>
+                        <div className="text-base font-medium mb-2">{t('common.internal_wallet')}</div>
                         {walletLoading ? (
                             <div className="text-sm text-gray-500">{t('wallet.loading')}</div>
                         ) : walletError ? (

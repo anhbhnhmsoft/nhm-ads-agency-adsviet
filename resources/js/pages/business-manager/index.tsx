@@ -6,9 +6,6 @@ import { DataTable } from '@/components/table/data-table';
 import BusinessManagerSearchForm from '@/pages/business-manager/components/search-form';
 import type { BusinessManagerItem, BusinessManagerPagination, BusinessManagerStats, BusinessManagerAccount } from '@/pages/business-manager/types/type';
 import { _PlatformType } from '@/lib/types/constants';
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
-import GoogleIcon from '@/images/google_icon.png';
-import FacebookIcon from '@/images/facebook_icon.png';
 import { Button } from '@/components/ui/button';
 import { Eye, Wallet } from 'lucide-react';
 import { router } from '@inertiajs/react';
@@ -29,6 +26,7 @@ import {
     meta_update_campaign_spend_cap,
     google_ads_update_campaign_budget,
 } from '@/routes';
+import { useSearchBusinessManager } from './hooks/use-search';
 type ChildManagerOption = {
     id: string;
     name: string;
@@ -314,6 +312,8 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
         });
     };
 
+    const { query, setQuery, handleSearch } = useSearchBusinessManager();
+
     return (
         <div>
             <h1 className="text-xl font-semibold mb-4">
@@ -333,7 +333,11 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
                 ))}
             </div>
 
-            <BusinessManagerSearchForm />
+            <BusinessManagerSearchForm 
+                query={query}
+                setQuery={setQuery}
+                handleSearch={handleSearch}
+            />
 
             <Card className="mt-4">
                 <CardHeader>
