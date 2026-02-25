@@ -28,16 +28,13 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const normalizeCurrencyInput = (value: string): string => {
-    if (!value) return '';
-    return value.replace(/\./g, '').replace(',', '.').trim();
-};
-
-const parseCurrencyInput = (value: string): number => {
-    const normalized = normalizeCurrencyInput(value);
-    if (!normalized) return 0;
-    const parsed = parseFloat(normalized);
-    return Number.isFinite(parsed) ? parsed : 0;
+const formatDisplayRange = (range: string) => {
+    if (!range) return '';
+    return range.replace(/(\$)?([\d,.]+)/g, (match, symbol, numStr) => {
+        const clean = numStr.replace(/,/g, '');
+        const n = parseFloat(clean);
+        return isNaN(n) ? match : '$' + new Intl.NumberFormat('en-US').format(n);
+    });
 };
 
 export default function CreateAccountPage({ packages, meta_timezones = [], google_timezones = [] }: CreateAccountPageProps) {
@@ -45,7 +42,7 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [platformFilter, setPlatformFilter] = useState<string>('all');
-    const [touchedFields, setTouchedFields] = useState<{ budget?: boolean }>({});
+    const [touchedFields, setTouchedFields] = useState<{}>({});
     const [accounts, setAccounts] = useState<AccountFormData[]>([
         {
             meta_email: '',
@@ -70,8 +67,6 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
     }, [packages]);
 
     const { form, submit } = useCreateAccountForm();
-
-    const budgetValue = form.data.budget || '';
 
     const getInitialAccount = useCallback((platform?: number): AccountFormData => ({
         meta_email: '',
@@ -134,30 +129,11 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
         return filtered;
     }, [packageList, platformFilter, searchQuery]);
 
-    const validateBudget = (amount: string) => {
-        if (!amount) return null;
-        const numAmount = parseCurrencyInput(amount);
-        if (numAmount <= 0) {
-            return t('service_purchase.budget_invalid');
-        }
-        if (numAmount < 50) {
-            return t('service_purchase.budget_min_required', { min: 50 });
-        }
-        return null;
-    };
 
     const handleSubmit = () => {
         if (!selectedPackage) return;
 
-        setTouchedFields({ budget: true });
-
-        if (budgetValue && validateBudget(budgetValue)) {
-            alert(validateBudget(budgetValue));
-            return;
-        }
-
-        const sanitizedBudget = normalizeCurrencyInput(budgetValue);
-        const payloadBudget = sanitizedBudget ? sanitizedBudget : '0';
+        setTouchedFields({});
 
         const hasAccounts = accounts.some(
             acc => acc.meta_email || acc.display_name || (acc.bm_ids && acc.bm_ids.length > 0)
@@ -165,7 +141,6 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
 
         submit(
             selectedPackage.id,
-            payloadBudget,
             hasAccounts ? accounts : undefined,
             undefined,
             notes || undefined,
@@ -192,6 +167,7 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
         if (!selectedPackage) return null;
 
         const isMeta = selectedPackage.platform === _PlatformType.META;
+        const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
 
         return (
             <Card className="mt-6">
@@ -255,26 +231,39 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                         ))}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="budget">{t('service_purchase.budget', { defaultValue: 'Ngân sách' })}</Label>
-                        <Input
-                            id="budget"
-                            type="text"
-                            placeholder="0"
-                            value={budgetValue}
-                            onChange={(e) => {
-                                form.setData('budget', e.target.value);
-                            }}
-                            onBlur={() => setTouchedFields({ ...touchedFields, budget: true })}
-                        />
-                        {touchedFields.budget && budgetValue && validateBudget(budgetValue) && (
-                            <p className="text-xs text-red-500">{validateBudget(budgetValue)}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                            {t('service_purchase.budget_description', { defaultValue: 'Ngân sách tối thiểu: 50 USD' })}
-                        </p>
-                    </div>
-
+                    {monthlySpendingTiers.length > 0 && (
+                        <div className="space-y-3">
+                            <div>
+                                <p className="font-medium text-gray-800">
+                                    {t('service_purchase.monthly_spending_title')}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    {t('service_purchase.monthly_spending_description')}
+                                </p>
+                            </div>
+                            <div className="rounded-lg border overflow-hidden">
+                                <div className="grid grid-cols-[2fr_1fr] bg-gray-50 px-4 py-2 text-sm font-medium text-gray-600">
+                                    <span>
+                                        {t('service_purchase.monthly_spending_spending_label')}
+                                    </span>
+                                    <span>
+                                        {t('service_purchase.monthly_spending_fee_label')}
+                                    </span>
+                                </div>
+                                <div className="divide-y">
+                                    {monthlySpendingTiers.map((tier, index) => (
+                                        <div
+                                            key={`monthly-tier-display-${index}`}
+                                            className="grid grid-cols-[2fr_1fr] px-4 py-2 text-sm text-gray-700"
+                                        >
+                                            <span>{formatDisplayRange(tier.range)}</span>
+                                            <span className="font-medium">{tier.fee_percent}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <Label htmlFor="notes">{t('ticket.create_account.notes', { defaultValue: 'Ghi chú' })}</Label>
                         <Textarea

@@ -642,4 +642,22 @@ class UserService
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
+
+    public function updateWarningThreshold(string $id, array $data): ServiceReturn
+    {
+        $user = $this->userRepository->findUserById($id);
+        if (!$user) {
+            return ServiceReturn::error(message: __('common_error.data_not_found'));
+        }
+    
+        try {
+            $user->update([
+                'warning_threshold' => $data['warning_threshold'],
+            ]);
+            return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            Logging::error(message: 'Lỗi khi cập nhật người dùng UserService@updateWarningThreshold: ' . $e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
 }

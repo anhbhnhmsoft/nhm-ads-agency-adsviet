@@ -22,10 +22,18 @@ class GoogleAdsNotificationService
     {
         try {
             $accounts = $this->googleAccountRepository->getAccountsWithLowBalance($thresholdUsd);
-            $found = $accounts->count();
-            
             if ($accounts->isEmpty()) {
                 return ServiceReturn::success(data: ['sent' => 0, 'found' => 0, 'skipped' => 0]);
+            }
+
+            $accountsGroupedByUser = [];
+            foreach ($accounts as $account) {
+                $serviceUser = $account->serviceUser;
+                if (!$serviceUser || !$serviceUser->user) {
+                    continue;
+                }
+                $accountsGroupedByUser[$serviceUser->user->id]['user'] = $serviceUser->user;
+                $accountsGroupedByUser[$serviceUser->user->id]['accounts'][] = $account;
             }
 
             $sent = 0;
@@ -33,120 +41,76 @@ class GoogleAdsNotificationService
             $today = now()->toDateString();
             $expireMinutes = $this->minutesUntilEndOfDay();
 
-            foreach ($accounts as $account) {
-                $serviceUser = $account->serviceUser;
-                if (!$serviceUser) {
-                    $skipped++;
-                    Logging::web('GoogleAdsNotificationService: Skipped account (no serviceUser)', [
-                        'account_id' => $account->id,
-                        'account_name' => $account->account_name,
-                    ]);
-                    continue;
-                }
-
-                $user = $serviceUser->user;
-                if (!$user) {
-                    $skipped++;
-                    Logging::web('GoogleAdsNotificationService: Skipped account (no user)', [
-                        'account_id' => $account->id,
-                        'service_user_id' => $serviceUser->id,
-                    ]);
-                    continue;
-                }
+            foreach ($accountsGroupedByUser as $userId => $data) {
+                $user = $data['user'];
+                $userAccounts = $data['accounts'];
 
                 $hasTelegram = !empty($user->telegram_id);
                 $hasVerifiedEmail = !empty($user->email) && !empty($user->email_verified_at);
 
                 if (!$hasTelegram && !$hasVerifiedEmail) {
-                    $skipped++;
-                    Logging::web('GoogleAdsNotificationService: Skipped account (no telegram/email)', [
-                        'account_id' => $account->id,
-                        'user_id' => $user->id,
-                        'has_telegram' => $hasTelegram,
-                        'has_email' => !empty($user->email),
-                        'email_verified' => !empty($user->email_verified_at),
-                    ]);
+                    $skipped += count($userAccounts);
                     continue;
                 }
 
-                // Cache để tránh gửi nhiều lần trong ngày
-                $cacheValue = Caching::getCache(CacheKey::CACHE_GOOGLE_ACCOUNT_LOW_BALANCE_NOTIFIED, (string) $account->id . '_' . $user->id);
+                // Cache theo user để tránh gửi nhiều tin nhắn gom nhóm trong ngày
+                $cacheKey = "low_balance_notified_user_" . $user->id;
+                $cacheValue = Caching::getCache(CacheKey::CACHE_GOOGLE_ACCOUNT_LOW_BALANCE_NOTIFIED, $cacheKey);
+                
                 if ($cacheValue === $today) {
-                    $skipped++;
-                    Logging::web('GoogleAdsNotificationService: Skipped account (already notified today)', [
-                        'account_id' => $account->id,
-                        'user_id' => $user->id,
-                    ]);
+                    $skipped += count($userAccounts);
                     continue;
                 }
 
-                $balanceFormatted = number_format((float) $account->balance, 2);
-                $thresholdFormatted = number_format($thresholdUsd, 2);
-                $currency = $account->currency ?? 'USD';
+                $balanceFormatted = "";
+                foreach ($userAccounts as $acc) {
+                    $balanceFormatted .= sprintf("- %s: %s %s\n", 
+                        $acc->account_name ?? $acc->account_id, 
+                        number_format((float) $acc->balance, 2), 
+                        $acc->currency ?? 'USD'
+                    );
+                }
+
                 $result = null;
                 $method = null;
 
-                // Ưu tiên Telegram, nếu fail thì fallback sang email
                 if ($hasTelegram) {
-                    $message = __('google_ads.telegram.low_balance', [
-                        'accountName' => $account->account_name ?? $account->account_id,
-                        'balance' => $balanceFormatted,
-                        'currency' => $currency,
-                        'threshold' => $thresholdFormatted,
-                    ]);
+                    $message = "⚠️ *Cảnh báo số dư thấp (Google Ads)*\n\n";
+                    $message .= "Các tài khoản sau có số dư dưới ngưỡng " . number_format($thresholdUsd, 2) . " USD:\n";
+                    $message .= $balanceFormatted;
+                    $message .= "\nVui lòng nạp thêm tiền để tránh gián đoạn quảng cáo.";
+
                     $result = $this->telegramService->sendNotification($user->telegram_id, $message);
                     $method = 'telegram';
-                    
-                    // Nếu Telegram fail và có email verified, fallback sang email
+
                     if (!$result->isSuccess() && $hasVerifiedEmail) {
-                        Logging::web('GoogleAdsNotificationService: Telegram failed, falling back to email', [
-                            'account_id' => $account->id,
-                            'user_id' => $user->id,
-                            'telegram_error' => $result->getMessage(),
-                        ]);
-                        $result = $this->mailService->sendGoogleAdsLowBalanceAlert(
+                        $result = $this->mailService->sendGoogleAdsLowBalanceAlertGrouped(
                             email: $user->email,
                             username: $user->name ?? $user->username,
-                            accountName: $account->account_name ?? $account->account_id,
-                            balance: (float) $account->balance,
-                            currency: $currency,
-                            threshold: $thresholdUsd,
+                            accountsData: $userAccounts,
+                            threshold: $thresholdUsd
                         );
                         $method = 'email (fallback)';
                     }
                 } elseif ($hasVerifiedEmail) {
-                    // Chỉ có email, gửi email
-                    $result = $this->mailService->sendGoogleAdsLowBalanceAlert(
+                    $result = $this->mailService->sendGoogleAdsLowBalanceAlertGrouped(
                         email: $user->email,
                         username: $user->name ?? $user->username,
-                        accountName: $account->account_name ?? $account->account_id,
-                        balance: (float) $account->balance,
-                        currency: $currency,
-                        threshold: $thresholdUsd,
+                        accountsData: $userAccounts,
+                        threshold: $thresholdUsd
                     );
                     $method = 'email';
                 }
 
                 if ($result && $result->isSuccess()) {
-                    Caching::setCache(CacheKey::CACHE_GOOGLE_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, (string) $account->id . '_' . $user->id, $expireMinutes);
+                    Caching::setCache(CacheKey::CACHE_GOOGLE_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, $cacheKey, $expireMinutes);
                     $sent++;
-                    Logging::web('GoogleAdsNotificationService: Successfully sent notification', [
-                        'account_id' => $account->id,
-                        'user_id' => $user->id,
-                        'method' => $method,
-                    ]);
                 } else {
-                    $skipped++;
-                    Logging::web('GoogleAdsNotificationService: Failed to send notification', [
-                        'account_id' => $account->id,
-                        'user_id' => $user->id,
-                        'method' => $method ?? 'unknown',
-                        'result' => $result ? ($result->isSuccess() ? 'success' : $result->getMessage()) : 'null',
-                    ]);
+                    $skipped += count($userAccounts);
                 }
             }
 
-            return ServiceReturn::success(data: ['sent' => $sent, 'found' => $found, 'skipped' => $skipped]);
+            return ServiceReturn::success(data: ['sent' => $sent, 'found' => $accounts->count(), 'skipped' => $skipped]);
         } catch (\Throwable $e) {
             Logging::error(message: 'GoogleAdsNotificationService@sendLowBalanceAlerts error: ' . $e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));

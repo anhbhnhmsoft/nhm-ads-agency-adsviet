@@ -34,6 +34,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'whatsapp_id',
         'referral_code',
         'email_verified_at',
+        'warning_threshold',
     ];
 
     /**
@@ -60,6 +61,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
             'email_verified_at' => 'datetime',
+            'warning_threshold' => 'decimal:2',
         ];
     }
 

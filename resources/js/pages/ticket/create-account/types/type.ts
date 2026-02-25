@@ -10,7 +10,6 @@ export type CreateAccountPageProps = {
 
 export type CreateAccountFormData = {
     package_id: string;
-    budget: string;
     meta_email?: string;
     display_name?: string;
     bm_id?: string;

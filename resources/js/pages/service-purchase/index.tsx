@@ -201,6 +201,15 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         }).format(num);
     };
 
+    const formatDisplayRange = (range: string) => {
+        if (!range) return '';
+        return range.replace(/(\$)?([\d,.]+)/g, (match, symbol, numStr) => {
+            const clean = numStr.replace(/,/g, '');
+            const n = parseFloat(clean);
+            return isNaN(n) ? match : '$' + new Intl.NumberFormat('en-US').format(n);
+        });
+    };
+
     const formatUSDT = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', {
             minimumFractionDigits: 2,
@@ -611,25 +620,25 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                             googleTimezones={google_timezones}
                                             metaEmailError={metaEmailError}
                                             onUpdate={(index, updater) => {
-                                            setAccounts((prevAccounts) => {
-                                                const newAccounts = [...prevAccounts];
-                                                const currentAccount = newAccounts[index] || {
-                                                    meta_email: '',
-                                                    display_name: '',
-                                                    bm_ids: [],
-                                                    fanpages: [],
-                                                    websites: [],
-                                                    timezone_bm: '',
-                                                    asset_access: 'full_asset',
-                                                };
-                                                if (typeof updater === 'function') {
-                                                    newAccounts[index] = updater(currentAccount);
-                                                } else {
-                                                    newAccounts[index] = updater;
-                                                }
-                                                return newAccounts;
-                                            });
-                                        }}
+                                                setAccounts((prevAccounts) => {
+                                                    const newAccounts = [...prevAccounts];
+                                                    const currentAccount = newAccounts[index] || {
+                                                        meta_email: '',
+                                                        display_name: '',
+                                                        bm_ids: [],
+                                                        fanpages: [],
+                                                        websites: [],
+                                                        timezone_bm: '',
+                                                        asset_access: 'full_asset',
+                                                    };
+                                                    if (typeof updater === 'function') {
+                                                        newAccounts[index] = updater(currentAccount);
+                                                    } else {
+                                                        newAccounts[index] = updater;
+                                                    }
+                                                    return newAccounts;
+                                                });
+                                            }}
                                             onRemove={(index) => {
                                                 setAccounts(accounts.filter((_, i) => i !== index));
                                             }}
@@ -667,7 +676,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                             key={`monthly-tier-display-${index}`}
                                             className="grid grid-cols-[2fr_1fr] px-4 py-2 text-sm text-gray-700"
                                         >
-                                            <span>{tier.range}</span>
+                                            <span>{formatDisplayRange(tier.range)}</span>
                                             <span className="font-medium">{tier.fee_percent}</span>
                                         </div>
                                     ))}
@@ -698,20 +707,20 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                 // Nếu undefined hoặc false => ẩn nút
                                 return permission === true;
                             })() && (
-                                <Button
-                                    type="button"
-                                    variant={paymentType === 'postpay' ? 'default' : 'outline'}
-                                    disabled={wallet_balance < postpayMinBalance}
-                                    size="sm"
-                                    onClick={() => {
-                                        purchaseForm.setData('payment_type', 'postpay');
-                                        purchaseForm.setData('top_up_amount', ''); // Trả sau không thu top-up upfront
-                                        setPostpayDays(7); // Reset về mặc định khi chọn postpay
-                                    }}
-                                >
-                                    {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
-                                </Button>
-                            )}
+                                    <Button
+                                        type="button"
+                                        variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                        disabled={wallet_balance < postpayMinBalance}
+                                        size="sm"
+                                        onClick={() => {
+                                            purchaseForm.setData('payment_type', 'postpay');
+                                            purchaseForm.setData('top_up_amount', ''); // Trả sau không thu top-up upfront
+                                            setPostpayDays(7); // Reset về mặc định khi chọn postpay
+                                        }}
+                                    >
+                                        {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
+                                    </Button>
+                                )}
                         </div>
                         {paymentType === 'postpay' && (
                             <div className="space-y-3">
@@ -882,8 +891,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             {t('service_purchase.top_up_amount_note')},
                             {minTopUpAmount > 0
                                 ? t('service_purchase.min_top_up_hint', {
-                                      amount: formatUSD(minTopUpAmount),
-                                  })
+                                    amount: formatUSD(minTopUpAmount),
+                                })
                                 : t('service_purchase.top_up_amount_note')}
                         </p>
                     </div>
@@ -894,7 +903,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             <div className="font-medium text-[#4285f4]">{t('service_purchase.calculate_fee')}:</div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="flex justify-between">
-                                        <span>{t('service_purchase.account_opening_fee')}:</span>
+                                    <span>{t('service_purchase.account_opening_fee')}:</span>
                                     <span className="font-medium">{formatUSDT(chargeOpenFee)}</span>
                                 </div>
                                 <div className="flex justify-between">
@@ -958,7 +967,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             : `${t('service_purchase.purchase_now')} - ${formatUSDT(totalCost)}`}
                     </Button>
                     <Button className="sm:hidden block w-full" variant="outline" onClick={() => setSelectedPackage(null)}>
-                            {t('service_purchase.back_to_services')}
+                        {t('service_purchase.back_to_services')}
                     </Button>
                 </CardContent>
             </Card>

@@ -60,7 +60,9 @@
         "reset": "Đặt lại",
         "showing": "Hiển thị {{from}} đến {{to}} trong tổng số {{total}}",
         "previous": "Trước",
-        "next": "Sau"
+        "next": "Sau",
+        "warning_threshold": "Ngưỡng cảnh báo riêng (USD)",
+        "warning_threshold_placeholder": ""
     },
     "user_menu": {
         "profile": "Thông tin cá nhân",
@@ -168,7 +170,7 @@
         "created_at": "Tạo ngày {{date}}",
         "total_budget": "Ngân sách đã nạp",
         "topup_fee": "Phí top-up",
-        "view_campaigns": "Xem tài khoản",
+        "view_accounts": "Xem tài khoản",
         "dialog_title": "Tài khoản quảng cáo",
         "dialog_platform": "Nền tảng: {{platform}}",
         "meta_email": "Email Tài khoản",

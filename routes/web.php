@@ -82,6 +82,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::put('/{id}', [UserController::class, 'updateUser'])->name('user_update');
         Route::post('/{id}/toggle-disable', [UserController::class, 'userToggleDisable'])->name('user_toggle_disable');
         Route::delete('/{id}', [UserController::class, 'destroyUser'])->name('user_destroy');
+        Route::post('/{id}/warning-threshold', [UserController::class, 'updateWarningThreshold'])->name('user_warning_threshold');
     });
 
     Route::prefix('/platform-settings')->group(function (){

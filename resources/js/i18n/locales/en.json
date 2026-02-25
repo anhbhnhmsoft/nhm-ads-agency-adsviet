@@ -62,7 +62,9 @@
     "previous": "Previous",
     "next": "Next",
     "platform": "Platform",
-    "view_account": "View account"
+    "view_account": "View account",
+    "warning_threshold": "Warning Threshold (USD)",
+    "warning_threshold_placeholder": "Default:"
   },
   "user_menu": {
     "profile": "Profile",
@@ -250,7 +252,7 @@
     "created_at": "Created at {{date}}",
     "total_budget": "Total budget",
     "topup_fee": "Top-up fee",
-    "view_campaigns": "View campaigns",
+    "view_accounts": "View account",
     "dialog_title": "Ad campaigns",
     "dialog_platform": "Platform: {{platform}}",
     "meta_email": "Account email",
