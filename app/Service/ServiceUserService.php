@@ -225,7 +225,6 @@ class ServiceUserService
                         // Gán service_user_id cho các google_accounts thuộc các MCC này mà hiện chưa có chủ
                         $updated = $this->googleAccountRepository->query()
                             ->whereIn('customer_manager_id', $mccIdsForCustomer)
-                            ->whereNull('service_user_id')
                             ->update(['service_user_id' => $serviceUser->id]);
                     } catch (\Throwable $attachError) {
                         Logging::error(
