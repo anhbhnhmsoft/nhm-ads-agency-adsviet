@@ -14,9 +14,9 @@ export const useServiceOrderAdminDialog = () => {
     const [useAccountsStructure, setUseAccountsStructure] = useState(false);
     const accountsRef = useRef<AccountFormData[]>([]);
     const [childBusinessManagers, setChildBusinessManagers] = useState<ChildBusinessManager[]>([]);
-    const [selectedChildBmId, setSelectedChildBmId] = useState<string>('');
+    const [selectedChildBmId, setSelectedChildBmId] = useState<string>('none');
     const [loadingChildBMs, setLoadingChildBMs] = useState(false);
-    
+
     const form = useForm({
         meta_email: '',
         display_name: '',
@@ -37,7 +37,7 @@ export const useServiceOrderAdminDialog = () => {
     const fetchChildBusinessManagers = useCallback(async (parentBmId: string) => {
         if (!parentBmId || parentBmId.trim() === '') {
             setChildBusinessManagers([]);
-            setSelectedChildBmId('');
+            setSelectedChildBmId('none');
             return;
         }
 
@@ -60,18 +60,18 @@ export const useServiceOrderAdminDialog = () => {
     const openDialogForOrder = useCallback((order: ServiceOrder) => {
         form.reset();
         form.clearErrors();
-        
+
         setAccounts([]);
         setUseAccountsStructure(false);
         accountsRef.current = [];
         setChildBusinessManagers([]);
-        setSelectedChildBmId('');
-        
+        setSelectedChildBmId('none');
+
         const config = order.config_account || {};
         setSelectedOrder(order);
-        const isGoogle = order.package?.platform === _PlatformType.GOOGLE;        
+        const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
         const configAccounts = config.accounts;
-        
+
         if (Array.isArray(configAccounts) && configAccounts.length > 0) {
             setUseAccountsStructure(true);
             const cleanedAccounts = configAccounts.map((acc: AccountConfig) => ({
@@ -100,7 +100,7 @@ export const useServiceOrderAdminDialog = () => {
             const typedConfig: ServiceOrderConfigAccount = config;
             const bmIdValue = typedConfig.bm_id || '';
             const childBmIdValue = typedConfig.child_bm_id || '';
-            
+
             form.setData({
                 meta_email: typedConfig.meta_email || '',
                 display_name: typedConfig.display_name || '',
@@ -112,11 +112,13 @@ export const useServiceOrderAdminDialog = () => {
                 timezone_bm: typedConfig.timezone_bm || '',
                 accounts: [],
             });
-            
+
             if (childBmIdValue) {
                 setSelectedChildBmId(childBmIdValue);
+            } else {
+                setSelectedChildBmId('none');
             }
-            
+
             if (bmIdValue && !isGoogle) {
                 fetchChildBusinessManagers(bmIdValue);
             }
@@ -128,9 +130,9 @@ export const useServiceOrderAdminDialog = () => {
         if (!selectedOrder) return;
 
         const currentAccounts = accountsRef.current;
-        
+
         let accountsToSubmit: AccountFormData[] = [];
-        
+
         if (useAccountsStructure && currentAccounts.length > 0) {
             accountsToSubmit = currentAccounts.map((acc) => ({
                 ...acc,
@@ -143,7 +145,7 @@ export const useServiceOrderAdminDialog = () => {
         form.transform(() => ({
             ...form.data,
             bm_id: form.data.bm_id,
-            child_bm_id: selectedChildBmId || null,
+            child_bm_id: (selectedChildBmId === 'none' || !selectedChildBmId) ? null : selectedChildBmId,
             accounts: accountsToSubmit,
             payment_type: form.data.payment_type || 'prepay',
         }));
@@ -159,7 +161,7 @@ export const useServiceOrderAdminDialog = () => {
                     accountsRef.current = [];
                     setUseAccountsStructure(false);
                     setChildBusinessManagers([]);
-                    setSelectedChildBmId('');
+                    setSelectedChildBmId('none');
                     form.reset();
                     form.clearErrors();
                 },
@@ -176,6 +178,8 @@ export const useServiceOrderAdminDialog = () => {
             setSelectedOrder(null);
             setAccounts([]);
             setUseAccountsStructure(false);
+            setChildBusinessManagers([]);
+            setSelectedChildBmId('none');
             form.reset();
             form.clearErrors();
         }
@@ -183,8 +187,8 @@ export const useServiceOrderAdminDialog = () => {
 
     const handleBmIdChange = useCallback((value: string) => {
         form.setData('bm_id', value);
-        setSelectedChildBmId('');
-        
+        setSelectedChildBmId('none');
+
         if (selectedOrder?.package?.platform === _PlatformType.META) {
             fetchChildBusinessManagers(value);
         }

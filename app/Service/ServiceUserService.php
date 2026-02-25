@@ -185,7 +185,6 @@ class ServiceUserService
                         // Gán service_user_id cho các meta_accounts thuộc các BM này mà hiện chưa có chủ
                         $updated = $this->metaAccountRepository->query()
                             ->whereIn('business_manager_id', $bmIdsForCustomer)
-                            ->whereNull('service_user_id')
                             ->update(['service_user_id' => $serviceUser->id]);
 
                     } catch (\Throwable $attachError) {
