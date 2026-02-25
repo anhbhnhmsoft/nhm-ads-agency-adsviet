@@ -6,14 +6,12 @@ import type { CreateAccountFormData } from '../types/type';
 export const useCreateAccountForm = () => {
     const form = useForm<CreateAccountFormData>({
         package_id: '',
-        budget: '0',
         asset_access: 'full_asset',
         notes: '',
     });
 
     const submit = (
         packageId: string,
-        budget: string,
         accounts?: Array<{
             meta_email?: string;
             display_name?: string;
@@ -34,7 +32,6 @@ export const useCreateAccountForm = () => {
     ) => {
         const payload: CreateAccountFormData = {
             package_id: packageId,
-            budget: budget || '0',
             notes: notes || '',
         };
 

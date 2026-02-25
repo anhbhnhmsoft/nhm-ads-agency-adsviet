@@ -6,7 +6,7 @@ import { Check, OctagonX } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useWallet } from '@/pages/user/hooks/use-wallet';
 import { wallet_lock, wallet_unlock, wallet_reset_password } from '@/routes';
 
@@ -18,6 +18,8 @@ type Props = {
 
 export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
     const { t } = useTranslation();
+    const { props } = usePage();
+    const globalWarningThreshold = (props as any)?.globalWarningThreshold?.value ?? '0';
     const [walletPassword, setWalletPassword] = useState('');
     const { wallet, loading: walletLoading, error: walletError, refetch: refetchWallet } = useWallet(
         user?.id,
@@ -90,6 +92,25 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                     <div className="grid gap-1">
                         <label className="text-sm font-medium text-gray-500">{t('common.referral_code')}</label>
                         <div className="text-sm">{user.referral_code}</div>
+                    </div>
+                    <div className="grid gap-1">
+                        <label className="text-sm font-medium text-gray-500">{t('common.warning_threshold', { default: 'Ngưỡng cảnh báo (USD)' })}</label>
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder={`${t('common.warning_threshold_placeholder', { default: 'Mặc định:' })} ${globalWarningThreshold}`}
+                                type="number"
+                                min="0"
+                                step="any"
+                                defaultValue={user.warning_threshold ?? ''}
+                                onBlur={(e) => {
+                                    if (e.target.value !== (user.warning_threshold?.toString() || '')) {
+                                        router.post(`/customer/${user.id}/warning-threshold`, {
+                                            warning_threshold: e.target.value !== '' ? Number(e.target.value) : null
+                                        }, { preserveScroll: true });
+                                    }
+                                }}
+                            />
+                        </div>
                     </div>
                     <div className="grid gap-1">
                         <label className="text-sm font-medium text-gray-500">{t('common.social_authentication')}</label>

@@ -41,6 +41,7 @@ export type CustomerListItem = {
     using_telegram: boolean;
     email_verified_at?: string | null;
     referral_code: string;
+    warning_threshold?: string | number | null;
     wallet_balance?: number;
     wallet_status?: number;
     owner?: {

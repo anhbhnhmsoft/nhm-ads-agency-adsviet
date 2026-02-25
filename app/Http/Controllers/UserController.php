@@ -262,4 +262,15 @@ class UserController extends Controller
         FlashMessage::success(__('user.unassign_employee_success', ['default' => 'Hủy gán nhân viên thành công']));
         return response()->json(['success' => true]);
     }
+
+    public function updateWarningThreshold(string $id, Request $request)
+    {
+        $validated = $request->validate([
+            'warning_threshold' => 'required|numeric|min:0|max:100000000',
+        ]);
+        $result = $this->userService->updateWarningThreshold($id, $validated);
+        if ($result->isSuccess()) {
+            FlashMessage::success(__('common_success.update_success'));
+        }
+    }
 }

@@ -14,6 +14,7 @@ use App\Http\Requests\Ticket\CreateShareRequest;
 use App\Http\Requests\Ticket\CreateTicketRequest;
 use App\Http\Requests\Ticket\CreateTransferRequest;
 use App\Http\Requests\Ticket\UpdateTicketStatusRequest;
+use App\Http\Resources\TicketListResource;
 use App\Service\ServicePackageService;
 use App\Service\TicketService;
 use App\Service\WalletTransactionService;
@@ -51,15 +52,7 @@ class TicketController extends Controller
         }
 
         $pagination = $result->getData();
-        return RestResponse::success(data: [
-            'data' => $pagination->items(),
-            'current_page' => $pagination->currentPage(),
-            'last_page' => $pagination->lastPage(),
-            'per_page' => $pagination->perPage(),
-            'total' => $pagination->total(),
-            'from' => $pagination->firstItem(),
-            'to' => $pagination->lastItem(),
-        ]);
+        return RestResponse::success(data: TicketListResource::collection($pagination)->response()->getData());
     }
 
     /**
@@ -148,13 +141,7 @@ class TicketController extends Controller
         }
 
         $pagination = $result->getData();
-        return RestResponse::success(data: [
-            'data' => $pagination->items(),
-            'current_page' => $pagination->currentPage(),
-            'last_page' => $pagination->lastPage(),
-            'per_page' => $pagination->perPage(),
-            'total' => $pagination->total(),
-        ]);
+        return RestResponse::success(data: TicketListResource::collection($pagination)->response()->getData());
     }
 
     public function storeTransfer(CreateTransferRequest $request): JsonResponse
