@@ -175,7 +175,8 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                 header: t('service_orders.table.account_info'),
                 meta: {
                     headerClassName: 'w-[475px] min-w-[475px] max-w-[475px] break-words whitespace-normal',
-                    cellClassName: "w-[475px] min-w-[475px] max-w-[475px] break-words whitespace-normal"  },
+                    cellClassName: "w-[475px] min-w-[475px] max-w-[475px] break-words whitespace-normal"
+                },
                 cell: ({ row }) => {
                     return (
                         <AccountInfoCell
@@ -221,11 +222,11 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                 meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
                 cell: ({ row }) => {
                     const totalCost = row.original.total_cost;
-                    
+
                     if (totalCost === undefined || totalCost === null || totalCost === 0) {
                         return <span className="text-xs text-muted-foreground">-</span>;
                     }
-                    
+
                     return <span className="text-xs font-medium">{Number(totalCost).toFixed(2)} USDT</span>;
                 },
             },
@@ -370,419 +371,419 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
 
                 {is_admin_view && (
                     <>
-                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>{t('service_orders.admin_form_title')}</DialogTitle>
-                                <DialogDescription>{t('service_orders.admin_form_description')}</DialogDescription>
-                            </DialogHeader>
+                        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>{t('service_orders.admin_form_title')}</DialogTitle>
+                                    <DialogDescription>{t('service_orders.admin_form_description')}</DialogDescription>
+                                </DialogHeader>
 
-                            <div className="space-y-4 py-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="payment_type">{t('service_purchase.payment_type')}</Label>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="button"
-                                            variant={paymentType === 'prepay' ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => setPaymentType('prepay')}
-                                        >
-                                            {t('service_purchase.payment_prepay')}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant={paymentType === 'postpay' ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => setPaymentType('postpay')}
-                                        >
-                                            {t('service_purchase.payment_postpay')}
-                                        </Button>
+                                <div className="space-y-4 py-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="payment_type">{t('service_purchase.payment_type')}</Label>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="button"
+                                                variant={paymentType === 'prepay' ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => setPaymentType('prepay')}
+                                            >
+                                                {t('service_purchase.payment_prepay')}
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => setPaymentType('postpay')}
+                                            >
+                                                {t('service_purchase.payment_postpay')}
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
 
-                                {approveUseAccountsStructure ? (
-                                    <>
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-base font-semibold">
-                                                {isApproveMeta
-                                                    ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
-                                                    : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' })}
-                                            </Label>
-                                            {approveAccounts.length < 3 && (
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setApproveAccounts([
-                                                            ...approveAccounts,
-                                                            {
-                                                                meta_email: '',
-                                                                display_name: '',
-                                                                bm_ids: [],
-                                                                fanpages: isApproveMeta ? [] : [],
-                                                                websites: [],
-                                                                timezone_bm: '',
-                                                                asset_access: 'full_asset',
-                                                            },
-                                                        ]);
-                                                    }}
-                                                >
-                                                    <Plus className="h-4 w-4 mr-2" />
-                                                    {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
-                                                </Button>
-                                            )}
-                                        </div>
-                                        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                                            {approveAccounts.map((account, idx) => (
-                                                <AccountFormEdit
-                                                    key={idx}
-                                                    account={account}
-                                                    accountIndex={idx}
-                                                    platform={selectedOrder?.package?.platform || 0}
-                                                    metaTimezones={meta_timezones}
-                                                    googleTimezones={google_timezones}
-                                                    onUpdate={(index, data) => {
-                                                        const newAccounts = [...approveAccounts];
-                                                        const updatedAccount = {
-                                                            ...data,
-                                                            bm_ids: Array.isArray(data.bm_ids) ? data.bm_ids : (data.bm_ids ? [data.bm_ids] : []),
-                                                            fanpages: Array.isArray(data.fanpages) ? data.fanpages : (data.fanpages ? [data.fanpages] : []),
-                                                            websites: Array.isArray(data.websites) ? data.websites : (data.websites ? [data.websites] : []),
-                                                        };
-                                                        newAccounts[index] = updatedAccount;
-                                                        setApproveAccounts(newAccounts);
-                                                    }}
-                                                    onRemove={(index) => {
-                                                        setApproveAccounts(approveAccounts.filter((_, i) => i !== index));
-                                                    }}
-                                                    canRemove={approveAccounts.length > 1}
-                                                />
-                                            ))}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="meta_email">{t('service_purchase.meta_email')}</Label>
-                                            <Input
-                                                id="meta_email"
-                                                type="email"
-                                                value={metaEmail}
-                                                onChange={(e) => setMetaEmail(e.target.value)}
-                                                placeholder={t('service_orders.form.meta_email_placeholder')}
-                                            />
-                                            {formErrors.meta_email && (
-                                                <p className="text-xs text-red-500">{formErrors.meta_email}</p>
-                                            )}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="display_name">{t('service_purchase.display_name')}</Label>
-                                            <Input
-                                                id="display_name"
-                                                value={displayName}
-                                                onChange={(e) => setDisplayName(e.target.value)}
-                                                placeholder={t('service_orders.form.display_name_placeholder')}
-                                            />
-                                            {formErrors.display_name && (
-                                                <p className="text-xs text-red-500">{formErrors.display_name}</p>
-                                            )}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="bm_id">
-                                                {isApproveMeta
-                                                    ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
-                                                    : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}
-                                            </Label>
-                                            <Input
-                                                id="bm_id"
-                                                value={bmId}
-                                                onChange={(e) => setBmId(e.target.value)}
-                                                placeholder={t('service_orders.form.bm_id_placeholder')}
-                                            />
-                                            {formErrors.bm_id && (
-                                                <p className="text-xs text-red-500">{formErrors.bm_id}</p>
-                                            )}
-                                        </div>
-                                        {isApproveMeta && childBusinessManagers.length > 0 && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="child_bm_id">
-                                                    {t('service_orders.form.child_bm_label', { defaultValue: 'Chọn BM con (tùy chọn)' })}
+                                    {approveUseAccountsStructure ? (
+                                        <>
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-base font-semibold">
+                                                    {isApproveMeta
+                                                        ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
+                                                        : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' })}
                                                 </Label>
+                                                {approveAccounts.length < 3 && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setApproveAccounts([
+                                                                ...approveAccounts,
+                                                                {
+                                                                    meta_email: '',
+                                                                    display_name: '',
+                                                                    bm_ids: [],
+                                                                    fanpages: isApproveMeta ? [] : [],
+                                                                    websites: [],
+                                                                    timezone_bm: '',
+                                                                    asset_access: 'full_asset',
+                                                                },
+                                                            ]);
+                                                        }}
+                                                    >
+                                                        <Plus className="h-4 w-4 mr-2" />
+                                                        {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                                                {approveAccounts.map((account, idx) => (
+                                                    <AccountFormEdit
+                                                        key={idx}
+                                                        account={account}
+                                                        accountIndex={idx}
+                                                        platform={selectedOrder?.package?.platform || 0}
+                                                        metaTimezones={meta_timezones}
+                                                        googleTimezones={google_timezones}
+                                                        onUpdate={(index, data) => {
+                                                            const newAccounts = [...approveAccounts];
+                                                            const updatedAccount = {
+                                                                ...data,
+                                                                bm_ids: Array.isArray(data.bm_ids) ? data.bm_ids : (data.bm_ids ? [data.bm_ids] : []),
+                                                                fanpages: Array.isArray(data.fanpages) ? data.fanpages : (data.fanpages ? [data.fanpages] : []),
+                                                                websites: Array.isArray(data.websites) ? data.websites : (data.websites ? [data.websites] : []),
+                                                            };
+                                                            newAccounts[index] = updatedAccount;
+                                                            setApproveAccounts(newAccounts);
+                                                        }}
+                                                        onRemove={(index) => {
+                                                            setApproveAccounts(approveAccounts.filter((_, i) => i !== index));
+                                                        }}
+                                                        canRemove={approveAccounts.length > 1}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="meta_email">{t('service_purchase.meta_email')}</Label>
+                                                <Input
+                                                    id="meta_email"
+                                                    type="email"
+                                                    value={metaEmail}
+                                                    onChange={(e) => setMetaEmail(e.target.value)}
+                                                    placeholder={t('service_orders.form.meta_email_placeholder')}
+                                                />
+                                                {formErrors.meta_email && (
+                                                    <p className="text-xs text-red-500">{formErrors.meta_email}</p>
+                                                )}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="display_name">{t('service_purchase.display_name')}</Label>
+                                                <Input
+                                                    id="display_name"
+                                                    value={displayName}
+                                                    onChange={(e) => setDisplayName(e.target.value)}
+                                                    placeholder={t('service_orders.form.display_name_placeholder')}
+                                                />
+                                                {formErrors.display_name && (
+                                                    <p className="text-xs text-red-500">{formErrors.display_name}</p>
+                                                )}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="bm_id">
+                                                    {isApproveMeta
+                                                        ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
+                                                        : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}
+                                                </Label>
+                                                <Input
+                                                    id="bm_id"
+                                                    value={bmId}
+                                                    onChange={(e) => setBmId(e.target.value)}
+                                                    placeholder={t('service_orders.form.bm_id_placeholder')}
+                                                />
+                                                {formErrors.bm_id && (
+                                                    <p className="text-xs text-red-500">{formErrors.bm_id}</p>
+                                                )}
+                                            </div>
+                                            {isApproveMeta && childBusinessManagers.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="child_bm_id">
+                                                        {t('service_orders.form.child_bm_label', { defaultValue: 'Chọn BM con (tùy chọn)' })}
+                                                    </Label>
+                                                    <Select
+                                                        value={selectedChildBmId}
+                                                        onValueChange={(value) => setSelectedChildBmId(value)}
+                                                        disabled={loadingChildBMs}
+                                                    >
+                                                        <SelectTrigger id="child_bm_id">
+                                                            <SelectValue placeholder={loadingChildBMs ? t('service_orders.form.loading_child_bms', { defaultValue: 'Đang tải...' }) : t('service_orders.form.select_child_bm', { defaultValue: 'Chọn BM con' })} />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">
+                                                                {t('service_orders.form.use_parent_bm', { defaultValue: 'Sử dụng BM gốc' })}
+                                                            </SelectItem>
+                                                            {childBusinessManagers.map((childBM: ChildBusinessManager) => (
+                                                                <SelectItem key={childBM.bm_id} value={childBM.bm_id}>
+                                                                    {childBM.name || childBM.bm_id}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {t('service_orders.form.child_bm_hint', { defaultValue: 'Nếu không chọn, hệ thống sẽ sử dụng BM gốc' })}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            <div className="space-y-2">
+                                                <Label htmlFor="approve_asset_access">{t('service_purchase.asset_access_label')}</Label>
                                                 <Select
-                                                    value={selectedChildBmId}
-                                                    onValueChange={(value) => setSelectedChildBmId(value)}
-                                                    disabled={loadingChildBMs}
+                                                    value={assetAccess || 'full_asset'}
+                                                    onValueChange={(value: 'full_asset' | 'basic_asset') => setAssetAccess(value)}
                                                 >
-                                                    <SelectTrigger id="child_bm_id">
-                                                        <SelectValue placeholder={loadingChildBMs ? t('service_orders.form.loading_child_bms', { defaultValue: 'Đang tải...' }) : t('service_orders.form.select_child_bm', { defaultValue: 'Chọn BM con' })} />
+                                                    <SelectTrigger id="approve_asset_access">
+                                                        <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="">
-                                                            {t('service_orders.form.use_parent_bm', { defaultValue: 'Sử dụng BM gốc' })}
-                                                        </SelectItem>
-                                                        {childBusinessManagers.map((childBM: ChildBusinessManager) => (
-                                                            <SelectItem key={childBM.bm_id} value={childBM.bm_id}>
-                                                                {childBM.name || childBM.bm_id}
-                                                            </SelectItem>
-                                                        ))}
+                                                        <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
+                                                        <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {t('service_orders.form.child_bm_hint', { defaultValue: 'Nếu không chọn, hệ thống sẽ sử dụng BM gốc' })}
-                                                </p>
                                             </div>
-                                        )}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="approve_asset_access">{t('service_purchase.asset_access_label')}</Label>
-                                            <Select
-                                                value={assetAccess || 'full_asset'}
-                                                onValueChange={(value: 'full_asset' | 'basic_asset') => setAssetAccess(value)}
-                                            >
-                                                <SelectTrigger id="approve_asset_access">
-                                                    <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
-                                                    <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="approve_timezone_bm">
-                                                {isApproveMeta
-                                                    ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
-                                                    : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
-                                            </Label>
-                                            <TimezoneSelect
-                                                id="approve_timezone_bm"
-                                                value={timezoneBm || ''}
-                                                onValueChange={(value) => setTimezoneBm(value)}
-                                                options={isApproveMeta ? meta_timezones : google_timezones}
-                                                placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
-                                            />
-                                        </div>
-
-                                        {isApproveMeta && (
-                                            <>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
-                                                    <Input
-                                                        id="info_fanpage"
-                                                        value={infoFanpage}
-                                                        onChange={(e) => setInfoFanpage(e.target.value)}
-                                                        placeholder={t('service_orders.form.info_fanpage_placeholder')}
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="info_website">{t('service_orders.form.info_website')}</Label>
-                                                    <Input
-                                                        id="info_website"
-                                                        value={infoWebsite}
-                                                        onChange={(e) => setInfoWebsite(e.target.value)}
-                                                        placeholder={t('service_orders.form.info_website_placeholder')}
-                                                    />
-                                                </div>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                                    {t('common.back')}
-                                </Button>
-                                <Button onClick={() => {
-                                    handleSubmitApprove();
-                                }} disabled={approveProcessing}>
-                                    {approveProcessing ? t('common.processing') : t('common.confirm')}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-
-                    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>{t('service_orders.edit_config_title')}</DialogTitle>
-                                <DialogDescription>{t('service_orders.edit_config_description')}</DialogDescription>
-                            </DialogHeader>
-
-                            <div className="space-y-4 py-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit_payment_type">{t('service_purchase.payment_type')}</Label>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="button"
-                                            variant={editPaymentType === 'prepay' ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => setEditPaymentType('prepay')}
-                                        >
-                                            {t('service_purchase.payment_prepay')}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant={editPaymentType === 'postpay' ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => setEditPaymentType('postpay')}
-                                        >
-                                            {t('service_purchase.payment_postpay')}
-                                        </Button>
-                                    </div>
-                                </div>
-                                {editUseAccountsStructure ? (
-                                    <>
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-base font-semibold">
-                                                {isEditMeta
-                                                    ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
-                                                    : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' })}
-                                            </Label>
-                                            {editAccounts.length < 3 && (
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setEditAccounts([
-                                                            ...editAccounts,
-                                                            {
-                                                                meta_email: '',
-                                                                display_name: '',
-                                                                bm_ids: [],
-                                                                fanpages: isEditMeta ? [] : [],
-                                                                websites: [],
-                                                                timezone_bm: '',
-                                                                asset_access: 'full_asset',
-                                                            },
-                                                        ]);
-                                                    }}
-                                                >
-                                                    <Plus className="h-4 w-4 mr-2" />
-                                                    {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
-                                                </Button>
-                                            )}
-                                        </div>
-                                        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                                            {editAccounts.map((account, idx) => (
-                                                <AccountFormEdit
-                                                    key={idx}
-                                                    account={account}
-                                                    accountIndex={idx}
-                                                    platform={selectedEditOrder?.package?.platform ?? 0}
-                                                    metaTimezones={meta_timezones}
-                                                    googleTimezones={google_timezones}
-                                                    onUpdate={(index, data) => {
-                                                        const newAccounts = [...editAccounts];
-                                                        newAccounts[index] = data;
-                                                        setEditAccounts(newAccounts);
-                                                    }}
-                                                    onRemove={(index) => {
-                                                        setEditAccounts(editAccounts.filter((_, i) => i !== index));
-                                                    }}
-                                                    canRemove={editAccounts.length > 1}
+                                            <div className="space-y-2">
+                                                <Label htmlFor="approve_timezone_bm">
+                                                    {isApproveMeta
+                                                        ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
+                                                        : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                                                </Label>
+                                                <TimezoneSelect
+                                                    id="approve_timezone_bm"
+                                                    value={timezoneBm || ''}
+                                                    onValueChange={(value) => setTimezoneBm(value)}
+                                                    options={isApproveMeta ? meta_timezones : google_timezones}
+                                                    placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
                                                 />
-                                            ))}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="edit_meta_email">{t('service_purchase.meta_email')}</Label>
-                                            <Input
-                                                id="edit_meta_email"
-                                                type="email"
-                                                value={editMetaEmail || ''}
-                                                onChange={(e) => setEditMetaEmail(e.target.value)}
-                                                placeholder={t('service_orders.form.meta_email_placeholder')}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="edit_display_name">{t('service_purchase.display_name')}</Label>
-                                            <Input
-                                                id="edit_display_name"
-                                                value={editDisplayName || ''}
-                                                onChange={(e) => setEditDisplayName(e.target.value)}
-                                                placeholder={t('service_orders.form.display_name_placeholder')}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="edit_bm_id">
-                                                {isEditMeta
-                                                    ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
-                                                    : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}
-                                            </Label>
-                                            <Input
-                                                id="edit_bm_id"
-                                                value={editBmId || ''}
-                                                onChange={(e) => setEditBmId(e.target.value)}
-                                                placeholder={t('service_orders.form.bm_id_placeholder')}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="edit_asset_access">{t('service_purchase.asset_access_label')}</Label>
-                                            <Select
-                                                value={editAssetAccess ?? 'full_asset'}
-                                                onValueChange={(value: 'full_asset' | 'basic_asset') => setEditAssetAccess(value)}
-                                            >
-                                                <SelectTrigger id="edit_asset_access">
-                                                    <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
-                                                    <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="edit_timezone_bm">
-                                                {isEditMeta
-                                                    ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
-                                                    : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
-                                            </Label>
-                                            <TimezoneSelect
-                                                id="edit_timezone_bm"
-                                                value={editTimezoneBm || ''}
-                                                onValueChange={(value) => setEditTimezoneBm(value)}
-                                                options={isEditMeta ? meta_timezones : google_timezones}
-                                                placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
-                                            />
-                                        </div>
-                                        {isEditMeta && (
-                                            <>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit_info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
-                                                    <Input
-                                                        id="edit_info_fanpage"
-                                                        value={editInfoFanpage || ''}
-                                                        onChange={(e) => setEditInfoFanpage(e.target.value)}
-                                                        placeholder={t('service_orders.form.info_fanpage_placeholder')}
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit_info_website">{t('service_orders.form.info_website')}</Label>
-                                                    <Input
-                                                        id="edit_info_website"
-                                                        value={editInfoWebsite || ''}
-                                                        onChange={(e) => setEditInfoWebsite(e.target.value)}
-                                                        placeholder={t('service_orders.form.info_website_placeholder')}
-                                                    />
-                                                </div>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                            </div>
+                                            </div>
 
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-                                    {t('common.back')}
-                                </Button>
-                                <Button onClick={handleSubmitUpdate}>{t('common.save')}</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                                            {isApproveMeta && (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                                        <Input
+                                                            id="info_fanpage"
+                                                            value={infoFanpage}
+                                                            onChange={(e) => setInfoFanpage(e.target.value)}
+                                                            placeholder={t('service_orders.form.info_fanpage_placeholder')}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="info_website">{t('service_orders.form.info_website')}</Label>
+                                                        <Input
+                                                            id="info_website"
+                                                            value={infoWebsite}
+                                                            onChange={(e) => setInfoWebsite(e.target.value)}
+                                                            placeholder={t('service_orders.form.info_website_placeholder')}
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                                        {t('common.back')}
+                                    </Button>
+                                    <Button onClick={() => {
+                                        handleSubmitApprove();
+                                    }} disabled={approveProcessing}>
+                                        {approveProcessing ? t('common.processing') : t('common.confirm')}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
+                        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>{t('service_orders.edit_config_title')}</DialogTitle>
+                                    <DialogDescription>{t('service_orders.edit_config_description')}</DialogDescription>
+                                </DialogHeader>
+
+                                <div className="space-y-4 py-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="edit_payment_type">{t('service_purchase.payment_type')}</Label>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="button"
+                                                variant={editPaymentType === 'prepay' ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => setEditPaymentType('prepay')}
+                                            >
+                                                {t('service_purchase.payment_prepay')}
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant={editPaymentType === 'postpay' ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => setEditPaymentType('postpay')}
+                                            >
+                                                {t('service_purchase.payment_postpay')}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    {editUseAccountsStructure ? (
+                                        <>
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-base font-semibold">
+                                                    {isEditMeta
+                                                        ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
+                                                        : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' })}
+                                                </Label>
+                                                {editAccounts.length < 3 && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setEditAccounts([
+                                                                ...editAccounts,
+                                                                {
+                                                                    meta_email: '',
+                                                                    display_name: '',
+                                                                    bm_ids: [],
+                                                                    fanpages: isEditMeta ? [] : [],
+                                                                    websites: [],
+                                                                    timezone_bm: '',
+                                                                    asset_access: 'full_asset',
+                                                                },
+                                                            ]);
+                                                        }}
+                                                    >
+                                                        <Plus className="h-4 w-4 mr-2" />
+                                                        {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                                                {editAccounts.map((account, idx) => (
+                                                    <AccountFormEdit
+                                                        key={idx}
+                                                        account={account}
+                                                        accountIndex={idx}
+                                                        platform={selectedEditOrder?.package?.platform ?? 0}
+                                                        metaTimezones={meta_timezones}
+                                                        googleTimezones={google_timezones}
+                                                        onUpdate={(index, data) => {
+                                                            const newAccounts = [...editAccounts];
+                                                            newAccounts[index] = data;
+                                                            setEditAccounts(newAccounts);
+                                                        }}
+                                                        onRemove={(index) => {
+                                                            setEditAccounts(editAccounts.filter((_, i) => i !== index));
+                                                        }}
+                                                        canRemove={editAccounts.length > 1}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit_meta_email">{t('service_purchase.meta_email')}</Label>
+                                                <Input
+                                                    id="edit_meta_email"
+                                                    type="email"
+                                                    value={editMetaEmail || ''}
+                                                    onChange={(e) => setEditMetaEmail(e.target.value)}
+                                                    placeholder={t('service_orders.form.meta_email_placeholder')}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit_display_name">{t('service_purchase.display_name')}</Label>
+                                                <Input
+                                                    id="edit_display_name"
+                                                    value={editDisplayName || ''}
+                                                    onChange={(e) => setEditDisplayName(e.target.value)}
+                                                    placeholder={t('service_orders.form.display_name_placeholder')}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit_bm_id">
+                                                    {isEditMeta
+                                                        ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
+                                                        : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}
+                                                </Label>
+                                                <Input
+                                                    id="edit_bm_id"
+                                                    value={editBmId || ''}
+                                                    onChange={(e) => setEditBmId(e.target.value)}
+                                                    placeholder={t('service_orders.form.bm_id_placeholder')}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit_asset_access">{t('service_purchase.asset_access_label')}</Label>
+                                                <Select
+                                                    value={editAssetAccess ?? 'full_asset'}
+                                                    onValueChange={(value: 'full_asset' | 'basic_asset') => setEditAssetAccess(value)}
+                                                >
+                                                    <SelectTrigger id="edit_asset_access">
+                                                        <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
+                                                        <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit_timezone_bm">
+                                                    {isEditMeta
+                                                        ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
+                                                        : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                                                </Label>
+                                                <TimezoneSelect
+                                                    id="edit_timezone_bm"
+                                                    value={editTimezoneBm || ''}
+                                                    onValueChange={(value) => setEditTimezoneBm(value)}
+                                                    options={isEditMeta ? meta_timezones : google_timezones}
+                                                    placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
+                                                />
+                                            </div>
+                                            {isEditMeta && (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="edit_info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                                        <Input
+                                                            id="edit_info_fanpage"
+                                                            value={editInfoFanpage || ''}
+                                                            onChange={(e) => setEditInfoFanpage(e.target.value)}
+                                                            placeholder={t('service_orders.form.info_fanpage_placeholder')}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="edit_info_website">{t('service_orders.form.info_website')}</Label>
+                                                        <Input
+                                                            id="edit_info_website"
+                                                            value={editInfoWebsite || ''}
+                                                            onChange={(e) => setEditInfoWebsite(e.target.value)}
+                                                            placeholder={t('service_orders.form.info_website_placeholder')}
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                                        {t('common.back')}
+                                    </Button>
+                                    <Button onClick={handleSubmitUpdate}>{t('common.save')}</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </>
                 )}
             </div>

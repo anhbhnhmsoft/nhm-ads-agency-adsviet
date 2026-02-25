@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 export const useTransferForm = () => {
     const { t } = useTranslation();
     const form = useForm({
-        platform: '', // Platform type: 1 = GOOGLE, 2 = META
+        platform: '', // Platform type: 1 = META, 2 = GOOGLE
         from_account_id: '',
         to_account_id: '',
         amount: '',
