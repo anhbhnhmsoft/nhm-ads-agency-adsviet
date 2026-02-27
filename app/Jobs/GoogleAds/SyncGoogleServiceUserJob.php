@@ -31,7 +31,7 @@ class SyncGoogleServiceUserJob implements ShouldQueue
         $googleAdsService->syncGoogleCampaigns($this->serviceUser);
         $googleAdsService->syncGoogleInsights($this->serviceUser);
         // Kiểm tra và gửi thông báo low balance
-        $googleAdsNotificationService->sendLowBalanceAlerts();
+        // $googleAdsNotificationService->sendLowBalanceAlerts();
     }
 }
 

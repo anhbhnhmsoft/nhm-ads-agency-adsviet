@@ -48,7 +48,7 @@ class SyncMetaJob implements ShouldQueue
         $metaService->syncMetaAdsAndCampaigns($this->serviceUser);
 
         // Sau khi sync xong, kiểm tra và gửi thông báo low balance
-        $metaAdsNotificationService->sendLowBalanceAlerts();
+        // $metaAdsNotificationService->sendLowBalanceAlerts();
     }
 
 }
