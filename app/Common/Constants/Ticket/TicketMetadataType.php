@@ -15,6 +15,7 @@ enum TicketMetadataType: string
     case SHARE_BM = 'share_bm';
     case WALLET_WITHDRAW_APP = 'wallet_withdraw_app';
     case WALLET_DEPOSIT_APP = 'wallet_deposit_app';
+    case WITHDRAW_TO_WALLET = 'withdraw_to_wallet';
 
     public function label(): string
     {
@@ -34,6 +35,7 @@ enum TicketMetadataType: string
             
             TicketMetadataType::WALLET_WITHDRAW_APP => __('ticket.type.wallet_withdraw_app'),
             TicketMetadataType::WALLET_DEPOSIT_APP => __('ticket.type.wallet_deposit_app'),
+            TicketMetadataType::WITHDRAW_TO_WALLET => __('ticket.type.withdraw_to_wallet'),
         };
     }
 
@@ -44,6 +46,7 @@ enum TicketMetadataType: string
             'account_liquidation', 'account_close' => self::REFUND->value,
             'account_appeal' => self::APPEAL->value,
             'share_bm' => self::SHARE->value,
+            'withdraw_to_wallet' => self::WITHDRAW_TO_WALLET->value,
             default => $frontendValue,
         };
     }
@@ -62,6 +65,7 @@ enum TicketMetadataType: string
             self::SHARE->value,
             self::WALLET_WITHDRAW_APP->value,
             self::WALLET_DEPOSIT_APP->value,
+            self::WITHDRAW_TO_WALLET->value,
         ];
     }
 }

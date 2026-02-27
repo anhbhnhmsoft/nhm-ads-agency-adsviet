@@ -25,7 +25,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const formatDisplayRange = (range: string) => {
@@ -37,7 +37,7 @@ const formatDisplayRange = (range: string) => {
     });
 };
 
-export default function CreateAccountPage({ packages, meta_timezones = [], google_timezones = [] }: CreateAccountPageProps) {
+export default function CreateAccountPage({ packages, meta_timezones = [], google_timezones = [], postpay_permissions = {} }: CreateAccountPageProps) {
     const { t } = useTranslation();
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
     const [searchQuery, setSearchQuery] = useState<string>('');
@@ -67,6 +67,14 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
     }, [packages]);
 
     const { form, submit } = useCreateAccountForm();
+    const paymentType = form.data.payment_type || 'prepay';
+    const topUpAmount = form.data.top_up_amount || '';
+
+    useEffect(() => {
+        if (selectedPackage && postpay_permissions[selectedPackage.id] !== true && paymentType === 'postpay') {
+            form.setData('payment_type', 'prepay');
+        }
+    }, [selectedPackage?.id, postpay_permissions, paymentType]);
 
     const getInitialAccount = useCallback((platform?: number): AccountFormData => ({
         meta_email: '',
@@ -82,7 +90,6 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
         const currentPlatform = selectedPackage?.platform;
         const newPlatform = pkg.platform;
 
-        // Nếu platform thay đổi, reset accounts
         if (currentPlatform !== newPlatform) {
             setAccounts([getInitialAccount(newPlatform)]);
         }
@@ -142,7 +149,11 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
         submit(
             selectedPackage.id,
             hasAccounts ? accounts : undefined,
-            undefined,
+            {
+                payment_type: paymentType,
+                top_up_amount: topUpAmount || '0',
+                budget: '0',
+            },
             notes || undefined,
             () => {
                 setSelectedPackage(null);
@@ -159,6 +170,9 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                     },
                 ]);
                 setNotes('');
+                form.setData('payment_type', 'prepay');
+                form.setData('top_up_amount', '');
+                form.setData('budget', '0');
             }
         );
     };
@@ -168,6 +182,7 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
 
         const isMeta = selectedPackage.platform === _PlatformType.META;
         const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
+        const isPostpayAllowed = postpay_permissions[selectedPackage.id] === true;
 
         return (
             <Card className="mt-6">
@@ -264,6 +279,50 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                             </div>
                         </div>
                     )}
+
+                    <div className="space-y-2">
+                        <Label>{t('service_purchase.payment_type', { defaultValue: 'Hình thức thanh toán' })}</Label>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant={paymentType === 'prepay' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => form.setData('payment_type', 'prepay')}
+                            >
+                                {t('service_purchase.payment_prepay', { defaultValue: 'Thanh toán trả trước' })}
+                            </Button>
+                            {isPostpayAllowed && (
+                                <Button
+                                    type="button"
+                                    variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => {
+                                        form.setData('payment_type', 'postpay');
+                                        form.setData('top_up_amount', '0');
+                                    }}
+                                >
+                                    {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="top_up_amount">
+                            {t('service_purchase.top_up_amount', { defaultValue: 'Số tiền nạp' })}
+                        </Label>
+                        <Input
+                            id="top_up_amount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={topUpAmount}
+                            disabled={paymentType === 'postpay'}
+                            placeholder={t('service_purchase.top_up_amount', { defaultValue: 'Số tiền nạp' })}
+                            onChange={(e) => form.setData('top_up_amount', e.target.value)}
+                        />
+                    </div>
+
                     <div className="space-y-2">
                         <Label htmlFor="notes">{t('ticket.create_account.notes', { defaultValue: 'Ghi chú' })}</Label>
                         <Textarea
@@ -415,4 +474,3 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
         </AppLayout>
     );
 }
-

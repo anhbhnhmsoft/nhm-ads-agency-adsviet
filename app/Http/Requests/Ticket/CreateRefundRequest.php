@@ -4,6 +4,7 @@ namespace App\Http\Requests\Ticket;
 
 use Illuminate\Foundation\Http\FormRequest;
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\Ticket\TicketMetadataType;
 
 class CreateRefundRequest extends FormRequest
 {
@@ -18,7 +19,7 @@ class CreateRefundRequest extends FormRequest
             'platform' => ['required', 'integer', 'in:' . PlatformType::GOOGLE->value . ',' . PlatformType::META->value],
             'account_ids' => ['required', 'array', 'min:1'],
             'account_ids.*' => ['required', 'string', 'max:255'],
-            'liquidation_type' => ['required', 'string', 'in:withdraw_to_wallet'],
+            'liquidation_type' => ['required', 'string', 'in:'. TicketMetadataType::WITHDRAW_TO_WALLET->value],
             'notes' => ['required', 'string', 'max:1000'],
         ];
     }

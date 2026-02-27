@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\BusinessManagerController;
 use App\Http\Controllers\API\CommonController;
 use App\Http\Controllers\API\ConfigController;
 use App\Http\Controllers\API\GoogleAdsController;
@@ -55,6 +56,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('report', [ServiceController::class, 'report']);
         Route::get('report-insight', [ServiceController::class, 'reportInsight']);
 
+    });
+
+    Route::prefix('business-managers')->group(function () {
+        Route::get('/', [BusinessManagerController::class, 'index']);
     });
 
     Route::prefix('meta')->group(function () {
