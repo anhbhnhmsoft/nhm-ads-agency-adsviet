@@ -27,6 +27,7 @@ class ServicePackageResource extends JsonResource
             'supplier_fee_percent' => $this->supplier_fee_percent,
             'set_up_time' => $this->set_up_time,
             'disabled' => $this->disabled,
+            'is_postpay_allowed' => $request->user() ? $this->postpayUsers()->where('user_id', $request->user()->id)->exists() : false,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

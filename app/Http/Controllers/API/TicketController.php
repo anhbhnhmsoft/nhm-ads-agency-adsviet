@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Common\Constants\Ticket\TicketMetadataType;
+use App\Common\Helpers\TimezoneHelper;
 use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Core\RestResponse;
@@ -14,6 +15,7 @@ use App\Http\Requests\Ticket\CreateShareRequest;
 use App\Http\Requests\Ticket\CreateTicketRequest;
 use App\Http\Requests\Ticket\CreateTransferRequest;
 use App\Http\Requests\Ticket\UpdateTicketStatusRequest;
+use App\Http\Resources\ServicePackageResource;
 use App\Http\Resources\TicketListResource;
 use App\Service\ServicePackageService;
 use App\Service\TicketService;
@@ -348,21 +350,21 @@ class TicketController extends Controller
     {
         $user = Auth::user();
         $accounts = $this->ticketService->getUserAccounts((int) $user->id);
-        
+
         $packageResult = $this->servicePackageService->getListServicePackage(new QueryListDTO(
-            perPage: 100, 
-            page: 1, 
-            filter: [], 
-            sortBy: 'created_at', 
+            perPage: 100,
+            page: 1,
+            filter: [],
+            sortBy: 'created_at',
             sortDirection: 'desc'
         ));
         $packages = $packageResult->isSuccess() ? $packageResult->getData()->items() : [];
 
         return RestResponse::success(data: [
             'accounts' => $accounts,
-            'packages' => $packages,
-            'meta_timezones' => \App\Common\Helpers\TimezoneHelper::getMetaTimezoneOptions(),
-            'google_timezones' => \App\Common\Helpers\TimezoneHelper::getGoogleTimezoneOptions(),
+            'packages' => ServicePackageResource::collection($packages),
+            'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
+            'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
             'admin_email' => $this->ticketService->getAdminEmail(),
         ]);
     }
