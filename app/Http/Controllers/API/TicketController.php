@@ -241,7 +241,31 @@ class TicketController extends Controller
      */
     public function storeCreateAccount(CreateAccountRequest $request): JsonResponse
     {
-        $result = $this->ticketService->createAccountRequest($request->validated());
+        $data = $request->validated();
+        $user = $request->user();
+
+        if (!$user) {
+            return RestResponse::error(message: __('common_error.permission_denied'), status: 401);
+        }
+
+        $paymentType = strtolower((string) ($data['payment_type'] ?? 'prepay'));
+        $data['payment_type'] = $paymentType;
+
+        if ($paymentType === 'postpay') {
+            $postpayUserIdsResult = $this->servicePackageService->getPostpayUserIds($data['package_id']);
+            if ($postpayUserIdsResult->isError()) {
+                return RestResponse::error(message: $postpayUserIdsResult->getMessage());
+            }
+
+            $allowedUserIds = array_map('strval', (array) $postpayUserIdsResult->getData());
+            if (empty($allowedUserIds) || !in_array((string) $user->id, $allowedUserIds, true)) {
+                return RestResponse::error(message: __('services.validation.postpay_not_allowed'), status: 422);
+            }
+
+            $data['top_up_amount'] = 0;
+        }
+
+        $result = $this->ticketService->createAccountRequest($data);
 
         if ($result->isError()) {
             return RestResponse::error(message: $result->getMessage());

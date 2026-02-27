@@ -584,6 +584,22 @@ class TicketController extends Controller
                 ->values();
         }
 
+        $postpayPermissions = [];
+        foreach ($packages as $package) {
+            $postpayUserIds = $this->servicePackageService->getPostpayUserIds($package->id);
+            if ($postpayUserIds->isError()) {
+                $postpayPermissions[$package->id] = false;
+                continue;
+            }
+
+            $allowedUserIds = $postpayUserIds->getData();
+            if (empty($allowedUserIds)) {
+                $postpayPermissions[$package->id] = false;
+            } else {
+                $postpayPermissions[$package->id] = in_array((string) $user->id, $allowedUserIds);
+            }
+        }
+
         $meta_timezones = \App\Common\Helpers\TimezoneHelper::getMetaTimezoneOptions();
         $google_timezones = \App\Common\Helpers\TimezoneHelper::getGoogleTimezoneOptions();
 
@@ -591,6 +607,7 @@ class TicketController extends Controller
             'packages' => fn() => \App\Http\Resources\ServicePackageListResource::collection($packages),
             'meta_timezones' => $meta_timezones,
             'google_timezones' => $google_timezones,
+            'postpay_permissions' => $postpayPermissions,
         ]);
     }
 

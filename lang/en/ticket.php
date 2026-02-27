@@ -112,5 +112,8 @@ return [
         'notes_max' => 'Notes may not exceed :max characters',
         'create_success' => 'Share BM/MCC request created successfully',
     ],
+    'create_account' => [
+        'create_success' => 'Account creation request created successfully',
+    ],
 ];
 

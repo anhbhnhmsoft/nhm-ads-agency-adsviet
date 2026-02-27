@@ -7,6 +7,9 @@ export const useCreateAccountForm = () => {
     const form = useForm<CreateAccountFormData>({
         package_id: '',
         asset_access: 'full_asset',
+        payment_type: 'prepay',
+        top_up_amount: '',
+        budget: '0',
         notes: '',
     });
 
@@ -26,6 +29,9 @@ export const useCreateAccountForm = () => {
             info_fanpage?: string;
             info_website?: string;
             asset_access?: 'full_asset' | 'basic_asset';
+            payment_type?: 'prepay' | 'postpay';
+            top_up_amount?: string;
+            budget?: string;
         },
         notes?: string,
         onSuccess?: () => void
@@ -58,6 +64,9 @@ export const useCreateAccountForm = () => {
         form.post(ticket_create_account_store().url, {
             onSuccess: () => {
                 form.reset();
+                form.setData('payment_type', 'prepay');
+                form.setData('top_up_amount', '');
+                form.setData('budget', '0');
                 onSuccess?.();
             },
         });

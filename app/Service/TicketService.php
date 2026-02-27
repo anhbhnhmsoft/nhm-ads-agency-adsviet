@@ -829,7 +829,9 @@ class TicketService
                     'info_fanpage',
                     'info_website',
                     'asset_access',
-                    'timezone_bm'
+                    'timezone_bm',
+                    'payment_type',
+                    'top_up_amount',
                 ];
 
                 foreach ($allowedKeys as $key) {
@@ -843,7 +845,9 @@ class TicketService
             $metadata = [
                 'type' => 'create_account',
                 'package_id' => $data['package_id'],
-                'budget' => $data['budget'],
+                'payment_type' => $data['payment_type'] ?? 'prepay',
+                'top_up_amount' => isset($data['top_up_amount']) ? (float) $data['top_up_amount'] : 0,
+                'budget' => isset($data['budget']) ? (float) $data['budget'] : 0,
                 'config_account' => $configAccount,
                 'notes' => $data['notes'] ?? null,
             ];
