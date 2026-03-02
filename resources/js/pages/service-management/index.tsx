@@ -180,12 +180,16 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
             {
                 accessorKey: 'name',
                 header: t('service_management.campaign_name', { defaultValue: 'Chiến dịch' }),
-                cell: ({ row }) => (
-                    <div className="min-w-0">
-                        <div className="font-medium truncate">{row.original.name || row.original.campaign_id}</div>
-                        <div className="text-xs text-muted-foreground truncate">ID: {row.original.campaign_id}</div>
-                    </div>
-                ),
+                cell: ({ row }) => {
+                    const rawName = row.original.name || row.original.campaign_id || '-';
+
+                    return (
+                        <div className="min-w-0">
+                            <div className="font-medium truncate">{rawName || '-'}</div>
+                            <div className="text-xs text-muted-foreground truncate">ID: {row.original.campaign_id}</div>
+                        </div>
+                    );
+                },
             },
             {
                 accessorKey: 'effective_status',
@@ -324,8 +328,8 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                                         </AlertTitle>
                                         <AlertDescription>
                                             {t('service_management.campaign_issue_description', {
-                                                defaultValue: 'Có {{count}} chiến dịch đang gặp lỗi/cảnh báo.',
-                                                count: issueCampaigns.length,
+                                                defaultValue: '{{error}} chiến dịch đã bị nền tảng dừng. Kiểm tra ngay.',
+                                                error: issueCampaigns.length,
                                             })}
                                         </AlertDescription>
                                     </Alert>
