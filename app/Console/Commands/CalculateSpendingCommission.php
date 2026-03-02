@@ -86,7 +86,7 @@ class CalculateSpendingCommission extends Command
             );
 
             if ($result->isError()) {
-                $this->error("❌ Lỗi tính hoa hồng spending cho customer {$customerId}: " . $result->getMessage());
+                $this->error("Lỗi tính hoa hồng spending cho customer {$customerId}: " . $result->getMessage());
                 Logging::error(
                     message: 'CalculateSpendingCommission: Failed to calculate commission for customer',
                     context: [

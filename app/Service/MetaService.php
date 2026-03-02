@@ -33,17 +33,16 @@ use Illuminate\Support\Facades\DB;
 class MetaService
 {
     public function __construct(
-        protected MetaBusinessService       $metaBusinessService,
-        protected MetaAccountRepository     $metaAccountRepository,
+        protected MetaBusinessService $metaBusinessService,
+        protected MetaAccountRepository $metaAccountRepository,
         protected MetaAdsCampaignRepository $metaAdsCampaignRepository,
-        protected ServiceUserRepository     $serviceUserRepository,
+        protected ServiceUserRepository $serviceUserRepository,
         protected MetaAdsAccountInsightRepository $metaAdsAccountInsightRepository,
-        protected WalletRepository          $walletRepository,
+        protected WalletRepository $walletRepository,
         protected MetaAdsNotificationService $metaAdsNotificationService,
         protected MetaBusinessManagerRepository $metaBusinessManagerRepository,
-        protected ConfigService             $configService,
-    )
-    {
+        protected ConfigService $configService,
+    ) {
     }
 
     /**
@@ -71,7 +70,7 @@ class MetaService
                     // Admin thì không cần kiểm tra gì thêm
                     break;
                 case UserRole::MANAGER->value:
-                    // manager sử lý sau, hiện tại cho chung logic với employee
+                // manager sử lý sau, hiện tại cho chung logic với employee
                 case UserRole::EMPLOYEE->value:
                     // Kiểm tra xem có phải dịch vụ thuộc user mà mình quản lý không
                     $isReferralService = $user->referrals()
@@ -131,7 +130,8 @@ class MetaService
                 $query,
                 [
                     'service_user_id' => $serviceUser->id,
-                ]);
+                ]
+            );
             $query = $this->metaAccountRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
 
@@ -149,8 +149,7 @@ class MetaService
                 ->values()
                 ->toArray();
             return ServiceReturn::success(data: $paginator);
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             Logging::error(
                 message: 'Lỗi khi lấy danh sách tài khoản quảng cáo MetaService@getAdsAccountPaginatedByServiceUser: ' . $e->getMessage(),
                 exception: $e
@@ -283,7 +282,8 @@ class MetaService
                 [
                     'service_user_id' => $serviceUser->id,
                     'meta_account_id' => $accountId,
-                ]);
+                ]
+            );
             $query = $this->metaAdsCampaignRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
 
@@ -534,12 +534,12 @@ class MetaService
             // Tổng chuyển đổi hôm nay
             $totalConversionsToday = 0;
             foreach ($insightsToday['actions'] ?? [] as $action) {
-                $totalConversionsToday += (int)($action['value'] ?? 0);
+                $totalConversionsToday += (int) ($action['value'] ?? 0);
             }
             // Tổng chuyển đổi trong tổng thời gian
             $totalConversionsTotal = 0;
             foreach ($insightsTotal['actions'] ?? [] as $action) {
-                $totalConversionsTotal += (int)($action['value'] ?? 0);
+                $totalConversionsTotal += (int) ($action['value'] ?? 0);
             }
 
             // tính toán hiệu quả
@@ -700,7 +700,7 @@ class MetaService
                 campaignId: $campaign->campaign_id,
                 datePreset: $datePreset
             );
-            if ($insightsResult->isError()){
+            if ($insightsResult->isError()) {
                 return ServiceReturn::error(message: __('meta.error.failed_to_fetch_campaign_detail'));
             }
             $insights = $insightsResult->getData();
@@ -715,7 +715,7 @@ class MetaService
             return ServiceReturn::success(
                 data: $insights,
             );
-        }catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return ServiceReturn::error(message: __('meta.error.failed_to_fetch_campaign_detail'));
         }
     }
@@ -900,13 +900,13 @@ class MetaService
             'ads_management',
             'ads_read',
         ];
-        
+
         foreach ($permissionErrorKeywords as $keyword) {
             if (stripos($errorMessage, $keyword) !== false) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -1181,7 +1181,7 @@ class MetaService
                 } catch (\Exception $e) {
                     Logging::error('Error sync business manager: ' . $e->getMessage());
                 }
-                
+
                 // Delay giữa các BM để tránh rate limit
                 usleep(500000); // 0.5 giây delay giữa các BM
             }
@@ -1209,8 +1209,8 @@ class MetaService
         while (true) {
             if ($maxAccounts !== null && $syncedCount >= $maxAccounts) {
                 Logging::web('MetaService@syncMetaAccountsFromManagerEdge: Reached max accounts limit', [
-                    'bm_id'        => $bmId,
-                    'type'         => $type,
+                    'bm_id' => $bmId,
+                    'type' => $type,
                     'max_accounts' => $maxAccounts,
                     'synced_count' => $syncedCount,
                 ]);
@@ -1222,8 +1222,8 @@ class MetaService
                 Logging::error(
                     message: 'MetaService@syncMetaAccountsFromManagerEdge: Rate limit hit, stopping sync',
                     context: [
-                        'bm_id'        => $bmId,
-                        'type'         => $type,
+                        'bm_id' => $bmId,
+                        'type' => $type,
                         'synced_count' => $syncedCount,
                     ],
                 );
@@ -1248,25 +1248,25 @@ class MetaService
                 return;
             }
 
-            $data     = $result->getData();
+            $data = $result->getData();
             $accounts = $data['data'] ?? [];
 
             foreach ($accounts as $adsAccountData) {
                 // BM con (thực sự sở hữu account) nếu có
-                $business   = $adsAccountData['business'] ?? null;
-                $ownerBmId  = $business['id']   ?? $bmId;
-                $ownerBmName= $business['name'] ?? null;
+                $business = $adsAccountData['business'] ?? null;
+                $ownerBmId = $business['id'] ?? $bmId;
+                $ownerBmName = $business['name'] ?? null;
 
                 // Lưu/ cập nhật thông tin BM con vào bảng meta_business_managers
                 try {
                     $this->metaBusinessManagerRepository->updateOrCreate(
                         ['bm_id' => $ownerBmId],
                         [
-                            'parent_bm_id'       => $ownerBmId !== $bmId ? $bmId : null,
-                            'name'               => $ownerBmName ?? $ownerBmId,
-                            'verification_status'=> null,
-                            'is_primary'         => $ownerBmId === $bmId,
-                            'last_synced_at'     => now(),
+                            'parent_bm_id' => $ownerBmId !== $bmId ? $bmId : null,
+                            'name' => $ownerBmName ?? $ownerBmId,
+                            'verification_status' => null,
+                            'is_primary' => $ownerBmId === $bmId,
+                            'last_synced_at' => now(),
                         ]
                     );
                 } catch (\Throwable $e) {
@@ -1290,20 +1290,20 @@ class MetaService
                         ->first();
 
                     $updateData = [
-                        'account_name'       => $detail['name'],
-                        'account_status'     => $detail['account_status'],
-                        'disable_reason'     => $detail['disable_reason'] ?? null,
-                        'spend_cap'          => $detail['spend_cap'],
-                        'amount_spent'       => $detail['amount_spent'],
-                        'balance'            => $detail['balance'],
-                        'currency'           => $detail['currency'],
-                        'created_time'       => $detail['created_time'] ? Carbon::parse($detail['created_time']) : null,
-                        'is_prepay_account'  => (bool) $detail['is_prepay_account'],
-                        'timezone_id'        => $detail['timezone_id'],
-                        'timezone_name'      => $detail['timezone_name'],
-                        'last_synced_at'     => now(),
+                        'account_name' => $detail['name'],
+                        'account_status' => $detail['account_status'],
+                        'disable_reason' => $detail['disable_reason'] ?? null,
+                        'spend_cap' => $detail['spend_cap'],
+                        'amount_spent' => $detail['amount_spent'],
+                        'balance' => $detail['balance'],
+                        'currency' => $detail['currency'],
+                        'created_time' => $detail['created_time'] ? Carbon::parse($detail['created_time']) : null,
+                        'is_prepay_account' => (bool) $detail['is_prepay_account'],
+                        'timezone_id' => $detail['timezone_id'],
+                        'timezone_name' => $detail['timezone_name'],
+                        'last_synced_at' => now(),
                         // GÁN THEO BM CON (owner BM) thay vì BM gốc
-                        'business_manager_id'=> $ownerBmId,
+                        'business_manager_id' => $ownerBmId,
                     ];
 
                     // Nếu account chưa gán cho service_user nào, đảm bảo service_user_id = null
@@ -1359,20 +1359,20 @@ class MetaService
 
             foreach ($accounts as $adsAccountData) {
                 // Xác định BM con (owner) nếu có
-                $business   = $adsAccountData['business'] ?? null;
-                $ownerBmId  = $business['id']   ?? $bmId;
-                $ownerBmName= $business['name'] ?? null;
+                $business = $adsAccountData['business'] ?? null;
+                $ownerBmId = $business['id'] ?? $bmId;
+                $ownerBmName = $business['name'] ?? null;
 
                 // Lưu/cập nhật BM con
                 try {
                     $this->metaBusinessManagerRepository->updateOrCreate(
                         ['bm_id' => $ownerBmId],
                         [
-                            'parent_bm_id'       => $ownerBmId !== $bmId ? $bmId : null,
-                            'name'               => $ownerBmName ?? $ownerBmId,
-                            'verification_status'=> null,
-                            'is_primary'         => $ownerBmId === $bmId,
-                            'last_synced_at'     => now(),
+                            'parent_bm_id' => $ownerBmId !== $bmId ? $bmId : null,
+                            'name' => $ownerBmName ?? $ownerBmId,
+                            'verification_status' => null,
+                            'is_primary' => $ownerBmId === $bmId,
+                            'last_synced_at' => now(),
                         ]
                     );
                 } catch (\Throwable $e) {
@@ -1404,7 +1404,7 @@ class MetaService
                             'balance' => $detail['balance'],
                             'currency' => $detail['currency'],
                             'created_time' => $detail['created_time'] ? Carbon::parse($detail['created_time']) : null,
-                            'is_prepay_account' => (bool)$detail['is_prepay_account'],
+                            'is_prepay_account' => (bool) $detail['is_prepay_account'],
                             'timezone_id' => $detail['timezone_id'],
                             'timezone_name' => $detail['timezone_name'],
                             'last_synced_at' => now(),
@@ -1467,12 +1467,11 @@ class MetaService
                                             'last_synced_at' => now(),
                                         ]
                                     );
-                                }
-                                catch (\Exception $exception){
+                                } catch (\Exception $exception) {
                                     Logging::error('Error sync ads account insight: ' . $exception->getMessage());
                                 }
                             }
-                        }else{
+                        } else {
                             Logging::error('Error sync ads account insight: ' . $insightResult->getMessage());
                         }
 
@@ -1512,12 +1511,11 @@ class MetaService
                                             'last_synced_at' => now(),
                                         ]
                                     );
-                                }
-                                catch (\Exception $e) {
+                                } catch (\Exception $e) {
                                     Logging::error('Error sync ads campaign: ' . $e->getMessage());
                                 }
                             }
-                        }else{
+                        } else {
                             Logging::error('Error sync ads campaign: ' . $campaignResult->getMessage());
                         }
 
@@ -1548,7 +1546,7 @@ class MetaService
     }
 
     // Lấy insights tổng hợp từ database
-    protected function getAccountsInsightsSummaryFromDatabase(array $metaAccountIds, string $datePreset = 'maximum'): ServiceReturn
+    protected function getAccountsInsightsSummaryFromDatabase(array $metaAccountIds, string $datePreset = 'maximum', array $serviceUserIds = []): ServiceReturn
     {
         try {
             if (empty($metaAccountIds)) {
@@ -1563,6 +1561,10 @@ class MetaService
 
             $query = $this->metaAdsAccountInsightRepository->query()
                 ->whereIn('meta_account_id', $metaAccountIds);
+
+            if (!empty($serviceUserIds)) {
+                $query->whereIn('service_user_id', $serviceUserIds);
+            }
 
             // Convert date preset thành date range
             $dateRange = $this->convertDatePresetToRange($datePreset);
@@ -1668,10 +1670,29 @@ class MetaService
     public function getAccountSpendingRanking(?Carbon $startDate = null, ?Carbon $endDate = null): ServiceReturn
     {
         try {
+            $user = Auth::user();
+            if (!$user) {
+                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            }
+
             // Query insights từ database, group by account và sum spend
             $query = $this->metaAdsAccountInsightRepository->query()
                 ->select('meta_account_id', DB::raw('SUM(spend::numeric) as total_spend'))
                 ->groupBy('meta_account_id');
+
+            // Nếu là Agency hoặc Customer, chỉ lấy accounts của họ
+            if (in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                $serviceUserIds = $this->serviceUserRepository->query()
+                    ->where('user_id', $user->id)
+                    ->pluck('id')
+                    ->toArray();
+
+                if (empty($serviceUserIds)) {
+                    return ServiceReturn::success(data: []);
+                }
+
+                $query->whereIn('service_user_id', $serviceUserIds);
+            }
 
             // Filter theo date range nếu có
             if ($startDate) {
@@ -1768,25 +1789,34 @@ class MetaService
                 ->whereIn('service_user_id', $metaServiceUsers->pluck('id'))
                 ->get();
             $metaAccountIds = $metaAccounts->pluck('id')->toArray();
+            $metaServiceUserIds = $metaServiceUsers->pluck('id')->toArray();
             // 2. Lấy dữ liệu tổng thể
-            $totalResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'maximum');
+            $totalResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'maximum', $metaServiceUserIds);
             if ($totalResult->isError()) {
                 return ServiceReturn::error(message: __('common_error.server_error'));
             }
             // 3. Lấy dữ liệu hôm nay
-            $todayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'today');
+            $todayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'today', $metaServiceUserIds);
             if ($todayResult->isError()) {
                 return ServiceReturn::error(message: __('common_error.server_error'));
             }
+            $spendByAccount = $this->metaAdsAccountInsightRepository->query()
+                ->whereIn('meta_account_id', $metaAccountIds)
+                ->whereIn('service_user_id', $metaServiceUserIds)
+                ->select('meta_account_id', DB::raw('SUM(spend::numeric) as total_spend'))
+                ->groupBy('meta_account_id')
+                ->get()
+                ->keyBy('meta_account_id');
+
             // Lấy spend của toàn account
-            $accountSpend = $metaAccounts->map(function ($account) {
-                $amountSpend = $account->amount_spent;
+            $accountSpend = $metaAccounts->map(function ($account) use ($spendByAccount) {
+                $record = $spendByAccount->get($account->id);
+                $amountSpend = $record ? (float) $record->total_spend : 0.0;
                 return [
                     'account_id' => (string) ($account->account_id ?? $account->id),
                     'account_name' => $account->account_name
                         ?? $account->name
                         ?? (string) ($account->account_id ?? $account->id),
-                    'account_name' => $account->account_name,
                     'amount_spent' => $amountSpend,
                 ];
             })->values()->toArray();
@@ -1796,8 +1826,7 @@ class MetaService
                 'account_spend' => $accountSpend,
             ]);
 
-        }
-        catch (\Exception $exception) {
+        } catch (\Exception $exception) {
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -1855,9 +1884,9 @@ class MetaService
 
             $chartData = [];
             foreach ($records as $record) {
-                $record->total_spend = (float)$record->total_spend;
+                $record->total_spend = (float) $record->total_spend;
                 $chartData[] = [
-                    'value' => (float)$record->total_spend,
+                    'value' => (float) $record->total_spend,
                     'date' => $record->date->format('Y-m-d'),
                 ];
             }
@@ -1865,7 +1894,7 @@ class MetaService
                 'total_spend_period' => collect($chartData)->sum('value'),
                 'chart' => $chartData
             ]);
-        }catch (\Exception $exception) {
+        } catch (\Exception $exception) {
             Logging::error(
                 message: "Error get report insights from database: " . $exception->getMessage(),
                 exception: $exception,
@@ -1924,8 +1953,9 @@ class MetaService
                 $clicksPercentChange = 0.0;
                 $conversionsPercentChange = 0.0;
             } else {
+                $metaServiceUserIds = $metaServiceUsers->pluck('id')->toArray();
                 // Lấy tổng spend (maximum) - tổng từ đầu đến giờ
-                $totalResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'maximum');
+                $totalResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'maximum', $metaServiceUserIds);
                 $totalSpend = 0.0;
                 $totalImpressions = 0;
                 $totalClicks = 0;
@@ -1942,7 +1972,7 @@ class MetaService
                 }
 
                 // Lấy spend hôm nay
-                $todayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'today');
+                $todayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'today', $metaServiceUserIds);
                 $todaySpend = 0.0;
 
                 if ($todayResult->isSuccess()) {
@@ -1951,7 +1981,7 @@ class MetaService
                 }
 
                 // Lấy dữ liệu hôm qua để tính percent change cho "Chi tiêu hôm nay"
-                $yesterdayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'yesterday');
+                $yesterdayResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'yesterday', $metaServiceUserIds);
                 $yesterdaySpend = 0.0;
 
                 if ($yesterdayResult->isSuccess()) {
@@ -1961,7 +1991,7 @@ class MetaService
 
                 // Lấy dữ liệu last_30d để tính percent change cho "Tổng chỉ tiêu"
                 // So sánh last_30d vs previous 30 days (last_90d - last_30d)
-                $last30dResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'last_30d');
+                $last30dResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'last_30d', $metaServiceUserIds);
                 $last30dSpend = 0.0;
                 $last30dImpressions = 0;
                 $last30dClicks = 0;
@@ -1976,7 +2006,7 @@ class MetaService
                 }
 
                 // Lấy dữ liệu last_90d để tính previous 30 days (last_90d - last_30d)
-                $last90dResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'last_90d');
+                $last90dResult = $this->getAccountsInsightsSummaryFromDatabase($metaAccountIds, 'last_90d', $metaServiceUserIds);
                 $previous30dSpend = 0.0;
                 $previous30dImpressions = 0;
                 $previous30dClicks = 0;
