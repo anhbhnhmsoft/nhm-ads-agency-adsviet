@@ -25,11 +25,10 @@ class ServiceController extends Controller
     public function __construct(
         protected ServicePackageService $servicePackageService,
         protected ServicePurchaseService $servicePurchaseService,
-        protected ServiceUserService    $serviceUserService,
+        protected ServiceUserService $serviceUserService,
         protected GoogleAdsService $googleAdsService,
         protected MetaService $metaService,
-    )
-    {
+    ) {
     }
 
     /**
@@ -58,14 +57,18 @@ class ServiceController extends Controller
      */
     public function package(Request $request): \Illuminate\Http\JsonResponse
     {
+        $params = $this->extractQueryPagination($request);
+        $filter = $params->get('filter');
+        if (!isset($filter['is_active'])) {
+            $filter['is_active'] = true;
+        }
+
         $result = $this->servicePackageService->getListServicePackage(new QueryListDTO(
-            perPage: $request->get('per_page', 10),
-            page: $request->get('page', 1),
-            filter: [
-                'is_active' => true
-            ],
-            sortBy: 'created_at',
-            sortDirection: 'desc',
+            perPage: $params->get('per_page'),
+            page: $params->get('page'),
+            filter: $filter,
+            sortBy: $params->get('sort_by'),
+            sortDirection: $params->get('direction'),
         ));
         $pagination = $result->getData();
         return RestResponse::success(data: ServicePackageResource::collection($pagination)->response()->getData());
@@ -129,7 +132,7 @@ class ServiceController extends Controller
         );
     }
 
-     /**
+    /**
      * Lấy thông tin dashboard của người dùng
      * @param Request $request
      * @return JsonResponse
@@ -139,7 +142,7 @@ class ServiceController extends Controller
         $platform = Helper::getValidatedPlatform($request->string('platform', 'meta')->toString());
         if ($platform === 'google_ads') {
             $result = $this->googleAdsService->getDashboardData();
-        }else{
+        } else {
             $result = $this->metaService->getDashboardData();
         }
         if ($result->isError()) {
@@ -153,7 +156,7 @@ class ServiceController extends Controller
         $platform = Helper::getValidatedPlatform($request->string('platform', 'meta')->toString());
         if ($platform === 'google_ads') {
             $result = $this->googleAdsService->getReportData();
-        }else{
+        } else {
             $result = $this->metaService->getReportData();
         }
         if ($result->isError()) {
@@ -165,14 +168,17 @@ class ServiceController extends Controller
     public function reportInsight(Request $request): JsonResponse
     {
         $validate = Validator::make($request->all(), [
-            'date_preset' => ['required', Rule::in([
-                AdDatePresetValues::LAST_7D,
-                AdDatePresetValues::LAST_14D,
-                AdDatePresetValues::LAST_30D,
-                AdDatePresetValues::LAST_28D,
-                AdDatePresetValues::LAST_90D
-            ])],
-        ],[
+            'date_preset' => [
+                'required',
+                Rule::in([
+                    AdDatePresetValues::LAST_7D,
+                    AdDatePresetValues::LAST_14D,
+                    AdDatePresetValues::LAST_30D,
+                    AdDatePresetValues::LAST_28D,
+                    AdDatePresetValues::LAST_90D
+                ])
+            ],
+        ], [
             'date_preset.required' => __('meta.error.date_preset_invalid'),
             'date_preset.in' => __('meta.error.date_preset_invalid'),
         ]);
@@ -183,7 +189,7 @@ class ServiceController extends Controller
         $platform = Helper::getValidatedPlatform($request->string('platform', 'meta')->toString());
         if ($platform === 'google_ads') {
             $result = $this->googleAdsService->getReportInsights($validate->getData()['date_preset']);
-        }else{
+        } else {
             $result = $this->metaService->getReportInsights($validate->getData()['date_preset']);
         }
         if ($result->isError()) {

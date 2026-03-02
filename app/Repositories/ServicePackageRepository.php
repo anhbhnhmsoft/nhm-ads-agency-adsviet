@@ -18,8 +18,16 @@ class ServicePackageRepository extends BaseRepository
     {
         $query = $this->model()->query();
 
-        if (isset($filters['is_active']) && $filters['is_active'] === true) {
-            $query->where('disabled', false);
+        if (!empty($filters['name'])) {
+            $query->where('name', 'like', '%' . $filters['name'] . '%');
+        }
+
+        if (!empty($filters['platform'])) {
+            $query->where('platform', $filters['platform']);
+        }
+
+        if (isset($filters['is_active'])) {
+            $query->where('disabled', filter_var($filters['is_active'], FILTER_VALIDATE_BOOLEAN) === false);
         }
 
         if (isset($filters['platform'])) {
