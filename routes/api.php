@@ -57,9 +57,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('report-insight', [ServiceController::class, 'reportInsight']);
 
     });
-
     Route::prefix('business-managers')->group(function () {
         Route::get('/', [BusinessManagerController::class, 'index']);
+        Route::get('/account-management', [BusinessManagerController::class, 'accountManagement']);
     });
 
     Route::prefix('meta')->group(function () {
@@ -67,6 +67,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{serviceUserId}/{accountId}/campaigns', [MetaController::class, 'getCampaigns']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [MetaController::class, 'detailCampaign']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [MetaController::class, 'getCampaignInsights']);
+        Route::post('/{serviceUserId}/{campaignId}/status', [MetaController::class, 'updateCampaignStatus']);
+        Route::post('/{serviceUserId}/{campaignId}/spend-cap', [MetaController::class, 'updateCampaignSpendCap']);
     });
 
     Route::prefix('google-ads')->group(function () {
@@ -74,19 +76,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{serviceUserId}/{accountId}/campaigns', [GoogleAdsController::class, 'getCampaigns']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [GoogleAdsController::class, 'detailCampaign']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [GoogleAdsController::class, 'getCampaignInsights']);
+        Route::post('/{serviceUserId}/{campaignId}/status', [GoogleAdsController::class, 'updateCampaignStatus']);
+        Route::post('/{serviceUserId}/{campaignId}/budget', [GoogleAdsController::class, 'updateCampaignBudget']);
     });
 
     Route::prefix('wallet')->group(function () {
         Route::get('me', [WalletController::class, 'me']);
         Route::get('transactions', [WalletController::class, 'transactions']);
         Route::post('deposit', [WalletController::class, 'deposit']) // API nạp tiền
-        ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
+            ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
         Route::get('check-deposit', [WalletController::class, 'checkDeposit']);
         Route::post('change-password', [WalletController::class, 'changePassword'])->middleware('throttle:5,1');
         Route::post('withdraw', [WalletController::class, 'withdraw']) // API rút tiền
-        ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
+            ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
         Route::post('campaign-budget-update', [WalletController::class, 'campaignBudgetUpdate'])
-        ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
+            ->middleware('throttle:5,1'); // Giới hạn 5 lần mỗi phút
     });
 
     Route::prefix('tickets')->group(function () {

@@ -882,5 +882,25 @@ class TicketService
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
+
+    public function deleteTicketByAdmin(string $ticketId): ServiceReturn
+    {
+        try {
+            $ticket = $this->ticketRepository->find($ticketId);
+            if (!$ticket) {
+                return ServiceReturn::error(message: __('common_error.not_found'));
+            }
+
+            $this->ticketRepository->delete((int) $ticket->id);
+
+            return ServiceReturn::success();
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'TicketService@deleteTicketByAdmin error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
 }
 

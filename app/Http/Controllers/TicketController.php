@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Common\Constants\Ticket\TicketMetadataType;
+use App\Common\Constants\User\UserRole;
 use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Http\Requests\Ticket\AddMessageRequest;
@@ -167,6 +168,22 @@ class TicketController extends Controller
         }
 
         return back()->with('success', __('ticket.status_updated'));
+    }
+
+    public function destroy(string $id, Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== UserRole::ADMIN->value) {
+            return back()->withErrors(['error' => __('common_error.permission_denied')]);
+        }
+
+        $result = $this->ticketService->deleteTicketByAdmin($id);
+
+        if ($result->isError()) {
+            return back()->withErrors(['error' => $result->getMessage()]);
+        }
+
+        return back()->with('success', __('ticket.delete_success', ['default' => 'Xóa yêu cầu thành công']));
     }
 
     /**

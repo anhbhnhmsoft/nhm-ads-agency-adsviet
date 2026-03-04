@@ -103,6 +103,8 @@ export type CampaignDetail = {
     cpc_avg: number | string | null;
     cpm_avg: number | string | null;
     roas_avg: number | string | null;
+    status_severity?: StatusSeverity;
+    status_label?: string;
     insight: {
         spend: MetricValue;
         impressions: MetricValue;

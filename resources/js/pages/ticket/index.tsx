@@ -4,12 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { IBreadcrumbItem } from '@/lib/types/type';
 import { ticket_index, ticket_show, ticket_store } from '@/routes';
+import { destroy as ticket_destroy } from '@/actions/App/Http/Controllers/TicketController';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { MessageSquare, Plus } from 'lucide-react';
+import { MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TicketPageProps, Ticket, TicketStatus, TicketPriority } from './types/type';
 import { _TicketStatus, _TicketPriority } from './types/constants';
 import { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -38,6 +40,7 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
     const isCustomerOrAgency = checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]);
     
     const [showCreateDialog, setShowCreateDialog] = useState(false);
+    const [deletedTicketIds, setDeletedTicketIds] = useState<Set<string>>(new Set());
     const { setQuery } = useSearchTicketList();
     
     const getCurrentTab = () => {
@@ -135,6 +138,44 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
         });
     };
 
+    const handleDeleteTicket = (ticketId: string) => {
+        if (!confirm(t('ticket.confirm_delete', { defaultValue: 'Bạn có chắc muốn xóa yêu cầu này?' }))) {
+            return;
+        }
+
+        setDeletedTicketIds((prev) => {
+            const next = new Set(prev);
+            next.add(ticketId);
+            return next;
+        });
+
+        router.delete(ticket_destroy(ticketId).url, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                toast.success(t('ticket.delete_success', { defaultValue: 'Xóa yêu cầu thành công' }));
+            },
+            onError: (errors) => {
+                setDeletedTicketIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(ticketId);
+                    return next;
+                });
+                const errorMessage =
+                    (errors as Record<string, string>)?.error ||
+                    t('common_error.server_error', { defaultValue: 'Có lỗi xảy ra, vui lòng thử lại' });
+                toast.error(errorMessage);
+            },
+            onCancel: () => {
+                setDeletedTicketIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(ticketId);
+                    return next;
+                });
+            },
+        });
+    };
+
     const getStatusBadge = (status: TicketStatus) => {
         const statusMap: Record<TicketStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
             [_TicketStatus.PENDING]: { label: t('ticket.status.pending'), variant: 'secondary' },
@@ -169,7 +210,7 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
         return <Badge variant={priorityInfo.variant}>{priorityInfo.label}</Badge>;
     };
 
-    const displayTickets = tickets?.data || [];
+    const displayTickets = (tickets?.data || []).filter((ticket: Ticket) => !deletedTicketIds.has(ticket.id));
 
     const breadcrumbs: IBreadcrumbItem[] = [
         {
@@ -237,7 +278,7 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
                         ) : (
                             <div className="grid gap-4">
                                 {displayTickets.map((ticket: Ticket) => (
-                                    <Card key={ticket.id} className="cursor-pointer transition-colors hover:bg-muted/50">
+                                    <Card key={ticket.id} className="transition-colors hover:bg-muted/50">
                                         <Link href={ticket_show({ id: ticket.id }).url}>
                                             <CardHeader>
                                                 <div className="flex items-start justify-between">
@@ -247,9 +288,24 @@ export default function TicketIndex({ tickets, error }: TicketPageProps) {
                                                             {ticket.description}
                                                         </p>
                                                     </div>
-                                                    <div className="ml-4 flex gap-2">
+                                                    <div className="ml-4 flex items-center gap-2">
                                                         {getStatusBadge(ticket.status)}
                                                         {getPriorityBadge(ticket.priority)}
+                                                        {isAdmin && (
+                                                            <Button
+                                                                type="button"
+                                                                size="icon"
+                                                                variant="outline"
+                                                                className="h-7 w-7 border-destructive/40 text-destructive hover:bg-destructive/10"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    handleDeleteTicket(ticket.id);
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </CardHeader>
