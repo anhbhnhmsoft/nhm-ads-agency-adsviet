@@ -210,6 +210,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/', [TicketController::class, 'store'])->name('ticket_store');
         Route::post('/{id}/message', [TicketController::class, 'addMessage'])->name('ticket_add_message');
         Route::put('/{id}/status', [TicketController::class, 'updateStatus'])->name('ticket_update_status');
+        Route::delete('/{id}', [TicketController::class, 'destroy'])->name('ticket_destroy');
     });
 
     Route::prefix('/meta')->group(function () {

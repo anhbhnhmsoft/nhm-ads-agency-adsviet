@@ -203,7 +203,7 @@ export default function TicketShow({ ticket }: TicketDetailPageProps) {
             ? metadata.quantity 
             : (accounts.length > 0 ? accounts.length : 1);
         
-        const priceValue = metadata.price || metadata.amount || metadata.budget;
+        const priceValue = metadata.top_up_amount || metadata.amount || metadata.budget;
         const price = priceValue 
             ? `${parseFloat(String(priceValue)).toLocaleString('vi-VN')} ${metadata.currency || 'đ'}` 
             : '-';

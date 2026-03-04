@@ -8,6 +8,7 @@ use App\Core\RestResponse;
 use App\Service\BusinessManagerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class BusinessManagerController extends Controller
 {
@@ -21,9 +22,22 @@ class BusinessManagerController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        return $this->buildManagerResponse($request, 'bm');
+    }
+
+    /**
+     * API lấy toàn bộ dữ liệu cho trang Quản lý tài khoản
+     */
+    public function accountManagement(Request $request): JsonResponse
+    {
+        return $this->buildManagerResponse($request, 'account');
+    }
+
+    protected function buildManagerResponse(Request $request, string $view): JsonResponse
+    {
         $params = $this->extractQueryPagination($request);
         $filter = $params->get('filter') ?? [];
-        $filter['view'] = 'bm';
+        $filter['view'] = $view;
 
         $result = $this->businessManagerService->getListBusinessManagers(
             new QueryListDTO(
@@ -51,7 +65,7 @@ class BusinessManagerController extends Controller
         if (is_array($data) && isset($data['paginator'])) {
             $paginator = $data['paginator'];
             $stats = $data['stats'] ?? $stats;
-        } else {
+        } elseif ($data instanceof LengthAwarePaginator) {
             $paginator = $data;
         }
 
@@ -115,4 +129,3 @@ class BusinessManagerController extends Controller
         ]);
     }
 }
-
