@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { usePage } from '@inertiajs/react';
 import type { _PlatformType as PlatformTypeEnum } from '@/lib/types/constants';
 import type { InertiaPageProps } from '@/lib/types';
@@ -34,6 +34,7 @@ type PageProps = {
 
 type SearchQuery = {
     keyword?: string;
+    manager_id?: string;
     platform?: PlatformTypeEnum;
     start_date?: string;
     end_date?: string;
@@ -66,6 +67,17 @@ const BusinessManagerSearchForm = ({ query, setQuery, handleSearch }: Props) => 
         }
         return [];
     }, [childManagers, query.platform]);
+
+    useEffect(() => {
+        if (query.child_manager_id || !query.manager_id || platformChildOptions.length === 0) {
+            return;
+        }
+
+        const matchedChild = platformChildOptions.find((item) => item.id === query.manager_id);
+        if (matchedChild) {
+            setQuery({ child_manager_id: matchedChild.id });
+        }
+    }, [query.child_manager_id, query.manager_id, platformChildOptions, setQuery]);
 
     const dateRange: DateRange | undefined = useMemo(() => {
         if (query.start_date && query.end_date) {

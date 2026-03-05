@@ -19,6 +19,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\MetaAccountRepository;
 use App\Repositories\GoogleAccountRepository;
 use App\Repositories\ServiceUserRepository;
+use App\Repositories\UserWalletTransactionRepository;
 use App\Service\TelegramService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +34,7 @@ class TicketService
         protected MetaAccountRepository $metaAccountRepository,
         protected GoogleAccountRepository $googleAccountRepository,
         protected ServiceUserRepository $serviceUserRepository,
+        protected UserWalletTransactionRepository $transactionRepository,
         protected TelegramService $telegramService,
     ) {
     }
@@ -498,6 +500,7 @@ class TicketService
             }
 
             $ticket->load(['user', 'assignedUser', 'conversations.user']);
+            $ticket = $this->normalizeTicketDetailMetadata($ticket);
 
             return ServiceReturn::success(data: $ticket);
         } catch (\Throwable $exception) {
@@ -796,6 +799,65 @@ class TicketService
             ->first();
 
         return $admin?->email;
+    }
+
+    protected function normalizeTicketDetailMetadata(Ticket $ticket): Ticket
+    {
+        $metadata = is_array($ticket->metadata) ? $ticket->metadata : [];
+        $type = $metadata['type'] ?? null;
+
+        if (!$type && !empty($ticket->subject)) {
+            $subjectMap = [
+                'transfer_request' => 'transfer',
+                'refund_request' => 'refund',
+                'appeal_request' => 'appeal',
+                'share_request' => 'share',
+                'create_account_request' => 'create_account',
+            ];
+            $type = $subjectMap[$ticket->subject] ?? null;
+        }
+
+        if ($type) {
+            $metadata['type'] = $type;
+        }
+
+        if (!array_key_exists('notes', $metadata) || $metadata['notes'] === null || $metadata['notes'] === '') {
+            $metadata['notes'] = $ticket->description;
+        }
+
+        if (!array_key_exists('note', $metadata) || $metadata['note'] === null || $metadata['note'] === '') {
+            $metadata['note'] = $metadata['notes'] ?? $ticket->description;
+        }
+
+        if ($type === 'wallet_withdraw_app') {
+            if (!array_key_exists('withdraw_type', $metadata) || !$metadata['withdraw_type']) {
+                $metadata['withdraw_type'] = 'bank';
+            }
+
+            if (!empty($metadata['withdraw_transaction_id'])) {
+                $transaction = $this->transactionRepository->query()
+                    ->select('id', 'type', 'description', 'withdraw_info')
+                    ->find($metadata['withdraw_transaction_id']);
+
+                if ($transaction) {
+                    if (!array_key_exists('withdraw_info', $metadata) || empty($metadata['withdraw_info'])) {
+                        $metadata['withdraw_info'] = $transaction->withdraw_info ?? [];
+                    }
+
+                    if (!array_key_exists('transaction_type', $metadata) || !$metadata['transaction_type']) {
+                        $metadata['transaction_type'] = $transaction->type;
+                    }
+
+                    if (!array_key_exists('transaction_note', $metadata) || !$metadata['transaction_note']) {
+                        $metadata['transaction_note'] = $transaction->description;
+                    }
+                }
+            }
+        }
+
+        $ticket->setAttribute('metadata', $metadata);
+
+        return $ticket;
     }
 
     /**

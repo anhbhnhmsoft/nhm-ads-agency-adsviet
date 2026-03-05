@@ -218,7 +218,9 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
                                     }
                                     router.get('/service-management', {
                                         filter: {
-                                            keyword: primaryBmId,
+                                            manager_id: primaryBmId,
+                                            platform: row.original.platform,
+                                            child_manager_id: primaryBmId,
                                         },
                                     }, {
                                         replace: true,
