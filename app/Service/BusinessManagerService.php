@@ -381,6 +381,19 @@ class BusinessManagerService
                 ));
             }
 
+            // Filter theo BM/MCC được chọn từ trang Quản lý BM/MCC
+            $managerId = isset($filter['manager_id']) && $filter['manager_id'] !== ''
+                ? trim((string) $filter['manager_id'])
+                : null;
+            if ($managerId) {
+                $accountsList = array_values(array_filter(
+                    $accountsList,
+                    fn ($item) =>
+                        in_array($managerId, array_map('strval', $item['bm_ids'] ?? []), true)
+                        || (string) ($item['parent_bm_id'] ?? '') === $managerId
+                ));
+            }
+
             $keyword = trim((string) ($filter['keyword'] ?? ''));
             if ($keyword !== '') {
                 $needle = mb_strtolower($keyword);

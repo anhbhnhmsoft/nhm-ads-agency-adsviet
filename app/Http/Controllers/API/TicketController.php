@@ -285,7 +285,7 @@ class TicketController extends Controller
         $user = Auth::user();
 
         if (($data['metadata']['type'] ?? null) !== TicketMetadataType::WALLET_WITHDRAW_APP->value) {
-            return RestResponse::error(message: 'Invalid ticket type for withdraw');
+            return RestResponse::error(message: __('ticket.validation.invalid_type_withdraw'));
         }
 
         $metadata = $data['metadata'] ?? [];
@@ -324,7 +324,7 @@ class TicketController extends Controller
     {
         $data = $request->validated();
         if (($data['metadata']['type'] ?? null) !== TicketMetadataType::WALLET_DEPOSIT_APP->value) {
-            return RestResponse::error(message: 'Invalid ticket type for deposit');
+            return RestResponse::error(message: __('ticket.validation.invalid_type_deposit'));
         }
 
         $metadata = $data['metadata'] ?? [];

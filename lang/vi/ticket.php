@@ -59,6 +59,8 @@ return [
         'message_max' => 'Tin nhắn không được vượt quá :max ký tự',
         'priority_integer' => 'Mức độ ưu tiên phải là số nguyên',
         'priority_invalid' => 'Mức độ ưu tiên không hợp lệ',
+        'invalid_type_withdraw' => 'Loại yêu cầu rút tiền không hợp lệ',
+        'invalid_type_deposit' => 'Loại yêu cầu nạp tiền không hợp lệ',
         'status_required' => 'Vui lòng chọn trạng thái',
         'status_integer' => 'Trạng thái phải là số nguyên',
         'status_invalid' => 'Trạng thái không hợp lệ',

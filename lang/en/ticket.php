@@ -59,6 +59,8 @@ return [
         'message_max' => 'Message may not exceed :max characters.',
         'priority_integer' => 'Priority must be an integer.',
         'priority_invalid' => 'Priority is invalid.',
+        'invalid_type_withdraw' => 'Invalid withdraw request type.',
+        'invalid_type_deposit' => 'Invalid deposit request type.',
         'status_required' => 'Please choose a status.',
         'status_integer' => 'Status must be an integer.',
         'status_invalid' => 'Status is invalid.',
