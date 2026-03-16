@@ -85,14 +85,14 @@
     --chart-4: #8dcaf7;
     --chart-5: #a6dff8;
     --radius: 0.625rem;
-    --sidebar: #ffffff;
-    --sidebar-foreground: #0d1a2b;
+    --sidebar: #151d2c;
+    --sidebar-foreground: #ffffff;
     --sidebar-primary: #3367d6;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: #eb4e23;
     --sidebar-accent-foreground: #ffffff;
     --sidebar-accent-light: rgba(235, 78, 35, 0.1);
-    --sidebar-border: #dadce0;
+    --sidebar-border: #2a3447;
     --sidebar-ring: #eb4e23;
 }
 
@@ -121,14 +121,14 @@
     --chart-3: #74b5f6;
     --chart-4: #8dcaf7;
     --chart-5: #a6dff8;
-    --sidebar: #ffffff;
-    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar: #151d2c;
+    --sidebar-foreground: #ffffff;
     --sidebar-primary: #3367d6;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: #eb4e23;
     --sidebar-accent-foreground: #ffffff;
     --sidebar-accent-light: rgba(235, 78, 35, 0.1);
-    --sidebar-border: oklch(0.269 0 0);
+    --sidebar-border: #2a3447;
     --sidebar-ring: #eb4e23;
 }
 
@@ -147,43 +147,43 @@
     .bg-sidebar {
         background-color: var(--sidebar) !important;
     }
-    
+
     .text-sidebar-foreground {
         color: var(--sidebar-foreground) !important;
     }
-    
+
     .bg-sidebar-accent {
         background-color: var(--sidebar-accent) !important;
     }
-    
+
     .text-sidebar-accent-foreground {
         color: var(--sidebar-accent-foreground) !important;
     }
-    
+
     .border-sidebar-border {
         border-color: var(--sidebar-border) !important;
     }
-    
+
     .ring-sidebar-ring {
         --tw-ring-color: var(--sidebar-ring) !important;
     }
-    
+
     /* Đảm bảo text và icon trắng khi sidebar button active hoặc hover */
     [data-sidebar="menu-button"][data-active="true"],
-    [data-sidebar="menu-button"][data-active="true"] > span,
-    [data-sidebar="menu-button"][data-active="true"] > svg,
+    [data-sidebar="menu-button"][data-active="true"]>span,
+    [data-sidebar="menu-button"][data-active="true"]>svg,
     [data-sidebar="menu-button"]:hover,
-    [data-sidebar="menu-button"]:hover > span,
-    [data-sidebar="menu-button"]:hover > svg {
+    [data-sidebar="menu-button"]:hover>span,
+    [data-sidebar="menu-button"]:hover>svg {
         color: var(--sidebar-accent-foreground) !important;
     }
-    
+
     [data-sidebar="menu-sub-button"][data-active="true"],
-    [data-sidebar="menu-sub-button"][data-active="true"] > span,
-    [data-sidebar="menu-sub-button"][data-active="true"] > svg,
+    [data-sidebar="menu-sub-button"][data-active="true"]>span,
+    [data-sidebar="menu-sub-button"][data-active="true"]>svg,
     [data-sidebar="menu-sub-button"]:hover,
-    [data-sidebar="menu-sub-button"]:hover > span,
-    [data-sidebar="menu-sub-button"]:hover > svg {
+    [data-sidebar="menu-sub-button"]:hover>span,
+    [data-sidebar="menu-sub-button"]:hover>svg {
         color: var(--sidebar-accent-foreground) !important;
     }
 }
