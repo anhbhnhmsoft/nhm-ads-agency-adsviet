@@ -191,7 +191,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
             const platformPrefix = selectedAccount.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
             const response = await axios.get(
                 `/${platformPrefix}/${selectedAccount.service_user_id}/${campaignId}/detail-campaign-insight`,
-                { params: { preset } }
+                { params: { date_preset: preset } }
             );
             setCampaignInsights(response.data?.data || []);
         } catch (e: any) {
@@ -212,12 +212,12 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
         try {
             const platformPrefix = selectedAccount.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
             const response = await axios.get(
-                `/${platformPrefix}/${selectedAccount.service_user_id}/${campaign.campaign_id}/detail-campaign`
+                `/${platformPrefix}/${selectedAccount.service_user_id}/${campaign.id}/detail-campaign`
             );
             setCampaignDetail(response.data?.data);
 
             // Tải luôn insight mặc định (7 ngày)
-            await loadCampaignInsights(campaign.campaign_id, 'last_7d');
+            await loadCampaignInsights(campaign.id, 'last_7d');
         } catch (e: any) {
             setCampaignDetailError(e?.response?.data?.message || t('service_management.campaign_detail_error'));
         } finally {
@@ -228,7 +228,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
     const handleInsightPresetChange = (value: 'last_7d' | 'last_30d') => {
         setInsightPreset(value);
         if (selectedCampaign) {
-            loadCampaignInsights(selectedCampaign.campaign_id, value);
+            loadCampaignInsights(selectedCampaign.id, value);
         }
     };
 
@@ -764,7 +764,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                                                                 if (isAgencyOrCustomer && walletBalance === null && !walletBalanceLoading) {
                                                                     setWalletBalanceLoading(true);
                                                                     try {
-                                                                        const response = await axios.get('/wallets/me');
+                                                                        const response = await axios.get('/wallet/me');
                                                                         setWalletBalance(response.data?.data?.balance ?? 0);
                                                                     } catch (e) {
                                                                         console.error('Failed to fetch wallet balance', e);
@@ -917,7 +917,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                                 try {
                                     const platformPrefix = selectedAccount?.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
                                     const fieldName = selectedAccount?.platform === _PlatformType.GOOGLE ? 'budget' : 'spend-cap';
-                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.campaign_id}/${fieldName}`, {
+                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/${fieldName}`, {
                                         amount: Number(budgetAmount),
                                         wallet_password: budgetWalletPassword
                                     });
@@ -958,7 +958,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                                 setPauseSubmitting(true);
                                 try {
                                     const platformPrefix = selectedAccount?.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
-                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.campaign_id}/status`, {
+                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/status`, {
                                         status: 'PAUSED'
                                     });
                                     toast.success(t('service_management.campaign_pause_success'));
@@ -996,7 +996,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                                 try {
                                     const platformPrefix = selectedAccount?.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
                                     const status = selectedAccount?.platform === _PlatformType.GOOGLE ? 'ENABLED' : 'ACTIVE';
-                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.campaign_id}/status`, {
+                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/status`, {
                                         status
                                     });
                                     toast.success(t('service_management.campaign_resume_success'));
@@ -1035,7 +1035,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                                 try {
                                     const platformPrefix = selectedAccount?.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
                                     const status = selectedAccount?.platform === _PlatformType.GOOGLE ? 'REMOVED' : 'DELETED';
-                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.campaign_id}/status`, {
+                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/status`, {
                                         status
                                     });
                                     toast.success(t('service_management.campaign_end_success'));

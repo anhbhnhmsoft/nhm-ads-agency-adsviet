@@ -9,6 +9,13 @@ return [
     'create_success' => 'Đã tạo yêu cầu hỗ trợ thành công',
     'message_sent' => 'Đã gửi tin nhắn thành công',
     'status_updated' => 'Đã cập nhật trạng thái thành công',
+    'transfer_request' => 'Yêu cầu chuyển tiền',
+    'refund_request' => 'Yêu cầu thanh lý tài khoản',
+    'appeal_request' => 'Yêu cầu kháng tài khoản',
+    'share_request' => 'Yêu cầu share BM/MCC',
+    'create_account_request' => 'Yêu cầu tạo tài khoản',
+    'wallet_withdraw_app_request' => 'Yêu cầu rút tiền từ ví App',
+    'wallet_deposit_app_request' => 'Yêu cầu nạp tiền vào ví App',
 
     'status' => [
         'pending' => 'Chờ xử lý',
@@ -28,6 +35,16 @@ return [
     'reply_side' => [
         'customer' => 'Khách hàng',
         'staff' => 'Nhân viên',
+    ],
+    'type' => [
+        'transfer' => 'Chuyển tiền',
+        'refund' => 'Thanh lý',
+        'appeal' => 'Kháng nghị',
+        'share' => 'Chia sẻ BM/MCC',
+        'create_account' => 'Tạo tài khoản',
+        'wallet_withdraw_app' => 'Rút tiền App',
+        'wallet_deposit_app' => 'Nạp tiền App',
+        'support' => 'Hỗ trợ chung',
     ],
 
     'subject' => 'Chủ đề',
