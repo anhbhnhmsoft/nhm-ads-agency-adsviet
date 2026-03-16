@@ -9,6 +9,13 @@ return [
     'create_success' => 'Ticket created successfully',
     'message_sent' => 'Message sent successfully',
     'status_updated' => 'Status updated successfully',
+    'transfer_request' => 'Transfer request',
+    'refund_request' => 'Refund request',
+    'appeal_request' => 'Account appeal request',
+    'share_request' => 'Share BM/MCC request',
+    'create_account_request' => 'Account creation request',
+    'wallet_withdraw_app_request' => 'Wallet withdraw request',
+    'wallet_deposit_app_request' => 'Wallet deposit request',
 
     'status' => [
         'pending' => 'Pending',
@@ -28,6 +35,16 @@ return [
     'reply_side' => [
         'customer' => 'Customer',
         'staff' => 'Staff',
+    ],
+    'type' => [
+        'transfer' => 'Transfer',
+        'refund' => 'Refund',
+        'appeal' => 'Appeal',
+        'share' => 'Share BM/MCC',
+        'create_account' => 'Create Account',
+        'wallet_withdraw_app' => 'Wallet Withdraw',
+        'wallet_deposit_app' => 'Wallet Deposit',
+        'support' => 'General Support',
     ],
 
     'subject' => 'Subject',
