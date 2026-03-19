@@ -1029,7 +1029,7 @@ GAQL;
                     'name' => $campaign->getName() ?? '',
                     'status' => $normalizedCampaignStatus,
                     'effective_status' => $normalizedCampaignStatus,
-                    'objective' => $campaign->getAdvertisingChannelType()?->name ?? null,
+                    'objective' => is_object($campaign->getAdvertisingChannelType()) ? $campaign->getAdvertisingChannelType()?->name : (string) $campaign->getAdvertisingChannelType(),
                     'daily_budget' => $dailyBudget ? (string) $dailyBudget : null,
                     'budget_remaining' => null, // Google Ads không có budget_remaining trong campaign query
                     'start_time' => $startTime,
@@ -1563,10 +1563,12 @@ SELECT
   customer_client.descriptive_name,
   customer_client.status,
   customer_client.currency_code,
-  customer_client.time_zone
+  customer_client.time_zone,
+  metrics.cost_micros
 FROM customer_client
 WHERE customer_client.manager = FALSE
   AND customer_client.status != 'CANCELED'
+  AND segments.date DURING TODAY
 GAQL;
 
             $syncedCount = 0;
@@ -1619,6 +1621,10 @@ GAQL;
 
                     // Chỉ set service_user_id = null nếu account chưa được gán cho service_user nào
                     // Nếu đã có service_user_id, giữ nguyên để không ghi đè dữ liệu của user
+                    // Lấy chi tiêu hôm nay từ metrics (O(1))
+                    $metrics = $row->getMetrics();
+                    $todaySpend = $this->convertMicrosToUnit($metrics?->getCostMicros() ?? 0);
+
                     $updateData = [
                         'account_name' => $customerClient->getDescriptiveName() ?? 'N/A',
                         'account_status' => $mappedStatus,
@@ -1627,6 +1633,7 @@ GAQL;
                         'time_zone' => $customerClient->getTimeZone() ?? null,
                         'balance' => $balance,
                         'balance_exhausted' => $balanceExhausted,
+                        'amount_spent' => $todaySpend, // Cập nhật chi tiêu hôm nay
                         'last_synced_at' => now(),
                     ];
 
