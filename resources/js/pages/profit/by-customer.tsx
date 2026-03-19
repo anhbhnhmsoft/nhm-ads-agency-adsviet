@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTable } from '@/components/table/data-table';
 import { ColumnDef } from '@tanstack/react-table';
-import { Calendar, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Calendar, TrendingUp, TrendingDown, DollarSign, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { profit_by_customer } from '@/routes';
 
 type ProfitData = {
@@ -39,12 +41,14 @@ type Props = {
     startDate: string;
     endDate: string;
     selectedCustomerId?: number | null;
+    selectedPlatform?: number | null;
 };
 
-export default function ProfitByCustomer({ profitData, error, startDate, endDate, selectedCustomerId }: Props) {
+export default function ProfitByCustomer({ profitData, error, startDate, endDate, selectedCustomerId, selectedPlatform }: Props) {
     const { t } = useTranslation();
     const [localStartDate, setLocalStartDate] = useState(startDate);
     const [localEndDate, setLocalEndDate] = useState(endDate);
+    const [localPlatform, setLocalPlatform] = useState<string>(selectedPlatform?.toString() || 'all');
 
     const formatCurrency = (value: string | number) => {
         const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -143,6 +147,7 @@ export default function ProfitByCustomer({ profitData, error, startDate, endDate
         router.get(profit_by_customer().url, {
             start_date: localStartDate,
             end_date: localEndDate,
+            platform: localPlatform !== 'all' ? parseInt(localPlatform) : null,
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -169,8 +174,34 @@ export default function ProfitByCustomer({ profitData, error, startDate, endDate
             <Head title={t('profit.by_customer_title', { defaultValue: 'Thống kê lợi nhuận theo khách hàng' })} />
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
                         {t('profit.by_customer_title', { defaultValue: 'Thống kê lợi nhuận theo khách hàng' })}
+                        <TooltipProvider delayDuration={0}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-5 w-5 text-muted-foreground hover:text-primary cursor-help transition-colors" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[350px] p-3 text-sm shadow-md bg-popover text-popover-foreground border" side="bottom" align="start">
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="font-semibold text-primary mb-1">Cách tính Doanh thu:</div>
+                                            <div className="text-muted-foreground leading-relaxed">
+                                                Phí mở TK + Tiền nạp + (Tiền nạp * Phí dịch vụ %)
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-primary mb-1">Cách tính Chi phí:</div>
+                                            <div className="text-muted-foreground leading-relaxed">
+                                                Phí mở TK bên NCC + (Tiền nạp * Phí NCC %)
+                                            </div>
+                                        </div>
+                                        <div className="pt-2 border-t font-medium text-foreground">
+                                            Lợi nhuận = Doanh thu - Chi phí
+                                        </div>
+                                    </div>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         {t('profit.by_customer_description', { defaultValue: 'Xem lợi nhuận chi tiết theo từng khách hàng' })}
@@ -208,6 +239,21 @@ export default function ProfitByCustomer({ profitData, error, startDate, endDate
                                     value={localEndDate}
                                     onChange={(e) => setLocalEndDate(e.target.value)}
                                 />
+                            </div>
+                            <div className="space-y-2 flex-1">
+                                <Label>
+                                    {t('profit.platform', { defaultValue: 'Nền tảng' })}
+                                </Label>
+                                <Select value={localPlatform} onValueChange={setLocalPlatform}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">{t('profit.all_platforms', { defaultValue: 'Tất cả' })}</SelectItem>
+                                        <SelectItem value="1">{t('profit.meta_ads', { defaultValue: 'Facebook Ads' })}</SelectItem>
+                                        <SelectItem value="2">{t('profit.google_ads', { defaultValue: 'Google Ads' })}</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="flex items-end">
                                 <Button onClick={handleDateFilter}>

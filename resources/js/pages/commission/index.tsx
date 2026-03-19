@@ -10,7 +10,8 @@ import {
     EmptyTitle,
 } from '@/components/ui/empty';
 import { useTranslation } from 'react-i18next';
-import { Edit, MoreHorizontal, Plus, Trash } from 'lucide-react';
+import { Edit, MoreHorizontal, Plus, Trash, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { router } from '@inertiajs/react';
 import { commissions_create_view, commissions_destroy, commissions_edit_view } from '@/routes';
 import { EmployeeCommissionItem, CommissionPagination } from '@/pages/commission/types/type';
@@ -179,8 +180,37 @@ const Index = ({ paginator }: Props) => {
         <AppLayout>
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-semibold">
+                    <h1 className="text-2xl font-semibold flex items-center gap-2">
                         {t('commission.index_title', { defaultValue: 'Quản lý hoa hồng' })}
+                        <TooltipProvider delayDuration={0}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-5 w-5 text-muted-foreground hover:text-primary cursor-help transition-colors" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[350px] p-3 text-sm shadow-md bg-popover text-popover-foreground border" side="bottom" align="start">
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="font-semibold text-primary mb-1">Hoa hồng Dịch vụ:</div>
+                                            <div className="text-muted-foreground leading-relaxed">
+                                                Số tiền bán dịch vụ * Tỷ lệ %
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-primary mb-1">Hoa hồng Bán Account:</div>
+                                            <div className="text-muted-foreground leading-relaxed">
+                                                (Phí mở TK * Số lượng TK) * Tỷ lệ %
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-primary mb-1">Hoa hồng Spending:</div>
+                                            <div className="text-muted-foreground leading-relaxed">
+                                                Số tiền KH nạp * Tỷ lệ %
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </h1>
                     <Button
                         onClick={() => {

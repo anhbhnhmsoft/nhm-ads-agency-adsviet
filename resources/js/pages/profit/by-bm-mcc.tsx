@@ -7,7 +7,9 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { DataTable } from '@/components/table/data-table';
 import { ColumnDef } from '@tanstack/react-table';
-import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Info } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type ProfitData = {
     bm_mcc_id: string;
@@ -31,14 +33,16 @@ type Props = {
     error?: string | null;
     startDate: string | null;
     endDate: string | null;
+    selectedPlatform?: number | null;
 };
 
-export default function ProfitByBmMcc({ profitData, error, startDate, endDate }: Props) {
+export default function ProfitByBmMcc({ profitData, error, startDate, endDate, selectedPlatform }: Props) {
     const { t } = useTranslation();
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: startDate ? new Date(startDate) : undefined,
         to: endDate ? new Date(endDate) : undefined,
     });
+    const [localPlatform, setLocalPlatform] = useState<string>(selectedPlatform?.toString() || 'all');
 
     const formatCurrency = (value: string | number) => {
         const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -68,6 +72,20 @@ export default function ProfitByBmMcc({ profitData, error, startDate, endDate }:
             {
                 start_date: date?.from?.toISOString().split('T')[0],
                 end_date: date?.to?.toISOString().split('T')[0],
+                platform: localPlatform !== 'all' ? parseInt(localPlatform) : null,
+            },
+            { preserveState: true, preserveScroll: true }
+        );
+    };
+
+    const handlePlatformChange = (value: string) => {
+        setLocalPlatform(value);
+        router.get(
+            '/profit/by-bm-mcc',
+            {
+                start_date: dateRange?.from?.toISOString().split('T')[0],
+                end_date: dateRange?.to?.toISOString().split('T')[0],
+                platform: value !== 'all' ? parseInt(value) : null,
             },
             { preserveState: true, preserveScroll: true }
         );
@@ -170,7 +188,35 @@ export default function ProfitByBmMcc({ profitData, error, startDate, endDate }:
             <Head title={t('profit.by_bm_mcc.title', { defaultValue: 'Lợi nhuận theo BM/MCC' })} />
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold">{t('profit.by_bm_mcc.title', { defaultValue: 'Lợi nhuận theo BM/MCC' })}</h1>
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        {t('profit.by_bm_mcc.title', { defaultValue: 'Lợi nhuận theo BM/MCC' })}
+                        <TooltipProvider delayDuration={0}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-5 w-5 text-muted-foreground hover:text-primary cursor-help transition-colors" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[350px] p-3 text-sm shadow-md bg-popover text-popover-foreground border" side="bottom" align="start">
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="font-semibold text-primary mb-1">Cách tính Doanh thu:</div>
+                                            <div className="text-muted-foreground leading-relaxed">
+                                                Phí mở TK + Tiền nạp + (Tiền nạp * Phí dịch vụ %)
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-primary mb-1">Cách tính Chi phí:</div>
+                                            <div className="text-muted-foreground leading-relaxed">
+                                                Phí mở TK bên NCC + (Tiền nạp * Phí NCC %)
+                                            </div>
+                                        </div>
+                                        <div className="pt-2 border-t font-medium text-foreground">
+                                            Lợi nhuận = Doanh thu - Chi phí
+                                        </div>
+                                    </div>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </h1>
                 </div>
 
                 {error && (
@@ -181,9 +227,23 @@ export default function ProfitByBmMcc({ profitData, error, startDate, endDate }:
                     </Card>
                 )}
 
-                {/* Date Range Filter */}
-                <div className="flex justify-end">
-                    <DateRangePicker date={dateRange} onDateChange={handleDateChange} />
+                {/* Filters */}
+                <div className="flex flex-wrap gap-4 items-end justify-end">
+                    <div className="w-[200px]">
+                        <Select value={localPlatform} onValueChange={handlePlatformChange}>
+                            <SelectTrigger>
+                                <SelectValue placeholder={t('profit.platform', { defaultValue: 'Nền tảng' })} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">{t('profit.all_platforms', { defaultValue: 'Tất cả nền tảng' })}</SelectItem>
+                                <SelectItem value="1">{t('profit.meta_ads', { defaultValue: 'Facebook Ads' })}</SelectItem>
+                                <SelectItem value="2">{t('profit.google_ads', { defaultValue: 'Google Ads' })}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <DateRangePicker date={dateRange} onDateChange={handleDateChange} />
+                    </div>
                 </div>
 
                 {/* Summary Cards */}

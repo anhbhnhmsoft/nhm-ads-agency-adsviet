@@ -46,9 +46,10 @@ class ProfitService
      * @param int|null $customerId - Nếu null thì lấy tất cả customer
      * @param Carbon|null $startDate
      * @param Carbon|null $endDate
+     * @param int|null $platform
      * @return ServiceReturn
      */
-    public function getProfitByCustomer(?int $customerId = null, ?Carbon $startDate = null, ?Carbon $endDate = null): ServiceReturn
+    public function getProfitByCustomer(?int $customerId = null, ?Carbon $startDate = null, ?Carbon $endDate = null, ?int $platform = null): ServiceReturn
     {
         try {
             $user = Auth::user();
@@ -63,7 +64,7 @@ class ProfitService
 
             // Lấy danh sách customer mà agency quản lý
             $managedCustomerIds = $this->getManagedCustomerIds((int) $user->id);
-            
+
             if (empty($managedCustomerIds)) {
                 return ServiceReturn::success(data: []);
             }
@@ -98,6 +99,12 @@ class ProfitService
                     ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
                     ->where('user_id', $customerId)
                     ->whereHas('package');
+
+                if ($platform) {
+                    $query->whereHas('package', function ($q) use ($platform) {
+                        $q->where('platform', $platform);
+                    });
+                }
 
                 if ($startDate && $endDate) {
                     $query->whereBetween('created_at', [$startDate, $endDate]);
@@ -353,7 +360,7 @@ class ProfitService
                 $q->where('platform', PlatformType::META->value);
             });
 
-            if ($startDate && $endDate) {
+        if ($startDate && $endDate) {
             $query->whereBetween('created_at', [$startDate, $endDate]);
         }
 
@@ -399,7 +406,7 @@ class ProfitService
             if ($supplier) {
                 // Kiểm tra xem user có phải postpay không
                 $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
-                
+
                 if ($isPostpay) {
                     // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
                     if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
@@ -430,7 +437,7 @@ class ProfitService
                 $q->where('platform', PlatformType::GOOGLE->value);
             });
 
-            if ($startDate && $endDate) {
+        if ($startDate && $endDate) {
             $query->whereBetween('created_at', [$startDate, $endDate]);
         }
 
@@ -476,7 +483,7 @@ class ProfitService
             if ($supplier) {
                 // Kiểm tra xem user có phải postpay không
                 $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
-                
+
                 if ($isPostpay) {
                     // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
                     if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
@@ -509,8 +516,9 @@ class ProfitService
      * - Doanh thu mỗi order = open_fee + top_up_amount + top_up_amount * top_up_fee%
      * - Chi phí mỗi order   = top_up_amount * supplier_fee_percent%
      * - Lợi nhuận           = Doanh thu - Chi phí
+     * @param int|null $platform
      */
-    public function getProfitOverTime(string $groupBy = 'day', ?Carbon $startDate = null, ?Carbon $endDate = null): ServiceReturn
+    public function getProfitOverTime(string $groupBy = 'day', ?Carbon $startDate = null, ?Carbon $endDate = null, ?int $platform = null): ServiceReturn
     {
         try {
             $user = Auth::user();
@@ -543,6 +551,12 @@ class ProfitService
                 ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
                 ->whereBetween('created_at', [$startDate, $endDate])
                 ->whereHas('package');
+
+            if ($platform) {
+                $query->whereHas('package', function ($q) use ($platform) {
+                    $q->where('platform', $platform);
+                });
+            }
 
             if (!empty($customerIds)) {
                 $query->whereIn('user_id', $customerIds);
@@ -608,7 +622,7 @@ class ProfitService
                 if ($supplier) {
                     // Kiểm tra xem user có phải postpay không
                     $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
-                    
+
                     if ($isPostpay) {
                         // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
                         if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
@@ -656,8 +670,9 @@ class ProfitService
     /**
      * Tính lợi nhuận theo BM/MCC
      * 
+     * @param int|null $platform
      */
-    public function getProfitByBmMcc(?Carbon $startDate = null, ?Carbon $endDate = null): ServiceReturn
+    public function getProfitByBmMcc(?Carbon $startDate = null, ?Carbon $endDate = null, ?int $platform = null): ServiceReturn
     {
         try {
             $user = Auth::user();
@@ -677,11 +692,22 @@ class ProfitService
             }
 
             // Lấy tất cả service_users active
-            $serviceUsers = $this->serviceUserRepository->query()
+            $serviceUsersQuery = $this->serviceUserRepository->query()
                 ->with(['user:id,name,username,email', 'package:id,platform,name,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
                 ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
-                ->whereHas('package')
-                ->get();
+                ->whereHas('package');
+
+            if ($startDate && $endDate) {
+                $serviceUsersQuery->whereBetween('created_at', [$startDate, $endDate]);
+            }
+
+            if ($platform) {
+                $serviceUsersQuery->whereHas('package', function ($q) use ($platform) {
+                    $q->where('platform', $platform);
+                });
+            }
+
+            $serviceUsers = $serviceUsersQuery->get();
 
             $bmMccMap = [];
 
@@ -727,7 +753,7 @@ class ProfitService
                 if ($supplier) {
                     // Kiểm tra xem user có phải postpay không
                     $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
-                    
+
                     if ($isPostpay) {
                         // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
                         if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
@@ -759,7 +785,7 @@ class ProfitService
 
                 foreach ($bmIds as $bmId) {
                     $key = $platform . '_' . $bmId;
-                    
+
                     if (!isset($bmMccMap[$key])) {
                         $bmMccMap[$key] = [
                             'bm_mcc_id' => $bmId,

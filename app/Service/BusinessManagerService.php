@@ -47,9 +47,15 @@ class BusinessManagerService
      */
     public function getChildManagersForFilter(): array
     {
-        $metaChildren = $this->metaBusinessManagerRepository->query()
-            ->whereNotNull('parent_bm_id')
-            ->get(['bm_id', 'name', 'parent_bm_id'])
+        $activeMetaSetting = $this->platformSettingRepository->findActiveByPlatform(PlatformType::META->value);
+        $activeMetaBmId = $activeMetaSetting ? ($activeMetaSetting->config['business_manager_id'] ?? null) : null;
+
+        $metaQuery = $this->metaBusinessManagerRepository->query()->whereNotNull('parent_bm_id');
+        if ($activeMetaBmId) {
+            $metaQuery->where('parent_bm_id', $activeMetaBmId);
+        }
+
+        $metaChildren = $metaQuery->get(['bm_id', 'name', 'parent_bm_id'])
             ->map(fn ($bm) => [
                 'id' => (string) $bm->bm_id,
                 'name' => $bm->name ?? (string) $bm->bm_id,
@@ -57,9 +63,15 @@ class BusinessManagerService
             ])
             ->toArray();
 
-        $googleChildren = $this->googleMccManagerRepository->query()
-            ->whereNotNull('parent_mcc_id')
-            ->get(['mcc_id', 'name', 'parent_mcc_id'])
+        $activeGoogleSetting = $this->platformSettingRepository->findActiveByPlatform(PlatformType::GOOGLE->value);
+        $activeGoogleManagerId = $activeGoogleSetting ? ($activeGoogleSetting->config['login_customer_id'] ?? null) : null;
+
+        $googleQuery = $this->googleMccManagerRepository->query()->whereNotNull('parent_mcc_id');
+        if ($activeGoogleManagerId) {
+            $googleQuery->where('parent_mcc_id', $activeGoogleManagerId);
+        }
+
+        $googleChildren = $googleQuery->get(['mcc_id', 'name', 'parent_mcc_id'])
             ->map(fn ($mcc) => [
                 'id' => (string) $mcc->mcc_id,
                 'name' => $mcc->name ?? (string) $mcc->mcc_id,
@@ -268,6 +280,8 @@ class BusinessManagerService
                         $bmDisplayName = $accountBmId && isset($bmNameMap[$accountBmId])
                             ? $bmNameMap[$accountBmId]
                             : $this->resolveBmName($bmIdsForRow, $bmNameMap);
+                            
+                        $displayBmName = !empty($config['display_name']) ? $config['display_name'] : $bmDisplayName;
 
                         $accountsList[] = [
                             'id' => (string) $account->id,
@@ -275,7 +289,7 @@ class BusinessManagerService
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
                             'bm_ids' => $bmIdsForRow,
-                            'bm_name' => $bmDisplayName,
+                            'bm_name' => $displayBmName,
                             'parent_bm_id' => $parentBmIdForRow,
                             'name' => $account->account_name ?? $config['display_name'] ?? $ownerName,
                             'platform' => $platform,
@@ -345,13 +359,15 @@ class BusinessManagerService
                             ? ($mccParentMap[$customerManagerId] ?? null)
                             : (isset($bmIdsForRow[0]) ? ($mccParentMap[$bmIdsForRow[0]] ?? null) : null);
 
+                        $displayMccName = !empty($config['display_name']) ? $config['display_name'] : $mccDisplayName;
+
                         $accountsList[] = [
                             'id' => (string) $account->id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
                             'bm_ids' => $bmIdsForRow,
-                            'bm_name' => $mccDisplayName,
+                            'bm_name' => $displayMccName,
                             'parent_bm_id' => $parentMccId,
                             'name' => $account->account_name ?? $config['display_name'] ?? $ownerName,
                             'platform' => $platform,

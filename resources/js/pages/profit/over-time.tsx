@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, Info } from 'lucide-react';
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type ProfitDataPoint = {
     period: string;
@@ -23,15 +24,17 @@ type Props = {
     startDate: string | null;
     endDate: string | null;
     groupBy: 'day' | 'week' | 'month';
+    selectedPlatform?: number | null;
 };
 
-export default function ProfitOverTime({ profitData, error, startDate, endDate, groupBy }: Props) {
+export default function ProfitOverTime({ profitData, error, startDate, endDate, groupBy, selectedPlatform }: Props) {
     const { t } = useTranslation();
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: startDate ? new Date(startDate) : undefined,
         to: endDate ? new Date(endDate) : undefined,
     });
     const [localGroupBy, setLocalGroupBy] = useState<'day' | 'week' | 'month'>(groupBy);
+    const [localPlatform, setLocalPlatform] = useState<string>(selectedPlatform?.toString() || 'all');
 
     const formatCurrency = (value: string | number) => {
         const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -88,6 +91,7 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                 start_date: date?.from?.toISOString().split('T')[0],
                 end_date: date?.to?.toISOString().split('T')[0],
                 group_by: localGroupBy,
+                platform: localPlatform !== 'all' ? parseInt(localPlatform) : null,
             },
             { preserveState: true, preserveScroll: true }
         );
@@ -101,6 +105,21 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                 start_date: dateRange?.from?.toISOString().split('T')[0],
                 end_date: dateRange?.to?.toISOString().split('T')[0],
                 group_by: value,
+                platform: localPlatform !== 'all' ? parseInt(localPlatform) : null,
+            },
+            { preserveState: true, preserveScroll: true }
+        );
+    };
+
+    const handlePlatformChange = (value: string) => {
+        setLocalPlatform(value);
+        router.get(
+            '/profit/over-time',
+            {
+                start_date: dateRange?.from?.toISOString().split('T')[0],
+                end_date: dateRange?.to?.toISOString().split('T')[0],
+                group_by: localGroupBy,
+                platform: value !== 'all' ? parseInt(value) : null,
             },
             { preserveState: true, preserveScroll: true }
         );
@@ -111,7 +130,35 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
             <Head title={t('profit.over_time.title', { defaultValue: 'Lợi nhuận tổng theo thời gian' })} />
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold">{t('profit.over_time.title', { defaultValue: 'Lợi nhuận tổng theo thời gian' })}</h1>
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        {t('profit.over_time.title', { defaultValue: 'Lợi nhuận tổng theo thời gian' })}
+                        <TooltipProvider delayDuration={0}>
+                            <UITooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-5 w-5 text-muted-foreground hover:text-primary cursor-help transition-colors" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[350px] p-3 text-sm shadow-md bg-popover text-popover-foreground border" side="bottom" align="start">
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="font-semibold text-primary mb-1">Cách tính Doanh thu:</div>
+                                            <div className="text-muted-foreground leading-relaxed">
+                                                Phí mở TK + Tiền nạp + (Tiền nạp * Phí dịch vụ %)
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-primary mb-1">Cách tính Chi phí:</div>
+                                            <div className="text-muted-foreground leading-relaxed">
+                                                Phí mở TK bên NCC + (Tiền nạp * Phí NCC %)
+                                            </div>
+                                        </div>
+                                        <div className="pt-2 border-t font-medium text-foreground">
+                                            Lợi nhuận = Doanh thu - Chi phí
+                                        </div>
+                                    </div>
+                                </TooltipContent>
+                            </UITooltip>
+                        </TooltipProvider>
+                    </h1>
                 </div>
 
                 {error && (
@@ -142,6 +189,21 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                                 <SelectItem value="day">{t('profit.group_by_day', { defaultValue: 'Theo ngày' })}</SelectItem>
                                 <SelectItem value="week">{t('profit.group_by_week', { defaultValue: 'Theo tuần' })}</SelectItem>
                                 <SelectItem value="month">{t('profit.group_by_month', { defaultValue: 'Theo tháng' })}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="w-[200px]">
+                        <label className="text-sm font-medium mb-2 block">
+                            {t('profit.platform', { defaultValue: 'Nền tảng' })}
+                        </label>
+                        <Select value={localPlatform} onValueChange={handlePlatformChange}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">{t('profit.all_platforms', { defaultValue: 'Tất cả' })}</SelectItem>
+                                <SelectItem value="1">{t('profit.meta_ads', { defaultValue: 'Facebook Ads' })}</SelectItem>
+                                <SelectItem value="2">{t('profit.google_ads', { defaultValue: 'Google Ads' })}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

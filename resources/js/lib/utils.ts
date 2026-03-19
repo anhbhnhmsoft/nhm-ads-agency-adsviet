@@ -23,11 +23,17 @@ export function formatCurrency(value: any, currency: string = 'USD') {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
     }).format(val);
 }
 
 export function formatNumber(value: any, options: Intl.NumberFormatOptions = {}) {
     const val = typeof value === 'string' ? parseFloat(value) : value;
     if (val === null || val === undefined || isNaN(val)) return '--';
-    return new Intl.NumberFormat('en-US', options).format(val);
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+        ...options
+    }).format(val);
 }

@@ -146,7 +146,7 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
                     return (
                         <span className="font-medium">
                             {spend.toLocaleString('vi-VN', {
-                                minimumFractionDigits: 2,
+                                minimumFractionDigits: 0,
                                 maximumFractionDigits: 2
                             })} {row.original.accounts?.[0]?.currency || 'USD'}
                         </span>
@@ -161,7 +161,7 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
                     return (
                         <span className="font-medium">
                             {balance.toLocaleString('vi-VN', {
-                                minimumFractionDigits: 2,
+                                minimumFractionDigits: 0,
                                 maximumFractionDigits: 2
                             })} {row.original.accounts?.[0]?.currency || 'USD'}
                         </span>
