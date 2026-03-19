@@ -194,8 +194,18 @@ class MetaAdsNotificationService
             $hasTelegram = !empty($user->telegram_id);
             $hasVerifiedEmail = !empty($user->email) && !empty($user->email_verified_at);
 
+            if (!$hasTelegram && !empty($user->telegram_id)) {
+            }
             if (!$hasTelegram && !$hasVerifiedEmail) {
                 return ServiceReturn::error(message: __('meta.error.no_contact_method'));
+            }
+
+            // Dùng cache để chỉ gửi 1 lần mỗi ngày
+            $today = now()->toDateString();
+            $cacheKeyStr = (string) $account->id . '_' . $user->id;
+            $cacheValue = Caching::getCache(CacheKey::CACHE_META_ACCOUNT_LOW_BALANCE_NOTIFIED, $cacheKeyStr);
+            if ($cacheValue === $today) {
+                return ServiceReturn::success(data: ['skipped' => true, 'reason' => 'already notified today']);
             }
 
             $balance = (float) ($account->balance ?? 0);
@@ -240,6 +250,7 @@ class MetaAdsNotificationService
             }
 
             if ($result && $result->isSuccess()) {
+                Caching::setCache(CacheKey::CACHE_META_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, $cacheKeyStr, $this->minutesUntilEndOfDay());
                 Logging::web('MetaAdsNotificationService: Low balance alert sent (auto-pause)', [
                     'account_id' => $account->id,
                     'user_id' => $user->id,
@@ -280,6 +291,14 @@ class MetaAdsNotificationService
 
             if (!$hasTelegram && !$hasVerifiedEmail) {
                 return ServiceReturn::error(message: __('meta.error.no_contact_method'));
+            }
+
+            // Dùng cache để chỉ gửi 1 lần mỗi ngày
+            $today = now()->toDateString();
+            $cacheKeyStr = 'spending_exceeded_' . $account->id . '_' . $user->id;
+            $cacheValue = Caching::getCache(CacheKey::CACHE_META_ACCOUNT_LOW_BALANCE_NOTIFIED, $cacheKeyStr);
+            if ($cacheValue === $today) {
+                return ServiceReturn::success(data: ['skipped' => true, 'reason' => 'already notified today']);
             }
 
             $balance = (float) ($account->balance ?? 0);
@@ -333,6 +352,7 @@ class MetaAdsNotificationService
             }
 
             if ($result && $result->isSuccess()) {
+                Caching::setCache(CacheKey::CACHE_META_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, $cacheKeyStr, $this->minutesUntilEndOfDay());
                 Logging::web('MetaAdsNotificationService: Spending exceeded alert sent', [
                     'account_id' => $account->id,
                     'user_id' => $user->id,
