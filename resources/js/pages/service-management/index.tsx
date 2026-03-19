@@ -324,7 +324,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                 header: t('service_management.spend', { defaultValue: 'Chi tiêu' }),
                 cell: ({ row }) => {
                     const spend = Number(row.original.total_spend || 0);
-                    return `${spend.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${row.original.currency || 'USD'}`;
+                    return `${spend.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${row.original.currency || 'USD'}`;
                 },
             },
             {
@@ -332,7 +332,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                 header: t('service_management.balance', { defaultValue: 'Số dư' }),
                 cell: ({ row }) => {
                     const bal = Number(row.original.total_balance || 0);
-                    return `${bal.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${row.original.currency || 'USD'}`;
+                    return `${bal.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${row.original.currency || 'USD'}`;
                 },
             },
             {

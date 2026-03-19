@@ -24,7 +24,7 @@ class ProfitController extends Controller
     public function byCustomer(Request $request): Response
     {
         $user = $request->user();
-        
+
         // Chỉ agency mới được truy cập
         if (!$user || $user->role !== UserRole::AGENCY->value) {
             abort(403, __('common_error.permission_denied'));
@@ -33,12 +33,12 @@ class ProfitController extends Controller
         // Lấy date range từ request
         $startDate = null;
         $endDate = null;
-        
+
         if ($request->has('start_date') && $request->has('end_date')) {
             try {
                 $startDateStr = $request->string('start_date')->toString();
                 $endDateStr = $request->string('end_date')->toString();
-                
+
                 if (!empty($startDateStr) && !empty($endDateStr)) {
                     $startDate = Carbon::parse($startDateStr)->startOfDay();
                     $endDate = Carbon::parse($endDateStr)->endOfDay();
@@ -47,7 +47,7 @@ class ProfitController extends Controller
                 // Nếu parse lỗi, sẽ lấy tất cả dữ liệu
             }
         }
-        
+
         // Nếu không có date range, mặc định lấy 30 ngày gần nhất
         if (!$startDate || !$endDate) {
             $endDate = Carbon::today()->endOfDay();
@@ -57,7 +57,10 @@ class ProfitController extends Controller
         // Filter theo customer nếu có
         $customerId = $request->input('customer_id') ? (int) $request->input('customer_id') : null;
 
-        $result = $this->profitService->getProfitByCustomer($customerId, $startDate, $endDate);
+        // Filter theo nền tảng
+        $platform = $request->input('platform') && $request->input('platform') !== 'all' ? (int) $request->input('platform') : null;
+
+        $result = $this->profitService->getProfitByCustomer($customerId, $startDate, $endDate, $platform);
 
         $profitData = $result->isSuccess() ? $result->getData() : [];
         $error = $result->isError() ? $result->getMessage() : null;
@@ -68,6 +71,7 @@ class ProfitController extends Controller
             'startDate' => $startDate->format('Y-m-d'),
             'endDate' => $endDate->format('Y-m-d'),
             'selectedCustomerId' => $customerId,
+            'selectedPlatform' => $platform,
         ]);
     }
 
@@ -77,7 +81,7 @@ class ProfitController extends Controller
     public function byPlatform(Request $request): Response
     {
         $user = $request->user();
-        
+
         // Chỉ agency và admin mới được truy cập
         if (!$user || !in_array($user->role, [UserRole::AGENCY->value, UserRole::ADMIN->value])) {
             abort(403, __('common_error.permission_denied'));
@@ -86,12 +90,12 @@ class ProfitController extends Controller
         // Lấy date range từ request
         $startDate = null;
         $endDate = null;
-        
+
         if ($request->has('start_date') && $request->has('end_date')) {
             try {
                 $startDateStr = $request->string('start_date')->toString();
                 $endDateStr = $request->string('end_date')->toString();
-                
+
                 if (!empty($startDateStr) && !empty($endDateStr)) {
                     $startDate = Carbon::parse($startDateStr)->startOfDay();
                     $endDate = Carbon::parse($endDateStr)->endOfDay();
@@ -100,7 +104,7 @@ class ProfitController extends Controller
                 // Nếu parse lỗi, sẽ lấy tất cả dữ liệu
             }
         }
-        
+
         // Nếu không có date range, mặc định lấy 30 ngày gần nhất
         if (!$startDate || !$endDate) {
             $endDate = Carbon::today()->endOfDay();
@@ -130,7 +134,7 @@ class ProfitController extends Controller
     public function overTime(Request $request): Response
     {
         $user = $request->user();
-        
+
         // Chỉ agency và admin mới được truy cập
         if (!$user || !in_array($user->role, [UserRole::AGENCY->value, UserRole::ADMIN->value])) {
             abort(403, __('common_error.permission_denied'));
@@ -139,12 +143,12 @@ class ProfitController extends Controller
         // Lấy date range từ request
         $startDate = null;
         $endDate = null;
-        
+
         if ($request->has('start_date') && $request->has('end_date')) {
             try {
                 $startDateStr = $request->string('start_date')->toString();
                 $endDateStr = $request->string('end_date')->toString();
-                
+
                 if (!empty($startDateStr) && !empty($endDateStr)) {
                     $startDate = Carbon::parse($startDateStr)->startOfDay();
                     $endDate = Carbon::parse($endDateStr)->endOfDay();
@@ -160,7 +164,10 @@ class ProfitController extends Controller
             $groupBy = 'day';
         }
 
-        $result = $this->profitService->getProfitOverTime($groupBy, $startDate, $endDate);
+        // Filter theo nền tảng
+        $platform = $request->input('platform') && $request->input('platform') !== 'all' ? (int) $request->input('platform') : null;
+
+        $result = $this->profitService->getProfitOverTime($groupBy, $startDate, $endDate, $platform);
 
         $profitData = $result->isSuccess() ? $result->getData() : [];
         $error = $result->isError() ? $result->getMessage() : null;
@@ -171,6 +178,7 @@ class ProfitController extends Controller
             'startDate' => $startDate ? $startDate->format('Y-m-d') : null,
             'endDate' => $endDate ? $endDate->format('Y-m-d') : null,
             'groupBy' => $groupBy,
+            'selectedPlatform' => $platform,
         ]);
     }
 
@@ -180,7 +188,7 @@ class ProfitController extends Controller
     public function byBmMcc(Request $request): Response
     {
         $user = $request->user();
-        
+
         // Chỉ admin mới được truy cập
         if (!$user || $user->role !== UserRole::ADMIN->value) {
             abort(403, __('common_error.permission_denied'));
@@ -189,12 +197,12 @@ class ProfitController extends Controller
         // Lấy date range từ request
         $startDate = null;
         $endDate = null;
-        
+
         if ($request->has('start_date') && $request->has('end_date')) {
             try {
                 $startDateStr = $request->string('start_date')->toString();
                 $endDateStr = $request->string('end_date')->toString();
-                
+
                 if (!empty($startDateStr) && !empty($endDateStr)) {
                     $startDate = Carbon::parse($startDateStr)->startOfDay();
                     $endDate = Carbon::parse($endDateStr)->endOfDay();
@@ -204,7 +212,10 @@ class ProfitController extends Controller
             }
         }
 
-        $result = $this->profitService->getProfitByBmMcc($startDate, $endDate);
+        // Filter theo nền tảng
+        $platform = $request->input('platform') && $request->input('platform') !== 'all' ? (int) $request->input('platform') : null;
+
+        $result = $this->profitService->getProfitByBmMcc($startDate, $endDate, $platform);
 
         $profitData = $result->isSuccess() ? $result->getData() : [];
         $error = $result->isError() ? $result->getMessage() : null;
@@ -214,6 +225,7 @@ class ProfitController extends Controller
             'error' => $error,
             'startDate' => $startDate ? $startDate->format('Y-m-d') : null,
             'endDate' => $endDate ? $endDate->format('Y-m-d') : null,
+            'selectedPlatform' => $platform,
         ]);
     }
 }
