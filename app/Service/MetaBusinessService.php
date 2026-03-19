@@ -25,8 +25,7 @@ class MetaBusinessService
 
     public function __construct(
         protected PlatformSettingService $platformSettingService,
-    )
-    {
+    ) {
     }
 
     /**
@@ -50,7 +49,8 @@ class MetaBusinessService
             if (!$platformSetting->isError()) {
                 $platformData = $platformSetting->getData();
                 $newConfig = $platformData->config;
-                if ($this->config &&
+                if (
+                    $this->config &&
                     isset($newConfig['app_id'], $newConfig['app_secret'], $newConfig['access_token']) &&
                     $this->config['app_id'] === $newConfig['app_id'] &&
                     $this->config['app_secret'] === $newConfig['app_secret'] &&
@@ -239,7 +239,7 @@ class MetaBusinessService
             $endpoint = "/{$bmId}/owned_ad_accounts";
             // Lấy thêm business{id,name} để biết tài khoản thuộc BM con nào
             $params = [
-                'fields' => 'id,account_id,name,account_status,business{id,name}',
+                'fields' => 'id,account_id,name,account_status,disable_reason,spend_cap,balance,currency,amount_spent,created_time,is_prepay_account,timezone_id,timezone_name,business{id,name}',
                 'limit' => $limit,
             ];
             // Nếu frontend gửi 'after' (để xem trang kế), thêm nó vào
@@ -273,7 +273,7 @@ class MetaBusinessService
             $endpoint = "/{$bmId}/client_ad_accounts";
             // Lấy thêm business{id,name} để biết tài khoản thuộc BM con nào
             $params = [
-                'fields' => 'id,account_id,name,account_status,business{id,name}',
+                'fields' => 'id,account_id,name,account_status,disable_reason,spend_cap,balance,currency,amount_spent,created_time,is_prepay_account,timezone_id,timezone_name,business{id,name}',
                 'limit' => $limit,
             ];
             if ($after) {
@@ -491,10 +491,10 @@ class MetaBusinessService
 
             // Cấu hình mặc định
             $defaultParams = [
-                'fields'         => implode(',', $fields),
-                'level'          => 'account', // Lấy tổng cấp tài khoản
+                'fields' => implode(',', $fields),
+                'level' => 'account', // Lấy tổng cấp tài khoản
                 'time_increment' => 1, // Chia theo từng ngày
-                'date_preset'    => AdsInsightsDatePresetValues::LAST_30D // Mặc định lấy 30 ngày nếu không truyền gì
+                'date_preset' => AdsInsightsDatePresetValues::LAST_30D // Mặc định lấy 30 ngày nếu không truyền gì
             ];
 
             // Gộp tham số (Ưu tiên tham số truyền vào)
@@ -646,13 +646,15 @@ class MetaBusinessService
     public function getCampaignDailyInsights(string $campaignId, string $datePreset = 'last_7d'): ServiceReturn
     {
         // Chỉ chấp nhận các date_preset trong array này
-        if (!in_array($datePreset, [
-            AdDatePresetValues::LAST_7D,
-            AdDatePresetValues::LAST_14D,
-            AdDatePresetValues::LAST_30D,
-            AdDatePresetValues::LAST_28D,
-            AdDatePresetValues::LAST_90D
-        ])) {
+        if (
+            !in_array($datePreset, [
+                AdDatePresetValues::LAST_7D,
+                AdDatePresetValues::LAST_14D,
+                AdDatePresetValues::LAST_30D,
+                AdDatePresetValues::LAST_28D,
+                AdDatePresetValues::LAST_90D
+            ])
+        ) {
             return ServiceReturn::error(message: __('meta.error.date_preset_invalid'));
         }
         try {
@@ -682,7 +684,7 @@ class MetaBusinessService
             $dailyData = $response['data'] ?? [];
             // 1. Xác định kích thước gộp (Chunk size)
             $chunkSize = match ($datePreset) {
-                // 30 ngày thì 5 ngày gộp 1
+                    // 30 ngày thì 5 ngày gộp 1
                 AdDatePresetValues::LAST_90D => 2,            // 90 ngày thì 2 ngày gộp 1
                 default => 1,                // 7, 14 ngày thì giữ nguyên từng ngày
             };
@@ -814,4 +816,32 @@ class MetaBusinessService
         }
     }
 
+    /**
+     * Thực hiện gọi Batch Request lên Meta (Tối đa 50 requests/lần)
+     * Tham khảo: https://developers.facebook.com/docs/graph-api/batch-requests/
+     */
+    public function callBatch(array $requests): ServiceReturn
+    {
+        try {
+            if (empty($requests)) {
+                return ServiceReturn::success(data: []);
+            }
+            if (count($requests) > 50) {
+                return ServiceReturn::error(message: 'Batch request exceeds limit of 50');
+            }
+
+            $this->initApi();
+            $response = $this->api->call(
+                '/',
+                'POST',
+                [
+                    'batch' => json_encode($requests)
+                ]
+            )->getContent();
+
+            return ServiceReturn::success(data: $response);
+        } catch (Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
 }
