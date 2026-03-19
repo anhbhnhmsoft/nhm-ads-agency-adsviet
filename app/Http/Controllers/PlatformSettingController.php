@@ -26,12 +26,11 @@ class PlatformSettingController extends Controller
 {
     public function __construct(
         protected PlatformSettingService $platformSettingService,
-        protected AuthService            $authService,
-        protected MetaBusinessService   $metaBusinessService,
-        protected GoogleAdsService      $googleAdsService,
-        protected MetaService           $metaService,
-    )
-    {
+        protected AuthService $authService,
+        protected MetaBusinessService $metaBusinessService,
+        protected GoogleAdsService $googleAdsService,
+        protected MetaService $metaService,
+    ) {
     }
 
     public function index()
@@ -141,19 +140,7 @@ class PlatformSettingController extends Controller
             } elseif ($platform === PlatformType::META->value) {
                 $bmId = $config['business_manager_id'] ?? null;
                 if ($bmId) {
-                    $basicSyncResult = $this->metaService->syncFromBusinessManagerIdBasic((string) $bmId);
-                    
-                    if ($basicSyncResult->isSuccess()) {
-                        SyncMetaPlatformJob::dispatch((string) $bmId);
-                    } else {
-                        Logging::error(
-                            message: 'PlatformSettingController@syncPlatformAccounts: Basic Meta sync failed',
-                            context: [
-                                'bm_id' => $bmId,
-                                'error' => $basicSyncResult->getMessage(),
-                            ]
-                        );
-                    }
+                    SyncMetaPlatformJob::dispatch((string) $bmId);
                 } else {
                     Logging::web(
                         'PlatformSettingController@syncPlatformAccounts: No business_manager_id, skipping Meta sync'
