@@ -11,11 +11,32 @@ class TicketListResource extends JsonResource
     {
 
 
-        $subjectKey = "ticket.{$this->subject}";
+        $subject = $this->subject;
+
+        // Danh sách các subject cũ cần được map sang key mới chuẩn (nếu cần)
+        $legacyMap = [
+            'Account creation request' => 'create_account_request',
+            'Share BM/MCC request' => 'share_request',
+            'Refund request' => 'refund_request',
+            'deposit_app' => 'wallet_deposit_app_request',
+            'withdraw_app' => 'wallet_withdraw_app_request',
+        ];
+
+        if (isset($legacyMap[$subject])) {
+            $subject = $legacyMap[$subject];
+        }
+
+        $subjectKey = "ticket.{$subject}";
         $translatedSubject = __($subjectKey);
 
+        // Nếu vẫn không dịch được (vẫn trả về key), thì thử dịch trực tiếp cái subject (trường hợp nó là chuỗi tiếng Anh cũ)
         if ($translatedSubject === $subjectKey) {
-            $translatedSubject = $this->subject;
+            $directTranslation = __("ticket.{$this->subject}");
+            if ($directTranslation !== "ticket.{$this->subject}") {
+                $translatedSubject = $directTranslation;
+            } else {
+                $translatedSubject = $this->subject;
+            }
         }
 
         return [

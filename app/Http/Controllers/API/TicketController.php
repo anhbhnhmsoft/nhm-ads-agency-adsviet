@@ -308,6 +308,7 @@ class TicketController extends Controller
         $data['metadata'] = $metadata;
         unset($data['wallet_password']);
 
+        $data['subject'] = 'wallet_withdraw_app_request';
         $result = $this->ticketService->createTicket($data);
 
         if ($result->isError()) {
@@ -334,6 +335,7 @@ class TicketController extends Controller
         }
         $data['metadata'] = $metadata;
 
+        $data['subject'] = 'wallet_deposit_app_request';
         $result = $this->ticketService->createTicket($data);
 
         if ($result->isError()) {
