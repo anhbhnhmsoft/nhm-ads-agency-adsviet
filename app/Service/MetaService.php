@@ -936,7 +936,6 @@ class MetaService
 
         $this->metaAccountRepository->query()
             ->whereIn('business_manager_id', $uniqueBmIds)
-            ->whereNotNull('service_user_id')
             ->chunk(25, function (Collection $metaAccounts) use (&$accountsWithPermissionIssues) {
                 $batchRequests = [];
                 $accountMap = [];
