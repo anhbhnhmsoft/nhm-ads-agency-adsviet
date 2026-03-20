@@ -936,6 +936,7 @@ class MetaService
 
         $this->metaAccountRepository->query()
             ->whereIn('business_manager_id', $uniqueBmIds)
+            ->whereNotNull('service_user_id')
             ->chunk(25, function (Collection $metaAccounts) use (&$accountsWithPermissionIssues) {
                 $batchRequests = [];
                 $accountMap = [];
@@ -1237,7 +1238,7 @@ class MetaService
             foreach ($batchResponse->getData() as $res) {
                 if (($res['code'] ?? 0) === 200) {
                     $body = json_decode($res['body'] ?? '{}', true);
-                    $this->processAccountListData($body['data'] ?? [], (string)$res['headers'][0]['value'] ?? ''); // headers ko quan trọng lắm ở đây
+                    $this->processAccountListData($body['data'] ?? [], (string) $res['headers'][0]['value'] ?? '');
                 }
             }
             usleep(500000); // Nghỉ 0.5s giữa các mẻ
@@ -1261,7 +1262,8 @@ class MetaService
                         ]
                     );
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
 
             try {
                 $existingAccount = $this->metaAccountRepository->query()
@@ -1277,7 +1279,7 @@ class MetaService
                     'balance' => $adsAccountData['balance'] ?? 0,
                     'currency' => $adsAccountData['currency'] ?? 'USD',
                     'created_time' => ($adsAccountData['created_time'] ?? null) ? Carbon::parse($adsAccountData['created_time']) : null,
-                    'is_prepay_account' => (bool)($adsAccountData['is_prepay_account'] ?? false),
+                    'is_prepay_account' => (bool) ($adsAccountData['is_prepay_account'] ?? false),
                     'timezone_id' => $adsAccountData['timezone_id'] ?? null,
                     'timezone_name' => $adsAccountData['timezone_name'] ?? null,
                     'last_synced_at' => now(),
@@ -1288,7 +1290,7 @@ class MetaService
                     $updateData['service_user_id'] = null;
                 }
 
-                $this->metaAccountRepository->updateOrCreate(
+                $this->metaAccountRepository->query()->updateOrCreate(
                     ['account_id' => $adsAccountData['id']],
                     $updateData
                 );
@@ -1310,7 +1312,8 @@ class MetaService
         $syncedCount = 0;
 
         while (true) {
-            if ($maxAccounts !== null && $syncedCount >= $maxAccounts) break;
+            if ($maxAccounts !== null && $syncedCount >= $maxAccounts)
+                break;
 
             $result = $type === 'client'
                 ? $this->metaBusinessService->getClientAdsAccountPaginated($bmId, 100, $after)
@@ -1327,7 +1330,8 @@ class MetaService
 
             $syncedCount += count($accounts);
             $after = $data['paging']['cursors']['after'] ?? null;
-            if (!$after) break;
+            if (!$after)
+                break;
             usleep(500000);
         }
     }
