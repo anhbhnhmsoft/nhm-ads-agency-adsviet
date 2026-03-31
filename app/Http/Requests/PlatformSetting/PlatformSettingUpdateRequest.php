@@ -15,6 +15,7 @@ class PlatformSettingUpdateRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
+            'name' => ['nullable', 'string', 'max:255'],
             'platform' => ['nullable', 'integer'],
             'config' => ['nullable', 'array'],
             'disabled' => ['nullable', 'boolean'],
@@ -51,6 +52,7 @@ class PlatformSettingUpdateRequest extends FormRequest
     public function messages(): array
     {
         $messages = [
+            'name.string' => __('Tên nền tảng phải là chuỗi'),
             'platform.integer' => __('common_validation.platform_integer'),
             'config.array' => __('common_validation.config_array'),
             'disabled.boolean' => __('common_validation.disabled_boolean'),

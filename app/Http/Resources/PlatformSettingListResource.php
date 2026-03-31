@@ -17,6 +17,7 @@ class PlatformSettingListResource extends JsonResource
     {
         return [
             'id' => (string) $this->id,
+            'name' => (string) ($this->name ?? ''),
             'platform' => (int) $this->platform,
             'config' => (array) $this->config,
             'disabled' => (bool) $this->disabled,

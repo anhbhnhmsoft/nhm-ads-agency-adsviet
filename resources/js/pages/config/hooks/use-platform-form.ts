@@ -1,7 +1,7 @@
 import { useForm } from '@inertiajs/react';
 
 type Props = {
-  initial?: { platform?: number; config?: Record<string, any>; disabled?: boolean };
+  initial?: { name?: string; platform?: number; config?: Record<string, any>; disabled?: boolean };
   storeUrl?: string;
   updateUrl?: string;
 };
@@ -9,6 +9,7 @@ type Props = {
 export function usePlatformForm({ initial, storeUrl, updateUrl }: Props) {
   const isEdit = !!updateUrl;
   const form = useForm({
+    name: initial?.name ?? '',
     platform: initial?.platform ?? 1,
     config: initial?.config ?? {},
     disabled: initial?.disabled ?? false,

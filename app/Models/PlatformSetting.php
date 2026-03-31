@@ -12,6 +12,7 @@ class PlatformSetting extends Model
     use HasFactory, SoftDeletes, GenerateIdSnowflake;
 
     protected $fillable = [
+        'name',
         'platform',
         'config',
         'disabled',

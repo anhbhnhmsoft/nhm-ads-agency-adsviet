@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\User\UserRole;
+use App\Service\PlatformSettingService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -18,13 +21,13 @@ class HandleInertiaRequests extends Middleware
     protected $rootView = 'app';
 
     /**
-     * Determines the current asset version.
-     *
-     * @see https://inertiajs.com/asset-versioning
+     * @var PlatformSettingService
      */
-    public function version(Request $request): ?string
+    protected $platformSettingService;
+
+    public function __construct(PlatformSettingService $platformSettingService)
     {
-        return parent::version($request);
+        $this->platformSettingService = $platformSettingService;
     }
 
     /**
@@ -36,16 +39,42 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
+        $metaSettings = null;
+        $googleSettings = null;
+
+        // Chỉ share cấu hình BM cho Admin, Manager và Employee để Switch
+        if ($user && in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
+            $activeMeta = $this->platformSettingService->findPlatformActive(PlatformType::META->value)->getData();
+            $metaSettings = [
+                'current_id' => $activeMeta ? (string) $activeMeta->id : null,
+                'list' => collect($this->platformSettingService->getAllActiveByPlatform(PlatformType::META->value)->getData())
+                    ->map(fn($item) => ['id' => (string) $item->id, 'name' => 'BM - ' . ($item->name ?: substr($item->id, -4))])
+                    ->toArray()
+            ];
+
+            $activeGoogle = $this->platformSettingService->findPlatformActive(PlatformType::GOOGLE->value)->getData();
+            $googleSettings = [
+                'current_id' => $activeGoogle ? (string) $activeGoogle->id : null,
+                'list' => collect($this->platformSettingService->getAllActiveByPlatform(PlatformType::GOOGLE->value)->getData())
+                    ->map(fn($item) => ['id' => (string) $item->id, 'name' => 'MCC - ' . ($item->name ?: substr($item->id, -4))])
+                    ->toArray()
+            ];
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
-            'auth' => $request->user(),
+            'auth' => $user,
             'current_route' => fn () => request()->path(),
             'locale' => app()->getLocale(),
             'locales' => [
                 ['code' => 'vi', 'label' => 'Tiếng Việt'],
                 ['code' => 'en', 'label' => 'English'],
             ],
+            'meta_settings' => $metaSettings,
+            'google_settings' => $googleSettings,
             'flash' => [
                 'success' => fn() => $request->session()->get('success'),
                 'error' => fn() => $request->session()->get('error'),

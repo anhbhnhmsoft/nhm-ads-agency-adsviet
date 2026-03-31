@@ -17,6 +17,7 @@ use App\Repositories\MetaAccountRepository;
 use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\MetaAdsCampaignRepository;
 use App\Repositories\MetaBusinessManagerRepository;
+use App\Repositories\MetaBusinessAssetGroupRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\WalletRepository;
 use App\Common\Constants\Config\ConfigName;
@@ -42,6 +43,8 @@ class MetaService
         protected MetaAdsNotificationService $metaAdsNotificationService,
         protected MetaBusinessManagerRepository $metaBusinessManagerRepository,
         protected ConfigService $configService,
+        protected PlatformSettingService $platformSettingService,
+        protected MetaBusinessAssetGroupRepository $metaBusinessAssetGroupRepository,
     ) {
     }
 
@@ -753,9 +756,20 @@ class MetaService
             return ServiceReturn::error('Missing bm_id in service user config');
         }
 
-        // Đồng bộ danh sách BM con trước
+        // Tự động tìm và thiết lập ngữ cảnh platform_setting phù hợp cho BM này
+        $setting = $this->platformSettingService->findByConfigField(
+            platform: PlatformType::META->value,
+            field: 'business_manager_id',
+            value: $bmId
+        )->getData();
+
+        if ($setting) {
+            $this->metaBusinessService->setSettingId((string)$setting->id);
+        }
         if (!$childBmId) {
             $this->syncBusinessManagers($bmId);
+            // Đồng bộ danh sách Business Asset Groups để phân loại khách hàng
+            $this->syncBusinessAssetGroups($bmId);
         }
 
         // Đồng bộ danh sách tài khoản quảng cáo:
@@ -772,9 +786,12 @@ class MetaService
     /**lấy bm gốc + Accounts của BM gốc
      * BM con và insights/campaigns sẽ sync trong queue
      */
-    public function syncFromBusinessManagerIdBasic(string $bmId): ServiceReturn
+    public function syncFromBusinessManagerIdBasic(string $bmId, ?string $settingId = null): ServiceReturn
     {
         try {
+            if ($settingId) {
+                $this->metaBusinessService->setSettingId($settingId);
+            }
             // Reset API để đảm bảo sử dụng config mới nhất khi sync
             $this->metaBusinessService->resetApi();
 
@@ -857,13 +874,15 @@ class MetaService
     /**
      * Đồng bộ đầy đủ: BM + Accounts + Insights + Campaigns
      */
-    public function syncFromBusinessManagerId(string $bmId): ServiceReturn
+    public function syncFromBusinessManagerId(string $bmId, ?string $settingId = null): ServiceReturn
     {
         try {
-            $basicSync = $this->syncFromBusinessManagerIdBasic($bmId);
+            $basicSync = $this->syncFromBusinessManagerIdBasic($bmId, $settingId);
             if ($basicSync->isError()) {
                 return $basicSync;
             }
+
+            $this->syncBusinessAssetGroups($bmId);
 
             // Sync insights/campaigns
             return $this->syncInsightsAndCampaignsForBusinessManager($bmId);
@@ -1423,6 +1442,72 @@ class MetaService
     }
 
     /**
+     * Đồng bộ danh sách Business Asset Groups từ Meta và gán Ad Accounts vào nhóm
+     */
+    private function syncBusinessAssetGroups(string $bmId): void
+    {
+        try {
+            $after = null;
+            do {
+                $result = $this->metaBusinessService->getBusinessAssetGroupsPaginated(
+                    bmId: $bmId,
+                    limit: 100,
+                    after: $after
+                );
+
+                if ($result->isError()) {
+                    Logging::error('MetaService@syncBusinessAssetGroups error: ' . $result->getMessage());
+                    return;
+                }
+
+                $data = $result->getData();
+                $groups = $data['data'] ?? [];
+
+                foreach ($groups as $groupData) {
+                    try {
+                        $group = $this->metaBusinessAssetGroupRepository->updateOrCreateByGroupId(
+                            $groupData['id'],
+                            [
+                                'name' => $groupData['name'],
+                                'business_manager_id' => $bmId,
+                                'status' => 'ACTIVE',
+                            ]
+                        );
+
+                        // 2. Gán các Ad Accounts thuộc group này
+                        $adAccounts = $groupData['ad_accounts']['data'] ?? [];
+                        if (!empty($adAccounts)) {
+                            // Lấy danh sách ID local của MetaAccount từ Meta ID
+                            $accountMetaIds = array_column($adAccounts, 'id');
+                            $localAccountIds = $this->metaAccountRepository->query()
+                                ->whereIn('account_id', $accountMetaIds)
+                                ->pluck('id')
+                                ->toArray();
+
+                            // Đồng bộ pivot table (syncWithoutDetaching để không xóa các gán group khác nếu có)
+                            if (!empty($localAccountIds)) {
+                                $group->accounts()->syncWithoutDetaching($localAccountIds);
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        Logging::error(
+                            message: 'MetaService@syncBusinessAssetGroups item error: ' . $e->getMessage(),
+                            exception: $e
+                        );
+                    }
+                }
+
+                $after = $data['paging']['cursors']['after'] ?? null;
+            } while ($after);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'MetaService@syncBusinessAssetGroups fatal error: ' . $e->getMessage(),
+                exception: $e
+            );
+        }
+    }
+
+    /**
      * Đồng bộ chiến dịch quảng cáo từ Meta Business
      * @param ServiceUser $serviceUser
      * @return ServiceReturn
@@ -1680,8 +1765,17 @@ class MetaService
 
             // Query insights từ database, group by account và sum spend
             $query = $this->metaAdsAccountInsightRepository->query()
-                ->select('meta_account_id', DB::raw('SUM(spend::numeric) as total_spend'))
-                ->groupBy('meta_account_id');
+                ->select('meta_ads_account_insights.meta_account_id', DB::raw('SUM(spend::numeric) as total_spend'))
+                ->join('meta_accounts', 'meta_accounts.id', '=', 'meta_ads_account_insights.meta_account_id')
+                ->groupBy('meta_ads_account_insights.meta_account_id');
+
+            $metaSettingId = session('active_meta_setting_id');
+            if (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]) && $metaSettingId) {
+                $setting = $this->platformSettingService->find($metaSettingId)->getData();
+                if ($setting && isset($setting->config['business_manager_id'])) {
+                    $query->where('meta_accounts.business_manager_id', (string) $setting->config['business_manager_id']);
+                }
+            }
 
             // Nếu là Agency hoặc Customer, chỉ lấy accounts của họ
             if (in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
@@ -1694,15 +1788,15 @@ class MetaService
                     return ServiceReturn::success(data: []);
                 }
 
-                $query->whereIn('service_user_id', $serviceUserIds);
+                $query->whereIn('meta_ads_account_insights.service_user_id', $serviceUserIds);
             }
 
             // Filter theo date range nếu có
             if ($startDate) {
-                $query->where('date', '>=', $startDate);
+                $query->where('meta_ads_account_insights.date', '>=', $startDate);
             }
             if ($endDate) {
-                $query->where('date', '<=', $endDate);
+                $query->where('meta_ads_account_insights.date', '<=', $endDate);
             }
 
             // Chỉ lấy accounts có spend > 0
@@ -1773,20 +1867,40 @@ class MetaService
             if (!$user) {
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
-            // Chỉ cho phép agency và customer
-            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
-                return ServiceReturn::error(message: __('common_error.permission_denied'));
+
+            $metaServiceUserIds = null;
+            $metaSettingId = session('active_meta_setting_id');
+            if (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]) && $metaSettingId) {
+                $setting = $this->platformSettingService->find($metaSettingId)->getData();
+                if ($setting && isset($setting->config['business_manager_id'])) {
+                    $bmId = (string) $setting->config['business_manager_id'];
+                    $metaServiceUserIds = $this->serviceUserRepository->query()
+                        ->where('status', ServiceUserStatus::ACTIVE->value)
+                        ->whereHas('package', fn($q) => $q->where('platform', PlatformType::META->value))
+                        ->where(function ($q) use ($bmId) {
+                            $q->whereJsonContains('config_account->business_manager_id', $bmId)
+                              ->orWhereJsonContains('config_account->bm_id', $bmId)
+                              ->orWhereJsonContains('config_account->child_bm_id', $bmId);
+                        })
+                        ->pluck('id')
+                        ->toArray();
+                }
             }
 
-            // 1. Service Users (của user này)
-            $metaServiceUsers = $this->serviceUserRepository->query()
-                ->where('user_id', $user->id)
+            $query = $this->serviceUserRepository->query()
                 ->where('status', ServiceUserStatus::ACTIVE->value)
                 ->with(['package', 'metaAccount'])
                 ->whereHas('package', function ($query) {
                     $query->where('platform', PlatformType::META->value);
-                })
-                ->get();
+                });
+
+            if ($metaServiceUserIds !== null) {
+                $query->whereIn('id', $metaServiceUserIds);
+            } elseif (in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                $query->where('user_id', $user->id);
+            }
+
+            $metaServiceUsers = $query->get();
 
             $metaAccounts = $this->metaAccountRepository->query()
                 ->whereIn('service_user_id', $metaServiceUsers->pluck('id'))
@@ -1842,19 +1956,39 @@ class MetaService
             if (!$user) {
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
-            // Chỉ cho phép agency và customer
-            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
-                return ServiceReturn::error(message: __('common_error.permission_denied'));
+
+            $sessionServiceUserIds = null;
+            $metaSettingId = session('active_meta_setting_id');
+            if (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]) && $metaSettingId) {
+                $setting = $this->platformSettingService->find($metaSettingId)->getData();
+                if ($setting && isset($setting->config['business_manager_id'])) {
+                    $bmId = (string) $setting->config['business_manager_id'];
+                    $sessionServiceUserIds = $this->serviceUserRepository->query()
+                        ->where('status', ServiceUserStatus::ACTIVE->value)
+                        ->whereHas('package', fn($q) => $q->where('platform', PlatformType::META->value))
+                        ->where(function ($q) use ($bmId) {
+                            $q->whereJsonContains('config_account->business_manager_id', $bmId)
+                              ->orWhereJsonContains('config_account->bm_id', $bmId)
+                              ->orWhereJsonContains('config_account->child_bm_id', $bmId);
+                        })
+                        ->pluck('id')
+                        ->toArray();
+                }
             }
-            // 1. Service Users (của user này)
-            $serviceUserIds = $this->serviceUserRepository->query()
-                ->where('user_id', $user->id)
+
+            $query = $this->serviceUserRepository->query()
                 ->where('status', ServiceUserStatus::ACTIVE->value)
                 ->whereHas('package', function ($query) {
                     $query->where('platform', PlatformType::META->value);
-                })
-                ->pluck('id') // Chỉ lấy cột ID
-                ->toArray();
+                });
+
+            if ($sessionServiceUserIds !== null) {
+                $query->whereIn('id', $sessionServiceUserIds);
+            } elseif (in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                $query->where('user_id', $user->id);
+            }
+
+            $serviceUserIds = $query->pluck('id')->toArray();
 
             // Check nhanh: Nếu user không có gói dịch vụ nào thì trả về rỗng luôn
             if (empty($serviceUserIds)) {

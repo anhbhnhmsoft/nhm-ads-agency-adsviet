@@ -78,6 +78,7 @@ return [
         'deposit_approved' => 'Admin approved deposit',
         'withdraw_completed' => 'Admin approved and completed withdrawal',
         'deposit_cancelled_user' => 'User cancelled deposit order',
+        'deposit_cancelled_admin' => 'Admin cancelled deposit order',
         'withdraw_cancelled_user' => 'User cancelled withdrawal order',
         'withdraw_cancelled_admin' => 'Admin cancelled withdrawal order',
         'campaign_budget_update_created' => 'User requested a campaign budget update',

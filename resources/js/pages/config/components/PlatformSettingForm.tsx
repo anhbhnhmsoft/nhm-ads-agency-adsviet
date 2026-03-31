@@ -15,7 +15,7 @@ export type FieldConfig = {
 };
 
 type Props = {
-  data: { platform: number; config: Record<string, any>; disabled: boolean };
+  data: { name: string; platform: number; config: Record<string, any>; disabled: boolean };
   setData: (key: string, value: any) => void;
   onPlatformChange?: (platform: number) => void;
   processing: boolean;
@@ -142,7 +142,19 @@ export default function PlatformSettingForm({ data, setData, onPlatformChange, p
         </select>
       </div>
 
-      <div className="hidden md:block" />
+      <div className="grid gap-1">
+        <label>
+          {t('platform.name', { defaultValue: 'Tên BM/MCC (Gợi nhớ)' })}
+          <span className="text-red-500 ml-1">*</span>
+        </label>
+        <Input
+          value={data.name}
+          onChange={(e) => setData('name', e.target.value)}
+          placeholder={t('platform.placeholder_name', { defaultValue: 'Ví dụ: BM Tài khoản 01' })}
+          required
+        />
+        {errors.name && <span className="text-red-500 text-sm">{errors.name}</span>}
+      </div>
 
       {currentFields.map(renderField)}
 

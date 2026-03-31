@@ -11,6 +11,7 @@ use App\Core\ServiceReturn;
 use App\Repositories\GoogleAccountRepository;
 use App\Repositories\MetaAccountRepository;
 use App\Repositories\TicketRepository;
+use App\Service\PlatformSettingService;
 
 class DashboardService
 {
@@ -18,6 +19,7 @@ class DashboardService
         protected GoogleAccountRepository $googleAccountRepository,
         protected MetaAccountRepository $metaAccountRepository,
         protected TicketRepository $ticketRepository,
+        protected PlatformSettingService $platformSettingService,
     ) {
     }
 
@@ -28,13 +30,24 @@ class DashboardService
     public function getPlatformAccountsStats(): ServiceReturn
     {
         try {
-            // Thống kê Google Ads accounts
-            $googleAccounts = $this->googleAccountRepository->query()->get();
+            $metaSettingId = session('active_meta_setting_id');
+            $googleSettingId = session('active_google_setting_id');
+
+            $googleQuery = $this->googleAccountRepository->query();
+            
+            // Nếu có chọn MCC cụ thể, lọc theo nó
+            if ($googleSettingId) {
+                $setting = $this->platformSettingService->find($googleSettingId)->getData();
+                if ($setting && isset($setting->config['login_customer_id'])) {
+                    $googleQuery->where('customer_manager_id', (string) $setting->config['login_customer_id']);
+                }
+            }
+            
+            $googleAccounts = $googleQuery->get();
             $googleActiveAccounts = $googleAccounts
                 ->where('account_status', GoogleCustomerStatus::ENABLED->value)
                 ->count();
             
-            // Tính tổng balance
             $googleTotalBalance = 0.0;
             foreach ($googleAccounts as $account) {
                 if ($account->balance !== null) {
@@ -42,13 +55,20 @@ class DashboardService
                 }
             }
 
-            // Thống kê Meta Ads accounts
-            $metaAccounts = $this->metaAccountRepository->query()->get();
+            $metaQuery = $this->metaAccountRepository->query();
+
+            if ($metaSettingId) {
+                $setting = $this->platformSettingService->find($metaSettingId)->getData();
+                if ($setting && isset($setting->config['business_manager_id'])) {
+                    $metaQuery->where('business_manager_id', (string) $setting->config['business_manager_id']);
+                }
+            }
+
+            $metaAccounts = $metaQuery->get();
             $metaActiveAccounts = $metaAccounts
                 ->where('account_status', MetaAdsAccountStatus::ACTIVE->value)
                 ->count();
             
-            // Tính tổng balance
             $metaTotalBalance = 0.0;
             foreach ($metaAccounts as $account) {
                 if ($account->balance !== null) {
@@ -60,10 +80,12 @@ class DashboardService
                 'google' => [
                     'active_accounts' => $googleActiveAccounts,
                     'total_balance' => number_format($googleTotalBalance, 2, '.', ''),
+                    'is_filtered' => !empty($googleSettingId),
                 ],
                 'meta' => [
                     'active_accounts' => $metaActiveAccounts,
                     'total_balance' => number_format($metaTotalBalance, 2, '.', ''),
+                    'is_filtered' => !empty($metaSettingId),
                 ],
             ]);
         } catch (\Throwable $exception) {

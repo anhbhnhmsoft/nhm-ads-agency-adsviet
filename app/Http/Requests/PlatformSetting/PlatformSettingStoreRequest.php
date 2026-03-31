@@ -15,6 +15,7 @@ class PlatformSettingStoreRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
+            'name' => ['required', 'string', 'max:255'],
             'platform' => ['required', 'integer'],
             'config' => ['nullable', 'array'],
             'disabled' => ['nullable', 'boolean'],
@@ -45,6 +46,8 @@ class PlatformSettingStoreRequest extends FormRequest
     public function messages(): array
     {
         $messages = [
+            'name.required' => __('Tên nền tảng không được để trống'),
+            'name.string' => __('Tên nền tảng phải là chuỗi'),
             'platform.required' => __('common_validation.platform_required'),
             'platform.integer' => __('common_validation.platform_integer'),
             'config.array' => __('common_validation.config_array'),

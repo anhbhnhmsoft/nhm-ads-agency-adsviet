@@ -50,6 +50,7 @@ return [
         'wallet_withdraw_app' => 'Rút tiền App',
         'wallet_deposit_app' => 'Nạp tiền App',
         'support' => 'Hỗ trợ chung',
+        'withdraw_to_wallet' => 'Rút tiền về ví',
     ],
 
     'subject' => 'Chủ đề',

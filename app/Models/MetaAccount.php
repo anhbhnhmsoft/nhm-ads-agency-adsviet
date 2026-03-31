@@ -46,4 +46,12 @@ class MetaAccount extends Model
     {
         return $this->hasMany(MetaAdsCampaign::class, 'campaign_id');
     }
+
+    /**
+     * Relationship with Business Asset Groups
+     */
+    public function assetGroups()
+    {
+        return $this->belongsToMany(MetaBusinessAssetGroup::class, 'meta_account_asset_group', 'meta_account_id', 'meta_business_asset_group_id');
+    }
 }

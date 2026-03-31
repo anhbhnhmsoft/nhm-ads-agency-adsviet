@@ -2,12 +2,16 @@
 
 namespace App\Service;
 
+use App\Common\Constants\Platform\PlatformType;
 use App\Core\Cache\CacheKey;
 use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
+use App\Jobs\GoogleAds\SyncGooglePlatformJob;
+use App\Jobs\MetaApi\SyncMetaPlatformJob;
 use App\Repositories\PlatformSettingRepository;
+use App\Repositories\ServiceUserRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -15,6 +19,7 @@ class PlatformSettingService
 {
     public function __construct(
         protected PlatformSettingRepository $platformSettingRepository,
+        protected ServiceUserRepository $serviceUserRepository,
     ) {
     }
 
@@ -52,21 +57,37 @@ class PlatformSettingService
                 $disabled = (bool) ($data['disabled'] ?? false);
 
                 $payload = [
+                    'name' => $data['name'] ?? null,
                     'platform' => $platform,
                     'config' => $config,
                     'disabled' => $disabled,
                 ];
+
                 $created = $this->platformSettingRepository->create($payload);
 
-                // Nếu disabled false vô hiệu hóa các config khác cùng platform
+                // Tự động chọn BM mới này làm context đang quản lý nếu nó được kích hoạt
                 if (!$disabled) {
-                    $affected = $this->platformSettingRepository->deactivateOthersByPlatform($created->platform, (string)$created->id);
-                    $message = $affected > 0
-                        ? __('platform_setting.activated_with_deactivation')
-                        : __('platform_setting.activated');
-                    return ServiceReturn::success(message: $message);
+                    if ($platform === PlatformType::META->value) {
+                        session(['active_meta_setting_id' => (string) $created->id]);
+                    } elseif ($platform === PlatformType::GOOGLE->value) {
+                        session(['active_google_setting_id' => (string) $created->id]);
+                    }
                 }
-                return ServiceReturn::success(message: __('platform_setting.created_disabled'));
+
+                Caching::clearCache(
+                    key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
+                    uniqueKey: $platform,
+                );
+
+                // Kích hoạt đồng bộ ngay lập tức
+                if (!$disabled) {
+                    $this->dispatchSyncJob($created);
+                }
+
+                return ServiceReturn::success(
+                    data: $created,
+                    message: __('platform_setting.created_success')
+                );
             });
         }
         catch (\Throwable $e) {
@@ -86,6 +107,7 @@ class PlatformSettingService
         }
         try {
             $payload = [
+                'name' => $data['name'] ?? $setting->name,
                 'platform' => isset($data['platform']) ? (int) $data['platform'] : $setting->platform,
                 'config' => $data['config'] ?? $setting->config,
                 'disabled' => isset($data['disabled']) ? (bool) $data['disabled'] : $setting->disabled,
@@ -96,7 +118,16 @@ class PlatformSettingService
                 key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
                 uniqueKey: $setting->platform,
             );
-            return ServiceReturn::success();
+
+            // Kích hoạt đồng bộ nếud dnag hoạt động
+            if (!$setting->disabled) {
+                $this->dispatchSyncJob($setting);
+            }
+
+            return ServiceReturn::success(
+                data: $setting,
+                message: __('platform_setting.updated_success')
+            );
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'Lỗi khi cập nhật cấu hình nền tảng PlatformSettingService@update: ' . $e->getMessage(),
@@ -118,18 +149,17 @@ class PlatformSettingService
                 return ServiceReturn::error(message: __('common_error.data_not_found'));
             }
             $message = __('common_success.update_success');
-            if ($disabled === false) {
-                // Kích hoạt sau đó vô hiệu hóa các cấu hình khác cùng platform
-                $affected = $this->platformSettingRepository->deactivateOthersByPlatform($setting->platform, $id);
-                if ($affected > 0) {
-                    $message = __('platform_setting.toggled_activated_with_deactivation');
-                }
-            }
             // Xóa cache
             Caching::clearCache(
                 key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
                 uniqueKey: $setting->platform,
             );
+
+            // Nếu vừa bật, kích hoạt đồng bộ
+            if (!$disabled) {
+                $this->dispatchSyncJob($setting);
+            }
+
             return ServiceReturn::success(message: $message);
         } catch (\Throwable $e) {
             Logging::error(
@@ -143,11 +173,10 @@ class PlatformSettingService
     public function findByPlatform(int $platform): ServiceReturn
     {
         try {
-            $setting = $this->platformSettingRepository->findByPlatform($platform);
-            if (!$setting) {
-                return ServiceReturn::error(message: __('common_error.data_not_found'));
-            }
-            return ServiceReturn::success(data: $setting);
+            $settings = \App\Models\PlatformSetting::where('platform', $platform)
+                ->orderBy('id', 'desc')
+                ->get();
+            return ServiceReturn::success(data: $settings);
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'Lỗi khi lấy cấu hình nền tảng PlatformSettingService@findByPlatform: ' . $e->getMessage(),
@@ -162,32 +191,144 @@ class PlatformSettingService
      * @param int $platform
      * @return ServiceReturn
      */
-    public function findPlatformActive(int $platform): ServiceReturn
+    public function findPlatformActive(int $platform, ?string $id = null): ServiceReturn
     {
         try {
-            $setting = Caching::getCache(
-                key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
-                uniqueKey: $platform,
-            );
-            if (!$setting) {
-                $setting = $this->platformSettingRepository->findActiveByPlatform($platform);
-                if (!$setting) {
-                    return ServiceReturn::error(message: __('common_error.data_not_found'));
+            $targetId = $id;
+            if (!$targetId) {
+                if ($platform === PlatformType::META->value) {
+                    $targetId = session('active_meta_setting_id');
+                } elseif ($platform === PlatformType::GOOGLE->value) {
+                    $targetId = session('active_google_setting_id');
                 }
-                Caching::setCache(
-                    key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
-                    value: $setting,
-                    uniqueKey: $platform,
-                    expire: 60 * 24 // cache 1 ngày
-                );
             }
-            return ServiceReturn::success(data: $setting);
+
+            if ($targetId) {
+                $setting = $this->platformSettingRepository->findActiveByPlatform($platform, (string) $targetId);
+                if ($setting) {
+                    return ServiceReturn::success(data: $setting);
+                }
+            }
+
+            // Nếu không có session ID hoặc session ID không tồn tại/bị disable, KHÔNG fallback (tránh lộ data BM khác)
+            return ServiceReturn::error(message: __('common_error.data_not_found'));
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'Lỗi khi lấy cấu hình nền tảng PlatformSettingService@findPlatformActive: ' . $e->getMessage(),
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Lấy danh sách toàn bộ các cấu hình đang hoạt động của một nền tảng
+     */
+    public function getAllActiveByPlatform(int $platform): ServiceReturn
+    {
+        try {
+            $settings = $this->platformSettingRepository->getAllActiveByPlatform($platform);
+            return ServiceReturn::success(data: $settings);
+        } catch (\Throwable $e) {
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Tìm cấu hình nền tảng dựa trên một trường cụ thể trong config JSON
+     */
+    public function findByConfigField(int $platform, string $field, string $value): ServiceReturn
+    {
+        try {
+            $setting = $this->platformSettingRepository->findByConfigField($platform, $field, $value);
+            return ServiceReturn::success(data: $setting);
+        } catch (\Throwable $e) {
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Xóa cấu hình nền tảng
+     */
+    public function delete(string $id): ServiceReturn
+    {
+        try {
+            $setting = $this->platformSettingRepository->findById($id);
+            if (!$setting) {
+                return ServiceReturn::error(message: __('common_error.data_not_found'));
+            }
+
+            // Kiểm tra xem có service_user nào đang sử dụng BM/MCC này không
+            $config = $setting->config ?? [];
+            $platform = (int) $setting->platform;
+            $count = 0;
+            
+            if ($platform === PlatformType::META->value && isset($config['business_manager_id'])) {
+                $bmId = (string) $config['business_manager_id'];
+                $count = $this->serviceUserRepository->query()
+                    ->where(function ($q) use ($bmId) {
+                        $q->whereJsonContains('config_account->business_manager_id', $bmId)
+                          ->orWhereJsonContains('config_account->bm_id', $bmId)
+                          ->orWhereJsonContains('config_account->child_bm_id', $bmId);
+                    })
+                    ->count();
+            } elseif ($platform === PlatformType::GOOGLE->value && isset($config['login_customer_id'])) {
+                $mccId = (string) $config['login_customer_id'];
+                $count = $this->serviceUserRepository->query()
+                    ->where(function ($q) use ($mccId) {
+                        $q->whereJsonContains('config_account->login_customer_id', $mccId)
+                          ->orWhereJsonContains('config_account->customer_manager_id', $mccId);
+                    })
+                    ->count();
+            }
+
+            if ($count > 0) {
+                return ServiceReturn::error(message: __('platform_setting.delete_error_used_by_service_user', ['count' => $count]));
+            }
+
+            $setting->delete();
+
+            if ($platform === PlatformType::META->value && session('active_meta_setting_id') === $id) {
+                session()->forget('active_meta_setting_id');
+            } elseif ($platform === PlatformType::GOOGLE->value && session('active_google_setting_id') === $id) {
+                session()->forget('active_google_setting_id');
+            }
+
+            Caching::clearCache(
+                key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
+                uniqueKey: $platform,
+            );
+
+            return ServiceReturn::success(message: __('common_success.delete_success'));
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'Lỗi khi xóa cấu hình nền tảng PlatformSettingService@delete: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    protected function dispatchSyncJob($setting): void
+    {
+        try {
+            $config = $setting->config ?? [];
+            
+            if ($setting->platform === PlatformType::META->value) {
+                $bmId = $config['business_manager_id'] ?? null;
+                if ($bmId) {
+                    SyncMetaPlatformJob::dispatch((string)$bmId, (string)$setting->id);
+                    Logging::web("PlatformSettingService: Dispatched Meta sync for setting ID {$setting->id}");
+                }
+            } elseif ($setting->platform === PlatformType::GOOGLE->value) {
+                $loginCustomerId = $config['login_customer_id'] ?? null;
+                if ($loginCustomerId) {
+                    SyncGooglePlatformJob::dispatch((string)$loginCustomerId, (string)$setting->id);
+                    Logging::web("PlatformSettingService: Dispatched Google sync for setting ID {$setting->id}");
+                }
+            }
+        } catch (\Throwable $e) {
+            Logging::error("PlatformSettingService@dispatchSyncJob error: " . $e->getMessage());
         }
     }
 }
