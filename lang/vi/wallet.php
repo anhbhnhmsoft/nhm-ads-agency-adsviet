@@ -78,6 +78,7 @@ return [
         'deposit_approved' => 'Admin duyệt nạp tiền',
         'withdraw_completed' => 'Admin duyệt và đã chuyển tiền rút',
         'deposit_cancelled_user' => 'User hủy lệnh nạp từ màn hình chờ',
+        'deposit_cancelled_admin' => 'Admin hủy lệnh nạp tiền',
         'withdraw_cancelled_user' => 'User hủy lệnh rút tiền',
         'withdraw_cancelled_admin' => 'Admin hủy lệnh rút tiền',
         'campaign_budget_update_created' => 'User yêu cầu cập nhật ngân sách chiến dịch',

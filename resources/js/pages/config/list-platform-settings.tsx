@@ -1,12 +1,20 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { usePlatformForm } from '@/pages/config/hooks/use-platform-form';
 import PlatformSettingForm, { FieldConfig } from '@/pages/config/components/PlatformSettingForm';
+import { X, Plus } from 'lucide-react';
 import axios from 'axios';
 import { _PlatformType } from '@/lib/types/constants';
+import { Badge } from '@/components/ui/badge';
+import { 
+  platform_settings_get_by_platform, 
+  platform_settings_store, 
+  platform_settings_update, 
+  platform_settings_destroy,
+} from '@/routes';
 
 type Props = {
   googleFields: FieldConfig[];
@@ -15,122 +23,266 @@ type Props = {
 
 const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
   const { t } = useTranslation();
-  const [currentSetting, setCurrentSetting] = useState<{ id: string; platform: number; config: Record<string, any>; disabled: boolean } | null>(null);
+  const [settingsList, setSettingsList] = useState<{ id: string; name: string; platform: number; config: Record<string, any>; disabled: boolean }[]>([]);
+  const [currentSetting, setCurrentSetting] = useState<{ id: string; name: string; platform: number; config: Record<string, any>; disabled: boolean } | null>(null);
+  const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [filterPlatform, setFilterPlatform] = useState<'all' | number>('all');
   
   const { form } = usePlatformForm({
     initial: {
+      name: '',
       platform: _PlatformType.GOOGLE,
       config: {},
       disabled: false,
     },
-    storeUrl: '/platform-settings',
+    storeUrl: platform_settings_store.url(),
   });
   const { data, setData, processing, errors, reset, post, put } = form;
 
   useEffect(() => {
-    if (data.platform) {
-      loadPlatformData(data.platform);
-    }
+    loadPlatformData();
   }, []);
 
-  // Handler khi platform thay đổi
+  // Handler khi platform thay đổi (nếu có dùng filter, hiện tại đang hiện ALL)
   const handlePlatformChange = (platform: number) => {
-    loadPlatformData(platform);
+    setData('platform', platform);
   };
 
-  type PlatformSettingPayload = {
-    id: string;
-    platform: number;
-    config: Record<string, any> | null;
-    disabled: boolean;
-  };
-
-  const loadPlatformData = async (platform: number) => {
+  const loadPlatformData = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`/platform-settings/platform/${platform}`);
-      const setting: PlatformSettingPayload | null = response.data?.data ?? null;
-      if (setting) {
-        setCurrentSetting({
-          id: setting.id,
-          platform: setting.platform,
-          config: setting.config || {},
-          disabled: setting.disabled || false,
-        });
-        setData({
-          platform: Number(setting.platform),
-          config: (setting.config ?? {}) as Record<string, any>,
-          disabled: Boolean(setting.disabled),
-        });
-      } else {
-        setCurrentSetting(null);
-        setData({
-          platform,
-          config: {},
-          disabled: false,
-        });
-      }
+      // Fetch đồng thời cả 2 nền tảng để hiện Full danh sách
+      const [googleRes, metaRes] = await Promise.all([
+        axios.get(platform_settings_get_by_platform.url({ platform: _PlatformType.GOOGLE })),
+        axios.get(platform_settings_get_by_platform.url({ platform: _PlatformType.META }))
+      ]);
+      
+      const googleList = (googleRes.data?.data ?? []) as any[];
+      const metaList = (metaRes.data?.data ?? []) as any[];
+      
+      setSettingsList([...googleList, ...metaList]);
     } catch (error) {
-      // Chưa có data
-      setCurrentSetting(null);
-      setData({
-        platform,
-        config: {},
-        disabled: false,
-      });
+      setSettingsList([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredSettings = useMemo(() => {
+    if (filterPlatform === 'all') return settingsList;
+    return settingsList.filter(item => item.platform === filterPlatform);
+  }, [settingsList, filterPlatform]);
+
+  const handleEdit = (setting: any) => {
+    setCurrentSetting(setting);
+    setShowForm(true);
+    setData({
+      name: setting.name || '',
+      platform: Number(setting.platform),
+      config: (setting.config ?? {}) as Record<string, any>,
+      disabled: Boolean(setting.disabled),
+    });
+    // Scroll lên đầu trang để anh thấy Form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAddNew = () => {
+    handleResetForm();
+    setShowForm(true);
+  };
+
+  const handleResetForm = (platform?: number) => {
+    setCurrentSetting(null);
+    setData({
+      name: '',
+      platform: platform ?? data.platform,
+      config: {},
+      disabled: false,
+    });
+  };
+
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (currentSetting) {
-      put(`/platform-settings/${currentSetting.id}`, {
+      put(platform_settings_update.url({ id: currentSetting.id }), {
         onSuccess: () => {
-          loadPlatformData(data.platform);
+          loadPlatformData();
+          setShowForm(false);
         },
       });
     } else {
-      // Chưa có data, dùng POST để tạo mới
-      post('/platform-settings', {
+      post(platform_settings_store.url(), {
         onSuccess: () => {
-          // Reload lại data sau khi tạo
-          loadPlatformData(data.platform);
+          loadPlatformData();
+          setShowForm(false);
         },
       });
     }
   };
 
+  const handleDelete = (id: string, name: string) => {
+    if (window.confirm(t('platform.confirm_delete', { defaultValue: `Bạn có chắc muốn xóa cấu hình '${name}'?` }))) {
+      form.delete(platform_settings_destroy.url({ id }), {
+        onSuccess: () => {
+          loadPlatformData();
+        }
+      });
+    }
+  };
+
   return (
-    <div>
-      <h1 className="text-xl font-semibold">{t('menu.platform_settings', { defaultValue: 'Cấu hình nền tảng' })}</h1>
-      <Card className="mt-4">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">{t('menu.platform_settings', { defaultValue: 'Cấu hình nền tảng' })}</h1>
+        {!showForm && (
+            <Button onClick={handleAddNew} variant="default" className="shadow-sm">
+               <Plus className="mr-2 h-4 w-4" />
+               {t('platform.add_new', { defaultValue: 'Thêm BM/MCC mới' })}
+            </Button>
+        )}
+      </div>
+
+      {showForm && (
+          <Card className="border-primary/20 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>
+                    {currentSetting 
+                        ? t('platform.edit_title', { defaultValue: 'Chỉnh sửa cấu hình' }) 
+                        : t('platform.create_title', { defaultValue: 'Thêm cấu hình mới' })
+                    }
+                </CardTitle>
+                <CardDescription>
+                    {t('platform.description', { defaultValue: 'Nhập thông tin chi tiết cho BM/MCC' })}
+                </CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowForm(false)}
+                className="h-8 border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+              >
+                  <X className="mr-2 h-4 w-4" />
+                  {t('common.close', { defaultValue: 'Đóng' })}
+              </Button>
+            </CardHeader>
+            <CardContent>
+                <PlatformSettingForm
+                  data={data}
+                  setData={setData}
+                  onPlatformChange={handlePlatformChange}
+                  processing={processing}
+                  errors={errors}
+                  onSubmit={handleFormSubmit}
+                  googleFields={googleFields}
+                  metaFields={metaFields}
+                />
+            </CardContent>
+          </Card>
+      )}
+
+      {!showForm && (
+        <div className="flex flex-wrap gap-2 mb-2">
+            <Button 
+                variant={filterPlatform === 'all' ? 'default' : 'outline'} 
+                size="sm" 
+                onClick={() => setFilterPlatform('all')}
+            >
+                {t('common.all', { defaultValue: 'Tất cả' })}
+            </Button>
+            <Button 
+                variant={filterPlatform === _PlatformType.META ? 'default' : 'outline'} 
+                size="sm" 
+                onClick={() => setFilterPlatform(_PlatformType.META)}
+            >
+                {t('enum.PlatformType.META', { defaultValue: 'Facebook' })}
+            </Button>
+            <Button 
+                variant={filterPlatform === _PlatformType.GOOGLE ? 'default' : 'outline'} 
+                size="sm" 
+                onClick={() => setFilterPlatform(_PlatformType.GOOGLE)}
+            >
+                {t('enum.PlatformType.GOOGLE', { defaultValue: 'Google' })}
+            </Button>
+        </div>
+      )}
+
+      <Card>
         <CardHeader>
-          <CardTitle>{t('platform.title', { defaultValue: 'Cấu hình nền tảng' })}</CardTitle>
-          <CardDescription>
-            {t('platform.description', { defaultValue: 'Chọn nền tảng và cấu hình thông tin' })}
-          </CardDescription>
+            <CardTitle>{t('platform.list_title', { defaultValue: 'Danh sách cấu hình hiện có' })}</CardTitle>
+            <CardDescription>
+                {t('platform.list_description', { defaultValue: 'Chọn cấu hình bên dưới để chỉnh sửa thông tin' })}
+            </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="text-center py-8">{t('common.loading', { defaultValue: 'Đang tải...' })}</div>
-          ) : (
-            <PlatformSettingForm
-              data={data}
-              setData={setData}
-              onPlatformChange={handlePlatformChange}
-              processing={processing}
-              errors={errors}
-              onSubmit={handleFormSubmit}
-              googleFields={googleFields}
-              metaFields={metaFields}
-            />
-          )}
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-muted text-muted-foreground uppercase text-xs">
+                        <tr>
+                            <th className="px-4 py-3">{t('platform.col_name', { defaultValue: 'Tên BM/MCC' })}</th>
+                            <th className="px-4 py-3">{t('platform.col_platform', { defaultValue: 'Nền tảng' })}</th>
+                            <th className="px-4 py-3">{t('platform.col_status', { defaultValue: 'Trạng thái' })}</th>
+                            <th className="px-4 py-3 text-right">{t('common.action')}</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                        {loading && settingsList.length === 0 ? (
+                            <tr><td colSpan={4} className="text-center py-4">{t('common.loading')}</td></tr>
+                        ) : filteredSettings.length === 0 ? (
+                            <tr><td colSpan={4} className="text-center py-4 text-muted-foreground">{t('common.no_data')}</td></tr>
+                        ) : (
+                            filteredSettings.map((item) => (
+                                <tr key={item.id} className={currentSetting?.id === item.id ? "bg-primary/5" : ""}>
+                                    <td className="px-4 py-3 font-medium">
+                                        <div className="flex flex-col">
+                                            <span className="flex items-center gap-1">
+                                                <span className="text-muted-foreground font-bold">
+                                                    {item.platform === _PlatformType.GOOGLE ? 'MCC - ' : 'BM - '}
+                                                </span>
+                                                {item.name}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground font-normal">ID: {item.id}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.platform === _PlatformType.GOOGLE ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                            {item.platform === _PlatformType.GOOGLE ? 'Google' : 'Meta'}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {item.disabled ? (
+                                            <span className="px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs">{t('common.disabled')}</span>
+                                        ) : (
+                                            <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs">{t('common.active')}</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
+                                                {t('common.edit')}
+                                            </Button>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-100 hover:border-red-200"
+                                                onClick={() => handleDelete(item.id, item.name)}
+                                                disabled={processing}
+                                            >
+                                                {t('common.delete')}
+                                            </Button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </CardContent>
       </Card>
-      <div className="mt-4 flex flex-wrap gap-3">
+
+      <div className="flex flex-wrap gap-3">
         <Button asChild variant="outline">
           <a
             href="https://ads.google.com/aw/billing/home"

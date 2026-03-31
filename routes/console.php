@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\SyncAllPlatformsJob;
 use Illuminate\Support\Facades\Schedule;
 
 // Kiểm tra và xử lý giao dịch hết hạn mỗi 5 phút
@@ -17,6 +18,9 @@ Schedule::command('accounts:check-and-auto-pause')->everyTenMinutes();
 
 // Billing postpay hằng ngày (02:00)
 Schedule::command('services:bill-postpay')->dailyAt('02:00');
+
+// Đồng bộ toàn bộ các Platform (BM+MCC) 3 lần / ngày (8 tiếng 1 lần)
+Schedule::job(SyncAllPlatformsJob::class)->cron('0 */8 * * *');
 
 // routes/console.php
 Schedule::command('app:calculate-spending-commission')->monthlyOn(1, '01:00');

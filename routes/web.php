@@ -91,6 +91,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/', [PlatformSettingController::class, 'store'])->name('platform_settings_store');
         Route::put('/{id}', [PlatformSettingController::class, 'update'])->name('platform_settings_update');
         Route::post('/{id}/toggle', [PlatformSettingController::class, 'toggle'])->name('platform_settings_toggle');
+        Route::delete('/{id}', [PlatformSettingController::class, 'destroy'])->name('platform_settings_destroy');
+        Route::post('/switch', [PlatformSettingController::class, 'switchContext'])->name('platform_settings_switch');
     });
 
     Route::prefix('/config')->group(function (){

@@ -11,6 +11,7 @@ use App\Core\ServiceReturn;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\UserReferralRepository;
 use App\Repositories\UserWalletTransactionRepository;
+use App\Service\PlatformSettingService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,41 @@ class ProfitService
         protected ServiceUserRepository $serviceUserRepository,
         protected UserReferralRepository $userReferralRepository,
         protected UserWalletTransactionRepository $walletTransactionRepository,
+        protected PlatformSettingService $platformSettingService,
     ) {
+    }
+
+    /**
+     * Áp dụng bộ lọc BM/MCC từ PlatformSetting
+     */
+    protected function applyPlatformSettingFilter($query, int $platform): void
+    {
+        $settingId = $platform === PlatformType::META->value 
+            ? session('active_meta_setting_id') 
+            : session('active_google_setting_id');
+
+        if ($settingId) {
+            $settingResult = $this->platformSettingService->find($settingId);
+            if ($settingResult->isSuccess()) {
+                $setting = $settingResult->getData();
+                $config = $setting->config ?? [];
+                
+                if ($platform === PlatformType::META->value && isset($config['business_manager_id'])) {
+                    $bmId = (string) $config['business_manager_id'];
+                    $query->where(function ($q) use ($bmId) {
+                        $q->whereJsonContains('config_account->business_manager_id', $bmId)
+                          ->orWhereJsonContains('config_account->bm_id', $bmId)
+                          ->orWhereJsonContains('config_account->child_bm_id', $bmId);
+                    });
+                } elseif ($platform === PlatformType::GOOGLE->value && isset($config['login_customer_id'])) {
+                    $mccId = (string) $config['login_customer_id'];
+                    $query->where(function ($q) use ($mccId) {
+                        $q->whereJsonContains('config_account->login_customer_id', $mccId)
+                          ->orWhereJsonContains('config_account->customer_manager_id', $mccId);
+                    });
+                }
+            }
+        }
     }
 
     /**
@@ -260,6 +295,8 @@ class ProfitService
                 if ($startDate && $endDate) {
                     $query->whereBetween('created_at', [$startDate, $endDate]);
                 }
+
+                $this->applyPlatformSettingFilter($query, $platformType);
 
                 $serviceUsers = $query->get();
 
@@ -562,6 +599,14 @@ class ProfitService
                 $query->whereIn('user_id', $customerIds);
             }
 
+            if ($platform) {
+                $this->applyPlatformSettingFilter($query, $platform);
+            } else {
+                // Nếu lấy tất cả platform, lọc Meta và Google theo session nếu có
+                $this->applyPlatformSettingFilter($query, PlatformType::META->value);
+                $this->applyPlatformSettingFilter($query, PlatformType::GOOGLE->value);
+            }
+
             $serviceUsers = $query->get();
 
             // Gom nhóm theo period
@@ -702,9 +747,10 @@ class ProfitService
             }
 
             if ($platform) {
-                $serviceUsersQuery->whereHas('package', function ($q) use ($platform) {
-                    $q->where('platform', $platform);
-                });
+                $this->applyPlatformSettingFilter($serviceUsersQuery, $platform);
+            } else {
+                $this->applyPlatformSettingFilter($serviceUsersQuery, PlatformType::META->value);
+                $this->applyPlatformSettingFilter($serviceUsersQuery, PlatformType::GOOGLE->value);
             }
 
             $serviceUsers = $serviceUsersQuery->get();

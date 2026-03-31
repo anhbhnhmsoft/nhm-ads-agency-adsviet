@@ -50,6 +50,15 @@ use Google\Ads\GoogleAds\V22\Enums\CampaignStatusEnum\CampaignStatus;
 class GoogleAdsService
 {
     private ?array $platformConfig = null;
+    private ?string $currentSettingId = null;
+
+    public function setSettingId(?string $id): void
+    {
+        if ($this->currentSettingId !== $id) {
+            $this->currentSettingId = $id;
+            $this->clearPlatformConfigCache();
+        }
+    }
 
     /**
      * Clear platform config cache (useful when credentials are updated)
@@ -382,8 +391,17 @@ class GoogleAdsService
 
             // Query insights từ database, group by account và sum spend
             $query = $this->googleAdsAccountInsightRepository->query()
-                ->select('google_account_id', DB::raw('SUM(spend::numeric) as total_spend'))
-                ->groupBy('google_account_id');
+                ->select('google_ads_account_insights.google_account_id', DB::raw('SUM(spend::numeric) as total_spend'))
+                ->join('google_accounts', 'google_accounts.id', '=', 'google_ads_account_insights.google_account_id')
+                ->groupBy('google_ads_account_insights.google_account_id');
+
+            $googleSettingId = session('active_google_setting_id');
+            if (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]) && $googleSettingId) {
+                $setting = $this->platformSettingService->find($googleSettingId)->getData();
+                if ($setting && isset($setting->config['login_customer_id'])) {
+                    $query->where('google_accounts.customer_manager_id', (string) $setting->config['login_customer_id']);
+                }
+            }
 
             // Nếu là Agency hoặc Customer, chỉ lấy accounts của họ
             if (in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
@@ -396,15 +414,15 @@ class GoogleAdsService
                     return ServiceReturn::success(data: []);
                 }
 
-                $query->whereIn('service_user_id', $serviceUserIds);
+                $query->whereIn('google_ads_account_insights.service_user_id', $serviceUserIds);
             }
 
             // Filter theo date range nếu có
             if ($startDate) {
-                $query->where('date', '>=', $startDate);
+                $query->where('google_ads_account_insights.date', '>=', $startDate);
             }
             if ($endDate) {
-                $query->where('date', '<=', $endDate);
+                $query->where('google_ads_account_insights.date', '<=', $endDate);
             }
 
             // Chỉ lấy accounts có spend > 0
@@ -475,15 +493,35 @@ class GoogleAdsService
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
-            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
-                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            $sessionServiceUserIds = null;
+            $googleSettingId = session('active_google_setting_id');
+            if (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]) && $googleSettingId) {
+                $setting = $this->platformSettingService->find($googleSettingId)->getData();
+                if ($setting && isset($setting->config['login_customer_id'])) {
+                    $mccId = (string) $setting->config['login_customer_id'];
+                    $sessionServiceUserIds = $this->serviceUserRepository->query()
+                        ->where('status', ServiceUserStatus::ACTIVE->value)
+                        ->whereHas('package', fn($q) => $q->where('platform', PlatformType::GOOGLE->value))
+                        ->where(function ($q) use ($mccId) {
+                            $q->whereJsonContains('config_account->login_customer_id', $mccId)
+                              ->orWhereJsonContains('config_account->customer_manager_id', $mccId);
+                        })
+                        ->pluck('id')
+                        ->toArray();
+                }
             }
 
-            $serviceUsers = $this->serviceUserRepository->query()
-                ->where('user_id', $user->id)
+            $query = $this->serviceUserRepository->query()
                 ->where('status', ServiceUserStatus::ACTIVE->value)
-                ->with('package')
-                ->get();
+                ->with('package');
+
+            if ($sessionServiceUserIds !== null) {
+                $query->whereIn('id', $sessionServiceUserIds);
+            } elseif (in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                $query->where('user_id', $user->id);
+            }
+
+            $serviceUsers = $query->get();
 
             $googleServiceUsers = $serviceUsers->filter(function ($serviceUser) {
                 return $serviceUser->package->platform === PlatformType::GOOGLE->value;
@@ -565,18 +603,39 @@ class GoogleAdsService
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
-            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
-                return ServiceReturn::error(message: __('common_error.permission_denied'));
+            // --- Lọc theo MCC hiện tại từ Session (cho Admin/Manager/Employee) ---
+            $sessionServiceUserIdsList = null;
+            $googleSettingId = session('active_google_setting_id');
+            if (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]) && $googleSettingId) {
+                $setting = $this->platformSettingService->find($googleSettingId)->getData();
+                if ($setting && isset($setting->config['login_customer_id'])) {
+                    $mccId = (string) $setting->config['login_customer_id'];
+                    $sessionServiceUserIdsList = $this->serviceUserRepository->query()
+                        ->where('status', ServiceUserStatus::ACTIVE->value)
+                        ->whereHas('package', fn($q) => $q->where('platform', PlatformType::GOOGLE->value))
+                        ->where(function ($q) use ($mccId) {
+                            $q->whereJsonContains('config_account->login_customer_id', $mccId)
+                              ->orWhereJsonContains('config_account->customer_manager_id', $mccId);
+                        })
+                        ->pluck('id')
+                        ->toArray();
+                }
             }
 
-            $serviceUserIds = $this->serviceUserRepository->query()
-                ->where('user_id', $user->id)
+            // 1. Service Users
+            $query = $this->serviceUserRepository->query()
                 ->where('status', ServiceUserStatus::ACTIVE->value)
                 ->whereHas('package', function ($query) {
                     $query->where('platform', PlatformType::GOOGLE->value);
-                })
-                ->pluck('id')
-                ->toArray();
+                });
+
+            if ($sessionServiceUserIdsList !== null) {
+                $query->whereIn('id', $sessionServiceUserIdsList);
+            } elseif (in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+                $query->where('user_id', $user->id);
+            }
+
+            $serviceUserIds = $query->pluck('id')->toArray();
 
             if (empty($serviceUserIds)) {
                 return ServiceReturn::success(data: [
@@ -688,6 +747,17 @@ class GoogleAdsService
                     ]
                 );
                 return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
+
+            // Tự động tìm và thiết lập ngữ cảnh platform_setting phù hợp cho MCC này
+            $setting = $this->platformSettingService->findByConfigField(
+                platform: PlatformType::GOOGLE->value,
+                field: 'login_customer_id',
+                value: $loginCustomerId
+            )->getData();
+
+            if ($setting) {
+                $this->setSettingId((string)$setting->id);
             }
 
             $client = $this->buildGoogleAdsClient($loginCustomerId);
@@ -904,7 +974,7 @@ GAQL;
                 }
             }
 
-            \Illuminate\Support\Facades\Log::info(
+            Log::info(
                 'GoogleAdsService@syncCampaignsForAccount: Successfully synced campaigns',
                 [
                     'service_user_id' => $serviceUser->id,
@@ -1029,7 +1099,7 @@ GAQL;
                     'name' => $campaign->getName() ?? '',
                     'status' => $normalizedCampaignStatus,
                     'effective_status' => $normalizedCampaignStatus,
-                    'objective' => is_object($campaign->getAdvertisingChannelType()) ? $campaign->getAdvertisingChannelType()?->name : (string) $campaign->getAdvertisingChannelType(),
+                    'objective' => (string) ($campaign->getAdvertisingChannelType() ?? 'N/A'),
                     'daily_budget' => $dailyBudget ? (string) $dailyBudget : null,
                     'budget_remaining' => null, // Google Ads không có budget_remaining trong campaign query
                     'start_time' => $startTime,
@@ -1156,17 +1226,20 @@ GAQL;
      * @return array
      * @throws \RuntimeException
      */
-    protected function getPlatformConfig(): array
+    protected function getPlatformConfig(?string $settingId = null): array
     {
-        // Cache config trong request để tránh query nhiều lần
-        if ($this->platformConfig !== null) {
+        $settingId = $settingId ?? $this->currentSettingId;
+
+        // Cache config trong request để tránh query nhiều lần nếu cùng ID
+        if ($this->platformConfig !== null && isset($this->platformConfig['id']) && $this->platformConfig['id'] === $settingId) {
             return $this->platformConfig;
         }
 
         try {
             // Ưu tiên lấy từ database
             $platformSetting = $this->platformSettingService->findPlatformActive(
-                platform: PlatformType::GOOGLE->value
+                platform: PlatformType::GOOGLE->value,
+                id: $settingId
             );
 
             if ($platformSetting->isSuccess()) {
@@ -1181,6 +1254,7 @@ GAQL;
                     !empty($config['refresh_token'])
                 ) {
                     $this->platformConfig = [
+                        'id' => (string)$platformData->id,
                         'developer_token' => $config['developer_token'],
                         'client_id' => $config['client_id'],
                         'client_secret' => $config['client_secret'],
@@ -1220,9 +1294,9 @@ GAQL;
      * Khởi tạo Google Ads Client từ cấu hình hệ thống
      * Ưu tiên lấy từ database (platform_settings), fallback về .env
      */
-    protected function buildGoogleAdsClient(?string $loginCustomerId = null, ?string $linkedCustomerId = null): GoogleAdsClient
+    protected function buildGoogleAdsClient(?string $loginCustomerId = null, ?string $linkedCustomerId = null, ?string $settingId = null): GoogleAdsClient
     {
-        $config = $this->getPlatformConfig();
+        $config = $this->getPlatformConfig($settingId);
 
         $clientId = $config['client_id'];
         $clientSecret = $config['client_secret'];
@@ -1535,14 +1609,15 @@ GAQL;
     /**
      * Đồng bộ danh sách tài khoản quảng cáo trực tiếp từ một Google Ads Manager
      */
-    public function syncFromManagerId(string $managerId): ServiceReturn
+    public function syncFromManagerId(string $managerId, ?string $settingId = null): ServiceReturn
     {
         try {
             Logging::web('GoogleAdsService@syncFromManagerId: START', [
                 'manager_id' => $managerId,
+                'setting_id' => $settingId,
             ]);
 
-            $client = $this->buildGoogleAdsClient($managerId);
+            $client = $this->buildGoogleAdsClient($managerId, null, $settingId);
             $googleAdsService = $client->getGoogleAdsServiceClient();
 
             Logging::web('GoogleAdsService@syncFromManagerId: Syncing MCC managers', [

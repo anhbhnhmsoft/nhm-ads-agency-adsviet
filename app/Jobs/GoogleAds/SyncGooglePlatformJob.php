@@ -20,6 +20,7 @@ class SyncGooglePlatformJob implements ShouldQueue
 
     public function __construct(
         protected string $managerId,
+        protected ?string $settingId = null,
     ) {
         $this->onQueue(QueueKey::GOOGLE_API);
     }
@@ -29,7 +30,7 @@ class SyncGooglePlatformJob implements ShouldQueue
      */
     public function handle(GoogleAdsService $googleAdsService): void
     {
-        $googleAdsService->syncFromManagerId($this->managerId);
+        $googleAdsService->syncFromManagerId($this->managerId, $this->settingId);
     }
 }
 

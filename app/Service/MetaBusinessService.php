@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
+use App\Core\Logging;
 use App\Core\ServiceReturn;
 use Exception;
 use FacebookAds\Api;
@@ -22,10 +23,22 @@ class MetaBusinessService
 {
     private ?Api $api = null;
     private ?array $config = null;
+    private ?string $currentSettingId = null;
 
     public function __construct(
         protected PlatformSettingService $platformSettingService,
     ) {
+    }
+
+    /**
+     * Set specific setting ID to use for API calls
+     */
+    public function setSettingId(?string $id): void
+    {
+        if ($this->currentSettingId !== $id) {
+            $this->currentSettingId = $id;
+            $this->resetApi();
+        }
     }
 
     /**
@@ -40,30 +53,38 @@ class MetaBusinessService
     /**
      * @throws Exception
      */
-    public function initApi(bool $force = false): void
+    public function initApi(bool $force = false, ?string $settingId = null): void
     {
+        // Use internal settingId if provided parameter is null
+        $settingId = $settingId ?? $this->currentSettingId;
+
         if ($this->api instanceof Api && !$force) {
             $platformSetting = $this->platformSettingService->findPlatformActive(
-                platform: PlatformType::META->value
+                platform: PlatformType::META->value,
+                id: $settingId
             );
             if (!$platformSetting->isError()) {
                 $platformData = $platformSetting->getData();
                 $newConfig = $platformData->config;
-                if (
-                    $this->config &&
-                    isset($newConfig['app_id'], $newConfig['app_secret'], $newConfig['access_token']) &&
-                    $this->config['app_id'] === $newConfig['app_id'] &&
-                    $this->config['app_secret'] === $newConfig['app_secret'] &&
-                    $this->config['access_token'] === $newConfig['access_token']
-                ) {
-                    return;
+                
+                // Kiểm tra xem ID cấu hình hiện tại có khớp với ID yêu cầu không
+                if ($this->config && isset($this->config['id']) && $this->config['id'] === (string)$platformData->id) {
+                    if (
+                        isset($newConfig['app_id'], $newConfig['app_secret'], $newConfig['access_token']) &&
+                        $this->config['app_id'] === $newConfig['app_id'] &&
+                        $this->config['app_secret'] === $newConfig['app_secret'] &&
+                        $this->config['access_token'] === $newConfig['access_token']
+                    ) {
+                        return;
+                    }
                 }
             }
             $this->resetApi();
         }
 
         $platformSetting = $this->platformSettingService->findPlatformActive(
-            platform: PlatformType::META->value
+            platform: PlatformType::META->value,
+            id: $settingId
         );
         if ($platformSetting->isError()) {
             throw new Exception($platformSetting->getMessage());
@@ -76,11 +97,24 @@ class MetaBusinessService
         if (empty($config['app_id']) || empty($config['app_secret']) || empty($config['access_token'])) {
             throw new Exception('Meta Business config is not complete');
         }
+        // Log để debug (Ẩn bớt token vì bảo mật)
+        $maskedToken = substr($config['access_token'], 0, 10) . '...' . substr($config['access_token'], -10);
+        Logging::error("DEBUG: MetaBusinessService@initApi", [
+            'setting_id' => $settingId ?? 'N/A',
+            'app_id' => $config['app_id'] ?? 'N/A',
+            'token_preview' => $maskedToken,
+            'business_manager_id' => $config['business_manager_id'] ?? 'N/A'
+        ]);
+
         Api::init(
             app_id: $config['app_id'],
             app_secret: $config['app_secret'],
             access_token: $config['access_token'],
         );
+        
+        // Lưu trữ ID của setting để so sánh cho lần initApi sau
+        $config['id'] = (string)$platformData->id;
+        
         $this->config = $config;
         $this->api = Api::instance();
     }
@@ -301,6 +335,30 @@ class MetaBusinessService
             $endpoint = "/{$bmId}/owned_businesses";
             $params = [
                 'fields' => 'id,name,primary_page{id,name},verification_status,timezone_id,currency',
+                'limit' => $limit,
+            ];
+            if ($after) {
+                $params['after'] = $after;
+            }
+
+            $response = $this->api->call($endpoint, 'GET', $params)->getContent();
+
+            return ServiceReturn::success(data: $response);
+        } catch (Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    /**
+     * Lấy MỘT TRANG danh sách business asset groups từ một BM ID
+     */
+    public function getBusinessAssetGroupsPaginated(string $bmId, int $limit = 100, ?string $after = null): ServiceReturn
+    {
+        try {
+            $this->initApi();
+            $endpoint = "/{$bmId}/business_asset_groups";
+            $params = [
+                'fields' => 'id,name,ad_accounts{id,name}',
                 'limit' => $limit,
             ];
             if ($after) {

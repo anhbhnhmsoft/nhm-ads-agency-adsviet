@@ -21,6 +21,7 @@ use App\Jobs\GoogleAds\SyncGooglePlatformJob;
 use App\Jobs\MetaApi\SyncMetaPlatformJob;
 use Illuminate\Http\RedirectResponse;
 use App\Core\Logging;
+use Illuminate\Http\Request;
 
 class PlatformSettingController extends Controller
 {
@@ -58,9 +59,9 @@ class PlatformSettingController extends Controller
         }
         $result = $this->platformSettingService->findByPlatform($platform);
         if ($result->isError()) {
-            return response()->json(['data' => null], 404);
+            return response()->json(['data' => []], 404);
         }
-        return response()->json(['data' => new PlatformSettingListResource($result->getData())]);
+        return response()->json(['data' => PlatformSettingListResource::collection($result->getData())]);
     }
 
     public function store(PlatformSettingStoreRequest $request): RedirectResponse
@@ -73,9 +74,10 @@ class PlatformSettingController extends Controller
         $validated = $request->validated();
         $result = $this->platformSettingService->create($validated);
         if ($result->isSuccess()) {
+            $settingId = (string)$result->getData()->id;
             $platform = (int) ($validated['platform'] ?? 0);
             $config = $validated['config'] ?? [];
-            $this->syncPlatformAccounts($platform, $config);
+            $this->syncPlatformAccounts($platform, $config, $settingId);
 
             FlashMessage::success($result->getMessage() ?? __('common_success.create_success'));
         } else {
@@ -94,11 +96,12 @@ class PlatformSettingController extends Controller
         $validated = $request->validated();
         $result = $this->platformSettingService->update($id, $validated);
         if ($result->isSuccess()) {
+            $settingId = (string)$result->getData()->id;
             $platform = (int) ($validated['platform'] ?? 0);
             $config = $validated['config'] ?? [];
-            $this->syncPlatformAccounts($platform, $config);
+            $this->syncPlatformAccounts($platform, $config, $settingId);
 
-            FlashMessage::success(__('common_success.update_success'));
+            FlashMessage::success($result->getMessage() ?? __('common_success.update_success'));
         } else {
             FlashMessage::error($result->getMessage());
         }
@@ -121,17 +124,63 @@ class PlatformSettingController extends Controller
         return redirect()->back();
     }
 
+    public function destroy(string $id): RedirectResponse
+    {
+        $result = $this->authService->checkAccess([UserRole::ADMIN->value]);
+        if ($result->isError()) {
+            FlashMessage::error($result->getMessage());
+            return redirect()->back();
+        }
+        $result = $this->platformSettingService->delete($id);
+        if ($result->isSuccess()) {
+            FlashMessage::success($result->getMessage() ?? __('common_success.delete_success'));
+        } else {
+            FlashMessage::error($result->getMessage());
+        }
+        return redirect()->back();
+    }
+
+    /**
+     * Chuyển đổi ngữ cảnh BM/MCC đang quản lý (lưu vào session)
+     */
+    public function switchContext(Request $request): RedirectResponse
+    {
+        $platform = (int) $request->input('platform');
+        $id = (string) $request->input('id');
+
+        $result = $this->authService->checkAccess([UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]);
+        if ($result->isError()) {
+            FlashMessage::error($result->getMessage());
+            return redirect()->back();
+        }
+
+        $check = $this->platformSettingService->findPlatformActive($platform, $id);
+        if ($check->isError()) {
+            FlashMessage::error(__('platform_setting.not_found_or_disabled'));
+            return redirect()->back();
+        }
+
+        if ($platform === PlatformType::META->value) {
+            session(['active_meta_setting_id' => $id]);
+        } elseif ($platform === PlatformType::GOOGLE->value) {
+            session(['active_google_setting_id' => $id]);
+        }
+
+        FlashMessage::success(__('platform_setting.switch_success'));
+        return redirect()->back();
+    }
+
     /**
      * Đồng bộ tài khoản quảng cáo từ cấu hình nền tảng
      * Được gọi ngay sau khi lưu / cập nhật cấu hình platform.
      */
-    private function syncPlatformAccounts(int $platform, array $config): void
+    private function syncPlatformAccounts(int $platform, array $config, ?string $settingId = null): void
     {
         try {
             if ($platform === PlatformType::GOOGLE->value) {
                 $loginCustomerId = $config['login_customer_id'] ?? null;
                 if ($loginCustomerId) {
-                    SyncGooglePlatformJob::dispatch((string) $loginCustomerId);
+                    SyncGooglePlatformJob::dispatch((string) $loginCustomerId, $settingId);
                 } else {
                     Logging::web(
                         'PlatformSettingController@syncPlatformAccounts: No login_customer_id, skipping Google sync'
@@ -140,7 +189,7 @@ class PlatformSettingController extends Controller
             } elseif ($platform === PlatformType::META->value) {
                 $bmId = $config['business_manager_id'] ?? null;
                 if ($bmId) {
-                    SyncMetaPlatformJob::dispatch((string) $bmId);
+                    SyncMetaPlatformJob::dispatch((string) $bmId, $settingId);
                 } else {
                     Logging::web(
                         'PlatformSettingController@syncPlatformAccounts: No business_manager_id, skipping Meta sync'

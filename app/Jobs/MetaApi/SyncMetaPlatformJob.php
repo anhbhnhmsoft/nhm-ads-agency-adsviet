@@ -20,13 +20,14 @@ class SyncMetaPlatformJob implements ShouldQueue
 
     public function __construct(
         protected string $bmId,
+        protected ?string $settingId = null,
     ) {
         $this->onQueue(QueueKey::META_API);
     }
 
     public function handle(MetaService $metaService): void
     {
-        $metaService->syncFromBusinessManagerId($this->bmId);
+        $metaService->syncFromBusinessManagerId($this->bmId, $this->settingId);
     }
 }
 

@@ -21,9 +21,11 @@ use App\Repositories\GoogleMccManagerRepository;
 use App\Repositories\MetaAdsCampaignRepository;
 use App\Repositories\GoogleAdsCampaignRepository;
 use Carbon\Carbon;
+use DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use App\Repositories\PlatformSettingRepository;
+use App\Service\PlatformSettingService;
 
 class BusinessManagerService
 {
@@ -35,6 +37,7 @@ class BusinessManagerService
         protected GoogleAdsAccountInsightRepository $googleAdsAccountInsightRepository,
         protected UserReferralRepository $userReferralRepository,
         protected PlatformSettingRepository $platformSettingRepository,
+        protected PlatformSettingService $platformSettingService,
         protected MetaBusinessManagerRepository $metaBusinessManagerRepository,
         protected GoogleMccManagerRepository $googleMccManagerRepository,
         protected MetaAdsCampaignRepository $metaAdsCampaignRepository,
@@ -47,37 +50,39 @@ class BusinessManagerService
      */
     public function getChildManagersForFilter(): array
     {
-        $activeMetaSetting = $this->platformSettingRepository->findActiveByPlatform(PlatformType::META->value);
+        $activeMetaSetting = $this->platformSettingService->findPlatformActive(PlatformType::META->value)->getData();
         $activeMetaBmId = $activeMetaSetting ? ($activeMetaSetting->config['business_manager_id'] ?? null) : null;
 
-        $metaQuery = $this->metaBusinessManagerRepository->query()->whereNotNull('parent_bm_id');
+        $metaChildren = [];
         if ($activeMetaBmId) {
-            $metaQuery->where('parent_bm_id', $activeMetaBmId);
+            $metaChildren = $this->metaBusinessManagerRepository->query()
+                ->whereNotNull('parent_bm_id')
+                ->where('parent_bm_id', $activeMetaBmId)
+                ->get(['bm_id', 'name', 'parent_bm_id'])
+                ->map(fn ($bm) => [
+                    'id' => (string) $bm->bm_id,
+                    'name' => $bm->name ?? (string) $bm->bm_id,
+                    'parent_id' => (string) $bm->parent_bm_id,
+                ])
+                ->toArray();
         }
 
-        $metaChildren = $metaQuery->get(['bm_id', 'name', 'parent_bm_id'])
-            ->map(fn ($bm) => [
-                'id' => (string) $bm->bm_id,
-                'name' => $bm->name ?? (string) $bm->bm_id,
-                'parent_id' => (string) $bm->parent_bm_id,
-            ])
-            ->toArray();
-
-        $activeGoogleSetting = $this->platformSettingRepository->findActiveByPlatform(PlatformType::GOOGLE->value);
+        $activeGoogleSetting = $this->platformSettingService->findPlatformActive(PlatformType::GOOGLE->value)->getData();
         $activeGoogleManagerId = $activeGoogleSetting ? ($activeGoogleSetting->config['login_customer_id'] ?? null) : null;
 
-        $googleQuery = $this->googleMccManagerRepository->query()->whereNotNull('parent_mcc_id');
+        $googleChildren = [];
         if ($activeGoogleManagerId) {
-            $googleQuery->where('parent_mcc_id', $activeGoogleManagerId);
+            $googleChildren = $this->googleMccManagerRepository->query()
+                ->whereNotNull('parent_mcc_id')
+                ->where('parent_mcc_id', $activeGoogleManagerId)
+                ->get(['mcc_id', 'name', 'parent_mcc_id'])
+                ->map(fn ($mcc) => [
+                    'id' => (string) $mcc->mcc_id,
+                    'name' => $mcc->name ?? (string) $mcc->mcc_id,
+                    'parent_id' => (string) $mcc->parent_mcc_id,
+                ])
+                ->toArray();
         }
-
-        $googleChildren = $googleQuery->get(['mcc_id', 'name', 'parent_mcc_id'])
-            ->map(fn ($mcc) => [
-                'id' => (string) $mcc->mcc_id,
-                'name' => $mcc->name ?? (string) $mcc->mcc_id,
-                'parent_id' => (string) $mcc->parent_mcc_id,
-            ])
-            ->toArray();
 
         return [
             'meta' => $metaChildren,
@@ -111,6 +116,53 @@ class BusinessManagerService
                 ->with(['user:id,name,username', 'package:id,platform'])
                 ->where('status', ServiceUserStatus::ACTIVE->value)
                 ->whereHas('package');
+
+            // --- Lọc theo BM/MCC đang chọn nếu là Admin/Manager ---
+            if ($user && in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
+                $metaSettingId = session('active_meta_setting_id');
+                $googleSettingId = session('active_google_setting_id');
+                
+                if ($metaSettingId || $googleSettingId) {
+                    $query->where(function ($subQ) use ($metaSettingId, $googleSettingId) {
+                        $hasFilter = false;
+
+                        if ($metaSettingId) {
+                            $metaSetting = $this->platformSettingService->find($metaSettingId)->getData();
+                            if ($metaSetting && isset($metaSetting->config['business_manager_id'])) {
+                                $bmId = (string) $metaSetting->config['business_manager_id'];
+                                $subQ->orWhere(function ($metaQ) use ($bmId) {
+                                    $metaQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::META->value))
+                                          ->where(function ($jsonQ) use ($bmId) {
+                                              $jsonQ->whereJsonContains('config_account->business_manager_id', $bmId)
+                                                    ->orWhereJsonContains('config_account->bm_id', $bmId)
+                                                    ->orWhereJsonContains('config_account->child_bm_id', $bmId);
+                                          });
+                                });
+                                $hasFilter = true;
+                            }
+                        }
+                        
+                        if ($googleSettingId) {
+                            $googleSetting = $this->platformSettingService->find($googleSettingId)->getData();
+                            if ($googleSetting && isset($googleSetting->config['login_customer_id'])) {
+                                $mccId = (string) $googleSetting->config['login_customer_id'];
+                                $subQ->orWhere(function ($googleQ) use ($mccId) {
+                                    $googleQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::GOOGLE->value))
+                                            ->where(function ($jsonQ) use ($mccId) {
+                                                $jsonQ->whereJsonContains('config_account->login_customer_id', $mccId)
+                                                      ->orWhereJsonContains('config_account->customer_manager_id', $mccId);
+                                            });
+                                });
+                                $hasFilter = true;
+                            }
+                        }
+
+                        if (!$hasFilter) {
+                            $subQ->whereNull('id');
+                        }
+                    });
+                }
+            }
 
             // Nếu là customer, chỉ lấy service_users của chính họ
             if ($user && $user->role === UserRole::CUSTOMER->value) {
@@ -159,6 +211,14 @@ class BusinessManagerService
                 ->pluck('parent_mcc_id', 'mcc_id')
                 ->toArray();
 
+            $accountToGroupNamesMap = DB::table('meta_account_asset_group')
+                ->join('meta_business_asset_groups', 'meta_account_asset_group.meta_business_asset_group_id', '=', 'meta_business_asset_groups.id')
+                ->select('meta_account_asset_group.meta_account_id', 'meta_business_asset_groups.name')
+                ->get()
+                ->groupBy('meta_account_id')
+                ->map(fn($items) => $items->pluck('name')->toArray())
+                ->toArray();
+
             // Danh sách tài khoản quảng cáo
             $accountsList = [];
 
@@ -171,7 +231,8 @@ class BusinessManagerService
                     $bmNameMap,
                     $mccNameMap,
                     $bmParentMap,
-                    $mccParentMap
+                    $mccParentMap,
+                    $accountToGroupNamesMap
                 );
                 $accountsList = array_merge($accountsList, $platformConfigAccounts);
             }
@@ -280,33 +341,19 @@ class BusinessManagerService
                         $bmDisplayName = $accountBmId && isset($bmNameMap[$accountBmId])
                             ? $bmNameMap[$accountBmId]
                             : $this->resolveBmName($bmIdsForRow, $bmNameMap);
-                            
-                        $displayBmName = !empty($config['display_name']) ? $config['display_name'] : $bmDisplayName;
+                        
+                        // Ưu tiên hiển thị tên Nhóm tài sản (Tên khách hàng) nếu có (Có thể có nhiều nhóm)
+                        $assetGroupNames = $accountToGroupNamesMap[$account->id] ?? [];
+                        
+                        if (!empty($assetGroupNames)) {
+                            // Nếu thuộc nhiều nhóm, nối tên bằng dấu phẩy (Pete Willam, Test...)
+                            $displayBmName = implode(', ', $assetGroupNames);
+                        } else {
+                            // Nếu không có nhóm nào, dùng tên BM hoặc tên hiển thị cấu hình
+                            $displayBmName = !empty($config['display_name']) ? $config['display_name'] : $bmDisplayName;
+                        }
 
-                        $accountsList[] = [
-                            'id' => (string) $account->id,
-                            'account_id' => $account->account_id,
-                            'account_name' => $account->account_name,
-                            'service_user_id' => (string) $serviceUser->id,
-                            'bm_ids' => $bmIdsForRow,
-                            'bm_name' => $displayBmName,
-                            'parent_bm_id' => $parentBmIdForRow,
-                            'name' => $account->account_name ?? $config['display_name'] ?? $ownerName,
-                            'platform' => $platform,
-                            'owner_name' => $ownerName,
-                            'owner_id' => $serviceUser->user_id,
-                            'total_campaigns' => $totalCampaigns,
-                            'active_campaigns' => $activeCampaigns,
-                            'disabled_campaigns' => $disabledCampaigns,
-                            'total_spend' => $spendValue,
-                            'total_balance' => $balanceValue,
-                            'currency' => $account->currency ?? 'USD',
-                            'accounts' => [
-                                ['currency' => $account->currency ?? 'USD'],
-                            ],
-                            'child_bm_id' => $childBmId,
-                        ];
-
+                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId);
                     }
                 } elseif ($platform === PlatformType::GOOGLE->value) {
                     $accounts = $this->googleAccountRepository->query()
@@ -484,7 +531,8 @@ class BusinessManagerService
                         continue;
                     }
 
-                    $key = $platform . '-' . $primaryBmId;
+                    // Nếu có tên BM/Asset Group khác nhau thì tách dòng riêng (để hiện Pete Willam, Test...)
+                    $key = $platform . '-' . $primaryBmId . '-' . ($item['bm_name'] ?? '');
 
                     $spendNum = isset($item['total_spend']) ? (float) $item['total_spend'] : 0.0;
                     $balanceNum = isset($item['total_balance']) ? (float) $item['total_balance'] : 0.0;
@@ -758,15 +806,29 @@ class BusinessManagerService
     /**
      * Lấy accounts từ platform config
      */
-    private function getAccountsFromPlatformConfig(?Carbon $dateStart, ?Carbon $dateEnd, ?int $platformFilter, array $bmNameMap, array $mccNameMap, ?array $bmParentMap = null, ?array $mccParentMap = null): array
+    private function getAccountsFromPlatformConfig(?Carbon $dateStart, ?Carbon $dateEnd, ?int $platformFilter, array $bmNameMap, array $mccNameMap, ?array $bmParentMap = null, ?array $mccParentMap = null, array $accountToGroupNamesMap = []): array
     {
         $accountsList = [];
 
-        // Lấy platform configs active
-        $platforms = $platformFilter ? [$platformFilter] : [PlatformType::META->value, PlatformType::GOOGLE->value];
+        // Lấy platform configs active - Chỉ lấy platform nào đang được lọc hoặc lấy cả 2 nếu không lọc gì
+        $metaSettingId = session('active_meta_setting_id');
+        $googleSettingId = session('active_google_setting_id');
+        
+        $platforms = [];
+        if ($platformFilter) {
+            $platforms = [$platformFilter];
+        } else {
+            if ($metaSettingId) $platforms[] = PlatformType::META->value;
+            if ($googleSettingId) $platforms[] = PlatformType::GOOGLE->value;
+            if (empty($platforms)) {
+                $platforms = [PlatformType::META->value, PlatformType::GOOGLE->value];
+            }
+        }
 
         foreach ($platforms as $platform) {
-            $platformSetting = $this->platformSettingRepository->findActiveByPlatform($platform);
+            $activeSettingResult = $this->platformSettingService->findPlatformActive($platform);
+            $platformSetting = $activeSettingResult->isSuccess() ? $activeSettingResult->getData() : null;
+            
             if (!$platformSetting || !$platformSetting->config) {
                 continue;
             }
@@ -779,7 +841,15 @@ class BusinessManagerService
                     continue;
                 }
 
+                // Chỉ lấy tài khoản của BM gốc hoặc BM con (Để lọc bỏ các BM lạ từ Token Admin)
+                $validBmIds = $this->metaBusinessManagerRepository->query()
+                    ->where('bm_id', $bmId)
+                    ->orWhere('parent_bm_id', $bmId)
+                    ->pluck('bm_id')
+                    ->toArray();
+
                 $metaAccounts = $this->metaAccountRepository->query()
+                    ->whereIn('business_manager_id', $validBmIds)
                     ->whereNull('service_user_id')
                     ->get();
 
@@ -789,6 +859,14 @@ class BusinessManagerService
                     $bmDisplayName = $accountBmId && isset($bmNameMap[$accountBmId])
                         ? $bmNameMap[$accountBmId]
                         : ($bmNameMap[$bmId] ?? null);
+
+                    // Ưu tiên hiển thị tên Nhóm tài sản (Tên khách hàng) nếu có (Có thể có nhiều nhóm)
+                    $assetGroupNames = $accountToGroupNamesMap[$account->id] ?? [];
+                    if (!empty($assetGroupNames)) {
+                        $displayBmName = implode(', ', $assetGroupNames);
+                    } else {
+                        $displayBmName = $bmDisplayName;
+                    }
 
                     // Tính spend cho từng account
                     if ($dateStart && $dateEnd) {
@@ -812,7 +890,7 @@ class BusinessManagerService
                         'account_name' => $account->account_name,
                         'service_user_id' => null,
                         'bm_ids' => [$accountBmId],
-                        'bm_name' => $bmDisplayName,
+                        'bm_name' => $displayBmName,
                         'parent_bm_id' => $parentBmId,
                         'name' => $account->account_name,
                         'platform' => $platform,
@@ -889,6 +967,36 @@ class BusinessManagerService
         }
 
         return $accountsList;
+    }
+
+    /**
+     * Helper tạo mảng data cho item trong danh sách BM/MCC
+     */
+    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId): array
+    {
+        return [
+            'id' => (string) $account->id,
+            'account_id' => $account->account_id,
+            'account_name' => $account->account_name,
+            'service_user_id' => (string) $serviceUser->id,
+            'bm_ids' => $bmIdsForRow,
+            'bm_name' => $displayBmName,
+            'parent_bm_id' => $parentBmIdForRow,
+            'name' => $account->account_name ?? $ownerName,
+            'platform' => $platform,
+            'owner_name' => $ownerName,
+            'owner_id' => $serviceUser->user_id,
+            'total_campaigns' => $totalCampaigns,
+            'active_campaigns' => $activeCampaigns,
+            'disabled_campaigns' => $disabledCampaigns,
+            'total_spend' => $spendValue,
+            'total_balance' => $balanceValue,
+            'currency' => $account->currency ?? 'USD',
+            'accounts' => [
+                ['currency' => $account->currency ?? 'USD'],
+            ],
+            'child_bm_id' => $childBmId,
+        ];
     }
 
     /**

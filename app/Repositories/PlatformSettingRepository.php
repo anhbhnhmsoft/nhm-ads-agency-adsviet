@@ -66,12 +66,36 @@ class PlatformSettingRepository extends BaseRepository
         return $query->update(['disabled' => true]);
     }
 
-    public function findActiveByPlatform(int $platform): ?PlatformSetting
+    public function findActiveByPlatform(int $platform, ?string $id = null): ?PlatformSetting
+    {
+        $query = $this->model()
+            ->where('platform', $platform)
+            ->where('disabled', false);
+
+        if ($id) {
+            $query->where('id', $id);
+        } else {
+            $query->orderBy('id', 'desc');
+        }
+
+        return $query->first();
+    }
+
+    public function getAllActiveByPlatform(int $platform)
     {
         return $this->model()
             ->where('platform', $platform)
             ->where('disabled', false)
             ->orderBy('id', 'desc')
+            ->get();
+    }
+
+    public function findByConfigField(int $platform, string $field, string $value): ?PlatformSetting
+    {
+        return $this->model()
+            ->where('platform', $platform)
+            ->where('disabled', false)
+            ->whereRaw("config->>'$field' = ?", [$value])
             ->first();
     }
 
