@@ -32,8 +32,8 @@ export const useFormCreateSupplier = () => {
 export const useFormEditSupplier = (id: string, item: SupplierItem) => {
     const form = useForm<CreateSupplierForm>({
         name: item.name,
-        open_fee: item.open_fee,
-        supplier_fee_percent: item.supplier_fee_percent || '0',
+        open_fee: item.open_fee ? parseFloat(Number(item.open_fee).toFixed(2)).toString() : '0',
+        supplier_fee_percent: item.supplier_fee_percent ? parseFloat(Number(item.supplier_fee_percent).toFixed(2)).toString() : '0',
         monthly_spending_fee_structure:
             (item.monthly_spending_fee_structure &&
                 item.monthly_spending_fee_structure.length > 0
