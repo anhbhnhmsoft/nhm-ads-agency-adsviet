@@ -15,7 +15,7 @@ export function AppSidebar() {
             {/*Header sidebar*/}
             <SidebarHeader>
                 <div className="flex items-center justify-center">
-                    <img src={`${logo_path}`} alt="logo" className="w-[210px] h-[198px]" />
+                    <img src={`${logo_path}`} alt="logo" className="w-[185px] h-[185px]" />
                 </div>
                 <div className="px-3 py-3 text-lg font-bold tracking-wide text-center">
                     ADVIET AGENCY
