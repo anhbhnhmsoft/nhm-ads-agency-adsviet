@@ -81,7 +81,7 @@ class HandleInertiaRequests extends Middleware
                 'warning' => fn() => $request->session()->get('warning'),
                 'info' => fn() => $request->session()->get('info')
             ],
-            'logo_path' => fn () => asset('images/logo-trans.png'),
+            'logo_path' => fn () => asset('images/logo-trans-v3.png'),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
