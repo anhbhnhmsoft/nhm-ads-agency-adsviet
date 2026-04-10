@@ -2,9 +2,11 @@
 
 namespace App\Repositories;
 
+use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Core\BaseRepository;
 use App\Models\ServiceUser;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class ServiceUserRepository extends BaseRepository
 {
@@ -13,7 +15,7 @@ class ServiceUserRepository extends BaseRepository
         return new ServiceUser();
     }
 
-    public function filterQuery(array $filters = []): \Illuminate\Database\Eloquent\Builder
+    public function filterQuery(array $filters = []): Builder
     {
         $query = $this->query();
 
@@ -71,5 +73,15 @@ class ServiceUserRepository extends BaseRepository
                     ]);
             },
         ]);
+    }
+    public function getActiveServicesWithCashback(): Collection
+    {
+        return $this->query()
+            ->where('status', ServiceUserStatus::ACTIVE->value)
+            ->whereHas('package', function ($query) {
+                $query->where('cashback_percent', '>', 0);
+            })
+            ->with(['package', 'user.wallet'])
+            ->get();
     }
 }

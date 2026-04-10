@@ -31,6 +31,9 @@ return [
         'package_in_use' => 'Gói dịch vụ đang được sử dụng, không thể xóa.',
         'postpay_min_wallet' => 'Ví của bạn cần tối thiểu :amount USDT để đăng ký trả sau.',
         'postpay_not_allowed' => 'Bạn không được phép sử dụng hình thức trả sau cho gói dịch vụ này.',
+        'cashback_percent_numeric' => 'Tỉ lệ cashback phải là số',
+        'cashback_percent_min' => 'Tỉ lệ cashback không được nhỏ hơn 0',
+        'cashback_percent_max' => 'Tỉ lệ cashback không được lớn hơn 100',
     ],
     'flash' => [
         'purchase_success' => 'Đã tạo đơn hàng thành công và trừ tiền từ ví.',
@@ -38,5 +41,8 @@ return [
         'order_cancel_success' => 'Đã hủy đơn dịch vụ.',
         'order_delete_success' => 'Đã xóa đơn dịch vụ.',
         'config_update_success' => 'Đã cập nhật cấu hình tài khoản.',
+    ],
+    'service_packages' => [
+        'cashback_percent_tooltip' => 'Cashback dựa theo tổng chi tiêu của khách trong 30 ngày sử dụng dịch vụ.',
     ],
 ];

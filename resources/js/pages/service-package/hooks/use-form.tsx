@@ -31,6 +31,7 @@ export const useFormCreateServicePackage = () => {
         supplier_id: null,
         set_up_time: '0',
         disabled: false,
+        cashback_percent: '0',
         monthly_spending_fee_structure: DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
         postpay_user_ids: [],
     });
@@ -59,6 +60,7 @@ export const useFormEditServicePackage = (id: string, item: ServicePackageItem, 
         supplier_id: item.supplier_id || null,
         set_up_time: item.set_up_time.toString(),
         disabled: item.disabled,
+        cashback_percent: item.cashback_percent || '0',
         monthly_spending_fee_structure:
             (item.monthly_spending_fee_structure &&
                 item.monthly_spending_fee_structure.length > 0

@@ -24,7 +24,8 @@ class ServicePackage extends Model
         'set_up_time',
         'disabled',
         'description',
-        'range_min_top_up'
+        'range_min_top_up',
+        'cashback_percent',
     ];
 
     protected $casts = [
@@ -38,6 +39,7 @@ class ServicePackage extends Model
         'set_up_time' => 'integer',
         'disabled' => 'boolean',
         'range_min_top_up' => 'decimal:8',
+        'cashback_percent' => 'decimal:2',
     ];
 
     public function serviceUsers()

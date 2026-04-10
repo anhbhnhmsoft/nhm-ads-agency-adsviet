@@ -24,3 +24,6 @@ Schedule::job(SyncAllPlatformsJob::class)->cron('0 */8 * * *');
 
 // routes/console.php
 Schedule::command('app:calculate-spending-commission')->monthlyOn(1, '01:00');
+
+// Calculate and payout cashback daily
+Schedule::command('app:calculate-cashback')->dailyAt('03:00');
