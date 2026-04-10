@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import LoadingGlobal from '@/components/loading-global';
 import { IBreadcrumbItem } from '@/lib/types/type';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import i18n from '@/i18n';
 
 interface AppLayoutProps {
@@ -42,13 +43,15 @@ export default ({ children, breadcrumbs}: AppLayoutProps) => {
 
     return(
         <ThemeProvider defaultTheme={"light"}>
-            <AppShell variant="sidebar">
-                <AppSidebar />
-                <AppContent variant="sidebar" className="overflow-x-hidden">
-                    <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                    <main className="flex flex-1 flex-col gap-4 p-4">{children}</main>
-                </AppContent>
-            </AppShell>
+            <TooltipProvider>
+                <AppShell variant="sidebar">
+                    <AppSidebar />
+                    <AppContent variant="sidebar" className="overflow-x-hidden">
+                        <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                        <main className="flex flex-1 flex-col gap-4 p-4">{children}</main>
+                    </AppContent>
+                </AppShell>
+            </TooltipProvider>
             <Toaster expand visibleToasts={3} position="top-right" />
             <LoadingGlobal />
         </ThemeProvider>

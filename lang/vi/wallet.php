@@ -90,6 +90,7 @@ return [
         'campaign_end_created' => 'User yêu cầu kết thúc chiến dịch',
         'campaign_end_detail' => 'User yêu cầu kết thúc chiến dịch :campaign thuộc tài khoản :account',
         'campaign_end_cancelled_admin' => 'Admin hủy yêu cầu kết thúc chiến dịch',
+        'cashback' => 'Hoàn tiền thưởng (Cashback) :percent% dựa trên tổng chi tiêu trong 30 ngày qua.',
     ],
     'error' => [
         'wallet_not_found' => 'Ví không tồn tại',

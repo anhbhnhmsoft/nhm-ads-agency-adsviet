@@ -24,6 +24,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\TicketRepository;
 use App\Repositories\TicketConversationRepository;
 use App\Repositories\ServicePackagePostpayUserRepository;
+use App\Service\CashbackService;
 use App\Service\AuthService;
 use App\Service\GoogleAdsService;
 use App\Service\MailService;
@@ -130,6 +131,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserAlertService::class);
         $this->app->bind(BusinessManagerService::class);
         $this->app->bind(DashboardService::class);
+        $this->app->bind(CashbackService::class);
     }
 
      /**

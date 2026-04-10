@@ -18,7 +18,8 @@ import { ServicePackageOption } from '@/pages/service-package/types/type';
 import { service_packages_index } from '@/routes';
 import { ReactNode, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Plus, RotateCcw, Trash2, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserSelect } from '@/components/user-select';
 import { UserOption } from '@/pages/service-package/types/type';
 
@@ -484,6 +485,38 @@ const Create = ({ meta_features, google_features, all_users = [], suppliers = []
                     {errors.set_up_time && (
                         <span className="text-sm text-red-500">
                             {errors.set_up_time}
+                        </span>
+                    )}
+                </div>
+
+                {/* Cashback percent */}
+                <div className="flex flex-col gap-2">
+                    <Label className="flex items-center gap-1">
+                        {t('service_packages.cashback_percent', { defaultValue: 'Tỉ lệ cashback (%)' })}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Info className="h-4 w-4 text-slate-400 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                {t('service_packages.cashback_percent_tooltip', { defaultValue: 'Cashback dựa theo tổng chi tiêu của khách trong 30 ngày sử dụng dịch vụ ổn định.' })}
+                            </TooltipContent>
+                        </Tooltip>
+                    </Label>
+                    <Input
+                        value={data.cashback_percent}
+                        placeholder={t('service_packages.cashback_percent', { defaultValue: 'Tỉ lệ cashback (%)' })}
+                        type="number"
+                        step={'any'}
+                        onChange={(e) => {
+                            setData('cashback_percent', e.target.value);
+                        }}
+                    />
+                    <span className="text-sm text-slate-400">
+                        {t('service_packages.cashback_percent_desc', { defaultValue: 'Phần trăm khách hàng được hoàn lại sau 30 ngày sử dụng dịch vụ.' })}
+                    </span>
+                    {errors.cashback_percent && (
+                        <span className="text-sm text-red-500">
+                            {errors.cashback_percent}
                         </span>
                     )}
                 </div>

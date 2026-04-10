@@ -11,4 +11,12 @@ class MetaAdsAccountInsightRepository extends BaseRepository
     {
         return new MetaAdsAccountInsight();
     }
+
+    public function getTotalSpendForServiceUser(string $serviceUserId, \Carbon\Carbon $startDate, \Carbon\Carbon $endDate): float
+    {
+        return (float) $this->query()
+            ->where('service_user_id', $serviceUserId)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->sum('spend');
+    }
 }

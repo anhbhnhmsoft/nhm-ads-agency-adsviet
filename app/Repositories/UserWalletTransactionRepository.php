@@ -84,6 +84,14 @@ class UserWalletTransactionRepository extends BaseRepository
         $query->orderBy($column, $direction);
         return $query;
     }
+    public function getLastCashbackForService(string $serviceUserId, int $cashbackType): ?\App\Models\UserWalletTransaction
+    {
+        return $this->query()
+            ->where('reference_id', $serviceUserId)
+            ->where('type', $cashbackType)
+            ->orderBy('created_at', 'desc')
+            ->first();
+    }
 }
 
 
