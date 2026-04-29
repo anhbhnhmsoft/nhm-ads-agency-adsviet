@@ -386,6 +386,7 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                                 type="button"
                                                 variant={paymentType === 'prepay' ? 'default' : 'outline'}
                                                 size="sm"
+                                                disabled={paymentType !== 'prepay'}
                                                 onClick={() => setPaymentType('prepay')}
                                             >
                                                 {t('service_purchase.payment_prepay')}
@@ -394,6 +395,7 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                                 type="button"
                                                 variant={paymentType === 'postpay' ? 'default' : 'outline'}
                                                 size="sm"
+                                                disabled={paymentType !== 'postpay'}
                                                 onClick={() => setPaymentType('postpay')}
                                             >
                                                 {t('service_purchase.payment_postpay')}
@@ -618,6 +620,7 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                                 type="button"
                                                 variant={editPaymentType === 'prepay' ? 'default' : 'outline'}
                                                 size="sm"
+                                                disabled={editPaymentType !== 'prepay'}
                                                 onClick={() => setEditPaymentType('prepay')}
                                             >
                                                 {t('service_purchase.payment_prepay')}
@@ -626,6 +629,7 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
                                                 type="button"
                                                 variant={editPaymentType === 'postpay' ? 'default' : 'outline'}
                                                 size="sm"
+                                                disabled={editPaymentType !== 'postpay'}
                                                 onClick={() => setEditPaymentType('postpay')}
                                             >
                                                 {t('service_purchase.payment_postpay')}
@@ -792,4 +796,3 @@ const ServiceOrdersIndex = ({ paginator, meta_timezones = [], google_timezones =
 };
 
 export default ServiceOrdersIndex;
-

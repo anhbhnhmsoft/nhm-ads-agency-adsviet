@@ -37,7 +37,7 @@ const formatDisplayRange = (range: string) => {
     });
 };
 
-export default function CreateAccountPage({ packages, meta_timezones = [], google_timezones = [], postpay_permissions = {} }: CreateAccountPageProps) {
+export default function CreateAccountPage({ packages, meta_timezones = [], google_timezones = [] }: CreateAccountPageProps) {
     const { t } = useTranslation();
     const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
     const [searchQuery, setSearchQuery] = useState<string>('');
@@ -67,14 +67,26 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
     }, [packages]);
 
     const { form, submit } = useCreateAccountForm();
-    const paymentType = form.data.payment_type || 'prepay';
+    const canSelectPrepay = selectedPackage ? selectedPackage.payment_type !== 'postpay' : true;
+    const canSelectPostpay = selectedPackage
+        ? selectedPackage.payment_type === 'postpay' || selectedPackage.can_use_postpay === true
+        : form.data.payment_type === 'postpay';
+    const defaultPaymentType: 'prepay' | 'postpay' = selectedPackage?.payment_type === 'postpay' ? 'postpay' : 'prepay';
+    const requestedPaymentType = (form.data.payment_type as 'prepay' | 'postpay') || defaultPaymentType;
+    const paymentType: 'prepay' | 'postpay' = selectedPackage
+        ? (requestedPaymentType === 'postpay' && canSelectPostpay ? 'postpay' : defaultPaymentType)
+        : requestedPaymentType;
     const topUpAmount = form.data.top_up_amount || '';
 
     useEffect(() => {
-        if (selectedPackage && postpay_permissions[selectedPackage.id] !== true && paymentType === 'postpay') {
-            form.setData('payment_type', 'prepay');
+        if (selectedPackage) {
+            const nextPaymentType = selectedPackage.payment_type === 'postpay' ? 'postpay' : 'prepay';
+            form.setData('payment_type', nextPaymentType);
+            if (nextPaymentType === 'postpay') {
+                form.setData('top_up_amount', '0');
+            }
         }
-    }, [selectedPackage?.id, postpay_permissions, paymentType]);
+    }, [selectedPackage?.id]);
 
     const getInitialAccount = useCallback((platform?: number): AccountFormData => ({
         meta_email: '',
@@ -182,8 +194,6 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
 
         const isMeta = selectedPackage.platform === _PlatformType.META;
         const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
-        const isPostpayAllowed = postpay_permissions[selectedPackage.id] === true;
-
         return (
             <Card className="mt-6">
                 <CardHeader>
@@ -287,23 +297,31 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                                 type="button"
                                 variant={paymentType === 'prepay' ? 'default' : 'outline'}
                                 size="sm"
-                                onClick={() => form.setData('payment_type', 'prepay')}
+                                disabled={!canSelectPrepay}
+                                onClick={() => {
+                                    if (!canSelectPrepay) {
+                                        return;
+                                    }
+                                    form.setData('payment_type', 'prepay');
+                                }}
                             >
                                 {t('service_purchase.payment_prepay', { defaultValue: 'Thanh toán trả trước' })}
                             </Button>
-                            {isPostpayAllowed && (
-                                <Button
-                                    type="button"
-                                    variant={paymentType === 'postpay' ? 'default' : 'outline'}
-                                    size="sm"
-                                    onClick={() => {
-                                        form.setData('payment_type', 'postpay');
-                                        form.setData('top_up_amount', '0');
-                                    }}
-                                >
-                                    {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
-                                </Button>
-                            )}
+                            <Button
+                                type="button"
+                                variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                size="sm"
+                                disabled={!canSelectPostpay}
+                                onClick={() => {
+                                    if (!canSelectPostpay) {
+                                        return;
+                                    }
+                                    form.setData('payment_type', 'postpay');
+                                    form.setData('top_up_amount', '0');
+                                }}
+                            >
+                                {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
+                            </Button>
                         </div>
                     </div>
 

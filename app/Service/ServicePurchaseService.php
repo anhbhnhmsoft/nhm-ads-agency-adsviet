@@ -13,6 +13,8 @@ use App\Core\ServiceReturn;
 use App\Models\ServiceUserTransactionLog;
 use App\Repositories\ConfigRepository;
 use App\Common\Constants\Config\ConfigName;
+use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
+use App\Repositories\ServicePackageAllowedUserRepository;
 use App\Repositories\ServicePackageRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\UserWalletTransactionRepository;
@@ -24,11 +26,11 @@ class ServicePurchaseService
 {
     public function __construct(
         protected ServicePackageRepository $servicePackageRepository,
+        protected ServicePackageAllowedUserRepository $servicePackageAllowedUserRepository,
         protected ServiceUserRepository $serviceUserRepository,
         protected WalletRepository $walletRepository,
         protected UserWalletTransactionRepository $walletTransactionRepository,
         protected ConfigRepository $configRepository,
-        protected ServicePackageService $servicePackageService,
     ) {
     }
 
@@ -54,7 +56,28 @@ class ServicePurchaseService
                     return ServiceReturn::error(message: __('Gói dịch vụ đã bị vô hiệu hóa'));
                 }
 
-                $topUpAmount = max(0, $topUpAmount);
+                $packagePaymentType = $package->payment_type ?? ServicePackagePaymentType::PREPAY->value;
+                if (!in_array($packagePaymentType, ServicePackagePaymentType::getValues(), true)) {
+                    $packagePaymentType = ServicePackagePaymentType::PREPAY->value;
+                }
+
+                $requestedPaymentType = $configAccount['payment_type'] ?? $packagePaymentType;
+                if (!in_array($requestedPaymentType, ServicePackagePaymentType::getValues(), true)) {
+                    $requestedPaymentType = $packagePaymentType;
+                }
+
+                $canUsePostpay = $packagePaymentType === ServicePackagePaymentType::POSTPAY->value
+                    || $this->servicePackageAllowedUserRepository->isUserAllowed($packageId, $userId);
+                if ($requestedPaymentType === ServicePackagePaymentType::POSTPAY->value && !$canUsePostpay) {
+                    return ServiceReturn::error(message: __('services.validation.postpay_not_allowed'));
+                }
+
+                $paymentType = $packagePaymentType === ServicePackagePaymentType::POSTPAY->value
+                    ? ServicePackagePaymentType::POSTPAY->value
+                    : $requestedPaymentType;
+                $configAccount['payment_type'] = $paymentType;
+                $isPrepay = $paymentType === ServicePackagePaymentType::PREPAY->value;
+                $topUpAmount = $isPrepay ? max(0, $topUpAmount) : 0;
                 $minTopUp = (float) $package->range_min_top_up;
                 if ($topUpAmount > 0 && $minTopUp > 0 && $topUpAmount < $minTopUp) {
                     Logging::error('Top-up amount too low:', [
@@ -69,14 +92,6 @@ class ServicePurchaseService
                 $openFee = (float) $package->open_fee;
                 $serviceFeePercent = (float) $package->top_up_fee;
                 $serviceFee = $topUpAmount > 0 ? ($topUpAmount * $serviceFeePercent / 100) : 0;
-                $isPrepay = ($configAccount['payment_type'] ?? 'prepay') === 'prepay';
-
-                // Kiểm tra user có được phép trả sau cho gói này không
-                if (!$isPrepay && !$this->servicePackageService->isUserAllowedPostpay($packageId, $userId)) {
-                    return ServiceReturn::error(
-                        message: __('services.validation.postpay_not_allowed')
-                    );
-                }
 
                 $accountsCount = 1;
                 if (isset($configAccount['accounts']) && is_array($configAccount['accounts']) && count($configAccount['accounts']) > 0) {
@@ -84,7 +99,7 @@ class ServicePurchaseService
                 }
 
                 // Phí mở tài khoản được tính theo số tài khoản nếu trả trước; trả sau không thu upfront
-                $openFeePayable = $isPrepay ? $openFee * $accountsCount : 0;
+                $openFeePayable = $openFee * $accountsCount;
 
                 // Tổng tiền phải trừ ví = (phí mở nếu trả trước * số tài khoản) + số tiền top-up + phí dịch vụ top-up
                 $totalCost = $openFeePayable + $topUpAmount + $serviceFee;
@@ -113,15 +128,10 @@ class ServicePurchaseService
                 }
 
                 $configAccount['top_up_amount'] = $topUpAmount;
-                if (!isset($configAccount['payment_type'])) {
-                    $configAccount['payment_type'] = 'prepay';
-                }
                 // Đánh dấu đã thu phí mở tài khoản nếu trả trước; trả sau sẽ thu ở kỳ bill đầu tiên
-                if (!isset($configAccount['open_fee_paid'])) {
-                    $configAccount['open_fee_paid'] = $configAccount['payment_type'] === 'prepay';
-                }
+                $configAccount['open_fee_paid'] = true;
                 // Thêm post_payment_date và postpay_days cho trả sau
-                if ($configAccount['payment_type'] === 'postpay') {
+                if ($configAccount['payment_type'] === ServicePackagePaymentType::POSTPAY->value) {
                     $postpayDays = isset($configAccount['postpay_days']) && is_numeric($configAccount['postpay_days'])
                         ? (int) $configAccount['postpay_days']
                         : 30; // Mặc định 30 ngày
@@ -264,4 +274,3 @@ class ServicePurchaseService
         return $config;
     }
 }
-

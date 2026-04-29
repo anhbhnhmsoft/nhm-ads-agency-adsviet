@@ -511,9 +511,11 @@ class TimezoneHelper
         foreach ($timezones as $id => $name) {
             $options[] = [
                 'value' => (string) $id,
-                'label' => str_replace('TZ_', '', $name) . " ({$id})",
+                'label' => self::formatMetaTimezoneLabel($name),
             ];
         }
+
+        usort($options, static fn (array $a, array $b) => strcmp($a['label'], $b['label']));
         
         return $options;
     }
@@ -542,11 +544,11 @@ class TimezoneHelper
         foreach ($identifiers as $identifier) {
             $options[] = [
                 'value' => $identifier,
-                'label' => $identifier,
+                'label' => self::formatTimezoneLabel($identifier),
             ];
         }
         
-        // Sort by identifier for easier selection
+        // Sort by formatted label for easier selection
         usort($options, fn($a, $b) => strcmp($a['label'], $b['label']));
         
         return $options;
@@ -563,5 +565,204 @@ class TimezoneHelper
         $timezones = self::getMetaTimezoneIds();
         return $timezones[$timezoneId] ?? null;
     }
-}
 
+    private static function formatMetaTimezoneLabel(string $metaTimezoneName): string
+    {
+        if ($metaTimezoneName === 'TZ_UNKNOWN') {
+            return 'Unknown';
+        }
+
+        $normalizedName = str_replace('TZ_', '', $metaTimezoneName);
+        $identifier = self::resolveMetaTimezoneIdentifier($metaTimezoneName);
+
+        if ($identifier !== null) {
+            return self::formatTimezoneLabel($identifier);
+        }
+
+        return self::humanizeTimezoneSlug($normalizedName);
+    }
+
+    private static function resolveMetaTimezoneIdentifier(string $metaTimezoneName): ?string
+    {
+        $normalizedName = str_replace('TZ_', '', $metaTimezoneName);
+        $identifierMap = self::getTimezoneIdentifierMap();
+
+        if (isset($identifierMap[$normalizedName])) {
+            return $identifierMap[$normalizedName];
+        }
+
+        if (str_starts_with($normalizedName, 'ETC_GMT_PLUS_')) {
+            return 'Etc/GMT+' . substr($normalizedName, strlen('ETC_GMT_PLUS_'));
+        }
+
+        if (str_starts_with($normalizedName, 'ETC_GMT_MINUS_')) {
+            return 'Etc/GMT-' . substr($normalizedName, strlen('ETC_GMT_MINUS_'));
+        }
+
+        return self::guessTimezoneIdentifierFromMetaSlug($normalizedName);
+    }
+
+    private static function getTimezoneIdentifierMap(): array
+    {
+        static $identifierMap = null;
+
+        if ($identifierMap !== null) {
+            return $identifierMap;
+        }
+
+        $identifierMap = [];
+
+        foreach (DateTimeZone::listIdentifiers() as $identifier) {
+            $identifierMap[self::normalizeTimezoneIdentifier($identifier)] = $identifier;
+        }
+
+        foreach (['CET', 'EET', 'EST', 'EST5EDT', 'CST6CDT', 'MST', 'MST7MDT', 'PST8PDT', 'HST', 'MET', 'WET', 'GMT', 'UTC'] as $identifier) {
+            $identifierMap[self::normalizeTimezoneIdentifier($identifier)] = $identifier;
+        }
+
+        return $identifierMap;
+    }
+
+    private static function normalizeTimezoneIdentifier(string $identifier): string
+    {
+        $normalized = strtoupper(str_replace('/', '_', $identifier));
+        $normalized = preg_replace('/GMT\+(\d+)/', 'GMT_PLUS_$1', $normalized) ?? $normalized;
+        $normalized = preg_replace('/GMT-(\d+)/', 'GMT_MINUS_$1', $normalized) ?? $normalized;
+
+        return str_replace('-', '_', $normalized);
+    }
+
+    private static function formatTimezoneLabel(string $identifier): string
+    {
+        $location = self::formatTimezoneLocationLabel($identifier);
+        $offset = self::formatTimezoneOffset($identifier);
+
+        return $offset !== null ? "{$location} ({$offset})" : $location;
+    }
+
+    private static function formatTimezoneLocationLabel(string $identifier): string
+    {
+        $parts = explode('/', $identifier);
+
+        if (count($parts) > 1) {
+            if (strcasecmp($parts[0], 'Etc') === 0) {
+                return self::formatEtcTimezoneLabel($parts[1] ?? '');
+            }
+
+            $formattedParts = array_map([self::class, 'humanizeTimezoneSegment'], $parts);
+
+            return implode(', ', array_reverse($formattedParts));
+        }
+
+        if (preg_match('/^[A-Z0-9+\-]+$/', $identifier) === 1) {
+            return $identifier;
+        }
+
+        return self::humanizeTimezoneSegment($identifier);
+    }
+
+    private static function formatEtcTimezoneLabel(string $etcSegment): string
+    {
+        if (str_starts_with($etcSegment, 'GMT')) {
+            return 'GMT';
+        }
+
+        return self::humanizeTimezoneSegment($etcSegment);
+    }
+
+    private static function formatTimezoneOffset(string $identifier): ?string
+    {
+        try {
+            $timezone = new DateTimeZone($identifier);
+            $offsetInSeconds = $timezone->getOffset(new \DateTimeImmutable('now', new DateTimeZone('UTC')));
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $absoluteOffset = abs($offsetInSeconds);
+        $hours = intdiv($absoluteOffset, 3600);
+        $minutes = intdiv($absoluteOffset % 3600, 60);
+        $sign = $offsetInSeconds >= 0 ? '+' : '-';
+
+        return sprintf('GMT%s%02d:%02d', $sign, $hours, $minutes);
+    }
+
+    private static function humanizeTimezoneSlug(string $slug): string
+    {
+        $parts = explode('_', $slug);
+
+        if (count($parts) === 1) {
+            return self::humanizeTimezoneSegment($slug);
+        }
+
+        $region = array_shift($parts);
+
+        return self::humanizeTimezoneSegment(implode('_', $parts)) . ', ' . self::humanizeTimezoneSegment($region);
+    }
+
+    private static function humanizeTimezoneSegment(string $segment): string
+    {
+        return ucwords(strtolower(str_replace('_', ' ', $segment)));
+    }
+
+    private static function guessTimezoneIdentifierFromMetaSlug(string $slug): ?string
+    {
+        $parts = explode('_', $slug);
+
+        if (count($parts) < 2) {
+            return null;
+        }
+
+        $region = self::formatTimezoneCandidateSegment((string) array_shift($parts));
+
+        foreach (self::buildTimezoneTokenPartitions($parts) as $partition) {
+            $segments = array_map([self::class, 'formatTimezoneCandidateSegment'], $partition);
+            $candidate = $region . '/' . implode('/', $segments);
+
+            if (self::isValidTimezoneIdentifier($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static function buildTimezoneTokenPartitions(array $tokens): array
+    {
+        if ($tokens === []) {
+            return [[]];
+        }
+
+        $partitions = [];
+        $count = count($tokens);
+
+        for ($length = 1; $length <= $count; $length++) {
+            $head = implode('_', array_slice($tokens, 0, $length));
+            $tail = array_slice($tokens, $length);
+
+            foreach (self::buildTimezoneTokenPartitions($tail) as $partition) {
+                $partitions[] = [$head, ...$partition];
+            }
+        }
+
+        return $partitions;
+    }
+
+    private static function formatTimezoneCandidateSegment(string $segment): string
+    {
+        $words = explode('_', strtolower($segment));
+
+        return implode('_', array_map(static fn (string $word) => ucfirst($word), $words));
+    }
+
+    private static function isValidTimezoneIdentifier(string $identifier): bool
+    {
+        try {
+            new DateTimeZone($identifier);
+
+            return true;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+}

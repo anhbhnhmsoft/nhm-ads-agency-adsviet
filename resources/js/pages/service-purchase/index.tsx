@@ -44,7 +44,7 @@ const parseCurrencyInput = (value: string): number => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, meta_timezones = [], google_timezones = [], postpay_permissions = {} }: ServicePurchasePageProps) => {
+const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, meta_timezones = [], google_timezones = [] }: ServicePurchasePageProps) => {
     const { t } = useTranslation();
     const page = usePage();
     const postpayMinBalance = typeof postpay_min_balance === 'number' ? postpay_min_balance : 200;
@@ -99,7 +99,15 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         asset_access,
     } = purchaseForm.data;
 
-    const paymentType: 'prepay' | 'postpay' = (payment_type as 'prepay' | 'postpay') || 'prepay';
+    const canSelectPrepay = selectedPackage ? selectedPackage.payment_type !== 'postpay' : true;
+    const canSelectPostpay = selectedPackage
+        ? selectedPackage.payment_type === 'postpay' || selectedPackage.can_use_postpay === true
+        : payment_type === 'postpay';
+    const defaultPaymentType: 'prepay' | 'postpay' = selectedPackage?.payment_type === 'postpay' ? 'postpay' : 'prepay';
+    const requestedPaymentType = (payment_type as 'prepay' | 'postpay') || defaultPaymentType;
+    const paymentType: 'prepay' | 'postpay' = selectedPackage
+        ? (requestedPaymentType === 'postpay' && canSelectPostpay ? 'postpay' : defaultPaymentType)
+        : requestedPaymentType;
     const topUpAmount = top_up_amount || '';
     const budgetValue = budget || '';
     const [postpayDays, setPostpayDays] = useState<number>(7);
@@ -133,17 +141,16 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         }
     }, [selectedPackage?.platform, purchaseForm]);
 
-    // Reset payment_type về 'prepay' nếu package không cho phép trả sau
     useEffect(() => {
         if (selectedPackage) {
-            const isPostpayAllowed = postpay_permissions[selectedPackage.id] === true;
-            // Nếu đang chọn trả sau nhưng package không cho phép => reset về trả trước
-            if (paymentType === 'postpay' && !isPostpayAllowed) {
-                purchaseForm.setData('payment_type', 'prepay');
+            const nextPaymentType = selectedPackage.payment_type === 'postpay' ? 'postpay' : 'prepay';
+            purchaseForm.setData('payment_type', nextPaymentType);
+            if (nextPaymentType === 'postpay') {
+                purchaseForm.setData('top_up_amount', '');
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedPackage?.id, postpay_permissions, paymentType]);
+    }, [selectedPackage?.id]);
 
     // Filter packages
     const filteredPackages = useMemo(() => {
@@ -270,7 +277,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         const topUpNum = isPrepay ? parseCurrencyInput(topUpAmountStr) : 0;
         const openFee = parseFloat(pkg.open_fee);
         const normalizedAccountsCount = Number.isFinite(accountsCount) && accountsCount > 0 ? accountsCount : 1;
-        const chargeOpenFee = isPrepay ? openFee * normalizedAccountsCount : 0; // Trả sau không thu phí mở tài khoản upfront
+        const chargeOpenFee = openFee * normalizedAccountsCount;
         const serviceFee = topUpNum > 0 ? calculateServiceFee(topUpNum, pkg.top_up_fee) : 0;
         const totalCost = chargeOpenFee + topUpNum + serviceFee;
         return { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum };
@@ -283,17 +290,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         // Mark all fields as touched on submit
         setTouchedFields({ topUpAmount: true /*, budget: true */ });
 
-        // Kiểm tra quyền trả sau - chỉ true mới được phép
-        const isPostpayAllowed = selectedPackage
-            ? (postpay_permissions[selectedPackage.id] === true)
-            : false;
-
         if (paymentType === 'postpay') {
-            if (!isPostpayAllowed) {
-                alert(t('services.validation.postpay_not_allowed'));
-                purchaseForm.setData('payment_type', 'prepay');
-                return;
-            }
             if (wallet_balance < postpayMinBalance) {
                 alert(
                     t('service_purchase.postpay_min_wallet', {
@@ -564,7 +561,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             <div className="sm:text-lg text-base font-bold">{formatUSDT(chargeOpenFee)}</div>
                             {paymentType === 'postpay' && (
                                 <div className="text-xs text-amber-600">
-                                    {t('service_purchase.postpay_open_fee_hint', { defaultValue: 'Phí mở tài khoản thu khi đối soát (không thu trước)' })}
+                                    {t('service_purchase.postpay_open_fee_hint', { defaultValue: 'Phí mở tài khoản thu ngay khi mua' })}
                                 </div>
                             )}
                         </div>
@@ -693,34 +690,31 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                 type="button"
                                 variant={paymentType === 'prepay' ? 'default' : 'outline'}
                                 size="sm"
+                                disabled={!canSelectPrepay}
                                 onClick={() => {
+                                    if (!canSelectPrepay) {
+                                        return;
+                                    }
                                     purchaseForm.setData('payment_type', 'prepay');
                                 }}
                             >
                                 {t('service_purchase.payment_prepay', { defaultValue: 'Thanh toán trả trước' })}
                             </Button>
-                            {(() => {
-                                if (!selectedPackage) return false;
-                                const packageId = selectedPackage.id;
-                                const permission = postpay_permissions[packageId];
-                                // Chỉ hiển thị nếu permission === true (rõ ràng là true)
-                                // Nếu undefined hoặc false => ẩn nút
-                                return permission === true;
-                            })() && (
-                                    <Button
-                                        type="button"
-                                        variant={paymentType === 'postpay' ? 'default' : 'outline'}
-                                        disabled={wallet_balance < postpayMinBalance}
-                                        size="sm"
-                                        onClick={() => {
-                                            purchaseForm.setData('payment_type', 'postpay');
-                                            purchaseForm.setData('top_up_amount', ''); // Trả sau không thu top-up upfront
-                                            setPostpayDays(7); // Reset về mặc định khi chọn postpay
-                                        }}
-                                    >
-                                        {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
-                                    </Button>
-                                )}
+                            <Button
+                                type="button"
+                                variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                disabled={!canSelectPostpay}
+                                onClick={() => {
+                                    if (!canSelectPostpay) {
+                                        return;
+                                    }
+                                    purchaseForm.setData('payment_type', 'postpay');
+                                    purchaseForm.setData('top_up_amount', '');
+                                }}
+                                size="sm"
+                            >
+                                {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
+                            </Button>
                         </div>
                         {paymentType === 'postpay' && (
                             <div className="space-y-3">
@@ -846,56 +840,58 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                     */}
 
                     {/* Top-up Amount */}
-                    <div className="space-y-2">
-                        <Label htmlFor="topUpAmount">
-                            {t('service_purchase.top_up_amount')} ({t('service_purchase.optional')})
-                        </Label>
-                        <div className="flex gap-2">
-                            <Input
-                                id="topUpAmount"
-                                type="number"
-                                placeholder={`${Math.ceil(
-                                    Number(selectedPackage.range_min_top_up || '0')
-                                )} USDT`}
-                                value={topUpAmount}
-                                onChange={(e) => {
-                                    purchaseForm.setData('top_up_amount', e.target.value);
-                                    if (purchaseForm.errors.top_up_amount) {
-                                        purchaseForm.clearErrors('top_up_amount');
-                                    }
-                                }}
-                                step="1"
-                                disabled={paymentType === 'postpay'}
-                            />
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowCalculator(!showCalculator)}
-                                disabled={paymentType === 'postpay'}
-                            >
-                                <Calculator className="h-4 w-4" />
-                            </Button>
+                    {paymentType !== 'postpay' && (
+                        <div className="space-y-2">
+                            <Label htmlFor="topUpAmount">
+                                {t('service_purchase.top_up_amount')} ({t('service_purchase.optional')})
+                            </Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    id="topUpAmount"
+                                    type="number"
+                                    placeholder={`${Math.ceil(
+                                        Number(selectedPackage.range_min_top_up || '0')
+                                    )} USDT`}
+                                    value={topUpAmount}
+                                    onChange={(e) => {
+                                        purchaseForm.setData('top_up_amount', e.target.value);
+                                        if (purchaseForm.errors.top_up_amount) {
+                                            purchaseForm.clearErrors('top_up_amount');
+                                        }
+                                    }}
+                                    step="1"
+                                    disabled={paymentType === 'postpay'}
+                                />
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowCalculator(!showCalculator)}
+                                    disabled={paymentType === 'postpay'}
+                                >
+                                    <Calculator className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            {paymentType === 'prepay' && topUpError && (
+                                <div className="flex items-center gap-2 text-red-600 text-sm">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    {topUpError}
+                                </div>
+                            )}
+                            {purchaseForm.errors.top_up_amount && (
+                                <div className="flex items-center gap-2 text-red-600 text-sm">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    {purchaseForm.errors.top_up_amount}
+                                </div>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                                {t('service_purchase.top_up_amount_note')},
+                                {minTopUpAmount > 0
+                                    ? t('service_purchase.min_top_up_hint', {
+                                        amount: formatUSD(minTopUpAmount),
+                                    })
+                                    : t('service_purchase.top_up_amount_note')}
+                            </p>
                         </div>
-                        {paymentType === 'prepay' && topUpError && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm">
-                                <AlertTriangle className="h-4 w-4" />
-                                {topUpError}
-                            </div>
-                        )}
-                        {purchaseForm.errors.top_up_amount && (
-                            <div className="flex items-center gap-2 text-red-600 text-sm">
-                                <AlertTriangle className="h-4 w-4" />
-                                {purchaseForm.errors.top_up_amount}
-                            </div>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                            {t('service_purchase.top_up_amount_note')},
-                            {minTopUpAmount > 0
-                                ? t('service_purchase.min_top_up_hint', {
-                                    amount: formatUSD(minTopUpAmount),
-                                })
-                                : t('service_purchase.top_up_amount_note')}
-                        </p>
-                    </div>
+                    )}
 
                     {/* Fee Calculator */}
                     {(showCalculator || topUpAmount || paymentType === 'postpay') && (
@@ -1046,4 +1042,3 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 };
 
 export default ServicePurchaseIndex;
-

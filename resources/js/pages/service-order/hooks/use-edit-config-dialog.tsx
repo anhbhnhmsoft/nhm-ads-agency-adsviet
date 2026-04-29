@@ -46,13 +46,14 @@ export const useServiceOrderEditConfigDialog = () => {
         
         const config = order.config_account || {};
         const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
+        const packagePaymentType = order.package?.payment_type === 'postpay' ? 'postpay' : 'prepay';
         setSelectedOrder(order);
 
         const configAccounts = config.accounts;
         if (Array.isArray(configAccounts) && configAccounts.length > 0) {
             setUseAccountsStructure(true);
             setAccounts(configAccounts.map(cleanAccountData));
-            setPaymentType((config.payment_type as string) || '');
+            setPaymentType(packagePaymentType);
         } else {
             setUseAccountsStructure(false);
             setMetaEmail((config.meta_email as string) || '');
@@ -60,7 +61,7 @@ export const useServiceOrderEditConfigDialog = () => {
             setBmId((config.bm_id as string) || '');
             setInfoFanpage(isGoogle ? '' : (config.info_fanpage as string) || '');
             setInfoWebsite(isGoogle ? '' : (config.info_website as string) || '');
-            setPaymentType((config.payment_type as string) || '');
+            setPaymentType(packagePaymentType);
             setAssetAccess(((config.asset_access as 'full_asset' | 'basic_asset') || 'full_asset'));
             setTimezoneBm((config.timezone_bm as string) || '');
         }
@@ -83,7 +84,7 @@ export const useServiceOrderEditConfigDialog = () => {
         };
 
         const payload: UpdateConfigPayload = {
-            payment_type: paymentType || undefined,
+            payment_type: selectedOrder.package?.payment_type === 'postpay' ? 'postpay' : 'prepay',
         };
 
         if (useAccountsStructure && accounts.length > 0) {
@@ -150,4 +151,3 @@ export const useServiceOrderEditConfigDialog = () => {
         handleSubmitUpdate,
     };
 };
-

@@ -98,8 +98,8 @@ class ServicesBillPostpay extends Command
 
                         // Thu phí mở tài khoản ở kỳ postpay đầu tiên
                         $paymentType = $config['payment_type'] ?? 'prepay';
-                        $openFeePaid = $config['open_fee_paid'] ?? ($paymentType === 'prepay');
-                        $openFee = (!$openFeePaid && $paymentType === 'postpay') ? (float) $package->open_fee : 0;
+                        $openFeePaid = true;
+                        $openFee = 0;
 
                         $chargeAmount = $monthlyFee + $openFee;
                         if ($chargeAmount <= 0) {
@@ -352,4 +352,3 @@ class ServicesBillPostpay extends Command
         }
     }
 }
-

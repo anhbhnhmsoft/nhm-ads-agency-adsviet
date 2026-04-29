@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Common\Constants\User\UserRole;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
@@ -94,13 +95,15 @@ class ServiceUserService
             }
 
             $platform = $serviceUser->package->platform ?? null;
+            $packagePaymentType = $this->resolvePackagePaymentType($serviceUser->package?->payment_type);
+            $paymentType = $this->resolveConfigPaymentType($currentConfig['payment_type'] ?? null, $packagePaymentType);
 
             if (is_array($config['accounts']) && !empty($config['accounts'])) {
                 $accounts = $config['accounts'];
                 
                 $newConfig = array_merge($currentConfig, [
                     'accounts' => $accounts,
-                    'payment_type' => $config['payment_type'] ?? ($currentConfig['payment_type'] ?? 'prepay'),
+                    'payment_type' => $paymentType,
                 ]);
                 
                 // Lưu bm_id vào google_manager_id nếu là Google Ads
@@ -140,6 +143,7 @@ class ServiceUserService
                     'uid' => $config['uid'] ?? ($currentConfig['uid'] ?? null),
                     'account_name' => $config['account_name'] ?? ($currentConfig['account_name'] ?? null),
                     'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
+                    'payment_type' => $paymentType,
                 ]);
 
                 if ($platform === PlatformType::GOOGLE->value) {
@@ -378,10 +382,13 @@ class ServiceUserService
                 $currentConfig = [];
             }
 
+            $packagePaymentType = $this->resolvePackagePaymentType($serviceUser->package?->payment_type);
+            $paymentType = $this->resolveConfigPaymentType($currentConfig['payment_type'] ?? null, $packagePaymentType);
+
             if (is_array($config['accounts']) && !empty($config['accounts'])) {
                 $serviceUser->config_account = array_merge($currentConfig, array_filter([
                     'accounts' => $config['accounts'],
-                    'payment_type' => $config['payment_type'] ?? null,
+                    'payment_type' => $paymentType,
                 ], fn($value) => $value !== null));
             } else {
                 $serviceUser->config_account = array_merge($currentConfig, array_filter([
@@ -393,7 +400,7 @@ class ServiceUserService
                     'timezone_bm' => $config['timezone_bm'] ?? null,
                     'info_fanpage' => $config['info_fanpage'] ?? null,
                     'info_website' => $config['info_website'] ?? null,
-                    'payment_type' => $config['payment_type'] ?? null,
+                    'payment_type' => $paymentType,
                 ], fn($value) => $value !== null));
             }
             $serviceUser->save();
@@ -476,6 +483,24 @@ class ServiceUserService
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
+    }
+
+    private function resolvePackagePaymentType(?string $paymentType): string
+    {
+        if (in_array($paymentType, ServicePackagePaymentType::getValues(), true)) {
+            return $paymentType;
+        }
+
+        return ServicePackagePaymentType::PREPAY->value;
+    }
+
+    private function resolveConfigPaymentType(?string $paymentType, string $fallback): string
+    {
+        if (in_array($paymentType, ServicePackagePaymentType::getValues(), true)) {
+            return $paymentType;
+        }
+
+        return $fallback;
     }
 
 }

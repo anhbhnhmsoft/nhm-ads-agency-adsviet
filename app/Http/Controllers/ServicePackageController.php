@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServicePackage\ServicePackageFeature;
+use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Common\Constants\User\UserRole;
 use App\Common\Helpers\TimezoneHelper;
 use App\Core\Controller;
@@ -59,14 +60,10 @@ class ServicePackageController extends Controller
      */
     public function createView(): \Inertia\Response
     {
-        $allUsersResult = $this->userService->getUsersByRoles([
-            UserRole::AGENCY->value,
-            UserRole::CUSTOMER->value,
-        ]);
-        $allUsers = $allUsersResult->isError() ? [] : $allUsersResult->getData();
-
         $suppliersResult = $this->supplierService->getAllActiveSuppliers();
         $suppliers = $suppliersResult->isError() ? [] : $suppliersResult->getData();
+        $usersResult = $this->userService->getUsersByRoles([UserRole::AGENCY->value, UserRole::CUSTOMER->value]);
+        $allUsers = $usersResult->isError() ? [] : $usersResult->getData();
 
         return $this->rendering(
             view: 'service-package/create',
@@ -75,8 +72,8 @@ class ServicePackageController extends Controller
                 'google_features' => ServicePackageFeature::getOptionsByPlatform('google'),
                 'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
                 'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
-                'all_users' => $allUsers,
                 'suppliers' => $suppliers,
+                'all_users' => $allUsers,
             ]
         );
     }
@@ -95,6 +92,9 @@ class ServicePackageController extends Controller
             // description: cho phép độ dài lớn, không giới hạn ở 255 ký tự nữa
             'description' => ['required', 'string'],
             'platform' => ['required', Rule::in(PlatformType::getValues())],
+            'payment_type' => ['required', 'string', Rule::in(ServicePackagePaymentType::getValues())],
+            'allowed_user_ids' => ['nullable', 'array'],
+            'allowed_user_ids.*' => ['string', 'exists:users,id'],
             'features' => ['required', 'array'],
             'monthly_spending_fee_structure' => ['nullable', 'array'],
             'monthly_spending_fee_structure.*.range' => ['required_with:monthly_spending_fee_structure', 'string', 'max:255'],
@@ -107,8 +107,6 @@ class ServicePackageController extends Controller
             'set_up_time' => ['required', 'numeric', 'min:0'],
             'disabled' => ['required', 'boolean'],
             'cashback_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'postpay_user_ids' => ['nullable', 'array'],
-            'postpay_user_ids.*' => ['string'],
         ],
             [
             'name.required' => __('services.validation.name_invalid'),
@@ -117,6 +115,8 @@ class ServicePackageController extends Controller
             'description.string' => __('services.validation.description_invalid'),
             'platform.required' => __('services.validation.platform_invalid'),
             'platform.in' => __('services.validation.platform_invalid'),
+            'payment_type.required' => __('common_validation.required'),
+            'payment_type.in' => __('common_validation.in'),
             'features.required' => __('services.validation.features_invalid'),
             'monthly_spending_fee_structure.array' => __('services.validation.monthly_spending_fee_invalid'),
             'monthly_spending_fee_structure.*.range.required_with' => __('services.validation.monthly_spending_fee_invalid'),
@@ -135,7 +135,6 @@ class ServicePackageController extends Controller
             'cashback_percent.numeric' => __('services.validation.cashback_percent_numeric', ['default' => 'Tỷ lệ cashback phải là số']),
             'cashback_percent.min' => __('services.validation.cashback_percent_min', ['default' => 'Tỷ lệ cashback không được nhỏ hơn 0']),
             'cashback_percent.max' => __('services.validation.cashback_percent_max', ['default' => 'Tỷ lệ cashback không được lớn hơn 100']),
-            'postpay_user_ids.array' => __('services.validation.postpay_user_ids_invalid', ['default' => 'Danh sách người dùng được phép trả sau không hợp lệ']),
         ]
         );
         //logic validate features
@@ -185,27 +184,11 @@ class ServicePackageController extends Controller
             }
         }
 
-        $postpayUserIds = $request->input('postpay_user_ids', []);
-        if (!is_array($postpayUserIds)) {
-            $postpayUserIds = [];
-        }
-
         // Tạo service package
         $result = $this->servicePackageService->createServicePackage($form);
 
         // Xử lý kết quả
         if($result->isSuccess()){
-            $packageId = $result->getData()->id;
-            
-            // Đồng bộ danh sách users được phép trả sau
-            if (!empty($postpayUserIds)) {
-                $syncResult = $this->servicePackageService->syncPostpayUsers($packageId, $postpayUserIds);
-                if ($syncResult->isError()) {
-                    FlashMessage::error($syncResult->getMessage());
-                    return redirect()->back()->withInput();
-                }
-            }
-
             FlashMessage::success(__('common_success.add_success'));
             return redirect()->route('service_packages_index');
         }else{
@@ -226,19 +209,12 @@ class ServicePackageController extends Controller
             FlashMessage::error($result->getMessage());
             return redirect()->route('service_packages_index');
         }
-        // Lấy danh sách users được phép trả sau
-        $postpayUsersResult = $this->servicePackageService->getPostpayUserIds($id);
-        $postpayUserIds = $postpayUsersResult->isError() ? [] : $postpayUsersResult->getData();
-
-        // Lấy danh sách users theo roles (AGENCY và CUSTOMER)
-        $allUsersResult = $this->userService->getUsersByRoles([
-            UserRole::AGENCY->value,
-            UserRole::CUSTOMER->value,
-        ]);
-        $allUsers = $allUsersResult->isError() ? [] : $allUsersResult->getData();
-
         $suppliersResult = $this->supplierService->getAllActiveSuppliers();
         $suppliers = $suppliersResult->isError() ? [] : $suppliersResult->getData();
+        $usersResult = $this->userService->getUsersByRoles([UserRole::AGENCY->value, UserRole::CUSTOMER->value]);
+        $allUsers = $usersResult->isError() ? [] : $usersResult->getData();
+        $allowedResult = $this->servicePackageService->getAllowedUserIds($id);
+        $allowedUserIds = $allowedResult->isError() ? [] : $allowedResult->getData();
 
         return $this->rendering(
             view: 'service-package/edit',
@@ -247,10 +223,12 @@ class ServicePackageController extends Controller
                 'google_features' => ServicePackageFeature::getOptionsByPlatform('google'),
                 'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
                 'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
-                'service_package' => fn () => ServicePackageResource::make($result->getData())->toArray(request()),
-                'all_users' => $allUsers,
-                'postpay_user_ids' => $postpayUserIds,
+                'service_package' => fn () => array_merge(
+                    ServicePackageResource::make($result->getData())->toArray(request()),
+                    ['allowed_user_ids' => $allowedUserIds]
+                ),
                 'suppliers' => $suppliers,
+                'all_users' => $allUsers,
             ]
         );
     }
@@ -269,6 +247,9 @@ class ServicePackageController extends Controller
                 'name' => ['required', 'string', 'max:255'],
                 'description' => ['required', 'string'],
                 'platform' => ['required', Rule::in(PlatformType::getValues())],
+                'payment_type' => ['required', 'string', Rule::in(ServicePackagePaymentType::getValues())],
+                'allowed_user_ids' => ['nullable', 'array'],
+                'allowed_user_ids.*' => ['string', 'exists:users,id'],
                 'features' => ['required', 'array'],
                 'monthly_spending_fee_structure' => ['nullable', 'array'],
                 'monthly_spending_fee_structure.*.range' => ['required_with:monthly_spending_fee_structure', 'string', 'max:255'],
@@ -277,6 +258,7 @@ class ServicePackageController extends Controller
                 'range_min_top_up' => ['required', 'numeric', 'min:0'],
                 'top_up_fee' => ['required', 'numeric', 'min:0'],
                 'supplier_fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+                'supplier_id' => ['nullable', 'string', 'exists:suppliers,id'],
                 'set_up_time' => ['required', 'numeric', 'min:0'],
                 'disabled' => ['required', 'boolean'],
                 'cashback_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -288,6 +270,8 @@ class ServicePackageController extends Controller
                 'description.string' => __('services.validation.description_invalid'),
                 'platform.required' => __('services.validation.platform_invalid'),
                 'platform.in' => __('services.validation.platform_invalid'),
+                'payment_type.required' => __('common_validation.required'),
+                'payment_type.in' => __('common_validation.in'),
                 'features.required' => __('services.validation.features_invalid'),
                 'monthly_spending_fee_structure.array' => __('services.validation.monthly_spending_fee_invalid'),
                 'monthly_spending_fee_structure.*.range.required_with' => __('services.validation.monthly_spending_fee_invalid'),
@@ -359,23 +343,11 @@ class ServicePackageController extends Controller
             }
         }
 
-        $postpayUserIds = $request->input('postpay_user_ids', []);
-        if (!is_array($postpayUserIds)) {
-            $postpayUserIds = [];
-        }
-
         // Cập nhật service package
         $result = $this->servicePackageService->updateServicePackage($id, $form);
 
         // Xử lý kết quả
         if($result->isSuccess()){
-            // Đồng bộ danh sách users được phép trả sau
-            $syncResult = $this->servicePackageService->syncPostpayUsers($id, $postpayUserIds);
-            if ($syncResult->isError()) {
-                FlashMessage::error($syncResult->getMessage());
-                return redirect()->back()->withInput();
-            }
-
             FlashMessage::success(__('common_success.update_success'));
             return redirect()->route('service_packages_index');
         }else{

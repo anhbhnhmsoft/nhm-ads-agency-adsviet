@@ -25,7 +25,7 @@ class ServiceOrderResource extends JsonResource
         // Tính tổng chi phí
         $totalCost   = 0.0;
         $config      = $this->config_account ?? [];
-        $paymentType = strtolower($config['payment_type'] ?? 'prepay');
+        $paymentType = strtolower($package?->payment_type ?? ($config['payment_type'] ?? 'prepay'));
         $topUpAmount = isset($config['top_up_amount']) ? (float) $config['top_up_amount'] : 0.0;
         $serviceFee  = 0.0;
 
@@ -56,6 +56,7 @@ class ServiceOrderResource extends JsonResource
                 'id' => $package?->id,
                 'name' => $package?->name,
                 'platform' => $package?->platform,
+                'payment_type' => $package?->payment_type ?? 'prepay',
                 'platform_label' => $package ? PlatformType::tryFrom((int) $package->platform)?->label() : null,
             ],
             'user' => [
@@ -74,4 +75,3 @@ class ServiceOrderResource extends JsonResource
         ];
     }
 }
-

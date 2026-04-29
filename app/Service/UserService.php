@@ -611,7 +611,7 @@ class UserService
     }
 
     /**
-     * Lấy danh sách users để chọn cho postpay
+     * Lấy danh sách users theo role.
      */
     public function getUsersByRoles(array $roles): ServiceReturn
     {

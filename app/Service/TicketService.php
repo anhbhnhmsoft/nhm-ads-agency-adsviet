@@ -8,6 +8,7 @@ use App\Common\Constants\Ticket\TicketPriority;
 use App\Common\Constants\Ticket\TicketReplySide;
 use App\Common\Constants\Ticket\TicketStatus;
 use App\Common\Constants\User\UserRole;
+use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
@@ -19,6 +20,8 @@ use App\Repositories\UserRepository;
 use App\Repositories\MetaAccountRepository;
 use App\Repositories\GoogleAccountRepository;
 use App\Repositories\ServiceUserRepository;
+use App\Repositories\ServicePackageAllowedUserRepository;
+use App\Repositories\ServicePackageRepository;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Service\TelegramService;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -34,6 +37,8 @@ class TicketService
         protected MetaAccountRepository $metaAccountRepository,
         protected GoogleAccountRepository $googleAccountRepository,
         protected ServiceUserRepository $serviceUserRepository,
+        protected ServicePackageAllowedUserRepository $servicePackageAllowedUserRepository,
+        protected ServicePackageRepository $servicePackageRepository,
         protected UserWalletTransactionRepository $transactionRepository,
         protected TelegramService $telegramService,
     ) {
@@ -876,6 +881,35 @@ class TicketService
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
+            $package = $this->servicePackageRepository->find($data['package_id']);
+            if (!$package) {
+                return ServiceReturn::error(message: __('common_error.not_found'));
+            }
+
+            $packagePaymentType = $package->payment_type ?? ServicePackagePaymentType::PREPAY->value;
+            if (!in_array($packagePaymentType, ServicePackagePaymentType::getValues(), true)) {
+                $packagePaymentType = ServicePackagePaymentType::PREPAY->value;
+            }
+
+            $requestedPaymentType = $data['payment_type'] ?? $packagePaymentType;
+            if (!in_array($requestedPaymentType, ServicePackagePaymentType::getValues(), true)) {
+                $requestedPaymentType = $packagePaymentType;
+            }
+
+            $canUsePostpay = $packagePaymentType === ServicePackagePaymentType::POSTPAY->value
+                || $this->servicePackageAllowedUserRepository->isUserAllowed($package->id, $user->id);
+            if ($requestedPaymentType === ServicePackagePaymentType::POSTPAY->value && !$canUsePostpay) {
+                return ServiceReturn::error(message: __('services.validation.postpay_not_allowed'));
+            }
+
+            $paymentType = $packagePaymentType === ServicePackagePaymentType::POSTPAY->value
+                ? ServicePackagePaymentType::POSTPAY->value
+                : $requestedPaymentType;
+            $data['payment_type'] = $paymentType;
+            if ($paymentType === ServicePackagePaymentType::POSTPAY->value) {
+                $data['top_up_amount'] = 0;
+            }
+
             // Tạo description từ notes (user mô tả vấn đề)
             $description = $data['notes'] ?? '';
 
@@ -883,6 +917,8 @@ class TicketService
             $configAccount = [];
             if (isset($data['accounts']) && is_array($data['accounts']) && !empty($data['accounts'])) {
                 $configAccount['accounts'] = $data['accounts'];
+                $configAccount['payment_type'] = $data['payment_type'];
+                $configAccount['top_up_amount'] = $data['top_up_amount'] ?? 0;
             } else {
                 $allowedKeys = [
                     'meta_email',
@@ -965,4 +1001,3 @@ class TicketService
         }
     }
 }
-

@@ -15,6 +15,7 @@ class ServicePackage extends Model
         'id',
         'name',
         'platform',
+        'payment_type',
         'features',
         'monthly_spending_fee_structure',
         'open_fee',
@@ -31,6 +32,7 @@ class ServicePackage extends Model
     protected $casts = [
         'id' => 'string',
         'platform' => 'integer',
+        'payment_type' => 'string',
         'features' => 'array',
         'monthly_spending_fee_structure' => 'array',
         'open_fee' => 'decimal:8',
@@ -47,14 +49,13 @@ class ServicePackage extends Model
         return $this->hasMany(ServiceUser::class, 'package_id');
     }
 
-    public function postpayUsers()
-    {
-        return $this->belongsToMany(User::class, 'service_package_postpay_users', 'service_package_id', 'user_id')
-            ->withTimestamps();
-    }
-
     public function supplier()
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');
+    }
+
+    public function allowedUsers()
+    {
+        return $this->hasMany(ServicePackageAllowedUser::class, 'service_package_id');
     }
 }

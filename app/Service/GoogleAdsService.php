@@ -2879,6 +2879,9 @@ GAQL;
             foreach ($accounts as $account) {
                 try {
                     $balance = (float) ($account->balance ?? 0);
+                    if ($balance <= 0) {
+                        continue;
+                    }
 
                     // Kiểm tra nếu số dư thấp hơn ngưỡng an toàn (cảnh báo số dư thấp)
                     if ($balance < $threshold) {
@@ -3021,4 +3024,3 @@ GAQL;
         }
     }
 }
-

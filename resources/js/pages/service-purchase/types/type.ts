@@ -11,6 +11,8 @@ export type ServicePackage = {
     name: string;
     description: string;
     platform: number;
+    payment_type: 'prepay' | 'postpay';
+    can_use_postpay?: boolean;
     features: ServicePackageFeatureValue[];
     open_fee: string;
     top_up_fee: number;
@@ -35,7 +37,4 @@ export type ServicePurchasePageProps = {
     postpay_min_balance?: number;
     meta_timezones?: TimezoneOption[];
     google_timezones?: TimezoneOption[];
-    postpay_permissions?: Record<string, boolean>; // package_id => is_allowed
 };
-
-

@@ -45,6 +45,7 @@ export type ServiceOrder = {
         id?: string | null;
         name?: string | null;
         platform?: number | null;
+        payment_type?: 'prepay' | 'postpay' | null;
         platform_label?: string | null;
     };
     user?: {

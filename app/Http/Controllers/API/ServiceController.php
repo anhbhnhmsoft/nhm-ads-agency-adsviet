@@ -71,6 +71,13 @@ class ServiceController extends Controller
             sortDirection: $params->get('direction'),
         ));
         $pagination = $result->getData();
+        $user = $request->user();
+        if ($user && method_exists($pagination, 'setCollection') && method_exists($pagination, 'getCollection')) {
+            $pagination->setCollection(
+                $this->servicePackageService->filterPackagesForUser($pagination->getCollection(), (int) $user->id)
+            );
+        }
+
         return RestResponse::success(data: ServicePackageResource::collection($pagination)->response()->getData());
     }
 

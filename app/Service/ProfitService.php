@@ -131,7 +131,7 @@ class ProfitService
 
                 // Lấy tất cả service_users của customer này
                 $query = $this->serviceUserRepository->query()
-                    ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
+                    ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
                     ->where('user_id', $customerId)
                     ->whereHas('package');
 
@@ -283,7 +283,7 @@ class ProfitService
             foreach ($platforms as $platformType) {
                 // Lấy service_users theo platform
                 $query = $this->serviceUserRepository->query()
-                    ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
+                    ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
                     ->whereHas('package', function ($q) use ($platformType) {
                         $q->where('platform', $platformType);
                     });
@@ -391,7 +391,7 @@ class ProfitService
 
         // Meta/Facebook
         $query = $this->serviceUserRepository->query()
-            ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
+            ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
             ->where('user_id', $customerId)
             ->whereHas('package', function ($q) {
                 $q->where('platform', PlatformType::META->value);
@@ -442,7 +442,7 @@ class ProfitService
             $itemCost = 0.0;
             if ($supplier) {
                 // Kiểm tra xem user có phải postpay không
-                $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
+                $isPostpay = ($serviceUser->config_account['payment_type'] ?? 'prepay') === 'postpay';
 
                 if ($isPostpay) {
                     // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
@@ -468,7 +468,7 @@ class ProfitService
 
         // Google
         $query = $this->serviceUserRepository->query()
-            ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
+            ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
             ->where('user_id', $customerId)
             ->whereHas('package', function ($q) {
                 $q->where('platform', PlatformType::GOOGLE->value);
@@ -519,7 +519,7 @@ class ProfitService
             $itemCost = 0.0;
             if ($supplier) {
                 // Kiểm tra xem user có phải postpay không
-                $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
+                $isPostpay = ($serviceUser->config_account['payment_type'] ?? 'prepay') === 'postpay';
 
                 if ($isPostpay) {
                     // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
@@ -585,7 +585,7 @@ class ProfitService
 
             // Lấy toàn bộ service_users trong khoảng thời gian
             $query = $this->serviceUserRepository->query()
-                ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
+                ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
                 ->whereBetween('created_at', [$startDate, $endDate])
                 ->whereHas('package');
 
@@ -666,7 +666,7 @@ class ProfitService
                 $itemCost = 0.0;
                 if ($supplier) {
                     // Kiểm tra xem user có phải postpay không
-                    $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
+                    $isPostpay = ($serviceUser->config_account['payment_type'] ?? 'prepay') === 'postpay';
 
                     if ($isPostpay) {
                         // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
@@ -738,7 +738,7 @@ class ProfitService
 
             // Lấy tất cả service_users active
             $serviceUsersQuery = $this->serviceUserRepository->query()
-                ->with(['user:id,name,username,email', 'package:id,platform,name,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent', 'package.postpayUsers:id'])
+                ->with(['user:id,name,username,email', 'package:id,platform,name,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
                 ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
                 ->whereHas('package');
 
@@ -798,7 +798,7 @@ class ProfitService
                 $itemCost = 0.0;
                 if ($supplier) {
                     // Kiểm tra xem user có phải postpay không
-                    $isPostpay = $package->postpayUsers->contains('id', $serviceUser->user_id);
+                    $isPostpay = ($serviceUser->config_account['payment_type'] ?? 'prepay') === 'postpay';
 
                     if ($isPostpay) {
                         // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
@@ -922,4 +922,3 @@ class ProfitService
         }
     }
 }
-
