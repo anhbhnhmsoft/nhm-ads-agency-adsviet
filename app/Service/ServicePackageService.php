@@ -2,22 +2,22 @@
 
 namespace App\Service;
 
+use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
+use App\Repositories\ServicePackageAllowedUserRepository;
 use App\Repositories\ServicePackageRepository;
 use App\Repositories\ServiceUserRepository;
-use App\Repositories\ServicePackagePostpayUserRepository;
-use App\Repositories\UserRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class ServicePackageService
 {
     public function __construct(
         protected ServicePackageRepository $servicePackageRepository,
+        protected ServicePackageAllowedUserRepository $servicePackageAllowedUserRepository,
         protected ServiceUserRepository $serviceUserRepository,
-        protected ServicePackagePostpayUserRepository $servicePackagePostpayUserRepository,
-        protected UserRepository $userRepository,
     )
     {
     }
@@ -62,7 +62,16 @@ class ServicePackageService
     public function createServicePackage(array $form): ServiceReturn
     {
         try {
+            $allowedUserIds = $this->extractAllowedUserIds($form);
+            unset($form['allowed_user_ids']);
+
             $data = $this->servicePackageRepository->create($form);
+            $this->syncAllowedUsersForPaymentType(
+                servicePackageId: $data->id,
+                paymentType: $data->payment_type,
+                allowedUserIds: $allowedUserIds
+            );
+
             return ServiceReturn::success(
                 data: $data,
             );
@@ -109,7 +118,17 @@ class ServicePackageService
             if (!$data) {
                 return ServiceReturn::error(__('common_error.not_found'));
             }
+
+            $allowedUserIds = $this->extractAllowedUserIds($form);
+            unset($form['allowed_user_ids']);
+
             $data->update($form);
+            $this->syncAllowedUsersForPaymentType(
+                servicePackageId: $data->id,
+                paymentType: $data->payment_type,
+                allowedUserIds: $allowedUserIds
+            );
+
             return ServiceReturn::success(data: $data);
         } catch (\Exception $exception) {
             Logging::error(
@@ -170,52 +189,59 @@ class ServicePackageService
         }
     }
 
-    /**
-     * Lấy danh sách user IDs được phép trả sau cho gói dịch vụ
-     */
-    public function getPostpayUserIds(int|string $packageId): ServiceReturn
+    public function getAllowedUserIds(string $id): ServiceReturn
     {
         try {
-            $userIds = $this->servicePackagePostpayUserRepository->getPostpayUserIdsByPackageId($packageId);
-            return ServiceReturn::success(data: $userIds);
+            return ServiceReturn::success(
+                data: $this->servicePackageAllowedUserRepository->getAllowedUserIdsByPackageId($id)
+            );
         } catch (\Exception $exception) {
             Logging::error(
-                message: 'Lỗi lấy danh sách postpay users ServicePackageService@getPostpayUserIds: ' . $exception->getMessage(),
+                message: 'ServicePackageService@getAllowedUserIds error: ' . $exception->getMessage(),
                 exception: $exception
             );
             return ServiceReturn::error(__('common_error.server_error'));
         }
     }
 
-    /**
-     * Đồng bộ danh sách users được phép trả sau cho gói dịch vụ
-     */
-    public function syncPostpayUsers(int|string $packageId, array $userIds): ServiceReturn
+    public function canUserUsePostpay(object $package, int|string $userId): bool
     {
-        try {
-            // Kiểm tra package tồn tại
-            $package = $this->servicePackageRepository->find($packageId);
-            if (!$package) {
-                return ServiceReturn::error(__('common_error.not_found'));
-            }
-
-            $userIdsAsString = array_map(fn($id) => (string)$id, $userIds);
-            $this->servicePackagePostpayUserRepository->syncPostpayUsers($packageId, $userIdsAsString);
-            return ServiceReturn::success();
-        } catch (\Exception $exception) {
-            Logging::error(
-                message: 'Lỗi đồng bộ postpay users ServicePackageService@syncPostpayUsers: ' . $exception->getMessage(),
-                exception: $exception
-            );
-            return ServiceReturn::error(__('common_error.server_error'));
+        $paymentType = $package->payment_type ?? ServicePackagePaymentType::PREPAY->value;
+        if ($paymentType === ServicePackagePaymentType::POSTPAY->value) {
+            return true;
         }
+
+        return $this->servicePackageAllowedUserRepository->isUserAllowed($package->id, $userId);
     }
 
-    /**
-     * Kiểm tra user có được phép trả sau cho gói dịch vụ không
-     */
-    public function isUserAllowedPostpay(int|string $packageId, int|string $userId): bool
+    public function filterPackagesForUser(iterable $packages, int|string $userId): Collection
     {
-        return $this->servicePackagePostpayUserRepository->isUserAllowedPostpay($packageId, $userId);
+        return collect($packages)
+            ->map(function ($package) use ($userId) {
+                $package->setAttribute('can_use_postpay', $this->canUserUsePostpay($package, $userId));
+
+                return $package;
+            })
+            ->values();
     }
+
+    private function extractAllowedUserIds(array $form): array
+    {
+        return collect($form['allowed_user_ids'] ?? [])
+            ->filter(fn ($userId) => $userId !== null && $userId !== '')
+            ->map(fn ($userId) => (string) $userId)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function syncAllowedUsersForPaymentType(int|string $servicePackageId, ?string $paymentType, array $allowedUserIds): void
+    {
+        if ($paymentType !== ServicePackagePaymentType::PREPAY->value) {
+            $allowedUserIds = [];
+        }
+
+        $this->servicePackageAllowedUserRepository->syncAllowedUsers($servicePackageId, $allowedUserIds);
+    }
+
 }

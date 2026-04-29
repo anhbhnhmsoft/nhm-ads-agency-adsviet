@@ -6,7 +6,6 @@ export type CreateAccountPageProps = {
     packages: ServicePackage[];
     meta_timezones: Array<{ value: string; label: string }>;
     google_timezones: Array<{ value: string; label: string }>;
-    postpay_permissions?: Record<string, boolean>;
 };
 
 export type CreateAccountFormData = {

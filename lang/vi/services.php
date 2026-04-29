@@ -29,6 +29,7 @@ return [
         'bm_id_max' => 'Business Manager ID không được vượt quá :max ký tự',
         'monthly_spending_fee_invalid' => 'Cấu trúc phí theo mức chi tiêu hằng tháng không hợp lệ',
         'package_in_use' => 'Gói dịch vụ đang được sử dụng, không thể xóa.',
+        'package_not_allowed' => 'Bạn không được phép sử dụng gói dịch vụ này.',
         'postpay_min_wallet' => 'Ví của bạn cần tối thiểu :amount USDT để đăng ký trả sau.',
         'postpay_not_allowed' => 'Bạn không được phép sử dụng hình thức trả sau cho gói dịch vụ này.',
         'cashback_percent_numeric' => 'Tỉ lệ cashback phải là số',

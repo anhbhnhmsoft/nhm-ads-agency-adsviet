@@ -70,6 +70,7 @@ export const useServiceOrderAdminDialog = () => {
         const config = order.config_account || {};
         setSelectedOrder(order);
         const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
+        const packagePaymentType = order.package?.payment_type === 'postpay' ? 'postpay' : 'prepay';
         const configAccounts = config.accounts;
 
         if (Array.isArray(configAccounts) && configAccounts.length > 0) {
@@ -88,7 +89,7 @@ export const useServiceOrderAdminDialog = () => {
                 bm_id: '',
                 info_fanpage: '',
                 info_website: '',
-                payment_type: (config.payment_type as string) || '',
+                payment_type: packagePaymentType,
                 asset_access: 'full_asset',
                 timezone_bm: '',
                 accounts: cleanedAccounts,
@@ -107,7 +108,7 @@ export const useServiceOrderAdminDialog = () => {
                 bm_id: bmIdValue,
                 info_fanpage: isGoogle ? '' : typedConfig.info_fanpage || '',
                 info_website: isGoogle ? '' : typedConfig.info_website || '',
-                payment_type: typedConfig.payment_type || '',
+                payment_type: packagePaymentType,
                 asset_access: typedConfig.asset_access || 'full_asset',
                 timezone_bm: typedConfig.timezone_bm || '',
                 accounts: [],
@@ -147,7 +148,7 @@ export const useServiceOrderAdminDialog = () => {
             bm_id: form.data.bm_id,
             child_bm_id: (selectedChildBmId === 'none' || !selectedChildBmId) ? null : selectedChildBmId,
             accounts: accountsToSubmit,
-            payment_type: form.data.payment_type || 'prepay',
+            payment_type: selectedOrder.package?.payment_type === 'postpay' ? 'postpay' : 'prepay',
         }));
 
         form.post(
@@ -227,4 +228,3 @@ export const useServiceOrderAdminDialog = () => {
         handleSubmitApprove,
     };
 };
-

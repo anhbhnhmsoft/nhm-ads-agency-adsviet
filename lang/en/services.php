@@ -29,7 +29,9 @@ return [
         'bm_id_max' => 'Business Manager ID may not exceed :max characters.',
         'monthly_spending_fee_invalid' => 'Monthly spending & fee structure is invalid.',
         'package_in_use' => 'This package is in use and cannot be deleted.',
+        'package_not_allowed' => 'You are not allowed to use this service package.',
         'postpay_min_wallet' => 'Your wallet must have at least :amount USDT to use postpaid.',
+        'postpay_not_allowed' => 'You are not allowed to use postpaid payment for this service package.',
     ],
     'flash' => [
         'purchase_success' => 'Successfully created the order and deducted from the wallet.',
@@ -39,4 +41,3 @@ return [
         'config_update_success' => 'Account configuration updated.',
     ],
 ];
-

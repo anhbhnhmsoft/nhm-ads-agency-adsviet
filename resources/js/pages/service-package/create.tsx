@@ -13,25 +13,22 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { _PlatformType } from '@/lib/types/constants';
+import UserMultiSelect from '@/pages/service-package/components/user-multi-select';
 import { DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE, useFormCreateServicePackage } from '@/pages/service-package/hooks/use-form';
-import { ServicePackageOption } from '@/pages/service-package/types/type';
+import { ServicePackageOption, SupplierOption, UserOption } from '@/pages/service-package/types/type';
 import { service_packages_index } from '@/routes';
 import { ReactNode, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Trash2, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { UserSelect } from '@/components/user-select';
-import { UserOption } from '@/pages/service-package/types/type';
-
-import { SupplierOption } from '@/pages/service-package/types/type';
 
 type Props = {
     meta_features: ServicePackageOption[];
     google_features: ServicePackageOption[];
-    all_users?: UserOption[];
     suppliers?: SupplierOption[];
+    all_users?: UserOption[];
 };
-const Create = ({ meta_features, google_features, all_users = [], suppliers = [] }: Props) => {
+const Create = ({ meta_features, google_features, suppliers = [], all_users = [] }: Props) => {
     const { t } = useTranslation();
 
     const { form, submit } = useFormCreateServicePackage();
@@ -246,22 +243,6 @@ const Create = ({ meta_features, google_features, all_users = [], suppliers = []
                     )}
                 </div>
 
-                {/* Description */}
-                <div className="flex flex-col gap-2 md:col-span-2">
-                    <Label>{t('service_packages.description')}</Label>
-                    <Textarea
-                        value={data.description || ''}
-                        placeholder={t('service_packages.description')}
-                        onChange={(e) => setData('description', e.target.value)}
-                        required
-                    />
-                    {errors.description && (
-                        <span className="text-sm text-red-500">
-                            {errors.description}
-                        </span>
-                    )}
-                </div>
-
                 {/* Supplier */}
                 <div className="flex flex-col gap-2">
                     <Label>{t('service_packages.supplier', { defaultValue: 'Nhà cung cấp' })}</Label>
@@ -287,6 +268,76 @@ const Create = ({ meta_features, google_features, all_users = [], suppliers = []
                     {errors.supplier_id && (
                         <span className="text-sm text-red-500">
                             {errors.supplier_id}
+                        </span>
+                    )}
+                </div>
+
+                {/* Payment type */}
+                <div className="flex flex-col gap-2">
+                    <Label>{t('service_packages.payment_type')}</Label>
+                    <Select
+                        value={data.payment_type}
+                        onValueChange={(value) => {
+                            const paymentType = value as 'prepay' | 'postpay';
+                            setData('payment_type', paymentType);
+                            if (paymentType === 'postpay') {
+                                setData('allowed_user_ids', []);
+                            }
+                        }}
+                        required
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder={t('service_packages.payment_type')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                <SelectItem value="prepay">
+                                    {t('service_packages.payment_type_prepay')}
+                                </SelectItem>
+                                <SelectItem value="postpay">
+                                    {t('service_packages.payment_type_postpay')}
+                                </SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    {errors.payment_type && (
+                        <span className="text-sm text-red-500">
+                            {errors.payment_type}
+                        </span>
+                    )}
+                </div>
+
+                {data.payment_type === 'prepay' && (
+                    <div className="flex flex-col gap-2 md:col-span-2">
+                        <Label>{t('service_packages.allowed_users_label')}</Label>
+                        <p className="text-sm text-muted-foreground">
+                            {t('service_packages.allowed_users_description')}
+                        </p>
+                        <UserMultiSelect
+                            users={all_users}
+                            value={data.allowed_user_ids}
+                            onChange={(ids) => setData('allowed_user_ids', ids)}
+                        />
+                        {errors.allowed_user_ids && (
+                            <span className="text-sm text-red-500">
+                                {errors.allowed_user_ids}
+                            </span>
+                        )}
+                    </div>
+                )}
+
+                {/* Description */}
+                <div className="flex flex-col gap-2 md:col-span-2">
+                    <Label>{t('service_packages.description')}</Label>
+                    <Textarea
+                        value={data.description || ''}
+                        placeholder={t('service_packages.description')}
+                        onChange={(e) => setData('description', e.target.value)}
+                        required
+                    />
+                    {errors.description && (
+                        <span className="text-sm text-red-500">
+                            {errors.description}
                         </span>
                     )}
                 </div>
@@ -708,35 +759,6 @@ const Create = ({ meta_features, google_features, all_users = [], suppliers = []
                     )}
                 </div>
             )}
-
-            {/* Section chọn users được phép trả sau */}
-            <div className="space-y-4 rounded-lg border p-4">
-                <div>
-                    <h3 className="text-lg font-semibold mb-2">
-                        {t('service_packages.postpay_users_title', { defaultValue: 'Người dùng được phép trả sau' })}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                        {t('service_packages.postpay_users_description', { 
-                            defaultValue: 'Chọn các người dùng được phép sử dụng hình thức trả sau cho gói dịch vụ này. Nếu không chọn ai, tất cả người dùng đều không thể trả sau.' 
-                        })}
-                    </p>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="postpay_user_ids">
-                        {t('service_packages.postpay_users_label', { defaultValue: 'Chọn người dùng' })}
-                    </Label>
-                    <UserSelect
-                        id="postpay_user_ids"
-                        value={data.postpay_user_ids || []}
-                        onValueChange={(value) => setData('postpay_user_ids', value)}
-                        options={all_users}
-                        placeholder={t('service_packages.postpay_users_placeholder', { defaultValue: 'Chọn người dùng được phép trả sau' })}
-                    />
-                    {errors.postpay_user_ids && (
-                        <p className="text-sm text-red-500">{errors.postpay_user_ids}</p>
-                    )}
-                </div>
-            </div>
 
             <Button type="submit" disabled={processing}>
                 {t('common.save')}

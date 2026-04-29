@@ -23,6 +23,8 @@ export const useFormCreateServicePackage = () => {
         name: '',
         description: null,
         platform: _PlatformType.META,
+        payment_type: 'prepay',
+        allowed_user_ids: [],
         features: [],
         open_fee: '0',
         range_min_top_up: '0',
@@ -33,7 +35,6 @@ export const useFormCreateServicePackage = () => {
         disabled: false,
         cashback_percent: '0',
         monthly_spending_fee_structure: DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
-        postpay_user_ids: [],
     });
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -47,11 +48,13 @@ export const useFormCreateServicePackage = () => {
     };
 };
 
-export const useFormEditServicePackage = (id: string, item: ServicePackageItem, postpayUserIds: string[] = []) => {
-    const form = useForm<CreateServicePackageForm & { postpay_user_ids?: string[] }>({
+export const useFormEditServicePackage = (id: string, item: ServicePackageItem) => {
+    const form = useForm<CreateServicePackageForm>({
         name: item.name,
         description: item.description,
         platform: item.platform,
+        payment_type: item.payment_type || 'prepay',
+        allowed_user_ids: item.allowed_user_ids || [],
         features: item.features,
         open_fee: item.open_fee,
         range_min_top_up: item.range_min_top_up,
@@ -66,7 +69,6 @@ export const useFormEditServicePackage = (id: string, item: ServicePackageItem, 
                 item.monthly_spending_fee_structure.length > 0
                 ? item.monthly_spending_fee_structure
                 : DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE),
-        postpay_user_ids: postpayUserIds,
     });
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {

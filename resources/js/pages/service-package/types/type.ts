@@ -18,6 +18,8 @@ export type CreateServicePackageForm = {
     name: string;
     description: string | null;
     platform: _PlatformType;
+    payment_type: 'prepay' | 'postpay';
+    allowed_user_ids: string[];
     features: {
         key: string;
         value: boolean | number | string | null;
@@ -31,7 +33,6 @@ export type CreateServicePackageForm = {
     disabled: boolean;
     cashback_percent: string;
     monthly_spending_fee_structure: MonthlySpendingFeeItem[];
-    postpay_user_ids?: string[];
 };
 
 export type ServicePackageFeatureValue = {
@@ -43,6 +44,8 @@ export type ServicePackageItem = {
     id: string;
     name: string;
     platform: _PlatformType;
+    payment_type: 'prepay' | 'postpay';
+    allowed_user_ids?: string[];
     features: ServicePackageFeatureValue[];
     open_fee: string;
     top_up_fee: string;
@@ -60,7 +63,7 @@ export type UserOption = {
     id: string;
     name: string;
     username: string;
-    email: string;
+    email: string | null;
     label: string;
 };
 

@@ -596,25 +596,10 @@ class TicketController extends Controller
         if ($result->isSuccess()) {
             $paginator = $result->getData();
             $items = method_exists($paginator, 'items') ? $paginator->items() : (array) $paginator;
-            $packages = collect($items)
-                ->filter(fn ($pkg) => !$pkg->disabled)
-                ->values();
-        }
-
-        $postpayPermissions = [];
-        foreach ($packages as $package) {
-            $postpayUserIds = $this->servicePackageService->getPostpayUserIds($package->id);
-            if ($postpayUserIds->isError()) {
-                $postpayPermissions[$package->id] = false;
-                continue;
-            }
-
-            $allowedUserIds = $postpayUserIds->getData();
-            if (empty($allowedUserIds)) {
-                $postpayPermissions[$package->id] = false;
-            } else {
-                $postpayPermissions[$package->id] = in_array((string) $user->id, $allowedUserIds);
-            }
+            $packages = $this->servicePackageService->filterPackagesForUser(
+                collect($items)->filter(fn ($pkg) => !$pkg->disabled),
+                (int) $user->id
+            );
         }
 
         $meta_timezones = \App\Common\Helpers\TimezoneHelper::getMetaTimezoneOptions();
@@ -624,7 +609,6 @@ class TicketController extends Controller
             'packages' => fn() => \App\Http\Resources\ServicePackageListResource::collection($packages),
             'meta_timezones' => $meta_timezones,
             'google_timezones' => $google_timezones,
-            'postpay_permissions' => $postpayPermissions,
         ]);
     }
 
@@ -645,4 +629,3 @@ class TicketController extends Controller
             ->with('success', __('ticket.create_account.create_success'));
     }
 }
-

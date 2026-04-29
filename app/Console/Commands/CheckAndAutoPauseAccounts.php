@@ -13,7 +13,7 @@ class CheckAndAutoPauseAccounts extends Command
 {
     protected $signature = 'accounts:check-and-auto-pause';
 
-    protected $description = 'Kiểm tra và tự động tạm dừng tài khoản nếu spending > balance + threshold';
+    protected $description = 'Kiểm tra mỗi 2 phút và tự động tạm dừng tài khoản nếu balance dương nhưng không đạt ngưỡng an toàn';
 
     public function __construct(
         protected GoogleAdsService $googleAdsService,
@@ -78,4 +78,3 @@ class CheckAndAutoPauseAccounts extends Command
         return Command::SUCCESS;
     }
 }
-

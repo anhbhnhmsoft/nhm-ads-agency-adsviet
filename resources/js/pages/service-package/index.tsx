@@ -98,6 +98,20 @@ const Index = ({ paginator }: Props) => {
                 },
             },
             {
+                accessorKey: 'payment_type',
+                header: t('service_packages.payment_type'),
+                cell: ({ row }) => {
+                    const paymentType = row.original.payment_type;
+                    return (
+                        <Badge variant={paymentType === 'postpay' ? 'secondary' : 'default'}>
+                            {paymentType === 'postpay'
+                                ? t('service_packages.payment_type_postpay')
+                                : t('service_packages.payment_type_prepay')}
+                        </Badge>
+                    );
+                },
+            },
+            {
                 accessorKey: 'open_fee',
                 header: t('service_packages.open_fee'),
                 cell: ({ row }) => {
