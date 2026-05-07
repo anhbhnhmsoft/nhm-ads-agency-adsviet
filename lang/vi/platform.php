@@ -46,12 +46,17 @@ return [
         'access_token' => [
             'label' => 'Access Token',
             'placeholder' => 'Nhập Access Token (long-lived)',
-            'description' => 'Long-lived access token hoặc System User Token',
+            'description' => 'Dùng User Access Token của VIA nếu cần lấy tất cả Business portfolios bằng /me/businesses. System User Token chỉ thấy dữ liệu trong BM được cấp.',
+        ],
+        'sync_all_accessible_businesses' => [
+            'label' => 'Đồng bộ tất cả Business portfolios của User token',
+            'placeholder' => '',
+            'description' => 'Bật mục này để gọi /me/businesses và lấy toàn bộ BM mà VIA/User token truy cập được. Khi bật, Business Manager ID bên dưới chỉ để ghi chú và không dùng để giới hạn dữ liệu.',
         ],
         'business_manager_id' => [
             'label' => 'Business Manager ID',
-            'placeholder' => '123456789012345',
-            'description' => 'ID của Business Manager',
+            'placeholder' => 'Để trống nếu muốn lấy tất cả BM của VIA',
+            'description' => 'Chỉ nhập khi muốn khóa dữ liệu trong một BM cụ thể. Để lấy giống SMIT, hãy bật đồng bộ tất cả và dùng User Access Token.',
         ],
         'ad_account_ids' => [
             'label' => 'Ad Account IDs (tùy chọn)',
@@ -63,7 +68,6 @@ return [
         'field_required' => 'Trường :field là bắt buộc.',
         'field_string' => 'Trường :field phải là chuỗi.',
         'field_array' => 'Trường :field phải là mảng.',
+        'field_boolean' => 'Trường :field phải là đúng/sai.',
     ],
 ];
-
-

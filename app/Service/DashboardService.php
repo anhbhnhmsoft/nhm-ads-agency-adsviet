@@ -59,8 +59,11 @@ class DashboardService
 
             if ($metaSettingId) {
                 $setting = $this->platformSettingService->find($metaSettingId)->getData();
-                if ($setting && isset($setting->config['business_manager_id'])) {
-                    $metaQuery->where('business_manager_id', (string) $setting->config['business_manager_id']);
+                $bmId = $setting
+                    ? $this->platformSettingService->getMetaScopedBusinessManagerId($setting->config ?? [])
+                    : null;
+                if ($bmId) {
+                    $metaQuery->where('business_manager_id', $bmId);
                 }
             }
 
@@ -153,4 +156,3 @@ class DashboardService
         }
     }
 }
-

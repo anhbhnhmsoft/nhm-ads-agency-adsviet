@@ -159,6 +159,7 @@
         "settings": "Cấu hình nền tảng",
         "app_or_client_id": "App ID / Client ID",
         "bm_or_login_id": "Business Manager ID / Login Customer ID",
+        "all_accessible_businesses": "Tat ca BM cua VIA",
         "edit_mode": "Đang chỉnh sửa cấu hình ID: {{id}}",
         "open_google_billing": "Mở Billing Google Ads",
         "open_meta_billing": "Mở Billing Meta Ads"

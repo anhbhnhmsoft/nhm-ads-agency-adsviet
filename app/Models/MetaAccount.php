@@ -44,7 +44,7 @@ class MetaAccount extends Model
     }
     public function metaAdsCampaigns()
     {
-        return $this->hasMany(MetaAdsCampaign::class, 'campaign_id');
+        return $this->hasMany(MetaAdsCampaign::class, 'meta_account_id');
     }
 
     /**

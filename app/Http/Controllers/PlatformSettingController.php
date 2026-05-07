@@ -187,14 +187,8 @@ class PlatformSettingController extends Controller
                     );
                 }
             } elseif ($platform === PlatformType::META->value) {
-                $bmId = $config['business_manager_id'] ?? null;
-                if ($bmId) {
-                    SyncMetaPlatformJob::dispatch((string) $bmId, $settingId);
-                } else {
-                    Logging::web(
-                        'PlatformSettingController@syncPlatformAccounts: No business_manager_id, skipping Meta sync'
-                    );
-                }
+                $bmId = $this->platformSettingService->getMetaScopedBusinessManagerId($config);
+                SyncMetaPlatformJob::dispatch($bmId ? (string) $bmId : null, $settingId);
             }
         } catch (\Throwable $e) {
             Logging::error(
@@ -208,5 +202,3 @@ class PlatformSettingController extends Controller
         }
     }
 }
-
-

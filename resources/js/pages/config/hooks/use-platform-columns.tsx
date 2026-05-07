@@ -36,7 +36,9 @@ export function usePlatformColumns({ onEdit }: UsePlatformColumnsProps = {}) {
       cell: ({ row }) => {
         const platform = row.original.platform;
         const cfg = row.original.config || {};
-        const value = platform === 2 ? cfg.business_manager_id : cfg.login_customer_id;
+        const value = platform === 2
+          ? (cfg.sync_all_accessible_businesses ? t('platform.all_accessible_businesses', { defaultValue: 'All VIA businesses' }) : cfg.business_manager_id)
+          : cfg.login_customer_id;
         return <div className="text-sm">{value || '-'}</div>;
       },
     },
@@ -95,5 +97,4 @@ export function usePlatformColumns({ onEdit }: UsePlatformColumnsProps = {}) {
     },
   ], [t, onEdit]);
 }
-
 

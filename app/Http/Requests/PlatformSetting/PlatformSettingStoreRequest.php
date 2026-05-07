@@ -34,6 +34,8 @@ class PlatformSettingStoreRequest extends FormRequest
 
                 if ($field['type'] === 'textarea') {
                     $rules[$key][] = 'array';
+                } elseif ($field['type'] === 'boolean') {
+                    $rules[$key][] = 'boolean';
                 } else {
                     $rules[$key][] = 'string';
                 }
@@ -69,6 +71,10 @@ class PlatformSettingStoreRequest extends FormRequest
                     $messages["{$key}.array"] = __('platform.validation.field_array', [
                         'field' => $field['label']
                     ]);
+                } elseif ($field['type'] === 'boolean') {
+                    $messages["{$key}.boolean"] = __('platform.validation.field_boolean', [
+                        'field' => $field['label']
+                    ]);
                 } else {
                     $messages["{$key}.string"] = __('platform.validation.field_string', [
                         'field' => $field['label']
@@ -80,4 +86,3 @@ class PlatformSettingStoreRequest extends FormRequest
         return $messages;
     }
 }
-

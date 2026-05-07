@@ -50,24 +50,33 @@ class BusinessManagerService
      */
     public function getChildManagersForFilter(): array
     {
-        $activeMetaSetting = $this->platformSettingService->findPlatformActive(PlatformType::META->value)->getData();
-        $activeMetaBmId = $activeMetaSetting ? ($activeMetaSetting->config['business_manager_id'] ?? null) : null;
+        $activeMetaSettingResult = $this->platformSettingService->findPlatformActive(PlatformType::META->value);
+        $activeMetaSetting = $activeMetaSettingResult->isSuccess() ? $activeMetaSettingResult->getData() : null;
+        $activeMetaBmId = $activeMetaSetting
+            ? $this->platformSettingService->getMetaScopedBusinessManagerId($activeMetaSetting->config ?? [])
+            : null;
 
         $metaChildren = [];
-        if ($activeMetaBmId) {
-            $metaChildren = $this->metaBusinessManagerRepository->query()
-                ->whereNotNull('parent_bm_id')
-                ->where('parent_bm_id', $activeMetaBmId)
+        if ($activeMetaSetting) {
+            $metaChildQuery = $this->metaBusinessManagerRepository->query();
+            if ($activeMetaBmId) {
+                $metaChildQuery
+                    ->whereNotNull('parent_bm_id')
+                    ->where('parent_bm_id', $activeMetaBmId);
+            }
+
+            $metaChildren = $metaChildQuery
                 ->get(['bm_id', 'name', 'parent_bm_id'])
                 ->map(fn ($bm) => [
                     'id' => (string) $bm->bm_id,
                     'name' => $bm->name ?? (string) $bm->bm_id,
-                    'parent_id' => (string) $bm->parent_bm_id,
+                    'parent_id' => $bm->parent_bm_id ? (string) $bm->parent_bm_id : '',
                 ])
                 ->toArray();
         }
 
-        $activeGoogleSetting = $this->platformSettingService->findPlatformActive(PlatformType::GOOGLE->value)->getData();
+        $activeGoogleSettingResult = $this->platformSettingService->findPlatformActive(PlatformType::GOOGLE->value);
+        $activeGoogleSetting = $activeGoogleSettingResult->isSuccess() ? $activeGoogleSettingResult->getData() : null;
         $activeGoogleManagerId = $activeGoogleSetting ? ($activeGoogleSetting->config['login_customer_id'] ?? null) : null;
 
         $googleChildren = [];
@@ -128,14 +137,22 @@ class BusinessManagerService
 
                         if ($metaSettingId) {
                             $metaSetting = $this->platformSettingService->find($metaSettingId)->getData();
-                            if ($metaSetting && isset($metaSetting->config['business_manager_id'])) {
-                                $bmId = (string) $metaSetting->config['business_manager_id'];
-                                $subQ->orWhere(function ($metaQ) use ($bmId) {
+                            $metaBmId = $metaSetting
+                                ? $this->platformSettingService->getMetaScopedBusinessManagerId($metaSetting->config ?? [])
+                                : null;
+
+                            if ($metaSetting && !$metaBmId) {
+                                $subQ->orWhere(function ($metaQ) {
+                                    $metaQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::META->value));
+                                });
+                                $hasFilter = true;
+                            } elseif ($metaSetting && $metaBmId) {
+                                $subQ->orWhere(function ($metaQ) use ($metaBmId) {
                                     $metaQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::META->value))
-                                          ->where(function ($jsonQ) use ($bmId) {
-                                              $jsonQ->whereJsonContains('config_account->business_manager_id', $bmId)
-                                                    ->orWhereJsonContains('config_account->bm_id', $bmId)
-                                                    ->orWhereJsonContains('config_account->child_bm_id', $bmId);
+                                          ->where(function ($jsonQ) use ($metaBmId) {
+                                              $jsonQ->whereJsonContains('config_account->business_manager_id', $metaBmId)
+                                                    ->orWhereJsonContains('config_account->bm_id', $metaBmId)
+                                                    ->orWhereJsonContains('config_account->child_bm_id', $metaBmId);
                                           });
                                 });
                                 $hasFilter = true;
@@ -436,6 +453,63 @@ class BusinessManagerService
             }
 
             // Filter theo BM/MCC con sau khi đã build danh sách account
+            if ($viewMode === 'bm' && (empty($filter['platform']) || (int) $filter['platform'] === PlatformType::META->value)) {
+                $existingMetaBmIds = [];
+                foreach ($accountsList as $item) {
+                    if (($item['platform'] ?? null) !== PlatformType::META->value) {
+                        continue;
+                    }
+
+                    foreach (($item['bm_ids'] ?? []) as $itemBmId) {
+                        $existingMetaBmIds[] = (string) $itemBmId;
+                    }
+                }
+                $existingMetaBmIds = array_values(array_unique($existingMetaBmIds));
+
+                $activeMetaSettingResult = $this->platformSettingService->findPlatformActive(PlatformType::META->value);
+                $activeMetaSetting = $activeMetaSettingResult->isSuccess() ? $activeMetaSettingResult->getData() : null;
+                $activeMetaBmId = $activeMetaSetting
+                    ? $this->platformSettingService->getMetaScopedBusinessManagerId($activeMetaSetting->config ?? [])
+                    : null;
+
+                $emptyBmQuery = $this->metaBusinessManagerRepository->query();
+                if ($activeMetaBmId) {
+                    $emptyBmQuery->where(function ($q) use ($activeMetaBmId) {
+                        $q->where('bm_id', (string) $activeMetaBmId)
+                            ->orWhere('parent_bm_id', (string) $activeMetaBmId);
+                    });
+                }
+
+                if (!empty($existingMetaBmIds)) {
+                    $emptyBmQuery->whereNotIn('bm_id', $existingMetaBmIds);
+                }
+
+                $emptyBmQuery->get(['bm_id', 'parent_bm_id', 'name', 'currency'])->each(function ($bm) use (&$accountsList) {
+                    $accountsList[] = [
+                        'id' => 'meta-bm-' . (string) $bm->bm_id,
+                        'account_id' => null,
+                        'account_name' => null,
+                        'service_user_id' => null,
+                        'bm_ids' => [(string) $bm->bm_id],
+                        'bm_name' => $bm->name ?: (string) $bm->bm_id,
+                        'parent_bm_id' => $bm->parent_bm_id ? (string) $bm->parent_bm_id : null,
+                        'name' => $bm->name ?: (string) $bm->bm_id,
+                        'platform' => PlatformType::META->value,
+                        'owner_name' => null,
+                        'owner_id' => null,
+                        'total_accounts' => 0,
+                        'active_accounts' => 0,
+                        'disabled_accounts' => 0,
+                        'total_spend' => '0',
+                        'total_balance' => '0',
+                        'currency' => $bm->currency ?? 'USD',
+                        'accounts' => [
+                            ['currency' => $bm->currency ?? 'USD'],
+                        ],
+                    ];
+                });
+            }
+
             if ($childManagerId) {
                 $accountsList = array_values(array_filter(
                     $accountsList,
@@ -493,6 +567,10 @@ class BusinessManagerService
             ];
 
             foreach ($accountsList as $accountItem) {
+                if (empty($accountItem['account_id'])) {
+                    continue;
+                }
+
                 $platform = $accountItem['platform'] ?? null;
                 if ($platform === null) {
                     continue;
@@ -534,6 +612,7 @@ class BusinessManagerService
                     // Nếu có tên BM/Asset Group khác nhau thì tách dòng riêng (để hiện Pete Willam, Test...)
                     $key = $platform . '-' . $primaryBmId . '-' . ($item['bm_name'] ?? '');
 
+                    $itemAccountCount = max(0, (int) ($item['total_accounts'] ?? 1));
                     $spendNum = isset($item['total_spend']) ? (float) $item['total_spend'] : 0.0;
                     $balanceNum = isset($item['total_balance']) ? (float) $item['total_balance'] : 0.0;
 
@@ -549,7 +628,7 @@ class BusinessManagerService
                             'service_user_id' => $item['service_user_id'] ?? null,
                             'owner_name' => $item['owner_name'] ?? null,
                             'owner_id' => $item['owner_id'] ?? null,
-                            'total_accounts' => 1,
+                            'total_accounts' => $itemAccountCount,
                             'total_spend' => (string) $spendNum,
                             'total_balance' => (string) $balanceNum,
                             'currency' => $item['currency'] ?? 'USD',
@@ -558,7 +637,7 @@ class BusinessManagerService
                             'child_bm_id' => $item['child_bm_id'] ?? null,
                         ];
                     } else {
-                        $bmMap[$key]['total_accounts'] = ($bmMap[$key]['total_accounts'] ?? 0) + 1;
+                        $bmMap[$key]['total_accounts'] = ($bmMap[$key]['total_accounts'] ?? 0) + $itemAccountCount;
                         $currentSpend = isset($bmMap[$key]['total_spend']) ? (float) $bmMap[$key]['total_spend'] : 0.0;
                         $currentBalance = isset($bmMap[$key]['total_balance']) ? (float) $bmMap[$key]['total_balance'] : 0.0;
                         $bmMap[$key]['total_spend'] = (string) ($currentSpend + $spendNum);
@@ -754,6 +833,10 @@ class BusinessManagerService
                 if ($servicePlatform === PlatformType::META->value) {
                     $metaAccounts = $this->metaAccountRepository->query()
                         ->where('service_user_id', $serviceUser->id)
+                        ->where(function ($q) use ($bmId) {
+                            $q->where('business_manager_id', $bmId)
+                                ->orWhereNull('business_manager_id');
+                        })
                         ->withCount('metaAdsCampaigns')
                         ->get();
 
@@ -769,11 +852,16 @@ class BusinessManagerService
                             'currency' => $account->currency,
                             'account_status' => $account->account_status,
                             'total_campaigns' => $account->meta_ads_campaigns_count ?? 0,
+                            'platform' => PlatformType::META->value,
                         ];
                     }
                 } elseif ($servicePlatform === PlatformType::GOOGLE->value) {
                     $googleAccounts = $this->googleAccountRepository->query()
                         ->where('service_user_id', $serviceUser->id)
+                        ->where(function ($q) use ($bmId) {
+                            $q->where('customer_manager_id', $bmId)
+                                ->orWhereNull('customer_manager_id');
+                        })
                         ->get();
 
                     foreach ($googleAccounts as $account) {
@@ -787,9 +875,69 @@ class BusinessManagerService
                             'balance' => $account->balance ?? '0',
                             'currency' => $account->currency ?? 'USD',
                             'account_status' => $account->account_status ?? 1,
+                            'platform' => PlatformType::GOOGLE->value,
                             'total_campaigns' => 0, // TODO: Đếm từ campaigns
                         ];
                     }
+                }
+            }
+
+            $existingAccountIds = array_map('strval', array_column($accounts, 'account_id'));
+
+            if (!$platform || $platform === PlatformType::META->value) {
+                $metaAccounts = $this->metaAccountRepository->query()
+                    ->where('business_manager_id', $bmId)
+                    ->withCount('metaAdsCampaigns')
+                    ->get();
+
+                foreach ($metaAccounts as $account) {
+                    if (in_array((string) $account->account_id, $existingAccountIds, true)) {
+                        continue;
+                    }
+
+                    $accounts[] = [
+                        'id' => (string) $account->id,
+                        'account_id' => $account->account_id,
+                        'account_name' => $account->account_name,
+                        'service_user_id' => $account->service_user_id ? (string) $account->service_user_id : null,
+                        'spend_cap' => $account->spend_cap,
+                        'amount_spent' => $account->amount_spent,
+                        'balance' => $account->balance,
+                        'currency' => $account->currency,
+                        'account_status' => $account->account_status,
+                        'total_campaigns' => $account->meta_ads_campaigns_count ?? 0,
+                        'platform' => PlatformType::META->value,
+                    ];
+
+                    $existingAccountIds[] = (string) $account->account_id;
+                }
+            }
+
+            if (!$platform || $platform === PlatformType::GOOGLE->value) {
+                $googleAccounts = $this->googleAccountRepository->query()
+                    ->where('customer_manager_id', $bmId)
+                    ->get();
+
+                foreach ($googleAccounts as $account) {
+                    if (in_array((string) $account->account_id, $existingAccountIds, true)) {
+                        continue;
+                    }
+
+                    $accounts[] = [
+                        'id' => (string) $account->id,
+                        'account_id' => $account->account_id,
+                        'account_name' => $account->account_name,
+                        'service_user_id' => $account->service_user_id ? (string) $account->service_user_id : null,
+                        'spend_cap' => null,
+                        'amount_spent' => '0',
+                        'balance' => $account->balance ?? '0',
+                        'currency' => $account->currency ?? 'USD',
+                        'account_status' => $account->account_status ?? 1,
+                        'total_campaigns' => 0,
+                        'platform' => PlatformType::GOOGLE->value,
+                    ];
+
+                    $existingAccountIds[] = (string) $account->account_id;
                 }
             }
 
@@ -836,17 +984,20 @@ class BusinessManagerService
             $config = $platformSetting->config;
 
             if ($platform === PlatformType::META->value) {
-                $bmId = $config['business_manager_id'] ?? null;
-                if (!$bmId) {
-                    continue;
+                $bmId = $this->platformSettingService->getMetaScopedBusinessManagerId($config);
+                // Chỉ lấy tài khoản của BM gốc hoặc BM con (Để lọc bỏ các BM lạ từ Token Admin)
+                $validBmQuery = $this->metaBusinessManagerRepository->query();
+                if ($bmId) {
+                    $validBmQuery->where(function ($q) use ($bmId) {
+                        $q->where('bm_id', $bmId)
+                            ->orWhere('parent_bm_id', $bmId);
+                    });
                 }
 
-                // Chỉ lấy tài khoản của BM gốc hoặc BM con (Để lọc bỏ các BM lạ từ Token Admin)
-                $validBmIds = $this->metaBusinessManagerRepository->query()
-                    ->where('bm_id', $bmId)
-                    ->orWhere('parent_bm_id', $bmId)
-                    ->pluck('bm_id')
-                    ->toArray();
+                $validBmIds = $validBmQuery->pluck('bm_id')->toArray();
+                if (empty($validBmIds)) {
+                    continue;
+                }
 
                 $metaAccounts = $this->metaAccountRepository->query()
                     ->whereIn('business_manager_id', $validBmIds)
@@ -1025,4 +1176,3 @@ class BusinessManagerService
         return $mccNameMap[$firstMccId] ?? null;
     }
 }
-

@@ -533,8 +533,13 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
                                         return;
                                     }
 
+                                    const topUpBmId =
+                                        selectedBMForTopUp.bm_ids?.[0] ||
+                                        selectedBMForTopUp.parent_bm_id ||
+                                        selectedBMForTopUp.id;
+
                                     const accountsResponse = await axios.get(
-                                        business_managers_get_accounts({ bmId: selectedBMForTopUp.id }).url,
+                                        business_managers_get_accounts({ bmId: topUpBmId }).url,
                                         { params: { platform: platformType } }
                                     );
 
@@ -635,4 +640,3 @@ BusinessManagerIndex.layout = (page: ReactNode) => (
 );
 
 export default BusinessManagerIndex;
-

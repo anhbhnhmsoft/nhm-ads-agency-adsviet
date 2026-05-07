@@ -817,9 +817,13 @@ class MetaService
             }
 
             // đồng bộ account ads dưới BM gốc (owned + client)
-            $this->syncMetaAccountsFromManagerEdge($bmId, 'owner', maxAccounts: null);
+            $bmIdsToSync = array_values(array_unique(array_filter(array_merge(
+                [$bmId],
+                $this->syncSelfBusinessManagers($bmId)
+            ))));
+
+            $this->syncMetaAccountsForManagers($bmIdsToSync);
             sleep(1); // 1 giây delay giữa các edge để tránh rate limit
-            $this->syncMetaAccountsFromManagerEdge($bmId, 'client', maxAccounts: null);
             return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error(
@@ -833,10 +837,34 @@ class MetaService
     /**
      * Đồng bộ đầy đủ: BM con + Accounts của BM con + Insights + Campaigns
      */
+    public function syncFromAccessibleBusinessManagers(?string $settingId = null): ServiceReturn
+    {
+        try {
+            if ($settingId) {
+                $this->metaBusinessService->setSettingId($settingId);
+            }
+
+            $this->metaBusinessService->resetApi();
+
+            $bmIdsToSync = $this->syncSelfBusinessManagers();
+            $this->syncMetaAccountsForManagers($bmIdsToSync);
+
+            return ServiceReturn::success();
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'MetaService@syncFromAccessibleBusinessManagers error: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     public function syncInsightsAndCampaignsForBusinessManager(string $bmId): ServiceReturn
     {
         try {
             //Đồng bộ BM con (owned + client + agency)
+            $selfBusinessManagerIds = $this->syncSelfBusinessManagers($bmId);
+
             $this->syncBusinessManagersFromEdge($bmId, 'owned');
             sleep(2);
             $this->syncBusinessManagersFromEdge($bmId, 'client');
@@ -844,7 +872,7 @@ class MetaService
             $this->syncBusinessManagersFromEdge($bmId, 'agency');
 
             // Thu thập tất cả BM ID cần sync account (Gồm BM gốc + các BM con)
-            $bmIdsToSyncAccounts = [$bmId];
+            $bmIdsToSyncAccounts = array_merge([$bmId], $selfBusinessManagerIds);
             $childBusinessManagers = $this->metaBusinessManagerRepository->query()
                 ->where('parent_bm_id', $bmId)
                 ->get();
@@ -856,7 +884,9 @@ class MetaService
             }
 
             // Đồng bộ danh sách tài khoản theo lô (Batch) để tránh Rate Limit
-            $this->syncMetaAccountsFromManagerEdgesBatched($bmIdsToSyncAccounts);
+            $bmIdsToSyncAccounts = array_values(array_unique(array_filter($bmIdsToSyncAccounts)));
+
+            $this->syncMetaAccountsForManagers($bmIdsToSyncAccounts);
 
             // Đồng bộ campaign & insights cho các tài khoản này (Đã dùng Batch)
             $this->syncInsightsAndCampaignsForBusinessManagers($bmIdsToSyncAccounts);
@@ -1116,6 +1146,80 @@ class MetaService
     /**
      * Đồng bộ danh sách BM con từ một BM gốc
      */
+    private function syncSelfBusinessManagers(?string $contextBmId = null): array
+    {
+        $after = null;
+        $syncedBmIds = [];
+
+        do {
+            $result = $this->metaBusinessService->getSelfBusinessesPaginated(
+                limit: 100,
+                after: $after
+            );
+
+            if ($result->isError()) {
+                Logging::error('Error sync self business managers: ' . $result->getMessage(), [
+                    'context_bm_id' => $contextBmId,
+                ]);
+                return array_values(array_unique($syncedBmIds));
+            }
+
+            $data = $result->getData();
+            $businesses = $data['data'] ?? [];
+
+            foreach ($businesses as $businessData) {
+                $bmId = isset($businessData['id']) ? (string) $businessData['id'] : null;
+                if (!$bmId) {
+                    continue;
+                }
+
+                $primaryPage = $businessData['primary_page'] ?? null;
+                $parentBmId = $contextBmId && $bmId !== $contextBmId ? $contextBmId : null;
+
+                try {
+                    $this->metaBusinessManagerRepository->updateOrCreate(
+                        ['bm_id' => $bmId],
+                        [
+                            'parent_bm_id' => $parentBmId,
+                            'name' => $businessData['name'] ?? null,
+                            'primary_page_id' => $primaryPage['id'] ?? null,
+                            'primary_page_name' => $primaryPage['name'] ?? null,
+                            'verification_status' => $businessData['verification_status'] ?? null,
+                            'timezone_id' => $businessData['timezone_id'] ?? null,
+                            'is_primary' => $contextBmId ? $bmId === $contextBmId : false,
+                            'last_synced_at' => now(),
+                        ]
+                    );
+
+                    $syncedBmIds[] = $bmId;
+                } catch (\Throwable $e) {
+                    Logging::error('Error upsert self business manager: ' . $e->getMessage(), [
+                        'bm_id' => $bmId,
+                    ]);
+                }
+            }
+
+            $after = $data['paging']['cursors']['after'] ?? null;
+            if ($after) {
+                usleep(500000);
+            }
+        } while ($after);
+
+        return array_values(array_unique($syncedBmIds));
+    }
+
+    private function syncMetaAccountsForManagers(array $bmIds): void
+    {
+        $uniqueBmIds = array_values(array_unique(array_filter($bmIds)));
+
+        foreach ($uniqueBmIds as $bmId) {
+            $this->syncMetaAccountsFromManagerEdge((string) $bmId, 'owner', maxAccounts: null);
+            usleep(300000);
+            $this->syncMetaAccountsFromManagerEdge((string) $bmId, 'client', maxAccounts: null);
+            usleep(300000);
+        }
+    }
+
     private function syncBusinessManagers(string $parentBmId): void
     {
         //Lấy thông tin BM gốc
@@ -1272,12 +1376,18 @@ class MetaService
 
             try {
                 if ($ownerBmId) {
+                    $businessManagerData = [
+                        'name' => $ownerBmName ?? $ownerBmId,
+                        'last_synced_at' => now(),
+                    ];
+
+                    if ($bmIdFromRequest && $ownerBmId !== $bmIdFromRequest) {
+                        $businessManagerData['parent_bm_id'] = $bmIdFromRequest;
+                    }
+
                     $this->metaBusinessManagerRepository->updateOrCreate(
                         ['bm_id' => $ownerBmId],
-                        [
-                            'name' => $ownerBmName ?? $ownerBmId,
-                            'last_synced_at' => now(),
-                        ]
+                        $businessManagerData
                     );
                 }
             } catch (\Throwable $e) {
@@ -1772,8 +1882,11 @@ class MetaService
             $metaSettingId = session('active_meta_setting_id');
             if (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]) && $metaSettingId) {
                 $setting = $this->platformSettingService->find($metaSettingId)->getData();
-                if ($setting && isset($setting->config['business_manager_id'])) {
-                    $query->where('meta_accounts.business_manager_id', (string) $setting->config['business_manager_id']);
+                $bmId = $setting
+                    ? $this->platformSettingService->getMetaScopedBusinessManagerId($setting->config ?? [])
+                    : null;
+                if ($bmId) {
+                    $query->where('meta_accounts.business_manager_id', $bmId);
                 }
             }
 
@@ -1872,8 +1985,10 @@ class MetaService
             $metaSettingId = session('active_meta_setting_id');
             if (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]) && $metaSettingId) {
                 $setting = $this->platformSettingService->find($metaSettingId)->getData();
-                if ($setting && isset($setting->config['business_manager_id'])) {
-                    $bmId = (string) $setting->config['business_manager_id'];
+                $bmId = $setting
+                    ? $this->platformSettingService->getMetaScopedBusinessManagerId($setting->config ?? [])
+                    : null;
+                if ($bmId) {
                     $metaServiceUserIds = $this->serviceUserRepository->query()
                         ->where('status', ServiceUserStatus::ACTIVE->value)
                         ->whereHas('package', fn($q) => $q->where('platform', PlatformType::META->value))
@@ -1961,8 +2076,10 @@ class MetaService
             $metaSettingId = session('active_meta_setting_id');
             if (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]) && $metaSettingId) {
                 $setting = $this->platformSettingService->find($metaSettingId)->getData();
-                if ($setting && isset($setting->config['business_manager_id'])) {
-                    $bmId = (string) $setting->config['business_manager_id'];
+                $bmId = $setting
+                    ? $this->platformSettingService->getMetaScopedBusinessManagerId($setting->config ?? [])
+                    : null;
+                if ($bmId) {
                     $sessionServiceUserIds = $this->serviceUserRepository->query()
                         ->where('status', ServiceUserStatus::ACTIVE->value)
                         ->whereHas('package', fn($q) => $q->where('platform', PlatformType::META->value))

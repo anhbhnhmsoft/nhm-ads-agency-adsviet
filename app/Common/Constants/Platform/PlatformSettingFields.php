@@ -78,6 +78,14 @@ class PlatformSettingFields
                 'description' => __('platform.fields.access_token.description'),
             ],
             [
+                'key' => 'sync_all_accessible_businesses',
+                'label' => __('platform.fields.sync_all_accessible_businesses.label'),
+                'type' => 'boolean',
+                'required' => false,
+                'default_value' => true,
+                'description' => __('platform.fields.sync_all_accessible_businesses.description'),
+            ],
+            [
                 'key' => 'business_manager_id',
                 'label' => __('platform.fields.business_manager_id.label'),
                 'type' => 'text',
