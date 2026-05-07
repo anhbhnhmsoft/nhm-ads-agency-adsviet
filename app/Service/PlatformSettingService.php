@@ -52,8 +52,8 @@ class PlatformSettingService
     {
         try {
             return DB::transaction(function () use ($data) {
-                $config = $data['config'] ?? [];
                 $platform = (int) $data['platform'];
+                $config = $this->normalizePlatformConfig($platform, $data['config'] ?? []);
                 $disabled = (bool) ($data['disabled'] ?? false);
 
                 $payload = [
@@ -109,7 +109,10 @@ class PlatformSettingService
             $payload = [
                 'name' => $data['name'] ?? $setting->name,
                 'platform' => isset($data['platform']) ? (int) $data['platform'] : $setting->platform,
-                'config' => $data['config'] ?? $setting->config,
+                'config' => $this->normalizePlatformConfig(
+                    isset($data['platform']) ? (int) $data['platform'] : (int) $setting->platform,
+                    $data['config'] ?? $setting->config ?? []
+                ),
                 'disabled' => isset($data['disabled']) ? (bool) $data['disabled'] : $setting->disabled,
             ];
             $setting->update($payload);
@@ -263,8 +266,7 @@ class PlatformSettingService
             $platform = (int) $setting->platform;
             $count = 0;
             
-            if ($platform === PlatformType::META->value && isset($config['business_manager_id'])) {
-                $bmId = (string) $config['business_manager_id'];
+            if ($platform === PlatformType::META->value && ($bmId = $this->getMetaScopedBusinessManagerId($config))) {
                 $count = $this->serviceUserRepository->query()
                     ->where(function ($q) use ($bmId) {
                         $q->whereJsonContains('config_account->business_manager_id', $bmId)
@@ -309,17 +311,50 @@ class PlatformSettingService
         }
     }
 
+    public function shouldSyncAllAccessibleMetaBusinesses(array $config): bool
+    {
+        if (array_key_exists('sync_all_accessible_businesses', $config)) {
+            return filter_var($config['sync_all_accessible_businesses'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return empty($config['business_manager_id']);
+    }
+
+    public function getMetaScopedBusinessManagerId(array $config): ?string
+    {
+        if ($this->shouldSyncAllAccessibleMetaBusinesses($config)) {
+            return null;
+        }
+
+        $bmId = trim((string) ($config['business_manager_id'] ?? ''));
+
+        return $bmId !== '' ? $bmId : null;
+    }
+
+    private function normalizePlatformConfig(int $platform, array $config): array
+    {
+        if ($platform !== PlatformType::META->value) {
+            return $config;
+        }
+
+        $config['sync_all_accessible_businesses'] = $this->shouldSyncAllAccessibleMetaBusinesses($config);
+
+        if (isset($config['business_manager_id'])) {
+            $config['business_manager_id'] = trim((string) $config['business_manager_id']);
+        }
+
+        return $config;
+    }
+
     protected function dispatchSyncJob($setting): void
     {
         try {
             $config = $setting->config ?? [];
             
             if ($setting->platform === PlatformType::META->value) {
-                $bmId = $config['business_manager_id'] ?? null;
-                if ($bmId) {
-                    SyncMetaPlatformJob::dispatch((string)$bmId, (string)$setting->id);
-                    Logging::web("PlatformSettingService: Dispatched Meta sync for setting ID {$setting->id}");
-                }
+                $bmId = $this->getMetaScopedBusinessManagerId($config);
+                SyncMetaPlatformJob::dispatch($bmId ? (string)$bmId : null, (string)$setting->id);
+                Logging::web("PlatformSettingService: Dispatched Meta sync for setting ID {$setting->id}");
             } elseif ($setting->platform === PlatformType::GOOGLE->value) {
                 $loginCustomerId = $config['login_customer_id'] ?? null;
                 if ($loginCustomerId) {
@@ -332,5 +367,3 @@ class PlatformSettingService
         }
     }
 }
-
-

@@ -39,11 +39,9 @@ class SyncAllPlatformsJob implements ShouldQueue
             if ($metaSettings->isSuccess()) {
                 foreach ($metaSettings->getData() as $setting) {
                     $config = $setting->config ?? [];
-                    $bmId = $config['business_manager_id'] ?? null;
-                    if ($bmId) {
-                        SyncMetaPlatformJob::dispatch((string)$bmId, (string)$setting->id);
-                        Logging::web("SyncAllPlatformsJob: Dispatched Meta sync for BM {$bmId} (Setting ID: {$setting->id})");
-                    }
+                    $bmId = $platformSettingService->getMetaScopedBusinessManagerId($config);
+                    SyncMetaPlatformJob::dispatch($bmId ? (string)$bmId : null, (string)$setting->id);
+                    Logging::web("SyncAllPlatformsJob: Dispatched Meta sync for setting ID {$setting->id}");
                 }
             }
 

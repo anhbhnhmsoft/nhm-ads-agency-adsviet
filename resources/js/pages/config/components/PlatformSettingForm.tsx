@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 export type FieldConfig = {
   key: string;
@@ -37,9 +37,37 @@ export default function PlatformSettingForm({ data, setData, onPlatformChange, p
     setData('config', newConfig);
   };
 
+  const isTruthyConfigValue = (value: unknown) => {
+    return value === true || value === 1 || value === '1' || value === 'true';
+  };
+
+  useEffect(() => {
+    const nextConfig = { ...data.config };
+    let changed = false;
+
+    currentFields.forEach((field) => {
+      if (field.default_value === undefined || nextConfig[field.key] !== undefined) {
+        return;
+      }
+
+      if (field.key === 'sync_all_accessible_businesses') {
+        nextConfig[field.key] = !nextConfig.business_manager_id;
+      } else {
+        nextConfig[field.key] = field.default_value;
+      }
+      changed = true;
+    });
+
+    if (changed) {
+      setData('config', nextConfig);
+    }
+  }, [currentFields, data.config, setData]);
+
   const renderField = (field: FieldConfig) => {
     const value = data.config[field.key] ?? field.default_value ?? '';
     const fieldId = `config_${field.key}`;
+    const syncAllAccessibleBusinesses = data.platform === 2 && isTruthyConfigValue(data.config.sync_all_accessible_businesses);
+    const isBusinessManagerScopeField = data.platform === 2 && field.key === 'business_manager_id';
 
     switch (field.type) {
       case 'password':
@@ -57,6 +85,7 @@ export default function PlatformSettingForm({ data, setData, onPlatformChange, p
               onChange={(e) => handleConfigChange(field.key, e.target.value)}
               placeholder={field.placeholder}
               required={field.required}
+              disabled={isBusinessManagerScopeField && syncAllAccessibleBusinesses}
             />
             {field.description && (
               <span className="text-sm text-gray-500">{field.description}</span>
@@ -105,7 +134,7 @@ export default function PlatformSettingForm({ data, setData, onPlatformChange, p
             <input
               id={fieldId}
               type="checkbox"
-              checked={!!value}
+              checked={isTruthyConfigValue(value)}
               onChange={(e) => handleConfigChange(field.key, e.target.checked)}
             />
             <label htmlFor={fieldId}>
@@ -169,5 +198,3 @@ export default function PlatformSettingForm({ data, setData, onPlatformChange, p
     </form>
   );
 }
-
-

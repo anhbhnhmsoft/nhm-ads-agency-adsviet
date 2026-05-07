@@ -190,6 +190,7 @@
     "description": "Choose a platform and configure its information",
     "app_or_client_id": "App ID / Client ID",
     "bm_or_login_id": "Business Manager ID / Login Customer ID",
+    "all_accessible_businesses": "All VIA businesses",
     "edit_mode": "Editing configuration ID: {{id}}",
     "open_google_billing": "Open Google Ads Billing",
     "open_meta_billing": "Open Meta Ads Billing"

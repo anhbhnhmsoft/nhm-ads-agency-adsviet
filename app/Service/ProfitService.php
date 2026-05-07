@@ -41,8 +41,7 @@ class ProfitService
                 $setting = $settingResult->getData();
                 $config = $setting->config ?? [];
                 
-                if ($platform === PlatformType::META->value && isset($config['business_manager_id'])) {
-                    $bmId = (string) $config['business_manager_id'];
+                if ($platform === PlatformType::META->value && ($bmId = $this->platformSettingService->getMetaScopedBusinessManagerId($config))) {
                     $query->where(function ($q) use ($bmId) {
                         $q->whereJsonContains('config_account->business_manager_id', $bmId)
                           ->orWhereJsonContains('config_account->bm_id', $bmId)

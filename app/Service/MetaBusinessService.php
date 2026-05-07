@@ -239,6 +239,31 @@ class MetaBusinessService
      * @param array $params
      * @return ServiceReturn
      */
+    /**
+     * Lay mot trang danh sach Business Manager ma token/VIA hien tai co quyen truy cap.
+     */
+    public function getSelfBusinessesPaginated(int $limit = 100, ?string $after = null): ServiceReturn
+    {
+        try {
+            $this->initApi();
+
+            $params = [
+                'fields' => 'id,name,primary_page{id,name},verification_status,timezone_id',
+                'limit' => $limit,
+            ];
+
+            if ($after) {
+                $params['after'] = $after;
+            }
+
+            $response = $this->api->call('/me/businesses', 'GET', $params)->getContent();
+
+            return ServiceReturn::success(data: $response);
+        } catch (Exception $exception) {
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
     public function createAdsAccount(string $BmId, array $params): ServiceReturn
     {
         try {

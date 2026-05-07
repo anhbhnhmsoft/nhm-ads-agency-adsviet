@@ -46,12 +46,17 @@ return [
         'access_token' => [
             'label' => 'Access Token',
             'placeholder' => 'Enter long-lived access token',
-            'description' => 'Long-lived access token or System User Token',
+            'description' => 'Use a User Access Token when you need /me/businesses to list every business portfolio the VIA can access. A System User token is limited to the business that issued it.',
+        ],
+        'sync_all_accessible_businesses' => [
+            'label' => 'Sync all accessible business portfolios from User token',
+            'placeholder' => '',
+            'description' => 'When enabled, sync uses /me/businesses and ignores Business Manager ID as a data limit.',
         ],
         'business_manager_id' => [
             'label' => 'Business Manager ID',
-            'placeholder' => '123456789012345',
-            'description' => 'Business Manager ID',
+            'placeholder' => 'Leave blank to sync all VIA business portfolios',
+            'description' => 'Only use this when you intentionally want to scope data to one Business Manager.',
         ],
         'ad_account_ids' => [
             'label' => 'Ad Account IDs (optional)',
@@ -63,6 +68,6 @@ return [
         'field_required' => 'Field :field is required.',
         'field_string' => 'Field :field must be a string.',
         'field_array' => 'Field :field must be an array.',
+        'field_boolean' => 'Field :field must be true or false.',
     ],
 ];
-

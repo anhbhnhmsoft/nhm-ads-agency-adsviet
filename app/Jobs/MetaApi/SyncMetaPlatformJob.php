@@ -19,7 +19,7 @@ class SyncMetaPlatformJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        protected string $bmId,
+        protected ?string $bmId = null,
         protected ?string $settingId = null,
     ) {
         $this->onQueue(QueueKey::META_API);
@@ -27,9 +27,13 @@ class SyncMetaPlatformJob implements ShouldQueue
 
     public function handle(MetaService $metaService): void
     {
-        $metaService->syncFromBusinessManagerId($this->bmId, $this->settingId);
+        if ($this->bmId) {
+            $metaService->syncFromBusinessManagerId($this->bmId, $this->settingId);
+            return;
+        }
+
+        $metaService->syncFromAccessibleBusinessManagers($this->settingId);
     }
 }
-
 
 
