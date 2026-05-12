@@ -45,13 +45,40 @@ class BusinessManagerService
     ) {
     }
 
+    private function resolveActivePlatformSetting(int $platform)
+    {
+        $activeSettingResult = $this->platformSettingService->findPlatformActive($platform);
+        $activeSetting = $activeSettingResult->isSuccess() ? $activeSettingResult->getData() : null;
+
+        if ($activeSetting) {
+            return $activeSetting;
+        }
+
+        $settingsResult = $this->platformSettingService->getAllActiveByPlatform($platform);
+        $settings = $settingsResult->isSuccess() ? collect($settingsResult->getData()) : collect();
+        $fallbackSetting = $settings
+            ->sortByDesc(fn ($setting) => optional($setting->updated_at)->getTimestamp() ?? 0)
+            ->first();
+
+        if (!$fallbackSetting) {
+            return null;
+        }
+
+        if ($platform === PlatformType::META->value) {
+            session(['active_meta_setting_id' => (string) $fallbackSetting->id]);
+        } elseif ($platform === PlatformType::GOOGLE->value) {
+            session(['active_google_setting_id' => (string) $fallbackSetting->id]);
+        }
+
+        return $fallbackSetting;
+    }
+
     /**
      * Lấy danh sách BM/MCC con
      */
     public function getChildManagersForFilter(): array
     {
-        $activeMetaSettingResult = $this->platformSettingService->findPlatformActive(PlatformType::META->value);
-        $activeMetaSetting = $activeMetaSettingResult->isSuccess() ? $activeMetaSettingResult->getData() : null;
+        $activeMetaSetting = $this->resolveActivePlatformSetting(PlatformType::META->value);
         $activeMetaBmId = $activeMetaSetting
             ? $this->platformSettingService->getMetaScopedBusinessManagerId($activeMetaSetting->config ?? [])
             : null;
@@ -75,8 +102,7 @@ class BusinessManagerService
                 ->toArray();
         }
 
-        $activeGoogleSettingResult = $this->platformSettingService->findPlatformActive(PlatformType::GOOGLE->value);
-        $activeGoogleSetting = $activeGoogleSettingResult->isSuccess() ? $activeGoogleSettingResult->getData() : null;
+        $activeGoogleSetting = $this->resolveActivePlatformSetting(PlatformType::GOOGLE->value);
         $activeGoogleManagerId = $activeGoogleSetting ? ($activeGoogleSetting->config['login_customer_id'] ?? null) : null;
 
         $googleChildren = [];
@@ -128,6 +154,9 @@ class BusinessManagerService
 
             // --- Lọc theo BM/MCC đang chọn nếu là Admin/Manager ---
             if ($user && in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
+                $this->resolveActivePlatformSetting(PlatformType::META->value);
+                $this->resolveActivePlatformSetting(PlatformType::GOOGLE->value);
+
                 $metaSettingId = session('active_meta_setting_id');
                 $googleSettingId = session('active_google_setting_id');
                 
@@ -466,8 +495,7 @@ class BusinessManagerService
                 }
                 $existingMetaBmIds = array_values(array_unique($existingMetaBmIds));
 
-                $activeMetaSettingResult = $this->platformSettingService->findPlatformActive(PlatformType::META->value);
-                $activeMetaSetting = $activeMetaSettingResult->isSuccess() ? $activeMetaSettingResult->getData() : null;
+                $activeMetaSetting = $this->resolveActivePlatformSetting(PlatformType::META->value);
                 $activeMetaBmId = $activeMetaSetting
                     ? $this->platformSettingService->getMetaScopedBusinessManagerId($activeMetaSetting->config ?? [])
                     : null;
@@ -974,8 +1002,7 @@ class BusinessManagerService
         }
 
         foreach ($platforms as $platform) {
-            $activeSettingResult = $this->platformSettingService->findPlatformActive($platform);
-            $platformSetting = $activeSettingResult->isSuccess() ? $activeSettingResult->getData() : null;
+            $platformSetting = $this->resolveActivePlatformSetting((int) $platform);
             
             if (!$platformSetting || !$platformSetting->config) {
                 continue;
