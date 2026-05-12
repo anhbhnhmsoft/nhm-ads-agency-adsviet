@@ -132,6 +132,10 @@ const BusinessManagerIndex = ({ paginator, stats, childManagers }: Props) => {
             },
             {
                 accessorKey: 'total_accounts',
+                meta: {
+                    headerClassName: 'text-center',
+                    cellClassName: 'text-center',
+                },
                 header: t('business_manager.table.total_accounts', { defaultValue: 'Số tài khoản' }),
                 cell: ({ row }) => {
                     const count = row.original.total_accounts ?? 0;
