@@ -217,6 +217,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
 
     Route::prefix('/meta')->group(function () {
         Route::get('/{serviceUserId}/accounts', [MetaController::class, 'getAdsAccount'])->name('meta_get_accounts');
+        Route::get('/platform-accounts/{accountId}/campaigns', [MetaController::class, 'getPlatformAccountCampaigns'])->name('meta_platform_account_campaigns');
         Route::get('/{serviceUserId}/{accountId}/campaigns', [MetaController::class, 'getCampaigns'])->name('meta_get_campaigns');
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [MetaController::class, 'detailCampaign'])->name('meta_detail_campaign');
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [MetaController::class, 'getCampaignInsights'])->name('meta_detail_campaign_insight');

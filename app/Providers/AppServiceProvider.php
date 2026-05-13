@@ -37,6 +37,7 @@ use App\Service\ServiceUserService;
 use App\Service\BinanceService;
 use App\Service\NowPaymentsService;
 use App\Service\ConfigService;
+use App\Service\CurrencyExchangeService;
 use App\Service\TelegramService;
 use App\Service\UserService;
 use App\Service\PlatformSettingService;
@@ -112,6 +113,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(BinanceService::class);
         $this->app->bind(NowPaymentsService::class);
         $this->app->bind(ConfigService::class);
+        $this->app->bind(CurrencyExchangeService::class);
         $this->app->bind(UserService::class);
         $this->app->bind(TelegramService::class);
         $this->app->bind(PlatformSettingService::class);

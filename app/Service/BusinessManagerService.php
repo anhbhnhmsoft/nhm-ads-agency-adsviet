@@ -42,6 +42,7 @@ class BusinessManagerService
         protected GoogleMccManagerRepository $googleMccManagerRepository,
         protected MetaAdsCampaignRepository $metaAdsCampaignRepository,
         protected GoogleAdsCampaignRepository $googleAdsCampaignRepository,
+        protected CurrencyExchangeService $currencyExchangeService,
     ) {
     }
 
@@ -90,6 +91,8 @@ class BusinessManagerService
                 $metaChildQuery
                     ->whereNotNull('parent_bm_id')
                     ->where('parent_bm_id', $activeMetaBmId);
+            } else {
+                $metaChildQuery->where('is_direct_access', true);
             }
 
             $metaChildren = $metaChildQuery
@@ -249,6 +252,11 @@ class BusinessManagerService
                 ->pluck('parent_bm_id', 'bm_id')
                 ->toArray();
 
+            $bmDirectAccessMap = $this->metaBusinessManagerRepository->query()
+                ->pluck('is_direct_access', 'bm_id')
+                ->map(fn ($value) => (bool) $value)
+                ->toArray();
+
             $mccNameMap = $this->googleMccManagerRepository->query()
                 ->pluck('name', 'mcc_id')
                 ->toArray();
@@ -278,7 +286,8 @@ class BusinessManagerService
                     $mccNameMap,
                     $bmParentMap,
                     $mccParentMap,
-                    $accountToGroupNamesMap
+                    $accountToGroupNamesMap,
+                    $bmDirectAccessMap
                 );
                 $accountsList = array_merge($accountsList, $platformConfigAccounts);
             }
@@ -506,13 +515,15 @@ class BusinessManagerService
                         $q->where('bm_id', (string) $activeMetaBmId)
                             ->orWhere('parent_bm_id', (string) $activeMetaBmId);
                     });
+                } else {
+                    $emptyBmQuery->where('is_direct_access', true);
                 }
 
                 if (!empty($existingMetaBmIds)) {
                     $emptyBmQuery->whereNotIn('bm_id', $existingMetaBmIds);
                 }
 
-                $emptyBmQuery->get(['bm_id', 'parent_bm_id', 'name', 'currency'])->each(function ($bm) use (&$accountsList) {
+                $emptyBmQuery->get(['bm_id', 'parent_bm_id', 'name', 'currency', 'is_direct_access'])->each(function ($bm) use (&$accountsList) {
                     $accountsList[] = [
                         'id' => 'meta-bm-' . (string) $bm->bm_id,
                         'account_id' => null,
@@ -531,6 +542,7 @@ class BusinessManagerService
                         'total_spend' => '0',
                         'total_balance' => '0',
                         'currency' => $bm->currency ?? 'USD',
+                        'is_direct_access' => (bool) ($bm->is_direct_access ?? false),
                         'accounts' => [
                             ['currency' => $bm->currency ?? 'USD'],
                         ],
@@ -541,8 +553,22 @@ class BusinessManagerService
             if ($childManagerId) {
                 $accountsList = array_values(array_filter(
                     $accountsList,
-                    fn ($item) =>
-                        in_array($childManagerId, $item['bm_ids'] ?? [], true)
+                    function ($item) use ($childManagerId, $bmParentMap, $bmDirectAccessMap) {
+                        if (in_array($childManagerId, $item['bm_ids'] ?? [], true)) {
+                            return true;
+                        }
+
+                        if (($item['platform'] ?? null) !== PlatformType::META->value) {
+                            return false;
+                        }
+
+                        $itemBmId = isset($item['bm_ids'][0]) ? (string) $item['bm_ids'][0] : null;
+                        if (!$itemBmId) {
+                            return false;
+                        }
+
+                        return $this->resolveDirectMetaBusinessManagerId($itemBmId, $bmParentMap, $bmDirectAccessMap) === $childManagerId;
+                    }
                 ));
             }
 
@@ -625,6 +651,7 @@ class BusinessManagerService
 
             if ($viewMode === 'bm') {
                 $bmMap = [];
+                $targetCurrency = $this->currencyExchangeService->targetCurrency();
                 foreach ($accountsList as $item) {
                     $bmIds = $item['bm_ids'] ?? [];
                     $primaryBmId = $bmIds[0] ?? $item['parent_bm_id'] ?? $item['account_id'] ?? $item['id'];
@@ -638,11 +665,29 @@ class BusinessManagerService
                     }
 
                     // Nếu có tên BM/Asset Group khác nhau thì tách dòng riêng (để hiện Pete Willam, Test...)
+                    $shouldCollapseMetaToDirect = !$managerId
+                        && (!$childManagerId || (bool) ($bmDirectAccessMap[$childManagerId] ?? false));
+
+                    if ((int) $platform === PlatformType::META->value && $shouldCollapseMetaToDirect) {
+                        $directBmId = $this->resolveDirectMetaBusinessManagerId((string) $primaryBmId, $bmParentMap, $bmDirectAccessMap);
+
+                        if ($directBmId && $directBmId !== (string) $primaryBmId) {
+                            $primaryBmId = $directBmId;
+                            $item['bm_ids'] = [$directBmId];
+                            $item['parent_bm_id'] = null;
+                            $item['bm_name'] = $bmNameMap[$directBmId] ?? $directBmId;
+                            $item['name'] = $item['bm_name'];
+                        }
+                    }
+
                     $key = $platform . '-' . $primaryBmId . '-' . ($item['bm_name'] ?? '');
 
                     $itemAccountCount = max(0, (int) ($item['total_accounts'] ?? 1));
-                    $spendNum = isset($item['total_spend']) ? (float) $item['total_spend'] : 0.0;
-                    $balanceNum = isset($item['total_balance']) ? (float) $item['total_balance'] : 0.0;
+                    $itemCurrency = (string) ($item['currency'] ?? ($item['accounts'][0]['currency'] ?? $targetCurrency));
+                    $rawSpendNum = isset($item['total_spend']) ? (float) $item['total_spend'] : 0.0;
+                    $rawBalanceNum = isset($item['total_balance']) ? (float) $item['total_balance'] : 0.0;
+                    $spendNum = $this->currencyExchangeService->convert($rawSpendNum, $itemCurrency, $targetCurrency);
+                    $balanceNum = $this->currencyExchangeService->convert($rawBalanceNum, $itemCurrency, $targetCurrency);
 
                     if (!isset($bmMap[$key])) {
                         $bmMap[$key] = [
@@ -659,9 +704,12 @@ class BusinessManagerService
                             'total_accounts' => $itemAccountCount,
                             'total_spend' => (string) $spendNum,
                             'total_balance' => (string) $balanceNum,
-                            'currency' => $item['currency'] ?? 'USD',
+                            'currency' => $targetCurrency,
                             'parent_bm_id' => $item['parent_bm_id'] ?? null,
-                            'accounts' => $item['accounts'] ?? [],
+                            'is_direct_access' => (bool) ($bmDirectAccessMap[(string) $primaryBmId] ?? false),
+                            'accounts' => [
+                                ['currency' => $targetCurrency],
+                            ],
                             'child_bm_id' => $item['child_bm_id'] ?? null,
                         ];
                     } else {
@@ -850,6 +898,7 @@ class BusinessManagerService
             });
 
             $accounts = [];
+            $metaBmIdsForAccounts = $this->getMetaBmAndDescendantIds($bmId);
 
             foreach ($serviceUsers as $serviceUser) {
                 $servicePlatform = $serviceUser->package->platform ?? null;
@@ -861,8 +910,8 @@ class BusinessManagerService
                 if ($servicePlatform === PlatformType::META->value) {
                     $metaAccounts = $this->metaAccountRepository->query()
                         ->where('service_user_id', $serviceUser->id)
-                        ->where(function ($q) use ($bmId) {
-                            $q->where('business_manager_id', $bmId)
+                        ->where(function ($q) use ($metaBmIdsForAccounts) {
+                            $q->whereIn('business_manager_id', $metaBmIdsForAccounts)
                                 ->orWhereNull('business_manager_id');
                         })
                         ->withCount('metaAdsCampaigns')
@@ -914,7 +963,7 @@ class BusinessManagerService
 
             if (!$platform || $platform === PlatformType::META->value) {
                 $metaAccounts = $this->metaAccountRepository->query()
-                    ->where('business_manager_id', $bmId)
+                    ->whereIn('business_manager_id', $metaBmIdsForAccounts)
                     ->withCount('metaAdsCampaigns')
                     ->get();
 
@@ -982,7 +1031,7 @@ class BusinessManagerService
     /**
      * Lấy accounts từ platform config
      */
-    private function getAccountsFromPlatformConfig(?Carbon $dateStart, ?Carbon $dateEnd, ?int $platformFilter, array $bmNameMap, array $mccNameMap, ?array $bmParentMap = null, ?array $mccParentMap = null, array $accountToGroupNamesMap = []): array
+    private function getAccountsFromPlatformConfig(?Carbon $dateStart, ?Carbon $dateEnd, ?int $platformFilter, array $bmNameMap, array $mccNameMap, ?array $bmParentMap = null, ?array $mccParentMap = null, array $accountToGroupNamesMap = [], array $bmDirectAccessMap = []): array
     {
         $accountsList = [];
 
@@ -1018,6 +1067,20 @@ class BusinessManagerService
                     $validBmQuery->where(function ($q) use ($bmId) {
                         $q->where('bm_id', $bmId)
                             ->orWhere('parent_bm_id', $bmId);
+                    });
+                } else {
+                    $directBmIds = $this->metaBusinessManagerRepository->query()
+                        ->where('is_direct_access', true)
+                        ->pluck('bm_id')
+                        ->map(fn ($id) => (string) $id)
+                        ->toArray();
+
+                    $validBmQuery->where(function ($q) use ($directBmIds) {
+                        $q->where('is_direct_access', true);
+
+                        if (!empty($directBmIds)) {
+                            $q->orWhereIn('parent_bm_id', $directBmIds);
+                        }
                     });
                 }
 
@@ -1080,6 +1143,7 @@ class BusinessManagerService
                         'total_spend' => $spendValue,
                         'total_balance' => $balanceValue,
                         'currency' => $account->currency ?? 'USD',
+                        'is_direct_access' => (bool) ($bmDirectAccessMap[(string) $accountBmId] ?? false),
                         'accounts' => [
                             ['currency' => $account->currency ?? 'USD'],
                         ],
@@ -1180,6 +1244,53 @@ class BusinessManagerService
     /**
      * Lấy tên BM theo bm_ids
      */
+    private function resolveDirectMetaBusinessManagerId(string $bmId, array $bmParentMap, array $bmDirectAccessMap): string
+    {
+        $currentBmId = $bmId;
+        $visited = [];
+
+        while ($currentBmId && !in_array($currentBmId, $visited, true)) {
+            if ((bool) ($bmDirectAccessMap[$currentBmId] ?? false)) {
+                return $currentBmId;
+            }
+
+            $visited[] = $currentBmId;
+            $parentBmId = $bmParentMap[$currentBmId] ?? null;
+            if (!$parentBmId) {
+                break;
+            }
+
+            $currentBmId = (string) $parentBmId;
+        }
+
+        return $bmId;
+    }
+
+    private function getMetaBmAndDescendantIds(string $bmId): array
+    {
+        $ids = [(string) $bmId];
+        $queue = [(string) $bmId];
+
+        while (!empty($queue)) {
+            $children = $this->metaBusinessManagerRepository->query()
+                ->whereIn('parent_bm_id', $queue)
+                ->pluck('bm_id')
+                ->map(fn ($id) => (string) $id)
+                ->filter(fn ($id) => !in_array($id, $ids, true))
+                ->values()
+                ->toArray();
+
+            if (empty($children)) {
+                break;
+            }
+
+            $ids = array_values(array_unique(array_merge($ids, $children)));
+            $queue = $children;
+        }
+
+        return $ids;
+    }
+
     private function resolveBmName(array $bmIds, array $bmNameMap): ?string
     {
         $firstBmId = $bmIds[0] ?? null;

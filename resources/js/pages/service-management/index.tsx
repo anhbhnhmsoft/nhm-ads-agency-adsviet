@@ -147,7 +147,8 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
     const [walletBalanceLoading, setWalletBalanceLoading] = useState(false);
 
     const loadCampaigns = useCallback(async (account: BusinessManagerItem) => {
-        if (!account?.service_user_id) {
+        const canLoadPlatformCampaigns = account?.platform === _PlatformType.META;
+        if (!account?.service_user_id && !canLoadPlatformCampaigns) {
             setCampaignError(
                 t('service_management.account_not_assigned', { defaultValue: 'Tài khoản này chưa được gán với user nào' }),
             );
@@ -163,9 +164,11 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
 
         try {
             const apiPath =
-                account.platform === _PlatformType.GOOGLE
-                    ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
-                    : `/meta/${account.service_user_id}/${account.id}/campaigns`;
+                !account.service_user_id && account.platform === _PlatformType.META
+                    ? `/meta/platform-accounts/${account.id}/campaigns`
+                    : account.platform === _PlatformType.GOOGLE
+                        ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
+                        : `/meta/${account.service_user_id}/${account.id}/campaigns`;
 
             const response = await axios.get(apiPath, { params: { per_page: 50 } });
             const payload = response.data?.data;
@@ -340,15 +343,15 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                 header: t('common.actions', { defaultValue: 'Hành động' }),
                 cell: ({ row }) => {
                     const account = row.original;
-                    const hasServiceUser = !!account.service_user_id;
+                    const canViewCampaigns = !!account.service_user_id || account.platform === _PlatformType.META;
                     return (
                         <Button
                             size="sm"
                             variant="outline"
                             onClick={() => loadCampaigns(account)}
-                            disabled={!hasServiceUser}
+                            disabled={!canViewCampaigns}
                             title={
-                                !hasServiceUser
+                                !canViewCampaigns
                                     ? t('service_management.account_not_assigned', {
                                         defaultValue: 'Tài khoản này chưa được gán với user nào',
                                     })
@@ -411,11 +414,13 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                 header: t('common.actions', { defaultValue: 'Hành động' }),
                 cell: ({ row }) => {
                     const campaign = row.original;
+                    const canViewDetail = !!selectedAccount?.service_user_id;
                     return (
                         <Button
                             size="sm"
                             variant="outline"
                             onClick={() => loadCampaignDetail(campaign)}
+                            disabled={!canViewDetail}
                         >
                             {t('common.view_details', { defaultValue: 'Xem chi tiết' })}
                         </Button>
@@ -423,7 +428,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                 },
             },
         ],
-        [t, loadCampaignDetail],
+        [t, loadCampaignDetail, selectedAccount?.service_user_id],
     );
 
     const insightPresetOptions = [

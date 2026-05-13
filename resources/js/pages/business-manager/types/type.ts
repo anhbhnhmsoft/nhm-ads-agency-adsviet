@@ -44,6 +44,7 @@ export type BusinessManagerItem = {
     }>;
     config_account?: BusinessManagerConfigAccount | null;
     is_business_manager?: boolean;
+    is_direct_access?: boolean;
     parent_bm_id?: string | null;
     child_bm_id?: string | null;
 };
@@ -80,4 +81,3 @@ export type BusinessManagerStats = {
         disabled_accounts: number;
     }>;
 };
-

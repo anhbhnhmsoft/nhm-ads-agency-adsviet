@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\MetaBusinessManager\MetaBusinessManagerSource;
 use App\Common\Constants\ServicePackage\Meta\MetaAdsAccountStatus;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\User\UserRole;
@@ -46,6 +47,23 @@ class MetaService
         protected PlatformSettingService $platformSettingService,
         protected MetaBusinessAssetGroupRepository $metaBusinessAssetGroupRepository,
     ) {
+    }
+
+    private function upsertMetaBusinessManager(array $identifiers, array $data)
+    {
+        $bmId = isset($identifiers['bm_id']) ? (string) $identifiers['bm_id'] : null;
+
+        if ($bmId) {
+            $existing = $this->metaBusinessManagerRepository->findByBmId($bmId);
+            $isDirectUpdate = (bool) ($data['is_direct_access'] ?? false);
+
+            if ($existing && (bool) ($existing->is_direct_access ?? false) && !$isDirectUpdate) {
+                $data['is_direct_access'] = true;
+                $data['access_source'] = $existing->access_source ?: MetaBusinessManagerSource::SELF;
+            }
+        }
+
+        return $this->metaBusinessManagerRepository->updateOrCreate($identifiers, $data);
     }
 
     /**
@@ -322,6 +340,56 @@ class MetaService
      * @param string $status ACTIVE|PAUSED|DELETED
      * @return ServiceReturn
      */
+    public function getCampaignsPaginatedByAccountId(string $accountId, QueryListDTO $queryListDTO): ServiceReturn
+    {
+        try {
+            $adsAccount = $this->metaAccountRepository->query()
+                ->where('id', $accountId)
+                ->first();
+
+            if (!$adsAccount) {
+                return ServiceReturn::error(__('meta.error.account_not_found'));
+            }
+
+            $query = $this->metaAdsCampaignRepository->query()
+                ->where('meta_account_id', $adsAccount->id);
+
+            $query = $this->metaAdsCampaignRepository->sortQuery(
+                $query,
+                $queryListDTO->sortBy,
+                $queryListDTO->sortDirection
+            );
+
+            $paginator = $query->paginate(
+                $queryListDTO->perPage,
+                ['*'],
+                'page',
+                $queryListDTO->page
+            );
+
+            $paginator->getCollection()->each(function ($item) {
+                $item->total_spend = $item->total_spend ?? 0;
+                $item->today_spend = $item->today_spend ?? 0;
+            });
+
+            return ServiceReturn::success(data: $paginator);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'MetaService@getCampaignsPaginatedByAccountId error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+
+            return ServiceReturn::success(
+                data: new LengthAwarePaginator(
+                    items: [],
+                    total: 0,
+                    perPage: $queryListDTO->perPage,
+                    currentPage: $queryListDTO->page
+                )
+            );
+        }
+    }
+
     public function updateCampaignStatus(string $serviceUserId, string $campaignId, string $status): ServiceReturn
     {
         // validate service user
@@ -800,7 +868,7 @@ class MetaService
             if ($parentInfo->isSuccess()) {
                 $data = $parentInfo->getData();
                 $primaryPage = $data['primary_page'] ?? null;
-                $this->metaBusinessManagerRepository->updateOrCreate(
+                $this->upsertMetaBusinessManager(
                     ['bm_id' => $bmId],
                     [
                         'parent_bm_id' => null,
@@ -809,6 +877,8 @@ class MetaService
                         'primary_page_name' => $primaryPage['name'] ?? null,
                         'verification_status' => $data['verification_status'] ?? null,
                         'is_primary' => true,
+                        'is_direct_access' => true,
+                        'access_source' => MetaBusinessManagerSource::CONFIGURED,
                         'last_synced_at' => now(),
                     ]
                 );
@@ -1177,7 +1247,7 @@ class MetaService
                 $parentBmId = $contextBmId && $bmId !== $contextBmId ? $contextBmId : null;
 
                 try {
-                    $this->metaBusinessManagerRepository->updateOrCreate(
+                    $this->upsertMetaBusinessManager(
                         ['bm_id' => $bmId],
                         [
                             'parent_bm_id' => $parentBmId,
@@ -1187,6 +1257,8 @@ class MetaService
                             'verification_status' => $businessData['verification_status'] ?? null,
                             'timezone_id' => $businessData['timezone_id'] ?? null,
                             'is_primary' => $contextBmId ? $bmId === $contextBmId : false,
+                            'is_direct_access' => true,
+                            'access_source' => MetaBusinessManagerSource::SELF,
                             'last_synced_at' => now(),
                         ]
                     );
@@ -1230,7 +1302,7 @@ class MetaService
             $data = $parentInfo->getData();
             $primaryPage = $data['primary_page'] ?? null;
 
-            $this->metaBusinessManagerRepository->updateOrCreate(
+            $this->upsertMetaBusinessManager(
                 ['bm_id' => $parentBmId],
                 [
                     'parent_bm_id' => null,
@@ -1239,6 +1311,8 @@ class MetaService
                     'primary_page_name' => $primaryPage['name'] ?? null,
                     'verification_status' => $data['verification_status'] ?? null,
                     'is_primary' => true,
+                    'is_direct_access' => true,
+                    'access_source' => MetaBusinessManagerSource::CONFIGURED,
                     'last_synced_at' => now(),
                 ]
             );
@@ -1294,7 +1368,7 @@ class MetaService
             foreach ($businesses as $businessData) {
                 try {
                     $primaryPage = $businessData['primary_page'] ?? null;
-                    $this->metaBusinessManagerRepository->updateOrCreate(
+                    $this->upsertMetaBusinessManager(
                         [
                             'bm_id' => $businessData['id'],
                         ],
@@ -1307,6 +1381,8 @@ class MetaService
                             'timezone_id' => $businessData['timezone_id'] ?? null,
                             'currency' => $businessData['currency'] ?? null,
                             'is_primary' => false,
+                            'is_direct_access' => false,
+                            'access_source' => MetaBusinessManagerSource::RELATED,
                             'last_synced_at' => now(),
                         ]
                     );
@@ -1385,9 +1461,12 @@ class MetaService
                         $businessManagerData['parent_bm_id'] = $bmIdFromRequest;
                     }
 
-                    $this->metaBusinessManagerRepository->updateOrCreate(
+                    $this->upsertMetaBusinessManager(
                         ['bm_id' => $ownerBmId],
-                        $businessManagerData
+                        array_merge($businessManagerData, [
+                            'is_direct_access' => false,
+                            'access_source' => MetaBusinessManagerSource::RELATED,
+                        ])
                     );
                 }
             } catch (\Throwable $e) {
@@ -1500,13 +1579,15 @@ class MetaService
 
                 // Lưu/cập nhật BM con
                 try {
-                    $this->metaBusinessManagerRepository->updateOrCreate(
+                    $this->upsertMetaBusinessManager(
                         ['bm_id' => $ownerBmId],
                         [
                             'parent_bm_id' => $ownerBmId !== $bmId ? $bmId : null,
                             'name' => $ownerBmName ?? $ownerBmId,
                             'verification_status' => null,
                             'is_primary' => $ownerBmId === $bmId,
+                            'is_direct_access' => false,
+                            'access_source' => MetaBusinessManagerSource::RELATED,
                             'last_synced_at' => now(),
                         ]
                     );

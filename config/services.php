@@ -51,5 +51,9 @@ return [
         'ipn_secret_key' => env('NOWPAYMENTS_IPN_SECRET_KEY'),
         'base_url' => env('NOWPAYMENTS_BASE_URL', 'https://api.nowpayments.io/v1'),
     ],
+    'exchange_rate' => [
+        'base_url' => env('EXCHANGE_RATE_API_BASE_URL', 'https://open.er-api.com/v6/latest'),
+        'target_currency' => env('EXCHANGE_RATE_TARGET_CURRENCY', 'USD'),
+    ],
     'mobile_deep_link' => env('EXPO_DEEP_LINK'),
 ];
