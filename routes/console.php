@@ -20,7 +20,7 @@ Schedule::command('accounts:check-and-auto-pause')->everyTwoMinutes();
 Schedule::command('services:bill-postpay')->dailyAt('02:00');
 
 // Đồng bộ toàn bộ các Platform (BM+MCC) 3 lần / ngày (8 tiếng 1 lần)
-Schedule::job(SyncAllPlatformsJob::class)->cron('0 */8 * * *');
+Schedule::job(SyncAllPlatformsJob::class)->hourly();
 
 // routes/console.php
 Schedule::command('app:calculate-spending-commission')->monthlyOn(1, '01:00');

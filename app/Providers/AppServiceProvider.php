@@ -9,6 +9,7 @@ use App\Repositories\ConfigRepository;
 use App\Repositories\GoogleAccountRepository;
 use App\Repositories\GoogleAdsAccountInsightRepository;
 use App\Repositories\GoogleAdsCampaignRepository;
+use App\Repositories\MetaAccountBusinessManagerAccessRepository;
 use App\Repositories\MetaAccountRepository;
 use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\MetaAdsCampaignRepository;
@@ -93,6 +94,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ServicePackageAllowedUserRepository::class);
         $this->app->bind(ServicePackageRepository::class);
         $this->app->bind(ServiceUserRepository::class);
+        $this->app->bind(MetaAccountBusinessManagerAccessRepository::class);
         $this->app->bind(MetaAccountRepository::class);
         $this->app->bind(MetaAdsCampaignRepository::class);
         $this->app->bind(MetaAdsAccountInsightRepository::class);
