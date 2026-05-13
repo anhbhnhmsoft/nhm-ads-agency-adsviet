@@ -14,6 +14,7 @@ use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Models\ServiceUser;
+use App\Repositories\MetaAccountBusinessManagerAccessRepository;
 use App\Repositories\MetaAccountRepository;
 use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\MetaAdsCampaignRepository;
@@ -43,6 +44,7 @@ class MetaService
         protected WalletRepository $walletRepository,
         protected MetaAdsNotificationService $metaAdsNotificationService,
         protected MetaBusinessManagerRepository $metaBusinessManagerRepository,
+        protected MetaAccountBusinessManagerAccessRepository $metaAccountBusinessManagerAccessRepository,
         protected ConfigService $configService,
         protected PlatformSettingService $platformSettingService,
         protected MetaBusinessAssetGroupRepository $metaBusinessAssetGroupRepository,
@@ -1285,10 +1287,19 @@ class MetaService
         $uniqueBmIds = array_values(array_unique(array_filter($bmIds)));
 
         foreach ($uniqueBmIds as $bmId) {
-            $this->syncMetaAccountsFromManagerEdge((string) $bmId, 'owner', maxAccounts: null);
+            $ownerAccountIds = $this->syncMetaAccountsFromManagerEdge((string) $bmId, 'owner', maxAccounts: null);
             usleep(300000);
-            $this->syncMetaAccountsFromManagerEdge((string) $bmId, 'client', maxAccounts: null);
+            $clientAccountIds = $this->syncMetaAccountsFromManagerEdge((string) $bmId, 'client', maxAccounts: null);
             usleep(300000);
+
+            if ($ownerAccountIds === null || $clientAccountIds === null) {
+                continue;
+            }
+
+            $this->detachStaleMetaAccountsForManager(
+                (string) $bmId,
+                array_values(array_unique(array_merge($ownerAccountIds, $clientAccountIds)))
+            );
         }
     }
 
@@ -1443,9 +1454,16 @@ class MetaService
         }
     }
 
-    private function processAccountListData(array $accounts, string $bmIdFromRequest = ''): void
+    private function processAccountListData(array $accounts, string $bmIdFromRequest = ''): array
     {
+        $syncedAccountIds = [];
+
         foreach ($accounts as $adsAccountData) {
+            $accountId = $adsAccountData['id'] ?? null;
+            if ($accountId) {
+                $syncedAccountIds[] = (string) $accountId;
+            }
+
             $business = $adsAccountData['business'] ?? null;
             $ownerBmId = $business['id'] ?? $bmIdFromRequest;
             $ownerBmName = $business['name'] ?? null;
@@ -1501,10 +1519,25 @@ class MetaService
                     ['account_id' => $adsAccountData['id']],
                     $updateData
                 );
+
+                if ($bmIdFromRequest && $accountId) {
+                    $this->metaAccountBusinessManagerAccessRepository->query()->updateOrCreate(
+                        [
+                            'source_bm_id' => (string) $bmIdFromRequest,
+                            'account_id' => (string) $accountId,
+                        ],
+                        [
+                            'owner_bm_id' => $ownerBmId ? (string) $ownerBmId : null,
+                            'last_synced_at' => now(),
+                        ]
+                    );
+                }
             } catch (\Throwable $e) {
                 Logging::error('Error processing account data: ' . $e->getMessage());
             }
         }
+
+        return array_values(array_unique($syncedAccountIds));
     }
 
     /**
@@ -1513,10 +1546,11 @@ class MetaService
      * @param string $type 'owner' hoặc 'client'
      * @param int|null $maxAccounts Giới hạn số lượng accounts sync (null = không giới hạn, dùng trong queue)
      */
-    private function syncMetaAccountsFromManagerEdge(string $bmId, string $type = 'owner', ?int $maxAccounts = null): void
+    private function syncMetaAccountsFromManagerEdge(string $bmId, string $type = 'owner', ?int $maxAccounts = null): ?array
     {
         $after = null;
         $syncedCount = 0;
+        $syncedAccountIds = [];
 
         while (true) {
             if ($maxAccounts !== null && $syncedCount >= $maxAccounts)
@@ -1528,12 +1562,12 @@ class MetaService
 
             if ($result->isError()) {
                 Logging::error('Error sync ads account from manager edge ' . $type . ': ' . $result->getMessage());
-                return;
+                return null;
             }
 
             $data = $result->getData();
             $accounts = $data['data'] ?? [];
-            $this->processAccountListData($accounts, $bmId);
+            $syncedAccountIds = array_merge($syncedAccountIds, $this->processAccountListData($accounts, $bmId));
 
             $syncedCount += count($accounts);
             $after = $data['paging']['cursors']['after'] ?? null;
@@ -1541,11 +1575,63 @@ class MetaService
                 break;
             usleep(500000);
         }
+
+        return array_values(array_unique($syncedAccountIds));
     }
 
     /**
      * Đồng bộ tài khoản quảng cáo từ một edge cụ thể (owned hoặc client)
      */
+    private function detachStaleMetaAccountsForManager(string $bmId, array $currentAccountIds): void
+    {
+        $query = $this->metaAccountBusinessManagerAccessRepository->query()
+            ->where('source_bm_id', (string) $bmId);
+
+        if (!empty($currentAccountIds)) {
+            $query->whereNotIn('account_id', $currentAccountIds);
+        }
+
+        $staleAccountIds = $query->pluck('account_id')->toArray();
+        if (empty($staleAccountIds)) {
+            return;
+        }
+
+        $this->metaAccountBusinessManagerAccessRepository->query()
+            ->where('source_bm_id', (string) $bmId)
+            ->whereIn('account_id', $staleAccountIds)
+            ->delete();
+
+        Logging::web('MetaService: detached stale account access from BM scope', [
+            'bm_id' => $bmId,
+            'detached_account_ids' => $staleAccountIds,
+        ]);
+    }
+
+    private function getBusinessManagerScopeIds(string $bmId): array
+    {
+        $ids = [(string) $bmId];
+        $queue = [(string) $bmId];
+
+        while (!empty($queue)) {
+            $children = $this->metaBusinessManagerRepository->query()
+                ->whereIn('parent_bm_id', $queue)
+                ->pluck('bm_id')
+                ->map(fn ($id) => (string) $id)
+                ->filter(fn ($id) => !in_array($id, $ids, true))
+                ->values()
+                ->toArray();
+
+            if (empty($children)) {
+                break;
+            }
+
+            $ids = array_values(array_unique(array_merge($ids, $children)));
+            $queue = $children;
+        }
+
+        return $ids;
+    }
+
     private function syncMetaAccountsFromEdge(ServiceUser $serviceUser, string $bmId, string $type = 'owner'): void
     {
         $after = null;
