@@ -22,11 +22,14 @@ class MetaBusinessManager extends Model
         'timezone_id',
         'currency',
         'is_primary',
+        'is_direct_access',
+        'access_source',
         'last_synced_at',
     ];
 
     protected $casts = [
         'is_primary' => 'boolean',
+        'is_direct_access' => 'boolean',
         'last_synced_at' => 'datetime',
     ];
 
