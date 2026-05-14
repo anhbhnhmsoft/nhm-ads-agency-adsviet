@@ -10,6 +10,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { TrendingUp, TrendingDown, DollarSign, Info } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatDateForQuery } from '@/lib/utils';
 
 type ProfitData = {
     bm_mcc_id: string;
@@ -70,8 +71,8 @@ export default function ProfitByBmMcc({ profitData, error, startDate, endDate, s
         router.get(
             '/profit/by-bm-mcc',
             {
-                start_date: date?.from?.toISOString().split('T')[0],
-                end_date: date?.to?.toISOString().split('T')[0],
+                start_date: formatDateForQuery(date?.from),
+                end_date: formatDateForQuery(date?.to),
                 platform: localPlatform !== 'all' ? parseInt(localPlatform) : null,
             },
             { preserveState: true, preserveScroll: true }
@@ -83,8 +84,8 @@ export default function ProfitByBmMcc({ profitData, error, startDate, endDate, s
         router.get(
             '/profit/by-bm-mcc',
             {
-                start_date: dateRange?.from?.toISOString().split('T')[0],
-                end_date: dateRange?.to?.toISOString().split('T')[0],
+                start_date: formatDateForQuery(dateRange?.from),
+                end_date: formatDateForQuery(dateRange?.to),
                 platform: value !== 'all' ? parseInt(value) : null,
             },
             { preserveState: true, preserveScroll: true }

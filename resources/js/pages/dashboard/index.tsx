@@ -31,6 +31,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { WalletTransaction } from '@/pages/wallet/types/type';
 import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransactions, DashboardData, SpendingRanking } from './types';
+import { formatDateForQuery } from '@/lib/utils';
 
 const breadcrumbs: IBreadcrumbItem[] = [
     {
@@ -321,8 +322,8 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                                             dashboard().url,
                                                             {
                                                                 ranking_platform: value,
-                                                                ranking_start_date: rankingDateRange.from.toISOString().split('T')[0],
-                                                                ranking_end_date: rankingDateRange.to.toISOString().split('T')[0],
+                                                                ranking_start_date: formatDateForQuery(rankingDateRange.from),
+                                                                ranking_end_date: formatDateForQuery(rankingDateRange.to),
                                                             },
                                                             { preserveState: true, preserveScroll: true }
                                                         );
@@ -355,8 +356,8 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                                             dashboard().url,
                                                             {
                                                                 ranking_platform: rankingPlatform,
-                                                                ranking_start_date: date.from.toISOString().split('T')[0],
-                                                                ranking_end_date: date.to.toISOString().split('T')[0],
+                                                                ranking_start_date: formatDateForQuery(date.from),
+                                                                ranking_end_date: formatDateForQuery(date.to),
                                                             },
                                                             { preserveState: true, preserveScroll: true }
                                                         );
