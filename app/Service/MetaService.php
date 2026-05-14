@@ -920,6 +920,7 @@ class MetaService
 
             $bmIdsToSync = $this->syncSelfBusinessManagers();
             $this->syncMetaAccountsForManagers($bmIdsToSync);
+            $this->syncInsightsAndCampaignsForBusinessManagers($bmIdsToSync);
 
             return ServiceReturn::success();
         } catch (\Throwable $e) {
@@ -1054,9 +1055,22 @@ class MetaService
         }
 
         $accountsWithPermissionIssues = [];
+        $accessibleAccountIds = $this->metaAccountBusinessManagerAccessRepository->query()
+            ->whereIn('source_bm_id', $uniqueBmIds)
+            ->pluck('account_id')
+            ->map(fn ($id) => (string) $id)
+            ->unique()
+            ->values()
+            ->toArray();
 
         $this->metaAccountRepository->query()
-            ->whereIn('business_manager_id', $uniqueBmIds)
+            ->where(function ($query) use ($uniqueBmIds, $accessibleAccountIds) {
+                $query->whereIn('business_manager_id', $uniqueBmIds);
+
+                if (!empty($accessibleAccountIds)) {
+                    $query->orWhereIn('account_id', $accessibleAccountIds);
+                }
+            })
             ->chunk(25, function (Collection $metaAccounts) use (&$accountsWithPermissionIssues) {
                 $batchRequests = [];
                 $accountMap = [];

@@ -18,6 +18,7 @@ import { useEffect, useMemo } from 'react';
 import { usePage } from '@inertiajs/react';
 import type { _PlatformType as PlatformTypeEnum } from '@/lib/types/constants';
 import type { InertiaPageProps } from '@/lib/types';
+import { formatDateForQuery } from '@/lib/utils';
 
 type ChildManagerOption = {
     id: string;
@@ -92,8 +93,8 @@ const BusinessManagerSearchForm = ({ query, setQuery, handleSearch }: Props) => 
     const handleDateRangeChange = (date: DateRange | undefined) => {
         if (date?.from && date?.to) {
             setQuery({
-                start_date: date.from.toISOString().split('T')[0],
-                end_date: date.to.toISOString().split('T')[0],
+                start_date: formatDateForQuery(date.from),
+                end_date: formatDateForQuery(date.to),
             });
         } else {
             setQuery({
