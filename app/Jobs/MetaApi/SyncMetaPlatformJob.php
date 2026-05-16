@@ -18,6 +18,9 @@ class SyncMetaPlatformJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $timeout = 1800;
+    public int $tries = 1;
+
     public function __construct(
         protected ?string $bmId = null,
         protected ?string $settingId = null,
@@ -35,5 +38,4 @@ class SyncMetaPlatformJob implements ShouldQueue
         $metaService->syncFromAccessibleBusinessManagers($this->settingId);
     }
 }
-
 

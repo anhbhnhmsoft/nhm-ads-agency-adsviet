@@ -37,7 +37,18 @@ export type BusinessManagerItem = {
     active_accounts?: number;
     disabled_accounts?: number;
     total_spend?: string | null;
+    total_reach?: number | string | null;
     total_balance?: string | null;
+    account_status?: number | null;
+    account_status_label?: string | null;
+    spend_cap?: string | null;
+    amount_spent?: string | null;
+    threshold?: string | null;
+    remaining_amount?: number | string | null;
+    created_time?: string | null;
+    account_type?: string | null;
+    timezone?: string | number | null;
+    payment_card?: string | null;
     currency?: string | null;
     accounts?: Array<{
         currency?: string | null;
@@ -47,6 +58,7 @@ export type BusinessManagerItem = {
     is_direct_access?: boolean;
     parent_bm_id?: string | null;
     child_bm_id?: string | null;
+    hidden_at?: string | null;
 };
 
 export type ChildBusinessManager = {
@@ -80,4 +92,10 @@ export type BusinessManagerStats = {
         active_accounts: number;
         disabled_accounts: number;
     }>;
+};
+
+export type BusinessManagerTotals = {
+    total_spend: number;
+    total_reach: number;
+    currency?: string | null;
 };

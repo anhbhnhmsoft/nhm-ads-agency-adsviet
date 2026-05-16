@@ -298,7 +298,7 @@ class MetaBusinessService
             $endpoint = "/{$bmId}/owned_ad_accounts";
             // Lấy thêm business{id,name} để biết tài khoản thuộc BM con nào
             $params = [
-                'fields' => 'id,account_id,name,account_status,disable_reason,spend_cap,balance,currency,amount_spent,created_time,is_prepay_account,timezone_id,timezone_name,business{id,name}',
+                'fields' => 'id,account_id,name,account_status,disable_reason,spend_cap,balance,currency,amount_spent,created_time,is_prepay_account,timezone_id,timezone_name,funding_source_details,business{id,name}',
                 'limit' => $limit,
             ];
             // Nếu frontend gửi 'after' (để xem trang kế), thêm nó vào
@@ -332,7 +332,7 @@ class MetaBusinessService
             $endpoint = "/{$bmId}/client_ad_accounts";
             // Lấy thêm business{id,name} để biết tài khoản thuộc BM con nào
             $params = [
-                'fields' => 'id,account_id,name,account_status,disable_reason,spend_cap,balance,currency,amount_spent,created_time,is_prepay_account,timezone_id,timezone_name,business{id,name}',
+                'fields' => 'id,account_id,name,account_status,disable_reason,spend_cap,balance,currency,amount_spent,created_time,is_prepay_account,timezone_id,timezone_name,funding_source_details,business{id,name}',
                 'limit' => $limit,
             ];
             if ($after) {
@@ -471,6 +471,7 @@ class MetaBusinessService
                 'is_prepay_account',// -> Là tài khoản trả trước hay không (boolean)
                 'timezone_id',      // -> Timezone ID (VD: 1)
                 'timezone_name',    // -> Timezone (VD: "America/Creston")
+                'funding_source_details',
             ];
 
             $response = $this->api->call(
@@ -603,7 +604,13 @@ class MetaBusinessService
      * @param array $fields Mảng các trường muốn lấy (nếu để trống sẽ lấy mặc định)
      * @return ServiceReturn
      */
-    public function getAccountInsightsByCampaign(string $accountId, string $datePreset, array $fields = []): ServiceReturn
+    public function getAccountInsightsByCampaign(
+        string $accountId,
+        string $datePreset,
+        array $fields = [],
+        ?string $startDate = null,
+        ?string $endDate = null
+    ): ServiceReturn
     {
         try {
             $this->initApi();
@@ -619,10 +626,18 @@ class MetaBusinessService
             }
             $params = [
                 'fields' => implode(',', $fields),
-                'date_preset' => $datePreset, // Dùng biến
                 'level' => 'campaign',
                 'limit' => 500, // Lấy tối đa 500 chiến dịch
             ];
+
+            if ($startDate && $endDate) {
+                $params['time_range'] = [
+                    'since' => $startDate,
+                    'until' => $endDate,
+                ];
+            } else {
+                $params['date_preset'] = $datePreset; // Dùng biến
+            }
 
             // Lưu ý: Hàm này cũng có thể cần phân trang (pagination)
             // nếu tài khoản có > 500 chiến dịch, nhưng với

@@ -12,6 +12,7 @@ use App\Common\Constants\Ticket\TicketPriority;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
+use App\Models\MetaBusinessManager;
 
 class BusinessManagerController extends Controller
 {
@@ -31,6 +32,7 @@ class BusinessManagerController extends Controller
         $params = $this->extractQueryPagination($request);
         $filter = $params->get('filter') ?? [];
         $filter['view'] = 'bm';
+        $hiddenBusinessManagers = $this->getHiddenMetaBusinessManagers();
 
         $result = $this->businessManagerService->getListBusinessManagers(
             new QueryListDTO(
@@ -86,6 +88,7 @@ class BusinessManagerController extends Controller
                     ],
                     'stats' => fn () => $stats,
                     'childManagers' => fn () => $this->businessManagerService->getChildManagersForFilter(),
+                    'hiddenBusinessManagers' => fn () => $hiddenBusinessManagers,
                 ]
             );
         }
@@ -126,8 +129,27 @@ class BusinessManagerController extends Controller
                 'paginator' => fn () => $paginatorArray,
                 'stats' => fn () => $stats,
                 'childManagers' => fn () => $this->businessManagerService->getChildManagersForFilter(),
+                'hiddenBusinessManagers' => fn () => $hiddenBusinessManagers,
             ]
         );
+    }
+
+    private function getHiddenMetaBusinessManagers(): array
+    {
+        return MetaBusinessManager::query()
+            ->whereNotNull('hidden_at')
+            ->orderByDesc('hidden_at')
+            ->get(['bm_id', 'parent_bm_id', 'name', 'hidden_at'])
+            ->map(fn (MetaBusinessManager $bm) => [
+                'id' => (string) $bm->bm_id,
+                'bm_ids' => [(string) $bm->bm_id],
+                'bm_name' => $bm->name ?: (string) $bm->bm_id,
+                'name' => $bm->name ?: (string) $bm->bm_id,
+                'parent_bm_id' => $bm->parent_bm_id ? (string) $bm->parent_bm_id : null,
+                'platform' => \App\Common\Constants\Platform\PlatformType::META->value,
+                'hidden_at' => optional($bm->hidden_at)->toISOString(),
+            ])
+            ->toArray();
     }
 
     /**
@@ -173,6 +195,36 @@ class BusinessManagerController extends Controller
             'success' => true,
             'data' => $result->getData(),
         ]);
+    }
+
+    public function hideMetaBusinessManager(string $bmId): RedirectResponse
+    {
+        $bm = MetaBusinessManager::query()
+            ->where('bm_id', $bmId)
+            ->first();
+
+        if (!$bm) {
+            return back()->withErrors(['error' => __('business_manager.bm_not_found')]);
+        }
+
+        $bm->forceFill(['hidden_at' => now()])->save();
+
+        return back()->with('success', __('business_manager.hide_success'));
+    }
+
+    public function restoreMetaBusinessManager(string $bmId): RedirectResponse
+    {
+        $bm = MetaBusinessManager::query()
+            ->where('bm_id', $bmId)
+            ->first();
+
+        if (!$bm) {
+            return back()->withErrors(['error' => __('business_manager.bm_not_found')]);
+        }
+
+        $bm->forceFill(['hidden_at' => null])->save();
+
+        return back()->with('success', __('business_manager.restore_success'));
     }
 
     /**
@@ -234,4 +286,3 @@ class BusinessManagerController extends Controller
         return back()->with('success', __('business_manager.top_up_dialog.success'));
     }
 }
-

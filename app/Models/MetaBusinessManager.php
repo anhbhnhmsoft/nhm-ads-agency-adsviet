@@ -24,12 +24,14 @@ class MetaBusinessManager extends Model
         'is_primary',
         'is_direct_access',
         'access_source',
+        'hidden_at',
         'last_synced_at',
     ];
 
     protected $casts = [
         'is_primary' => 'boolean',
         'is_direct_access' => 'boolean',
+        'hidden_at' => 'datetime',
         'last_synced_at' => 'datetime',
     ];
 

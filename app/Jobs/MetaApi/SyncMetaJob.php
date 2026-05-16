@@ -19,6 +19,8 @@ class SyncMetaJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $timeout = 1800;
+    public int $tries = 1;
 
     /**
      * Create a new job instance.

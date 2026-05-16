@@ -68,6 +68,23 @@ class MetaService
         return $this->metaBusinessManagerRepository->updateOrCreate($identifiers, $data);
     }
 
+    private function getHiddenMetaBusinessManagerIds(): array
+    {
+        return $this->metaBusinessManagerRepository->query()
+            ->whereNotNull('hidden_at')
+            ->pluck('bm_id')
+            ->map(fn ($id) => (string) $id)
+            ->toArray();
+    }
+
+    private function isMetaBusinessManagerHidden(string $bmId): bool
+    {
+        return $this->metaBusinessManagerRepository->query()
+            ->where('bm_id', (string) $bmId)
+            ->whereNotNull('hidden_at')
+            ->exists();
+    }
+
     /**
      * Validate service user
      * @param string $serviceUserId
@@ -127,6 +144,22 @@ class MetaService
             return ServiceReturn::success(data: $serviceUser);
         } catch (\Exception $e) {
             return ServiceReturn::error(__('common_error.server_error'));
+        }
+    }
+
+    private function parseCampaignSpendDateRange(array $filter): array
+    {
+        if (empty($filter['start_date']) || empty($filter['end_date'])) {
+            return [null, null];
+        }
+
+        try {
+            return [
+                Carbon::parse($filter['start_date'])->format('Y-m-d'),
+                Carbon::parse($filter['end_date'])->format('Y-m-d'),
+            ];
+        } catch (\Throwable) {
+            return [null, null];
         }
     }
 
@@ -216,6 +249,8 @@ class MetaService
             if (!$adsAccount) {
                 return ServiceReturn::error(__('meta.error.account_not_found'));
             }
+            [$startDate, $endDate] = $this->parseCampaignSpendDateRange($queryListDTO->filter ?? []);
+
             // -----------------------------------------------------------------
             // BƯỚC 1: GỌI 2 API INSIGHTS (NHƯNG KHÔNG CHẶN NẾU LỖI)
             // -----------------------------------------------------------------
@@ -227,7 +262,9 @@ class MetaService
                 $totalResult = $this->metaBusinessService->getAccountInsightsByCampaign(
                     accountId: $adsAccount->account_id,
                     datePreset: 'maximum',
-                    fields: ['campaign_id', 'spend']
+                    fields: ['campaign_id', 'spend'],
+                    startDate: $startDate,
+                    endDate: $endDate,
                 );
                 if ($totalResult->isSuccess()) {
                     $totalData = $totalResult->getData();
@@ -353,6 +390,63 @@ class MetaService
                 return ServiceReturn::error(__('meta.error.account_not_found'));
             }
 
+            [$startDate, $endDate] = $this->parseCampaignSpendDateRange($queryListDTO->filter ?? []);
+
+            $totalData = ['data' => []];
+            $todayData = ['data' => []];
+
+            try {
+                $totalResult = $this->metaBusinessService->getAccountInsightsByCampaign(
+                    accountId: $adsAccount->account_id,
+                    datePreset: 'maximum',
+                    fields: ['campaign_id', 'spend'],
+                    startDate: $startDate,
+                    endDate: $endDate,
+                );
+                if ($totalResult->isSuccess()) {
+                    $totalData = $totalResult->getData();
+                }
+            } catch (\Throwable $e) {
+                Logging::error(
+                    message: 'MetaService@getCampaignsPaginatedByAccountId: exception total insights, fallback to local value',
+                    context: [
+                        'meta_account_id' => $accountId,
+                        'error' => $e->getMessage(),
+                    ],
+                    exception: $e
+                );
+            }
+
+            try {
+                $todayResult = $this->metaBusinessService->getAccountInsightsByCampaign(
+                    accountId: $adsAccount->account_id,
+                    datePreset: 'today',
+                    fields: ['campaign_id', 'spend']
+                );
+                if ($todayResult->isSuccess()) {
+                    $todayData = $todayResult->getData();
+                }
+            } catch (\Throwable $e) {
+                Logging::error(
+                    message: 'MetaService@getCampaignsPaginatedByAccountId: exception today insights, fallback to local value',
+                    context: [
+                        'meta_account_id' => $accountId,
+                        'error' => $e->getMessage(),
+                    ],
+                    exception: $e
+                );
+            }
+
+            $totalSpendMap = [];
+            foreach ($totalData['data'] ?? [] as $insight) {
+                $totalSpendMap[$insight['campaign_id']] = $insight['spend'] ?? 0;
+            }
+
+            $todaySpendMap = [];
+            foreach ($todayData['data'] ?? [] as $insight) {
+                $todaySpendMap[$insight['campaign_id']] = $insight['spend'] ?? 0;
+            }
+
             $query = $this->metaAdsCampaignRepository->query()
                 ->where('meta_account_id', $adsAccount->id);
 
@@ -369,9 +463,9 @@ class MetaService
                 $queryListDTO->page
             );
 
-            $paginator->getCollection()->each(function ($item) {
-                $item->total_spend = $item->total_spend ?? 0;
-                $item->today_spend = $item->today_spend ?? 0;
+            $paginator->getCollection()->each(function ($item) use ($totalSpendMap, $todaySpendMap) {
+                $item->total_spend = $totalSpendMap[$item->campaign_id] ?? ($item->total_spend ?? 0);
+                $item->today_spend = $todaySpendMap[$item->campaign_id] ?? ($item->today_spend ?? 0);
             });
 
             return ServiceReturn::success(data: $paginator);
@@ -1428,7 +1522,11 @@ class MetaService
 
     private function syncMetaAccountsFromManagerEdgesBatched(array $bmIds): void
     {
-        $uniqueBmIds = array_values(array_unique(array_filter($bmIds)));
+        $hiddenBmIds = $this->getHiddenMetaBusinessManagerIds();
+        $uniqueBmIds = array_values(array_diff(
+            array_values(array_unique(array_filter(array_map('strval', $bmIds)))),
+            $hiddenBmIds
+        ));
         if (empty($uniqueBmIds)) {
             return;
         }
@@ -1439,7 +1537,7 @@ class MetaService
         foreach ($chunks as $bmChunk) {
             $batchRequests = [];
             foreach ($bmChunk as $bmId) {
-                $fields = 'id,name,account_status,disable_reason,spend_cap,amount_spent,balance,currency,created_time,is_prepay_account,timezone_id,timezone_name,business';
+                $fields = 'id,name,account_status,disable_reason,spend_cap,amount_spent,balance,currency,created_time,is_prepay_account,timezone_id,timezone_name,funding_source_details,business';
                 $batchRequests[] = [
                     'method' => 'GET',
                     'relative_url' => "{$bmId}/owned_ad_accounts?fields={$fields}&limit=100",
@@ -1470,6 +1568,11 @@ class MetaService
 
     private function processAccountListData(array $accounts, string $bmIdFromRequest = ''): array
     {
+        $hiddenBmIds = $this->getHiddenMetaBusinessManagerIds();
+        if ($bmIdFromRequest && in_array((string) $bmIdFromRequest, $hiddenBmIds, true)) {
+            return [];
+        }
+
         $syncedAccountIds = [];
 
         foreach ($accounts as $adsAccountData) {
@@ -1481,6 +1584,10 @@ class MetaService
             $business = $adsAccountData['business'] ?? null;
             $ownerBmId = $business['id'] ?? $bmIdFromRequest;
             $ownerBmName = $business['name'] ?? null;
+
+            if ($ownerBmId && in_array((string) $ownerBmId, $hiddenBmIds, true)) {
+                continue;
+            }
 
             try {
                 if ($ownerBmId) {
@@ -1521,6 +1628,7 @@ class MetaService
                     'is_prepay_account' => (bool) ($adsAccountData['is_prepay_account'] ?? false),
                     'timezone_id' => $adsAccountData['timezone_id'] ?? null,
                     'timezone_name' => $adsAccountData['timezone_name'] ?? null,
+                    'payment_card' => $this->resolvePaymentCardFromAccountData($adsAccountData),
                     'last_synced_at' => now(),
                     'business_manager_id' => $ownerBmId,
                 ];
@@ -1562,6 +1670,10 @@ class MetaService
      */
     private function syncMetaAccountsFromManagerEdge(string $bmId, string $type = 'owner', ?int $maxAccounts = null): ?array
     {
+        if ($this->isMetaBusinessManagerHidden($bmId)) {
+            return [];
+        }
+
         $after = null;
         $syncedCount = 0;
         $syncedAccountIds = [];
@@ -1629,6 +1741,7 @@ class MetaService
         while (!empty($queue)) {
             $children = $this->metaBusinessManagerRepository->query()
                 ->whereIn('parent_bm_id', $queue)
+                ->whereNull('hidden_at')
                 ->pluck('bm_id')
                 ->map(fn ($id) => (string) $id)
                 ->filter(fn ($id) => !in_array($id, $ids, true))
@@ -1673,9 +1786,13 @@ class MetaService
 
             foreach ($accounts as $adsAccountData) {
                 // Xác định BM con (owner) nếu có
-                $business = $adsAccountData['business'] ?? null;
-                $ownerBmId = $business['id'] ?? $bmId;
-                $ownerBmName = $business['name'] ?? null;
+            $business = $adsAccountData['business'] ?? null;
+            $ownerBmId = $business['id'] ?? $bmId;
+            $ownerBmName = $business['name'] ?? null;
+
+            if ($this->isMetaBusinessManagerHidden((string) $ownerBmId)) {
+                continue;
+            }
 
                 // Lưu/cập nhật BM con
                 try {
@@ -1720,6 +1837,7 @@ class MetaService
                             'is_prepay_account' => (bool) ($detail['is_prepay_account'] ?? false),
                             'timezone_id' => $detail['timezone_id'] ?? null,
                             'timezone_name' => $detail['timezone_name'] ?? null,
+                            'payment_card' => $this->resolvePaymentCardFromAccountData($detail),
                             'last_synced_at' => now(),
                         ]
                     );
@@ -2749,6 +2867,63 @@ class MetaService
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    private function normalizePaymentCard(mixed $fundingSourceDetails): ?string
+    {
+        if (!is_array($fundingSourceDetails)) {
+            return null;
+        }
+
+        $type = strtolower((string) ($fundingSourceDetails['type'] ?? ''));
+        $display = trim((string) (
+            $fundingSourceDetails['display_string']
+            ?? $fundingSourceDetails['display']
+            ?? $fundingSourceDetails['name']
+            ?? ''
+        ));
+
+        if (str_contains($type, 'credit') && str_contains($type, 'line')) {
+            return 'creditline';
+        }
+
+        if ($display !== '') {
+            return $display;
+        }
+
+        return $type !== '' ? $type : null;
+    }
+
+    private function resolvePaymentCardFromAccountData(array $accountData): ?string
+    {
+        $paymentCard = $this->normalizePaymentCard($accountData['funding_source_details'] ?? null);
+        if ($paymentCard !== null) {
+            return $paymentCard;
+        }
+
+        $accountId = $accountData['id'] ?? null;
+        if (!$accountId) {
+            return null;
+        }
+
+        try {
+            $detailResult = $this->metaBusinessService->getDetailAdsAccount((string) $accountId);
+            if ($detailResult->isError()) {
+                return null;
+            }
+
+            $detail = $detailResult->getData();
+            return is_array($detail)
+                ? $this->normalizePaymentCard($detail['funding_source_details'] ?? null)
+                : null;
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'MetaService@resolvePaymentCardFromAccountData error: ' . $e->getMessage(),
+                context: ['account_id' => $accountId],
+                exception: $e
+            );
+            return null;
         }
     }
 }

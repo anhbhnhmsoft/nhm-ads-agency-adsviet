@@ -88,7 +88,8 @@ class BusinessManagerService
 
         $metaChildren = [];
         if ($activeMetaSetting) {
-            $metaChildQuery = $this->metaBusinessManagerRepository->query();
+            $metaChildQuery = $this->metaBusinessManagerRepository->query()
+                ->whereNull('hidden_at');
             if ($activeMetaBmId) {
                 $metaChildQuery
                     ->whereNotNull('parent_bm_id')
@@ -247,16 +248,24 @@ class BusinessManagerService
                 : null;
 
             $bmNameMap = $this->metaBusinessManagerRepository->query()
+                ->whereNull('hidden_at')
                 ->pluck('name', 'bm_id')
                 ->toArray();
 
             $bmParentMap = $this->metaBusinessManagerRepository->query()
+                ->whereNull('hidden_at')
                 ->pluck('parent_bm_id', 'bm_id')
                 ->toArray();
 
             $bmDirectAccessMap = $this->metaBusinessManagerRepository->query()
+                ->whereNull('hidden_at')
                 ->pluck('is_direct_access', 'bm_id')
                 ->map(fn ($value) => (bool) $value)
+                ->toArray();
+            $hiddenMetaBmIds = $this->metaBusinessManagerRepository->query()
+                ->whereNotNull('hidden_at')
+                ->pluck('bm_id')
+                ->map(fn ($id) => (string) $id)
                 ->toArray();
 
             $mccNameMap = $this->googleMccManagerRepository->query()
@@ -361,17 +370,24 @@ class BusinessManagerService
                     foreach ($accounts as $account) {
                         // Tính spend cho từng account
                         if ($dateStart && $dateEnd) {
-                            $spend = $this->metaAdsAccountInsightRepository->query()
+                            $insight = $this->metaAdsAccountInsightRepository->query()
                                 ->where('meta_account_id', $account->id)
                                 ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
-                                ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
+                                ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend, COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
                                 ->first();
-                            $spendValue = $spend && isset($spend->total_spend) ? (string) $spend->total_spend : '0';
+                            $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
+                            $reachValue = $insight && isset($insight->total_reach) ? (int) $insight->total_reach : 0;
                         } else {
                             $spendValue = (string) ($account->amount_spent ?? '0');
+                            $reach = $this->metaAdsAccountInsightRepository->query()
+                                ->where('meta_account_id', $account->id)
+                                ->selectRaw('COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
+                                ->first();
+                            $reachValue = $reach && isset($reach->total_reach) ? (int) $reach->total_reach : 0;
                         }
 
                         $balanceValue = (string) ($account->balance ?? '0');
+                        $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null);
                         $status = $account->account_status !== null ? (int) $account->account_status : null;
                         $isActive = $this->isAccountActive((int) $platform, $status);
 
@@ -410,7 +426,7 @@ class BusinessManagerService
                             $displayBmName = !empty($config['display_name']) ? $config['display_name'] : $bmDisplayName;
                         }
 
-                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId);
+                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, $reachValue, $remainingAmount);
                     }
                 } elseif ($platform === PlatformType::GOOGLE->value) {
                     $accounts = $this->googleAccountRepository->query()
@@ -420,12 +436,12 @@ class BusinessManagerService
                     foreach ($accounts as $account) {
                         // Tính spend từ insights nếu có date range
                         if ($dateStart && $dateEnd) {
-                            $spend = $this->googleAdsAccountInsightRepository->query()
+                            $insight = $this->googleAdsAccountInsightRepository->query()
                                 ->where('google_account_id', $account->id)
                                 ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
                                 ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
                                 ->first();
-                            $spendValue = $spend && isset($spend->total_spend) ? (string) $spend->total_spend : '0';
+                            $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
                         } else {
                             // Google không có amount_spent trong account, để 0 hoặc tính từ insights tổng
                             $spendValue = '0';
@@ -481,7 +497,18 @@ class BusinessManagerService
                             'active_campaigns' => $activeCampaigns,
                             'disabled_campaigns' => $disabledCampaigns,
                             'total_spend' => $spendValue,
+                            'total_reach' => 0,
                             'total_balance' => $balanceValue,
+                            'account_status' => $account->account_status,
+                            'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
+                            'spend_cap' => null,
+                            'amount_spent' => '0',
+                            'threshold' => null,
+                            'remaining_amount' => null,
+                            'created_time' => null,
+                            'account_type' => null,
+                            'timezone' => $account->time_zone ?? null,
+                            'payment_card' => $account->payment_card ?? null,
                             'currency' => $account->currency ?? 'USD',
                             'accounts' => [
                                 ['currency' => $account->currency ?? 'USD'],
@@ -515,7 +542,8 @@ class BusinessManagerService
                     ? $this->platformSettingService->getMetaScopedBusinessManagerId($activeMetaSetting->config ?? [])
                     : null;
 
-                $emptyBmQuery = $this->metaBusinessManagerRepository->query();
+                $emptyBmQuery = $this->metaBusinessManagerRepository->query()
+                    ->whereNull('hidden_at');
                 if ($activeMetaBmId) {
                     $emptyBmQuery->where(function ($q) use ($activeMetaBmId) {
                         $q->where('bm_id', (string) $activeMetaBmId)
@@ -546,7 +574,18 @@ class BusinessManagerService
                         'active_accounts' => 0,
                         'disabled_accounts' => 0,
                         'total_spend' => '0',
+                        'total_reach' => 0,
                         'total_balance' => '0',
+                        'account_status' => null,
+                        'account_status_label' => null,
+                        'spend_cap' => null,
+                        'amount_spent' => null,
+                        'threshold' => null,
+                        'remaining_amount' => null,
+                        'created_time' => null,
+                        'account_type' => null,
+                        'timezone' => null,
+                        'payment_card' => null,
                         'currency' => $bm->currency ?? 'USD',
                         'is_direct_access' => (bool) ($bm->is_direct_access ?? false),
                         'accounts' => [
@@ -598,6 +637,13 @@ class BusinessManagerService
                 ));
             }
 
+            if (!empty($hiddenMetaBmIds)) {
+                $accountsList = array_values(array_filter(
+                    $accountsList,
+                    fn ($item) => !$this->isMetaBusinessManagerHidden($item, $hiddenMetaBmIds)
+                ));
+            }
+
             $keyword = trim((string) ($filter['keyword'] ?? ''));
             if ($keyword !== '') {
                 $needle = mb_strtolower($keyword);
@@ -634,6 +680,13 @@ class BusinessManagerService
                     ],
                 ],
             ];
+
+            if ($viewMode === 'account' && $dateStart && $dateEnd) {
+                $accountsList = array_values(array_filter(
+                    $accountsList,
+                    fn ($item) => (float) ($item['total_spend'] ?? 0) > 0
+                ));
+            }
 
             foreach ($accountsList as $accountItem) {
                 if (empty($accountItem['account_id'])) {
@@ -749,6 +802,16 @@ class BusinessManagerService
                 $bmArray = array_values($accountsList);
             }
 
+            if ($viewMode === 'account') {
+                usort($bmArray, fn ($a, $b) => (float) ($b['total_spend'] ?? 0) <=> (float) ($a['total_spend'] ?? 0));
+            }
+
+            $totals = [
+                'total_spend' => array_sum(array_map(fn ($item) => (float) ($item['total_spend'] ?? 0), $bmArray)),
+                'total_reach' => array_sum(array_map(fn ($item) => (int) ($item['total_reach'] ?? 0), $bmArray)),
+                'currency' => $bmArray[0]['currency'] ?? $this->currencyExchangeService->targetCurrency(),
+            ];
+
             $perPage = $queryListDTO->perPage ?? 10;
             $page = $queryListDTO->page ?? 1;
             $total = count($bmArray);
@@ -766,6 +829,7 @@ class BusinessManagerService
             return ServiceReturn::success(data: [
                 'paginator' => $paginator,
                 'stats' => $stats,
+                'totals' => $totals,
             ]);
         } catch (\Throwable $e) {
             Logging::error(
@@ -818,6 +882,47 @@ class BusinessManagerService
         };
     }
 
+    private function getAccountStatusLabel(int $platform, ?int $status): ?string
+    {
+        if ($status === null) {
+            return null;
+        }
+
+        if ($platform === PlatformType::META->value) {
+            return MetaAdsAccountStatus::fromValue($status)?->label();
+        }
+
+        if ($platform === PlatformType::GOOGLE->value) {
+            return GoogleCustomerStatus::fromValue($status)?->label();
+        }
+
+        return null;
+    }
+
+    private function calculateRemainingAmount(mixed $spendCap, mixed $amountSpent): ?float
+    {
+        $limit = is_numeric($spendCap) ? (float) $spendCap : null;
+        if ($limit === null || $limit <= 0) {
+            return null;
+        }
+
+        $spent = is_numeric($amountSpent) ? (float) $amountSpent : 0.0;
+        return max(0.0, $limit - $spent);
+    }
+
+    private function isMetaBusinessManagerHidden(array $item, array $hiddenMetaBmIds): bool
+    {
+        if (($item['platform'] ?? null) !== PlatformType::META->value) {
+            return false;
+        }
+
+        $bmIds = array_map('strval', $item['bm_ids'] ?? []);
+        $scopeBmIds = array_map('strval', $item['scope_bm_ids'] ?? []);
+        $ids = array_filter(array_merge($bmIds, $scopeBmIds, [(string) ($item['parent_bm_id'] ?? '')]));
+
+        return count(array_intersect($ids, $hiddenMetaBmIds)) > 0;
+    }
+
     /**
      * Chuẩn hóa giá trị dùng cho tìm kiếm keyword
      */
@@ -842,7 +947,10 @@ class BusinessManagerService
     public function getChildBusinessManagers(string $parentBmId): ServiceReturn
     {
         try {
-            $childBMs = $this->metaBusinessManagerRepository->findByParentBmId($parentBmId);
+            $childBMs = $this->metaBusinessManagerRepository->query()
+                ->where('parent_bm_id', $parentBmId)
+                ->whereNull('hidden_at')
+                ->get();
 
             $data = $childBMs->map(function ($bm) {
                 return [
@@ -1098,6 +1206,7 @@ class BusinessManagerService
                     $sourceBmIds = [(string) $bmId];
                 } else {
                     $sourceBmIds = $this->metaBusinessManagerRepository->query()
+                        ->whereNull('hidden_at')
                         ->where('is_direct_access', true)
                         ->pluck('bm_id')
                         ->map(fn ($id) => (string) $id)
@@ -1153,17 +1262,24 @@ class BusinessManagerService
 
                     // Tính spend cho từng account
                     if ($dateStart && $dateEnd) {
-                        $spend = $this->metaAdsAccountInsightRepository->query()
+                        $insight = $this->metaAdsAccountInsightRepository->query()
                             ->where('meta_account_id', $account->id)
                             ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
-                            ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
+                            ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend, COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
                             ->first();
-                        $spendValue = $spend && isset($spend->total_spend) ? (string) $spend->total_spend : '0';
+                        $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
+                        $reachValue = $insight && isset($insight->total_reach) ? (int) $insight->total_reach : 0;
                     } else {
                         $spendValue = (string) ($account->amount_spent ?? '0');
+                        $reach = $this->metaAdsAccountInsightRepository->query()
+                            ->where('meta_account_id', $account->id)
+                            ->selectRaw('COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
+                            ->first();
+                        $reachValue = $reach && isset($reach->total_reach) ? (int) $reach->total_reach : 0;
                     }
 
                     $balanceValue = (string) ($account->balance ?? '0');
+                    $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null);
                     $status = $account->account_status !== null ? (int) $account->account_status : null;
                     $isActive = $this->isAccountActive((int) $platform, $status);
 
@@ -1185,7 +1301,20 @@ class BusinessManagerService
                         'active_accounts' => $isActive ? 1 : 0,
                         'disabled_accounts' => $isActive ? 0 : 1,
                         'total_spend' => $spendValue,
+                        'total_reach' => $reachValue,
                         'total_balance' => $balanceValue,
+                        'account_status' => $account->account_status,
+                        'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
+                        'spend_cap' => $account->spend_cap,
+                        'amount_spent' => $account->amount_spent,
+                        'threshold' => null,
+                        'remaining_amount' => $remainingAmount,
+                        'created_time' => $account->created_time,
+                        'account_type' => isset($account->is_prepay_account)
+                            ? ((bool) $account->is_prepay_account ? 'Prepay' : 'Postpay')
+                            : null,
+                        'timezone' => $account->timezone_name ?? $account->timezone_id ?? null,
+                        'payment_card' => $account->payment_card ?? null,
                         'currency' => $account->currency ?? 'USD',
                         'is_direct_access' => (bool) ($bmDirectAccessMap[$sourceBmId] ?? false),
                         'accounts' => [
@@ -1209,12 +1338,12 @@ class BusinessManagerService
                 foreach ($googleAccounts as $account) {
                     // Tính spend từ insights nếu có date range
                     if ($dateStart && $dateEnd) {
-                        $spend = $this->googleAdsAccountInsightRepository->query()
+                        $insight = $this->googleAdsAccountInsightRepository->query()
                             ->where('google_account_id', $account->id)
                             ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
                             ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
                             ->first();
-                        $spendValue = $spend && isset($spend->total_spend) ? (string) $spend->total_spend : '0';
+                        $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
                     } else {
                         $spendValue = '0';
                     }
@@ -1242,7 +1371,18 @@ class BusinessManagerService
                         'active_accounts' => $isActive ? 1 : 0,
                         'disabled_accounts' => $isActive ? 0 : 1,
                         'total_spend' => $spendValue,
+                        'total_reach' => 0,
                         'total_balance' => $balanceValue,
+                        'account_status' => $account->account_status,
+                        'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
+                        'spend_cap' => null,
+                        'amount_spent' => '0',
+                        'threshold' => null,
+                        'remaining_amount' => null,
+                        'created_time' => null,
+                        'account_type' => null,
+                        'timezone' => $account->time_zone ?? null,
+                        'payment_card' => null,
                         'currency' => $account->currency ?? 'USD',
                         'accounts' => [
                             ['currency' => $account->currency ?? 'USD'],
@@ -1258,8 +1398,10 @@ class BusinessManagerService
     /**
      * Helper tạo mảng data cho item trong danh sách BM/MCC
      */
-    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId): array
+    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, ?int $reachValue = null, ?float $remainingAmount = null): array
     {
+        $status = $account->account_status !== null ? (int) $account->account_status : null;
+
         return [
             'id' => (string) $account->id,
             'account_id' => $account->account_id,
@@ -1276,7 +1418,20 @@ class BusinessManagerService
             'active_campaigns' => $activeCampaigns,
             'disabled_campaigns' => $disabledCampaigns,
             'total_spend' => $spendValue,
+            'total_reach' => $reachValue,
             'total_balance' => $balanceValue,
+            'account_status' => $account->account_status,
+            'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
+            'spend_cap' => $account->spend_cap ?? null,
+            'amount_spent' => $account->amount_spent ?? null,
+            'threshold' => null,
+            'remaining_amount' => $remainingAmount,
+            'created_time' => $account->created_time,
+            'account_type' => isset($account->is_prepay_account)
+                ? ((bool) $account->is_prepay_account ? 'Prepay' : 'Postpay')
+                : null,
+            'timezone' => $account->timezone_name ?? $account->timezone_id ?? null,
+            'payment_card' => $account->payment_card ?? null,
             'currency' => $account->currency ?? 'USD',
             'accounts' => [
                 ['currency' => $account->currency ?? 'USD'],
@@ -1318,6 +1473,7 @@ class BusinessManagerService
         while (!empty($queue)) {
             $children = $this->metaBusinessManagerRepository->query()
                 ->whereIn('parent_bm_id', $queue)
+                ->whereNull('hidden_at')
                 ->pluck('bm_id')
                 ->map(fn ($id) => (string) $id)
                 ->filter(fn ($id) => !in_array($id, $ids, true))

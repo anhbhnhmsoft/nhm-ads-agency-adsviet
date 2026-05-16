@@ -185,6 +185,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/{bmId}/accounts', [BusinessManagerController::class, 'getAccounts'])->name('business_managers_get_accounts');
         Route::get('/{parentBmId}/child-business-managers', [BusinessManagerController::class, 'getChildBusinessManagers'])->name('business_managers_get_child_bms');
         Route::post('/{bmId}/top-up', [BusinessManagerController::class, 'topUp'])->name('business_managers_top_up');
+        Route::post('/{bmId}/hide', [BusinessManagerController::class, 'hideMetaBusinessManager'])->name('business_managers_hide');
+        Route::post('/{bmId}/restore', [BusinessManagerController::class, 'restoreMetaBusinessManager'])->name('business_managers_restore');
     });
 
     Route::prefix('/profit')->group(function () {

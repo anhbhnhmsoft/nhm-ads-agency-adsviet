@@ -1,5 +1,6 @@
 
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable, RowSelectionState, OnChangeFn } from '@tanstack/react-table';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,6 +21,7 @@ interface DataTableProps<TData, TValue> {
     onRowClick?: (row: TData) => void;
     rowSelection?: RowSelectionState;
     onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+    renderFooterRows?: (columnCount: number) => ReactNode;
 }
 
 export function DataTable<TData, TValue>({ 
@@ -28,6 +30,7 @@ export function DataTable<TData, TValue>({
     onRowClick,
     rowSelection,
     onRowSelectionChange,
+    renderFooterRows,
 }: DataTableProps<TData, TValue>) {
     const [internalRowSelection, setInternalRowSelection] = useState<RowSelectionState>({});
     
@@ -59,8 +62,8 @@ export function DataTable<TData, TValue>({
 
     return (
        <div>
-           <div className="overflow-hidden rounded-md border mb-4 bg-white">
-               <Table>
+           <div className="overflow-x-auto rounded-md border mb-4 bg-white">
+               <Table className="min-w-full">
                    <TableHeader>
                        {table.getHeaderGroups().map((headerGroup) => (
                            <TableRow key={headerGroup.id}>
@@ -101,12 +104,13 @@ export function DataTable<TData, TValue>({
                                </TableRow>
                            ))
                        ) : (
-                           <TableRow>
-                               <TableCell colSpan={columns.length} className="h-24 text-center">
-                                   Không có dữ liệu nào để hiển thị.
-                               </TableCell>
-                           </TableRow>
-                       )}
+                               <TableRow>
+                                   <TableCell colSpan={columns.length} className="h-24 text-center">
+                                       Không có dữ liệu nào để hiển thị.
+                                   </TableCell>
+                               </TableRow>
+                           )}
+                       {renderFooterRows?.(table.getAllLeafColumns().length)}
                    </TableBody>
                </Table>
            </div>

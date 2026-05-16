@@ -40,10 +40,16 @@ class ServiceManagementController extends Controller
             'disabled_accounts' => 0,
             'by_platform' => [],
         ];
+        $totals = [
+            'total_spend' => 0,
+            'total_reach' => 0,
+            'currency' => 'USD',
+        ];
         if ($data) {
             if (is_array($data) && isset($data['paginator'])) {
                 $paginator = $data['paginator'];
                 $stats = $data['stats'] ?? $stats;
+                $totals = $data['totals'] ?? $totals;
             } elseif ($data instanceof LengthAwarePaginator) {
                 $paginator = $data;
             }
@@ -72,6 +78,7 @@ class ServiceManagementController extends Controller
                         ],
                     ],
                     'stats' => fn () => $stats,
+                    'totals' => fn () => $totals,
                 ]
             );
         }
@@ -108,9 +115,9 @@ class ServiceManagementController extends Controller
             data: [
                 'paginator' => fn () => $paginatorArray,
                 'stats' => fn () => $stats,
+                'totals' => fn () => $totals,
                 'childManagers' => fn () => $this->businessManagerService->getChildManagersForFilter(),
             ]
         );
     }
 }
-

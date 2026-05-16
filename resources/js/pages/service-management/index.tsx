@@ -3,6 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { useTranslation } from 'react-i18next';
 import type { ColumnDef } from '@tanstack/react-table';
+import type { DateRange } from 'react-day-picker';
 import axios from 'axios';
 import {
     ArrowLeft,
@@ -63,6 +64,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { TableCell, TableRow } from '@/components/ui/table';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import {
     ChartContainer,
     ChartTooltip,
@@ -70,11 +73,11 @@ import {
 } from '@/components/ui/chart';
 
 import { _PlatformType, _UserRole } from '@/lib/types/constants';
-import type { BusinessManagerItem, BusinessManagerPagination, BusinessManagerStats } from '@/pages/business-manager/types/type';
+import type { BusinessManagerItem, BusinessManagerPagination, BusinessManagerStats, BusinessManagerTotals } from '@/pages/business-manager/types/type';
 import type { Campaign, CampaignDetail, CampaignDailyInsight, StatusSeverity } from '@/pages/service-management/types/types';
 import BusinessManagerSearchForm from '@/pages/business-manager/components/search-form';
 import { useSearchServiceManagement } from '@/pages/service-management/hooks/use-search';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatCurrency, formatDateForQuery, formatNumber } from '@/lib/utils';
 
 type ChildManagerOption = {
     id: string;
@@ -85,6 +88,7 @@ type ChildManagerOption = {
 type Props = {
     paginator: BusinessManagerPagination;
     stats: BusinessManagerStats;
+    totals: BusinessManagerTotals;
     childManagers?: {
         meta?: ChildManagerOption[];
         google?: ChildManagerOption[];
@@ -104,7 +108,7 @@ const getSeverityBadge = (severity?: StatusSeverity | null) => {
     }
 };
 
-const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
+const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Props) => {
     const { t } = useTranslation();
     const { auth } = usePage().props as any;
     const isAgencyOrCustomer = auth?.user?.role_id === _UserRole.AGENCY || auth?.user?.role_id === _UserRole.CUSTOMER;
@@ -114,6 +118,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [campaignLoading, setCampaignLoading] = useState(false);
     const [campaignError, setCampaignError] = useState<string | null>(null);
+    const [campaignDateRange, setCampaignDateRange] = useState<DateRange | undefined>();
 
     // Dành cho Chi tiết Chiến dịch
     const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
@@ -146,7 +151,10 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [walletBalanceLoading, setWalletBalanceLoading] = useState(false);
 
-    const loadCampaigns = useCallback(async (account: BusinessManagerItem) => {
+    const loadCampaigns = useCallback(async (accountArg?: BusinessManagerItem, dateRangeArg?: DateRange | null) => {
+        const account = accountArg ?? selectedAccount;
+        if (!account) return;
+
         const canLoadPlatformCampaigns = account?.platform === _PlatformType.META;
         if (!account?.service_user_id && !canLoadPlatformCampaigns) {
             setCampaignError(
@@ -170,7 +178,19 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                         ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
                         : `/meta/${account.service_user_id}/${account.id}/campaigns`;
 
-            const response = await axios.get(apiPath, { params: { per_page: 50 } });
+            const dateRange = dateRangeArg === undefined ? campaignDateRange : dateRangeArg;
+            const filter: Record<string, string | undefined> = {};
+            if (dateRange?.from && dateRange?.to) {
+                filter.start_date = formatDateForQuery(dateRange.from);
+                filter.end_date = formatDateForQuery(dateRange.to);
+            }
+
+            const response = await axios.get(apiPath, {
+                params: {
+                    per_page: 50,
+                    filter,
+                },
+            });
             const payload = response.data?.data;
             const items: any[] = Array.isArray(payload?.data)
                 ? payload.data
@@ -183,7 +203,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
         } finally {
             setCampaignLoading(false);
         }
-    }, [t]);
+    }, [campaignDateRange, selectedAccount, t]);
 
     const loadCampaignInsights = useCallback(async (campaignId: string, preset: 'last_7d' | 'last_30d') => {
         if (!selectedAccount?.service_user_id) return;
@@ -276,6 +296,25 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
         return Number.isNaN(n) ? null : n;
     };
 
+    const formatAccountCurrency = (value: unknown, currency?: string | null) => {
+        const n = parseNumber(value);
+        if (n === null) return '-';
+        return `${n.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'USD'}`;
+    };
+
+    const formatAccountNumber = (value: unknown) => {
+        const n = parseNumber(value);
+        if (n === null) return '-';
+        return n.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    };
+
+    const formatDateTime = (value?: string | null) => {
+        if (!value) return '-';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleDateString('vi-VN');
+    };
+
     const formatPercentChange = (val: any) => {
         const n = parseNumber(val);
         if (n === null) return '--';
@@ -309,34 +348,80 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                 },
             },
             {
-                accessorKey: 'platform',
-                header: t('service_management.platform', { defaultValue: 'Nền tảng' }),
-                cell: ({ row }) => (
-                    <Badge variant="secondary">
-                        {row.original.platform === _PlatformType.META ? 'Meta' : 'Google'}
-                    </Badge>
-                ),
-            },
-            {
-                accessorKey: 'owner_name',
-                header: t('service_management.owner', { defaultValue: 'Chủ' }),
-                cell: ({ row }) => row.original.owner_name || 'System (Chưa gán)',
+                accessorKey: 'total_reach',
+                header: t('service_management.reach', { defaultValue: 'Reach' }),
+                cell: ({ row }) => formatAccountNumber(row.original.total_reach),
+                meta: { cellClassName: 'whitespace-nowrap text-right' },
             },
             {
                 accessorKey: 'total_spend',
-                header: t('service_management.spend', { defaultValue: 'Chi tiêu' }),
-                cell: ({ row }) => {
-                    const spend = Number(row.original.total_spend || 0);
-                    return `${spend.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${row.original.currency || 'USD'}`;
-                },
+                header: t('service_management.amount_spent', { defaultValue: 'Amount spent' }),
+                cell: ({ row }) => formatAccountCurrency(row.original.total_spend, row.original.currency),
+                meta: { cellClassName: 'whitespace-nowrap text-right font-medium' },
+            },
+            {
+                accessorKey: 'account_status_label',
+                header: t('service_management.account_status', { defaultValue: 'Account status' }),
+                cell: ({ row }) => (
+                    <Badge variant={row.original.account_status_label ? 'secondary' : 'outline'}>
+                        {row.original.account_status_label || row.original.account_status || '-'}
+                    </Badge>
+                ),
+                meta: { cellClassName: 'whitespace-nowrap' },
+            },
+            {
+                accessorKey: 'spend_cap',
+                header: t('service_management.account_spending_limit', { defaultValue: 'Account spending limit' }),
+                cell: ({ row }) => formatAccountCurrency(row.original.spend_cap, row.original.currency),
+                meta: { cellClassName: 'whitespace-nowrap text-right' },
+            },
+            {
+                accessorKey: 'remaining_amount',
+                header: t('service_management.remaining_amount', { defaultValue: 'Remaining amount' }),
+                cell: ({ row }) => formatAccountCurrency(row.original.remaining_amount, row.original.currency),
+                meta: { cellClassName: 'whitespace-nowrap text-right' },
+            },
+            {
+                accessorKey: 'threshold',
+                header: t('service_management.threshold', { defaultValue: 'Threshold' }),
+                cell: ({ row }) => formatAccountCurrency(row.original.threshold, row.original.currency),
+                meta: { cellClassName: 'whitespace-nowrap text-right' },
+            },
+            {
+                accessorKey: 'amount_spent',
+                header: t('service_management.total_spending', { defaultValue: 'Total spending' }),
+                cell: ({ row }) => formatAccountCurrency(row.original.amount_spent, row.original.currency),
+                meta: { cellClassName: 'whitespace-nowrap text-right' },
             },
             {
                 accessorKey: 'total_balance',
-                header: t('service_management.balance', { defaultValue: 'Số dư' }),
-                cell: ({ row }) => {
-                    const bal = Number(row.original.total_balance || 0);
-                    return `${bal.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${row.original.currency || 'USD'}`;
-                },
+                header: t('service_management.unpaid_balance', { defaultValue: 'Nợ chưa thanh toán' }),
+                cell: ({ row }) => formatAccountCurrency(row.original.total_balance, row.original.currency),
+                meta: { cellClassName: 'whitespace-nowrap text-right' },
+            },
+            {
+                accessorKey: 'created_time',
+                header: t('service_management.creation_time', { defaultValue: 'Creation time' }),
+                cell: ({ row }) => formatDateTime(row.original.created_time),
+                meta: { cellClassName: 'whitespace-nowrap' },
+            },
+            {
+                accessorKey: 'account_type',
+                header: t('service_management.account_type', { defaultValue: 'Account type' }),
+                cell: ({ row }) => row.original.account_type || '-',
+                meta: { cellClassName: 'whitespace-nowrap' },
+            },
+            {
+                accessorKey: 'timezone',
+                header: t('service_management.timezone', { defaultValue: 'Timezone' }),
+                cell: ({ row }) => row.original.timezone || '-',
+                meta: { cellClassName: 'whitespace-nowrap' },
+            },
+            {
+                accessorKey: 'payment_card',
+                header: t('service_management.payment_card', { defaultValue: 'Payment card' }),
+                cell: ({ row }) => row.original.payment_card || '-',
+                meta: { cellClassName: 'whitespace-nowrap' },
             },
             {
                 id: 'actions',
@@ -406,7 +491,9 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
             },
             {
                 accessorKey: 'total_spend',
-                header: t('service_management.total_spend', { defaultValue: 'Tổng chi tiêu' }),
+                header: campaignDateRange?.from && campaignDateRange?.to
+                    ? t('service_management.period_spend', { defaultValue: 'Chi tiêu theo khoảng ngày' })
+                    : t('service_management.total_spend', { defaultValue: 'Tổng chi tiêu' }),
                 cell: ({ row }) => formatCurrency(row.original.total_spend),
             },
             {
@@ -428,7 +515,7 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                 },
             },
         ],
-        [t, loadCampaignDetail, selectedAccount?.service_user_id],
+        [campaignDateRange, t, loadCampaignDetail, selectedAccount?.service_user_id],
     );
 
     const insightPresetOptions = [
@@ -605,6 +692,31 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                                 </AlertDescription>
                             </Alert>
                         )}
+
+                        <div className="flex flex-wrap items-end gap-3 rounded-md border bg-white p-3">
+                            <div className="grid gap-2">
+                                <Label>{t('service_management.campaign_spend_period', { defaultValue: 'Khoảng thời gian chi tiêu' })}</Label>
+                                <DateRangePicker date={campaignDateRange} onDateChange={setCampaignDateRange} />
+                            </div>
+                            <Button
+                                variant="outline"
+                                onClick={() => loadCampaigns()}
+                                disabled={campaignLoading}
+                            >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                {t('common.filter', { defaultValue: 'Lọc' })}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => {
+                                    setCampaignDateRange(undefined);
+                                    loadCampaigns(undefined, null);
+                                }}
+                                disabled={campaignLoading}
+                            >
+                                {t('common.reset', { defaultValue: 'Đặt lại' })}
+                            </Button>
+                        </div>
 
                         <DataTable
                             columns={campaignColumns}
@@ -858,7 +970,31 @@ const ServiceManagementIndex = ({ paginator, stats, childManagers }: Props) => {
                             handleSearch={handleSearch}
                         />
 
-                        <DataTable columns={accountColumns} paginator={paginator} />
+                        <DataTable
+                            columns={accountColumns}
+                            paginator={paginator}
+                            renderFooterRows={(columnCount) => (
+                                <TableRow className="bg-muted/40 font-medium">
+                                    <TableCell colSpan={2}>
+                                        <div>{t('service_management.total_results', { defaultValue: 'Total results' })}</div>
+                                        <div className="text-xs font-normal text-muted-foreground">
+                                            {t('service_management.rows_displayed', {
+                                                defaultValue: '{{shown}} / {{total}} rows displayed',
+                                                shown: paginator.data.length,
+                                                total: paginator.meta.total,
+                                            })}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="whitespace-nowrap text-right">
+                                        {formatAccountNumber(totals?.total_reach)}
+                                    </TableCell>
+                                    <TableCell className="whitespace-nowrap text-right">
+                                        {formatAccountCurrency(totals?.total_spend, totals?.currency)}
+                                    </TableCell>
+                                    {columnCount > 4 ? <TableCell colSpan={columnCount - 4} /> : null}
+                                </TableRow>
+                            )}
+                        />
                     </>
                 ) : (
                     renderCampaignView()

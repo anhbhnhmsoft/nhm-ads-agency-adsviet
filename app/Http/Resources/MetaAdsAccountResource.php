@@ -62,6 +62,7 @@ class MetaAdsAccountResource extends JsonResource
             'is_prepay_account' => $this->is_prepay_account,
             'timezone_id' => $this->timezone_id,
             'timezone_name' => $this->timezone_name,
+            'payment_card' => $this->payment_card,
             'last_synced_at' => $this->last_synced_at,
         ];
     }

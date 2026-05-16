@@ -28,6 +28,7 @@ class MetaAccount extends Model
         'is_prepay_account',
         'timezone_id',
         'timezone_name',
+        'payment_card',
         'last_synced_at',
     ];
 
