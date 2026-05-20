@@ -26,10 +26,31 @@ export const useSearchBusinessManager = () => {
         );
     };
 
+    const handleReset = () => {
+        const emptyQuery: BusinessManagerListQuery['filter'] = {
+            keyword: '',
+            platform: undefined,
+            start_date: undefined,
+            end_date: undefined,
+            child_manager_id: undefined,
+        };
+
+        setQuery(emptyQuery);
+        router.get(
+            business_managers_index().url,
+            {},
+            {
+                replace: true,
+                preserveState: true,
+                only: ['paginator', 'stats', 'childManagers'],
+            }
+        );
+    };
+
     return {
         query,
         setQuery,
         handleSearch,
+        handleReset,
     }
 }
-

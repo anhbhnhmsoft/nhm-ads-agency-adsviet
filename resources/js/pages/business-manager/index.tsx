@@ -447,7 +447,8 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
         });
     };
 
-    const { query, setQuery, handleSearch } = useSearchBusinessManager();
+    const { query, setQuery, handleSearch, handleReset } =
+        useSearchBusinessManager();
 
     return (
         <div>
@@ -473,6 +474,7 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                     query={query}
                     setQuery={setQuery}
                     handleSearch={handleSearch}
+                    handleReset={handleReset}
                 />
             )}
 

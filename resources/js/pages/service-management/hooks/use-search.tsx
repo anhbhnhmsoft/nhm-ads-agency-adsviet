@@ -50,9 +50,32 @@ export const useSearchServiceManagement = () => {
         );
     };
 
+    const handleReset = () => {
+        const emptyQuery: ServiceManagementListFilter = {
+            keyword: '',
+            manager_id: undefined,
+            platform: undefined,
+            start_date: undefined,
+            end_date: undefined,
+            child_manager_id: undefined,
+        };
+
+        setQuery(emptyQuery);
+        router.get(
+            service_management_index().url,
+            {},
+            {
+                replace: true,
+                preserveState: true,
+                only: ['paginator', 'stats', 'totals'],
+            },
+        );
+    };
+
     return {
         query,
         setQuery,
         handleSearch,
+        handleReset,
     };
 };

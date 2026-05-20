@@ -236,10 +236,10 @@ class DashboardController extends Controller
             }
         }
         
-        // Nếu không có date range, mặc định lấy 30 ngày gần nhất
+        // Nếu không có date range, mặc định lấy từ ngày 1 của tháng hiện tại đến hôm nay
         if (!$startDate || !$endDate) {
             $endDate = Carbon::today()->endOfDay();
-            $startDate = $endDate->copy()->subDays(29)->startOfDay();
+            $startDate = $endDate->copy()->startOfMonth()->startOfDay();
         }
 
         try {

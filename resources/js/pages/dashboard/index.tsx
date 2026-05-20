@@ -30,7 +30,7 @@ import {
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { WalletTransaction } from '@/pages/wallet/types/type';
-import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransactions, DashboardData, PlatformBalance, SpendingRanking } from './types';
+import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransactions, DashboardData, PlatformBalance } from './types';
 import { formatDateForQuery, formatMoney } from '@/lib/utils';
 
 const breadcrumbs: IBreadcrumbItem[] = [
@@ -85,8 +85,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
             };
         }
         const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 29);
+        const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
         return { from: startDate, to: endDate };
     });
     
@@ -111,10 +110,6 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
 
     const formatAccountCurrency = (value: string | number, currency?: string | null) => {
         return formatMoney(value, currency || 'USD', i18n.language);
-    };
-
-    const formatPercent = (value: number) => {
-        return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
     };
 
     const handleViewWithdrawInfo = (
@@ -244,6 +239,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                 totalBalance={adminDashboardData.platform_accounts.meta.total_balance}
                                 balancesByCurrency={adminDashboardData.platform_accounts.meta.balances_by_currency}
                                 profitData={profitByPlatform?.find(p => p.platform === 1)} // PlatformType::META = 1
+                                language={i18n.language}
                                 t={t}
                                 formatCurrency={formatCurrency}
                                 formatAccountCurrency={formatAccountCurrency}
@@ -254,6 +250,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                 totalBalance={adminDashboardData.platform_accounts.google.total_balance}
                                 balancesByCurrency={adminDashboardData.platform_accounts.google.balances_by_currency}
                                 profitData={profitByPlatform?.find(p => p.platform === 2)} // PlatformType::GOOGLE = 2
+                                language={i18n.language}
                                 t={t}
                                 formatCurrency={formatCurrency}
                                 formatAccountCurrency={formatAccountCurrency}
@@ -932,37 +929,46 @@ type PlatformAccountCardProps = {
     totalBalance: string;
     balancesByCurrency?: PlatformBalance[];
     profitData?: ProfitByPlatformData | null;
-    t: (key: string, options?: any) => string;
+    language: string;
+    t: (key: string, options?: Record<string, unknown>) => string;
     formatCurrency: (value: string | number) => string;
     formatAccountCurrency: (value: string | number, currency?: string | null) => string;
 };
 
-function PlatformAccountCard({ platform, activeAccounts, totalBalance, balancesByCurrency, profitData, t, formatCurrency, formatAccountCurrency }: PlatformAccountCardProps) {
+function PlatformAccountCard({ platform, activeAccounts, totalBalance, balancesByCurrency, profitData, language, t, formatCurrency, formatAccountCurrency }: PlatformAccountCardProps) {
     const platformLabel = platform === 'meta' 
         ? t('dashboard.platform_meta')
         : t('dashboard.platform_google_ads');
     const balances = balancesByCurrency?.length
         ? balancesByCurrency
         : [{ amount: totalBalance, currency: 'USD' }];
+    const visibleBalances = balances.filter((balance) => {
+        const amount = typeof balance.amount === 'string' ? parseFloat(balance.amount) : balance.amount;
+        return Number.isFinite(amount) && amount !== 0;
+    });
+    const fallbackCurrency = language.toLowerCase().startsWith('vi') ? 'VND' : 'USD';
+    const displayBalances = visibleBalances.length
+        ? visibleBalances
+        : [{ amount: '0', currency: fallbackCurrency }];
     
     return (
         <Card>
             <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold text-[#4285f4]">{platformLabel}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
                 <div>
-                    <div className="text-sm text-muted-foreground mb-1">
+                    <div className="mb-1 text-sm text-muted-foreground">
                         {t('dashboard.platform_active_accounts', { defaultValue: 'Số lượng tài khoản Active' })}
                     </div>
-                    <div className="text-3xl font-bold text-[#4285f4]">{activeAccounts}</div>
+                    <div className="text-2xl font-semibold leading-none text-[#4285f4]">{activeAccounts}</div>
                 </div>
                 <div>
-                    <div className="text-sm text-muted-foreground mb-1">
+                    <div className="mb-2 text-sm text-muted-foreground">
                         {t('dashboard.platform_total_balance', { defaultValue: 'Số dư khả dụng của các tài khoản' })}
                     </div>
-                    <div className="space-y-1 text-3xl font-bold text-orange-500">
-                        {balances.map((balance) => (
+                    <div className="space-y-1.5 text-2xl font-semibold leading-tight text-orange-500">
+                        {displayBalances.map((balance) => (
                             <div key={balance.currency}>
                                 {formatAccountCurrency(balance.amount, balance.currency)}
                             </div>
@@ -970,25 +976,25 @@ function PlatformAccountCard({ platform, activeAccounts, totalBalance, balancesB
                     </div>
                 </div>
                 {profitData && (
-                    <>
-                        <div className="pt-2 border-t">
-                            <div className="text-sm text-muted-foreground mb-1">
-                                {t('profit.profit', { defaultValue: 'Lợi nhuận' })} (30 ngày)
-                            </div>
-                            <div className={`text-2xl font-bold ${parseFloat(profitData.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {parseFloat(profitData.profit) >= 0 ? '+' : ''}
-                                {formatCurrency(profitData.profit)}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
+                    <div className="border-t pt-4">
+                        <div className="mb-1 text-sm text-muted-foreground">
+                            {t('profit.profit', { defaultValue: 'Lợi nhuận' })} (30 ngày)
+                        </div>
+                        <div className={`text-xl font-semibold leading-tight ${parseFloat(profitData.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {parseFloat(profitData.profit) >= 0 ? '+' : ''}
+                            {formatCurrency(profitData.profit)}
+                        </div>
+                        <div className="mt-2 text-xs leading-5 text-muted-foreground">
+                            <div>
                                 {t('profit.revenue', { defaultValue: 'Doanh thu' })}: {formatCurrency(profitData.revenue)} | {' '}
                                 {t('profit.cost', { defaultValue: 'Chi phí' })}: {formatCurrency(profitData.cost)}
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div>
                                 {t('profit.profit_margin', { defaultValue: 'Tỷ suất' })}: {parseFloat(profitData.profit_margin) >= 0 ? '+' : ''}
                                 {parseFloat(profitData.profit_margin).toFixed(2)}%
                             </div>
                         </div>
-                    </>
+                    </div>
                 )}
             </CardContent>
         </Card>

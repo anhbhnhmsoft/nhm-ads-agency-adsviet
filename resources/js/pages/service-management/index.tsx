@@ -112,7 +112,8 @@ const ServiceManagementIndex = ({
     const isAgencyOrCustomer =
         auth?.user?.role_id === _UserRole.AGENCY ||
         auth?.user?.role_id === _UserRole.CUSTOMER;
-    const { query, setQuery, handleSearch } = useSearchServiceManagement();
+    const { query, setQuery, handleSearch, handleReset } =
+        useSearchServiceManagement();
 
     const [selectedAccount, setSelectedAccount] =
         useState<BusinessManagerItem | null>(null);
@@ -1389,6 +1390,7 @@ const ServiceManagementIndex = ({
                             query={query}
                             setQuery={setQuery}
                             handleSearch={handleSearch}
+                            handleReset={handleReset}
                         />
 
                         <DataTable

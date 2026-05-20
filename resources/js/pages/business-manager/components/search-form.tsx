@@ -22,7 +22,7 @@ import type { _PlatformType as PlatformTypeEnum } from '@/lib/types/constants';
 import { _PlatformType } from '@/lib/types/constants';
 import { formatDateForQuery } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { RotateCcw, Search } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
@@ -54,12 +54,14 @@ type Props = {
     query: SearchQuery;
     setQuery: (query: Partial<SearchQuery>) => void;
     handleSearch: () => void;
+    handleReset?: () => void;
 };
 
 const BusinessManagerSearchForm = ({
     query,
     setQuery,
     handleSearch,
+    handleReset,
 }: Props) => {
     const { t } = useTranslation();
     const { props } = usePage<InertiaPageProps<PageProps>>();
@@ -276,6 +278,16 @@ const BusinessManagerSearchForm = ({
                         <Search />
                         {t('common.search', { defaultValue: 'Search' })}
                     </Button>
+                    {handleReset && (
+                        <Button
+                            className="cursor-pointer"
+                            variant="outline"
+                            onClick={() => handleReset()}
+                        >
+                            <RotateCcw />
+                            {t('common.reset', { defaultValue: 'Reset' })}
+                        </Button>
+                    )}
                 </CardAction>
             </CardFooter>
         </Card>
