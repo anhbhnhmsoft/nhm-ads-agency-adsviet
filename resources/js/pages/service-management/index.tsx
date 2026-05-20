@@ -1,56 +1,48 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
-import { Head, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { useTranslation } from 'react-i18next';
+import { Head, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import type { DateRange } from 'react-day-picker';
 import axios from 'axios';
 import {
     ArrowLeft,
     Loader2,
-    TrendingUp,
-    TrendingDown,
-    RefreshCw,
     Pause,
     Play,
+    RefreshCw,
     Trash2,
+    TrendingDown,
+    TrendingUp,
     Wallet,
-    Info,
-    AlertCircle,
-    CheckCircle2,
-    Clock
 } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import type { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 import { toast } from 'sonner';
-import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-    Cell
-} from 'recharts';
 
 import { DataTable } from '@/components/table/data-table';
-import { DataTablePagination } from '@/components/table/pagination';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
-    CardTitle
+    CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+} from '@/components/ui/chart';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import {
     Dialog,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
-    DialogTitle
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,25 +51,26 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue
+    SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
-import {
-    ChartContainer,
-    ChartTooltip,
-    ChartTooltipContent
-} from '@/components/ui/chart';
 
 import { _PlatformType, _UserRole } from '@/lib/types/constants';
-import type { BusinessManagerItem, BusinessManagerPagination, BusinessManagerStats, BusinessManagerTotals } from '@/pages/business-manager/types/type';
-import type { Campaign, CampaignDetail, CampaignDailyInsight, StatusSeverity } from '@/pages/service-management/types/types';
+import { formatCurrency, formatDateForQuery, formatMoney, formatNumber } from '@/lib/utils';
 import BusinessManagerSearchForm from '@/pages/business-manager/components/search-form';
+import type {
+    BusinessManagerItem,
+    BusinessManagerPagination,
+    BusinessManagerStats,
+    BusinessManagerTotals,
+} from '@/pages/business-manager/types/type';
 import { useSearchServiceManagement } from '@/pages/service-management/hooks/use-search';
-import { formatCurrency, formatDateForQuery, formatNumber } from '@/lib/utils';
+import type {
+    Campaign,
+    CampaignDailyInsight,
+    CampaignDetail,
+    StatusSeverity,
+} from '@/pages/service-management/types/types';
 
 type ChildManagerOption = {
     id: string;
@@ -108,29 +101,52 @@ const getSeverityBadge = (severity?: StatusSeverity | null) => {
     }
 };
 
-const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Props) => {
-    const { t } = useTranslation();
+const ServiceManagementIndex = ({
+    paginator,
+    stats,
+    totals,
+    childManagers,
+}: Props) => {
+    const { t, i18n } = useTranslation();
     const { auth } = usePage().props as any;
-    const isAgencyOrCustomer = auth?.user?.role_id === _UserRole.AGENCY || auth?.user?.role_id === _UserRole.CUSTOMER;
+    const isAgencyOrCustomer =
+        auth?.user?.role_id === _UserRole.AGENCY ||
+        auth?.user?.role_id === _UserRole.CUSTOMER;
     const { query, setQuery, handleSearch } = useSearchServiceManagement();
 
-    const [selectedAccount, setSelectedAccount] = useState<BusinessManagerItem | null>(null);
+    const [selectedAccount, setSelectedAccount] =
+        useState<BusinessManagerItem | null>(null);
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [campaignLoading, setCampaignLoading] = useState(false);
     const [campaignError, setCampaignError] = useState<string | null>(null);
-    const [campaignDateRange, setCampaignDateRange] = useState<DateRange | undefined>();
+    const [campaignDateRange, setCampaignDateRange] = useState<
+        DateRange | undefined
+    >();
 
     // Dành cho Chi tiết Chiến dịch
-    const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
-    const [campaignDetail, setCampaignDetail] = useState<CampaignDetail | null>(null);
+    const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
+        null,
+    );
+    const [campaignDetail, setCampaignDetail] = useState<CampaignDetail | null>(
+        null,
+    );
     const [campaignDetailLoading, setCampaignDetailLoading] = useState(false);
-    const [campaignDetailError, setCampaignDetailError] = useState<string | null>(null);
+    const [campaignDetailError, setCampaignDetailError] = useState<
+        string | null
+    >(null);
 
     // Insights/Biểu đồ
-    const [campaignInsights, setCampaignInsights] = useState<CampaignDailyInsight[]>([]);
-    const [campaignInsightsLoading, setCampaignInsightsLoading] = useState(false);
-    const [campaignInsightsError, setCampaignInsightsError] = useState<string | null>(null);
-    const [insightPreset, setInsightPreset] = useState<'last_7d' | 'last_30d'>('last_7d');
+    const [campaignInsights, setCampaignInsights] = useState<
+        CampaignDailyInsight[]
+    >([]);
+    const [campaignInsightsLoading, setCampaignInsightsLoading] =
+        useState(false);
+    const [campaignInsightsError, setCampaignInsightsError] = useState<
+        string | null
+    >(null);
+    const [insightPreset, setInsightPreset] = useState<'last_7d' | 'last_30d'>(
+        'last_7d',
+    );
 
     // Dialog & Submit States cho Chiến dịch
     const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
@@ -151,102 +167,139 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [walletBalanceLoading, setWalletBalanceLoading] = useState(false);
 
-    const loadCampaigns = useCallback(async (accountArg?: BusinessManagerItem, dateRangeArg?: DateRange | null) => {
-        const account = accountArg ?? selectedAccount;
-        if (!account) return;
+    const loadCampaigns = useCallback(
+        async (
+            accountArg?: BusinessManagerItem,
+            dateRangeArg?: DateRange | null,
+        ) => {
+            const account = accountArg ?? selectedAccount;
+            if (!account) return;
 
-        const canLoadPlatformCampaigns = account?.platform === _PlatformType.META;
-        if (!account?.service_user_id && !canLoadPlatformCampaigns) {
-            setCampaignError(
-                t('service_management.account_not_assigned', { defaultValue: 'Tài khoản này chưa được gán với user nào' }),
-            );
-            return;
-        }
-
-        setSelectedAccount(account);
-        setCampaignError(null);
-        setCampaignLoading(true);
-        setCampaigns([]);
-        setSelectedCampaign(null);
-        setCampaignDetail(null);
-
-        try {
-            const apiPath =
-                !account.service_user_id && account.platform === _PlatformType.META
-                    ? `/meta/platform-accounts/${account.id}/campaigns`
-                    : account.platform === _PlatformType.GOOGLE
-                        ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
-                        : `/meta/${account.service_user_id}/${account.id}/campaigns`;
-
-            const dateRange = dateRangeArg === undefined ? campaignDateRange : dateRangeArg;
-            const filter: Record<string, string | undefined> = {};
-            if (dateRange?.from && dateRange?.to) {
-                filter.start_date = formatDateForQuery(dateRange.from);
-                filter.end_date = formatDateForQuery(dateRange.to);
+            const canLoadPlatformCampaigns =
+                account?.platform === _PlatformType.META;
+            if (!account?.service_user_id && !canLoadPlatformCampaigns) {
+                setCampaignError(
+                    t('service_management.account_not_assigned', {
+                        defaultValue:
+                            'Tài khoản này chưa được gán với user nào',
+                    }),
+                );
+                return;
             }
 
-            const response = await axios.get(apiPath, {
-                params: {
-                    per_page: 50,
-                    filter,
-                },
-            });
-            const payload = response.data?.data;
-            const items: any[] = Array.isArray(payload?.data)
-                ? payload.data
-                : Array.isArray(payload)
-                    ? payload
-                    : [];
-            setCampaigns(items as Campaign[]);
-        } catch (e: any) {
-            setCampaignError(e?.response?.data?.message || t('service_management.campaigns_error', { defaultValue: 'Không thể tải chiến dịch' }));
-        } finally {
-            setCampaignLoading(false);
-        }
-    }, [campaignDateRange, selectedAccount, t]);
+            setSelectedAccount(account);
+            setCampaignError(null);
+            setCampaignLoading(true);
+            setCampaigns([]);
+            setSelectedCampaign(null);
+            setCampaignDetail(null);
 
-    const loadCampaignInsights = useCallback(async (campaignId: string, preset: 'last_7d' | 'last_30d') => {
-        if (!selectedAccount?.service_user_id) return;
+            try {
+                const apiPath =
+                    !account.service_user_id &&
+                    account.platform === _PlatformType.META
+                        ? `/meta/platform-accounts/${account.id}/campaigns`
+                        : account.platform === _PlatformType.GOOGLE
+                          ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
+                          : `/meta/${account.service_user_id}/${account.id}/campaigns`;
 
-        setCampaignInsightsLoading(true);
-        setCampaignInsightsError(null);
-        try {
-            const platformPrefix = selectedAccount.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
-            const response = await axios.get(
-                `/${platformPrefix}/${selectedAccount.service_user_id}/${campaignId}/detail-campaign-insight`,
-                { params: { date_preset: preset } }
-            );
-            setCampaignInsights(response.data?.data || []);
-        } catch (e: any) {
-            setCampaignInsightsError(e?.response?.data?.message || t('service_management.campaign_insight_error'));
-        } finally {
-            setCampaignInsightsLoading(false);
-        }
-    }, [selectedAccount, t]);
+                const dateRange =
+                    dateRangeArg === undefined
+                        ? campaignDateRange
+                        : dateRangeArg;
+                const filter: Record<string, string | undefined> = {};
+                if (dateRange?.from && dateRange?.to) {
+                    filter.start_date = formatDateForQuery(dateRange.from);
+                    filter.end_date = formatDateForQuery(dateRange.to);
+                }
 
-    const loadCampaignDetail = useCallback(async (campaign: Campaign) => {
-        if (!selectedAccount?.service_user_id) return;
+                const response = await axios.get(apiPath, {
+                    params: {
+                        per_page: 50,
+                        filter,
+                    },
+                });
+                const payload = response.data?.data;
+                const items: any[] = Array.isArray(payload?.data)
+                    ? payload.data
+                    : Array.isArray(payload)
+                      ? payload
+                      : [];
+                setCampaigns(items as Campaign[]);
+            } catch (e: any) {
+                setCampaignError(
+                    e?.response?.data?.message ||
+                        t('service_management.campaigns_error', {
+                            defaultValue: 'Không thể tải chiến dịch',
+                        }),
+                );
+            } finally {
+                setCampaignLoading(false);
+            }
+        },
+        [campaignDateRange, selectedAccount, t],
+    );
 
-        setSelectedCampaign(campaign);
-        setCampaignDetail(null);
-        setCampaignDetailError(null);
-        setCampaignDetailLoading(true);
+    const loadCampaignInsights = useCallback(
+        async (campaignId: string, preset: 'last_7d' | 'last_30d') => {
+            if (!selectedAccount?.service_user_id) return;
 
-        try {
-            const platformPrefix = selectedAccount.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
-            const response = await axios.get(
-                `/${platformPrefix}/${selectedAccount.service_user_id}/${campaign.id}/detail-campaign`
-            );
-            setCampaignDetail(response.data?.data);
+            setCampaignInsightsLoading(true);
+            setCampaignInsightsError(null);
+            try {
+                const platformPrefix =
+                    selectedAccount.platform === _PlatformType.GOOGLE
+                        ? 'google-ads'
+                        : 'meta';
+                const response = await axios.get(
+                    `/${platformPrefix}/${selectedAccount.service_user_id}/${campaignId}/detail-campaign-insight`,
+                    { params: { date_preset: preset } },
+                );
+                setCampaignInsights(response.data?.data || []);
+            } catch (e: any) {
+                setCampaignInsightsError(
+                    e?.response?.data?.message ||
+                        t('service_management.campaign_insight_error'),
+                );
+            } finally {
+                setCampaignInsightsLoading(false);
+            }
+        },
+        [selectedAccount, t],
+    );
 
-            // Tải luôn insight mặc định (7 ngày)
-            await loadCampaignInsights(campaign.id, 'last_7d');
-        } catch (e: any) {
-            setCampaignDetailError(e?.response?.data?.message || t('service_management.campaign_detail_error'));
-        } finally {
-            setCampaignDetailLoading(false);
-        }
-    }, [selectedAccount, t, loadCampaignInsights]);
+    const loadCampaignDetail = useCallback(
+        async (campaign: Campaign) => {
+            if (!selectedAccount?.service_user_id) return;
+
+            setSelectedCampaign(campaign);
+            setCampaignDetail(null);
+            setCampaignDetailError(null);
+            setCampaignDetailLoading(true);
+
+            try {
+                const platformPrefix =
+                    selectedAccount.platform === _PlatformType.GOOGLE
+                        ? 'google-ads'
+                        : 'meta';
+                const response = await axios.get(
+                    `/${platformPrefix}/${selectedAccount.service_user_id}/${campaign.id}/detail-campaign`,
+                );
+                setCampaignDetail(response.data?.data);
+
+                // Tải luôn insight mặc định (7 ngày)
+                await loadCampaignInsights(campaign.id, 'last_7d');
+            } catch (e: any) {
+                setCampaignDetailError(
+                    e?.response?.data?.message ||
+                        t('service_management.campaign_detail_error'),
+                );
+            } finally {
+                setCampaignDetailLoading(false);
+            }
+        },
+        [selectedAccount, t, loadCampaignInsights],
+    );
 
     const handleInsightPresetChange = (value: 'last_7d' | 'last_30d') => {
         setInsightPreset(value);
@@ -279,7 +332,9 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                     const d = new Date(dateStr);
                     label = `${d.getDate()}/${d.getMonth() + 1}`;
                     tooltipLabel = d.toLocaleDateString();
-                } catch (e) { /* ignore */ }
+                } catch (e) {
+                    /* ignore */
+                }
             }
 
             return {
@@ -296,16 +351,20 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
         return Number.isNaN(n) ? null : n;
     };
 
-    const formatAccountCurrency = (value: unknown, currency?: string | null) => {
-        const n = parseNumber(value);
-        if (n === null) return '-';
-        return `${n.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'USD'}`;
+    const formatAccountCurrency = (
+        value: unknown,
+        currency?: string | null,
+    ) => {
+        return formatMoney(value, currency || 'USD', i18n.language);
     };
 
     const formatAccountNumber = (value: unknown) => {
         const n = parseNumber(value);
         if (n === null) return '-';
-        return n.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        return n.toLocaleString('vi-VN', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        });
     };
 
     const formatDateTime = (value?: string | null) => {
@@ -326,100 +385,159 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
         () => [
             {
                 accessorKey: 'account_name',
-                header: t('service_management.account_name', { defaultValue: 'Tài khoản quảng cáo' }),
+                header: t('service_management.account_name', {
+                    defaultValue: 'Tài khoản quảng cáo',
+                }),
                 cell: ({ row }) => (
                     <div className="min-w-0">
-                        <div className="font-medium truncate">{row.original.account_name || '-'}</div>
-                        <div className="text-xs text-muted-foreground truncate">ID: {row.original.account_id || '-'}</div>
+                        <div className="truncate font-medium">
+                            {row.original.account_name || '-'}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                            ID: {row.original.account_id || '-'}
+                        </div>
                     </div>
                 ),
             },
             {
                 accessorKey: 'bm_name',
-                header: t('service_management.bm_mcc', { defaultValue: 'BM / MCC' }),
+                header: t('service_management.bm_mcc', {
+                    defaultValue: 'BM / MCC',
+                }),
                 cell: ({ row }) => {
                     const bmId = row.original.bm_ids?.[0] ?? '-';
                     return (
                         <div className="min-w-0">
-                            <div className="truncate">{row.original.bm_name || bmId}</div>
-                            <div className="text-xs text-muted-foreground truncate">ID: {bmId}</div>
+                            <div className="truncate">
+                                {row.original.bm_name || bmId}
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground">
+                                ID: {bmId}
+                            </div>
                         </div>
                     );
                 },
             },
             {
                 accessorKey: 'total_reach',
-                header: t('service_management.reach', { defaultValue: 'Reach' }),
-                cell: ({ row }) => formatAccountNumber(row.original.total_reach),
+                header: t('service_management.reach', {
+                    defaultValue: 'Reach',
+                }),
+                cell: ({ row }) =>
+                    formatAccountNumber(row.original.total_reach),
                 meta: { cellClassName: 'whitespace-nowrap text-right' },
             },
             {
                 accessorKey: 'total_spend',
-                header: t('service_management.amount_spent', { defaultValue: 'Amount spent' }),
-                cell: ({ row }) => formatAccountCurrency(row.original.total_spend, row.original.currency),
-                meta: { cellClassName: 'whitespace-nowrap text-right font-medium' },
+                header: t('service_management.amount_spent', {
+                    defaultValue: 'Amount spent',
+                }),
+                cell: ({ row }) =>
+                    formatAccountCurrency(
+                        row.original.total_spend,
+                        row.original.currency,
+                    ),
+                meta: {
+                    cellClassName: 'whitespace-nowrap text-right font-medium',
+                },
             },
             {
                 accessorKey: 'account_status_label',
-                header: t('service_management.account_status', { defaultValue: 'Account status' }),
+                header: t('service_management.account_status', {
+                    defaultValue: 'Account status',
+                }),
                 cell: ({ row }) => (
-                    <Badge variant={row.original.account_status_label ? 'secondary' : 'outline'}>
-                        {row.original.account_status_label || row.original.account_status || '-'}
+                    <Badge
+                        variant={
+                            row.original.account_status_label
+                                ? 'secondary'
+                                : 'outline'
+                        }
+                    >
+                        {row.original.account_status_label ||
+                            row.original.account_status ||
+                            '-'}
                     </Badge>
                 ),
                 meta: { cellClassName: 'whitespace-nowrap' },
             },
             {
                 accessorKey: 'spend_cap',
-                header: t('service_management.account_spending_limit', { defaultValue: 'Account spending limit' }),
-                cell: ({ row }) => formatAccountCurrency(row.original.spend_cap, row.original.currency),
+                header: t('service_management.account_spending_limit', {
+                    defaultValue: 'Account spending limit',
+                }),
+                cell: ({ row }) =>
+                    formatAccountCurrency(
+                        row.original.spend_cap,
+                        row.original.currency,
+                    ),
                 meta: { cellClassName: 'whitespace-nowrap text-right' },
             },
             {
                 accessorKey: 'remaining_amount',
-                header: t('service_management.remaining_amount', { defaultValue: 'Remaining amount' }),
-                cell: ({ row }) => formatAccountCurrency(row.original.remaining_amount, row.original.currency),
-                meta: { cellClassName: 'whitespace-nowrap text-right' },
-            },
-            {
-                accessorKey: 'threshold',
-                header: t('service_management.threshold', { defaultValue: 'Threshold' }),
-                cell: ({ row }) => formatAccountCurrency(row.original.threshold, row.original.currency),
+                header: t('service_management.remaining_amount', {
+                    defaultValue: 'Remaining amount',
+                }),
+                cell: ({ row }) =>
+                    formatAccountCurrency(
+                        row.original.remaining_amount,
+                        row.original.currency,
+                    ),
                 meta: { cellClassName: 'whitespace-nowrap text-right' },
             },
             {
                 accessorKey: 'amount_spent',
-                header: t('service_management.total_spending', { defaultValue: 'Total spending' }),
-                cell: ({ row }) => formatAccountCurrency(row.original.amount_spent, row.original.currency),
+                header: t('service_management.total_spending', {
+                    defaultValue: 'Total spending',
+                }),
+                cell: ({ row }) =>
+                    formatAccountCurrency(
+                        row.original.amount_spent,
+                        row.original.currency,
+                    ),
                 meta: { cellClassName: 'whitespace-nowrap text-right' },
             },
             {
                 accessorKey: 'total_balance',
-                header: t('service_management.unpaid_balance', { defaultValue: 'Nợ chưa thanh toán' }),
-                cell: ({ row }) => formatAccountCurrency(row.original.total_balance, row.original.currency),
+                header: t('service_management.unpaid_balance', {
+                    defaultValue: 'Nợ chưa thanh toán',
+                }),
+                cell: ({ row }) =>
+                    formatAccountCurrency(
+                        row.original.total_balance,
+                        row.original.currency,
+                    ),
                 meta: { cellClassName: 'whitespace-nowrap text-right' },
             },
             {
                 accessorKey: 'created_time',
-                header: t('service_management.creation_time', { defaultValue: 'Creation time' }),
+                header: t('service_management.creation_time', {
+                    defaultValue: 'Creation time',
+                }),
                 cell: ({ row }) => formatDateTime(row.original.created_time),
                 meta: { cellClassName: 'whitespace-nowrap' },
             },
             {
                 accessorKey: 'account_type',
-                header: t('service_management.account_type', { defaultValue: 'Account type' }),
+                header: t('service_management.account_type', {
+                    defaultValue: 'Account type',
+                }),
                 cell: ({ row }) => row.original.account_type || '-',
                 meta: { cellClassName: 'whitespace-nowrap' },
             },
             {
                 accessorKey: 'timezone',
-                header: t('service_management.timezone', { defaultValue: 'Timezone' }),
+                header: t('service_management.timezone', {
+                    defaultValue: 'Timezone',
+                }),
                 cell: ({ row }) => row.original.timezone || '-',
                 meta: { cellClassName: 'whitespace-nowrap' },
             },
             {
                 accessorKey: 'payment_card',
-                header: t('service_management.payment_card', { defaultValue: 'Payment card' }),
+                header: t('service_management.payment_card', {
+                    defaultValue: 'Payment card',
+                }),
                 cell: ({ row }) => row.original.payment_card || '-',
                 meta: { cellClassName: 'whitespace-nowrap' },
             },
@@ -428,7 +546,9 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                 header: t('common.actions', { defaultValue: 'Hành động' }),
                 cell: ({ row }) => {
                     const account = row.original;
-                    const canViewCampaigns = !!account.service_user_id || account.platform === _PlatformType.META;
+                    const canViewCampaigns =
+                        !!account.service_user_id ||
+                        account.platform === _PlatformType.META;
                     return (
                         <Button
                             size="sm"
@@ -437,15 +557,25 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                             disabled={!canViewCampaigns}
                             title={
                                 !canViewCampaigns
-                                    ? t('service_management.account_not_assigned', {
-                                        defaultValue: 'Tài khoản này chưa được gán với user nào',
-                                    })
-                                    : t('service_management.view_campaigns_tooltip', {
-                                        defaultValue: 'Xem danh sách chiến dịch đã được sync từ API',
-                                    })
+                                    ? t(
+                                          'service_management.account_not_assigned',
+                                          {
+                                              defaultValue:
+                                                  'Tài khoản này chưa được gán với user nào',
+                                          },
+                                      )
+                                    : t(
+                                          'service_management.view_campaigns_tooltip',
+                                          {
+                                              defaultValue:
+                                                  'Xem danh sách chiến dịch đã được sync từ API',
+                                          },
+                                      )
                             }
                         >
-                            {t('service_management.view_campaigns', { defaultValue: 'Xem chiến dịch' })}
+                            {t('service_management.view_campaigns', {
+                                defaultValue: 'Xem chiến dịch',
+                            })}
                         </Button>
                     );
                 },
@@ -458,42 +588,65 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
         () => [
             {
                 accessorKey: 'name',
-                header: t('service_management.campaign_name', { defaultValue: 'Chiến dịch' }),
+                header: t('service_management.campaign_name', {
+                    defaultValue: 'Chiến dịch',
+                }),
                 cell: ({ row }) => {
-                    const rawName = row.original.name || row.original.campaign_id || '-';
+                    const rawName =
+                        row.original.name || row.original.campaign_id || '-';
 
                     return (
                         <div className="min-w-0">
-                            <div className="font-medium truncate">{rawName || '-'}</div>
-                            <div className="text-xs text-muted-foreground truncate">ID: {row.original.campaign_id}</div>
+                            <div className="truncate font-medium">
+                                {rawName || '-'}
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground">
+                                ID: {row.original.campaign_id}
+                            </div>
                         </div>
                     );
                 },
             },
             {
                 accessorKey: 'effective_status',
-                header: t('service_management.status', { defaultValue: 'Trạng thái' }),
+                header: t('service_management.status', {
+                    defaultValue: 'Trạng thái',
+                }),
                 cell: ({ row }) => (
-                    <Badge variant={getSeverityBadge(row.original.status_severity)}>
-                        {row.original.status_label || row.original.effective_status || row.original.status || '-'}
+                    <Badge
+                        variant={getSeverityBadge(row.original.status_severity)}
+                    >
+                        {row.original.status_label ||
+                            row.original.effective_status ||
+                            row.original.status ||
+                            '-'}
                     </Badge>
                 ),
             },
             {
                 accessorKey: 'daily_budget',
-                header: t('service_management.daily_budget', { defaultValue: 'Ngân sách/ngày' }),
+                header: t('service_management.daily_budget', {
+                    defaultValue: 'Ngân sách/ngày',
+                }),
                 cell: ({ row }) => formatCurrency(row.original.daily_budget),
             },
             {
                 accessorKey: 'today_spend',
-                header: t('service_management.today_spend', { defaultValue: 'Chi tiêu hôm nay' }),
+                header: t('service_management.today_spend', {
+                    defaultValue: 'Chi tiêu hôm nay',
+                }),
                 cell: ({ row }) => formatCurrency(row.original.today_spend),
             },
             {
                 accessorKey: 'total_spend',
-                header: campaignDateRange?.from && campaignDateRange?.to
-                    ? t('service_management.period_spend', { defaultValue: 'Chi tiêu theo khoảng ngày' })
-                    : t('service_management.total_spend', { defaultValue: 'Tổng chi tiêu' }),
+                header:
+                    campaignDateRange?.from && campaignDateRange?.to
+                        ? t('service_management.period_spend', {
+                              defaultValue: 'Chi tiêu theo khoảng ngày',
+                          })
+                        : t('service_management.total_spend', {
+                              defaultValue: 'Tổng chi tiêu',
+                          }),
                 cell: ({ row }) => formatCurrency(row.original.total_spend),
             },
             {
@@ -509,45 +662,71 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                             onClick={() => loadCampaignDetail(campaign)}
                             disabled={!canViewDetail}
                         >
-                            {t('common.view_details', { defaultValue: 'Xem chi tiết' })}
+                            {t('common.view_details', {
+                                defaultValue: 'Xem chi tiết',
+                            })}
                         </Button>
                     );
                 },
             },
         ],
-        [campaignDateRange, t, loadCampaignDetail, selectedAccount?.service_user_id],
+        [
+            campaignDateRange,
+            t,
+            loadCampaignDetail,
+            selectedAccount?.service_user_id,
+        ],
     );
 
     const insightPresetOptions = [
-        { label: t('service_management.spend_chart_preset_7d'), value: 'last_7d' },
-        { label: t('service_management.spend_chart_preset_30d'), value: 'last_30d' },
+        {
+            label: t('service_management.spend_chart_preset_7d'),
+            value: 'last_7d',
+        },
+        {
+            label: t('service_management.spend_chart_preset_30d'),
+            value: 'last_30d',
+        },
     ];
 
     const renderSpendChart = () => {
         if (!selectedCampaign) return null;
-        const spendChangeNumber = parseNumber(campaignDetail?.insight?.spend?.percent_change);
-        const spendChangeText = formatPercentChange(campaignDetail?.insight?.spend?.percent_change);
+        const spendChangeNumber = parseNumber(
+            campaignDetail?.insight?.spend?.percent_change,
+        );
+        const spendChangeText = formatPercentChange(
+            campaignDetail?.insight?.spend?.percent_change,
+        );
         const spendChangeColor =
             spendChangeNumber === null
                 ? 'text-muted-foreground'
                 : spendChangeNumber >= 0
-                    ? 'text-green-600'
-                    : 'text-red-600';
+                  ? 'text-green-600'
+                  : 'text-red-600';
 
         return (
             <Card className="mt-4">
                 <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <CardTitle>{t('service_management.spend_chart_title')}</CardTitle>
+                        <CardTitle>
+                            {t('service_management.spend_chart_title')}
+                        </CardTitle>
                         <CardDescription className={spendChangeColor}>
                             {spendChangeNumber === null
                                 ? t('service_management.spend_chart_no_change')
-                                : t('service_management.spend_chart_description', { percent: spendChangeText })}
+                                : t(
+                                      'service_management.spend_chart_description',
+                                      { percent: spendChangeText },
+                                  )}
                         </CardDescription>
                     </div>
                     <Select
                         value={insightPreset}
-                        onValueChange={(value) => handleInsightPresetChange(value as 'last_7d' | 'last_30d')}
+                        onValueChange={(value) =>
+                            handleInsightPresetChange(
+                                value as 'last_7d' | 'last_30d',
+                            )
+                        }
                         disabled={campaignInsightsLoading}
                     >
                         <SelectTrigger className="w-[140px]">
@@ -555,7 +734,10 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                         </SelectTrigger>
                         <SelectContent>
                             {insightPresetOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                >
                                     {option.label}
                                 </SelectItem>
                             ))}
@@ -565,24 +747,39 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                 <CardContent>
                     {campaignInsightsError && (
                         <Alert variant="destructive" className="mb-4">
-                            <AlertTitle>{t('service_management.campaign_insight_error')}</AlertTitle>
-                            <AlertDescription>{campaignInsightsError}</AlertDescription>
+                            <AlertTitle>
+                                {t('service_management.campaign_insight_error')}
+                            </AlertTitle>
+                            <AlertDescription>
+                                {campaignInsightsError}
+                            </AlertDescription>
                         </Alert>
                     )}
 
                     {campaignInsightsLoading ? (
                         <div className="flex items-center justify-center py-10 text-muted-foreground">
-                            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                             {t('service_management.loading')}
                         </div>
                     ) : chartEntries.length === 0 ? (
-                        <div className="text-sm text-muted-foreground py-6">
+                        <div className="py-6 text-sm text-muted-foreground">
                             {t('service_management.spend_chart_empty')}
                         </div>
                     ) : (
                         <ChartContainer height={256} className="w-full">
-                            <BarChart data={chartEntries} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <BarChart
+                                data={chartEntries}
+                                margin={{
+                                    top: 10,
+                                    right: 10,
+                                    left: 0,
+                                    bottom: 20,
+                                }}
+                            >
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    vertical={false}
+                                />
                                 <XAxis
                                     dataKey="label"
                                     tickLine={false}
@@ -600,19 +797,27 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                                     content={
                                         <ChartTooltipContent
                                             formatter={(value: any) =>
-                                                typeof value === 'number' ? formatCurrency(value) : value ?? '--'
+                                                typeof value === 'number'
+                                                    ? formatCurrency(value)
+                                                    : (value ?? '--')
                                             }
                                         />
                                     }
                                 />
                                 <Bar
                                     dataKey="value"
-                                    name={t('service_management.spend_chart_series')}
+                                    name={t(
+                                        'service_management.spend_chart_series',
+                                    )}
                                     fill="hsl(var(--primary))"
                                     radius={[4, 4, 0, 0]}
                                 >
                                     {chartEntries.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill="hsl(var(--primary))" fillOpacity={0.8} />
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill="hsl(var(--primary))"
+                                            fillOpacity={0.8}
+                                        />
                                     ))}
                                 </Bar>
                             </BarChart>
@@ -629,11 +834,17 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                 <div className="flex items-center justify-between">
                     <div>
                         <h2 className="text-2xl font-semibold">
-                            {t('service_management.campaigns', { defaultValue: 'Chiến dịch' })}
+                            {t('service_management.campaigns', {
+                                defaultValue: 'Chiến dịch',
+                            })}
                         </h2>
                         <p className="text-muted-foreground">
-                            {selectedAccount?.account_name || selectedAccount?.account_id} •{' '}
-                            {selectedAccount?.platform === _PlatformType.META ? 'Meta' : 'Google'}
+                            {selectedAccount?.account_name ||
+                                selectedAccount?.account_id}{' '}
+                            •{' '}
+                            {selectedAccount?.platform === _PlatformType.META
+                                ? 'Meta'
+                                : 'Google'}
                         </p>
                     </div>
                     <div className="flex gap-2">
@@ -646,7 +857,9 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                                 }}
                             >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
-                                {t('service_management.back_to_campaigns', { defaultValue: 'Quay lại danh sách' })}
+                                {t('service_management.back_to_campaigns', {
+                                    defaultValue: 'Quay lại danh sách',
+                                })}
                             </Button>
                         )}
                         <Button
@@ -659,15 +872,23 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                                 setCampaignDetail(null);
                             }}
                         >
-                            {!selectedCampaign && <ArrowLeft className="mr-2 h-4 w-4" />}
-                            {t('service_management.back_to_accounts', { defaultValue: 'Quay lại tài khoản' })}
+                            {!selectedCampaign && (
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                            )}
+                            {t('service_management.back_to_accounts', {
+                                defaultValue: 'Quay lại tài khoản',
+                            })}
                         </Button>
                     </div>
                 </div>
 
                 {campaignError && (
                     <Alert variant="destructive">
-                        <AlertTitle>{t('common_error.server_error', { defaultValue: 'Có lỗi xảy ra' })}</AlertTitle>
+                        <AlertTitle>
+                            {t('common_error.server_error', {
+                                defaultValue: 'Có lỗi xảy ra',
+                            })}
+                        </AlertTitle>
                         <AlertDescription>{campaignError}</AlertDescription>
                     </Alert>
                 )}
@@ -682,21 +903,39 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                         {issueCampaigns.length > 0 && (
                             <Alert variant="destructive">
                                 <AlertTitle>
-                                    {t('service_management.campaign_issue_title', { defaultValue: 'Cảnh báo chiến dịch' })}
+                                    {t(
+                                        'service_management.campaign_issue_title',
+                                        { defaultValue: 'Cảnh báo chiến dịch' },
+                                    )}
                                 </AlertTitle>
                                 <AlertDescription>
-                                    {t('service_management.campaign_issue_description', {
-                                        defaultValue: '{{error}} chiến dịch đã bị nền tảng dừng. Kiểm tra ngay.',
-                                        error: issueCampaigns.length,
-                                    })}
+                                    {t(
+                                        'service_management.campaign_issue_description',
+                                        {
+                                            defaultValue:
+                                                '{{error}} chiến dịch đã bị nền tảng dừng. Kiểm tra ngay.',
+                                            error: issueCampaigns.length,
+                                        },
+                                    )}
                                 </AlertDescription>
                             </Alert>
                         )}
 
                         <div className="flex flex-wrap items-end gap-3 rounded-md border bg-white p-3">
                             <div className="grid gap-2">
-                                <Label>{t('service_management.campaign_spend_period', { defaultValue: 'Khoảng thời gian chi tiêu' })}</Label>
-                                <DateRangePicker date={campaignDateRange} onDateChange={setCampaignDateRange} />
+                                <Label>
+                                    {t(
+                                        'service_management.campaign_spend_period',
+                                        {
+                                            defaultValue:
+                                                'Khoảng thời gian chi tiêu',
+                                        },
+                                    )}
+                                </Label>
+                                <DateRangePicker
+                                    date={campaignDateRange}
+                                    onDateChange={setCampaignDateRange}
+                                />
                             </div>
                             <Button
                                 variant="outline"
@@ -722,7 +961,12 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                             columns={campaignColumns}
                             paginator={{
                                 data: campaigns,
-                                links: { first: null, last: null, prev: null, next: null },
+                                links: {
+                                    first: null,
+                                    last: null,
+                                    prev: null,
+                                    next: null,
+                                },
                                 meta: {
                                     links: [],
                                     current_page: 1,
@@ -740,160 +984,318 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center justify-between">
-                                    <span>{t('service_management.campaign_detail')}</span>
+                                    <span>
+                                        {t(
+                                            'service_management.campaign_detail',
+                                        )}
+                                    </span>
                                     {campaignDetail && (
-                                        <Badge variant={getSeverityBadge(campaignDetail.status_severity)}>
-                                            {campaignDetail.status_label || campaignDetail.effective_status || campaignDetail.status}
+                                        <Badge
+                                            variant={getSeverityBadge(
+                                                campaignDetail.status_severity,
+                                            )}
+                                        >
+                                            {campaignDetail.status_label ||
+                                                campaignDetail.effective_status ||
+                                                campaignDetail.status}
                                         </Badge>
                                     )}
                                 </CardTitle>
                                 <CardDescription>
-                                    {selectedCampaign.name || selectedCampaign.campaign_id}
+                                    {selectedCampaign.name ||
+                                        selectedCampaign.campaign_id}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {campaignDetailLoading ? (
                                     <div className="flex items-center justify-center py-10">
-                                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
                                         {t('service_management.loading')}
                                     </div>
                                 ) : campaignDetailError ? (
                                     <Alert variant="destructive">
-                                        <AlertTitle>{t('service_management.campaign_detail_error')}</AlertTitle>
-                                        <AlertDescription>{campaignDetailError}</AlertDescription>
+                                        <AlertTitle>
+                                            {t(
+                                                'service_management.campaign_detail_error',
+                                            )}
+                                        </AlertTitle>
+                                        <AlertDescription>
+                                            {campaignDetailError}
+                                        </AlertDescription>
                                     </Alert>
                                 ) : campaignDetail ? (
                                     <div className="space-y-6">
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            <div className="p-4 bg-muted/50 rounded-lg">
-                                                <div className="text-sm text-muted-foreground">{t('service_management.today_spend')}</div>
-                                                <div className="text-xl font-bold mt-1">
-                                                    {formatCurrency(campaignDetail.today_spend)}
+                                        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                                            <div className="rounded-lg bg-muted/50 p-4">
+                                                <div className="text-sm text-muted-foreground">
+                                                    {t(
+                                                        'service_management.today_spend',
+                                                    )}
+                                                </div>
+                                                <div className="mt-1 text-xl font-bold">
+                                                    {formatCurrency(
+                                                        campaignDetail.today_spend,
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="p-4 bg-muted/50 rounded-lg">
-                                                <div className="text-sm text-muted-foreground">{t('service_management.total_spend')}</div>
-                                                <div className="text-xl font-bold mt-1">
-                                                    {formatCurrency(campaignDetail.total_spend)}
+                                            <div className="rounded-lg bg-muted/50 p-4">
+                                                <div className="text-sm text-muted-foreground">
+                                                    {t(
+                                                        'service_management.total_spend',
+                                                    )}
+                                                </div>
+                                                <div className="mt-1 text-xl font-bold">
+                                                    {formatCurrency(
+                                                        campaignDetail.total_spend,
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="p-4 bg-muted/50 rounded-lg">
-                                                <div className="text-sm text-muted-foreground">CPC</div>
-                                                <div className="text-xl font-bold mt-1">
-                                                    {formatCurrency(campaignDetail.cpc_avg)}
+                                            <div className="rounded-lg bg-muted/50 p-4">
+                                                <div className="text-sm text-muted-foreground">
+                                                    CPC
+                                                </div>
+                                                <div className="mt-1 text-xl font-bold">
+                                                    {formatCurrency(
+                                                        campaignDetail.cpc_avg,
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="p-4 bg-muted/50 rounded-lg">
-                                                <div className="text-sm text-muted-foreground">ROAS</div>
-                                                <div className="text-xl font-bold mt-1">
+                                            <div className="rounded-lg bg-muted/50 p-4">
+                                                <div className="text-sm text-muted-foreground">
+                                                    ROAS
+                                                </div>
+                                                <div className="mt-1 text-xl font-bold">
                                                     {(() => {
-                                                        const value = formatNumber(campaignDetail.roas_avg, {
-                                                            minimumFractionDigits: 2,
-                                                            maximumFractionDigits: 2,
-                                                        });
-                                                        return value === '--' ? value : `${value}x`;
+                                                        const value =
+                                                            formatNumber(
+                                                                campaignDetail.roas_avg,
+                                                                {
+                                                                    minimumFractionDigits: 2,
+                                                                    maximumFractionDigits: 2,
+                                                                },
+                                                            );
+                                                        return value === '--'
+                                                            ? value
+                                                            : `${value}x`;
                                                     })()}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {campaignDetail.insight && Object.entries(campaignDetail.insight).map(([key, value]) => {
-                                                if (['today_spend', 'total_spend', 'cpc_avg', 'roas_avg'].includes(key)) return null;
-                                                const val = value as any;
-                                                const percentNumber = parseNumber(val?.percent_change);
-                                                const percentText = formatPercentChange(val?.percent_change);
-                                                const PercentIcon = percentNumber === null ? null : percentNumber >= 0 ? TrendingUp : TrendingDown;
-                                                const percentColor =
-                                                    percentNumber === null
-                                                        ? 'text-muted-foreground'
-                                                        : percentNumber >= 0
-                                                            ? 'text-green-500'
-                                                            : 'text-red-500';
+                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                            {campaignDetail.insight &&
+                                                Object.entries(
+                                                    campaignDetail.insight,
+                                                ).map(([key, value]) => {
+                                                    if (
+                                                        [
+                                                            'today_spend',
+                                                            'total_spend',
+                                                            'cpc_avg',
+                                                            'roas_avg',
+                                                        ].includes(key)
+                                                    )
+                                                        return null;
+                                                    const val = value as any;
+                                                    const percentNumber =
+                                                        parseNumber(
+                                                            val?.percent_change,
+                                                        );
+                                                    const percentText =
+                                                        formatPercentChange(
+                                                            val?.percent_change,
+                                                        );
+                                                    const PercentIcon =
+                                                        percentNumber === null
+                                                            ? null
+                                                            : percentNumber >= 0
+                                                              ? TrendingUp
+                                                              : TrendingDown;
+                                                    const percentColor =
+                                                        percentNumber === null
+                                                            ? 'text-muted-foreground'
+                                                            : percentNumber >= 0
+                                                              ? 'text-green-500'
+                                                              : 'text-red-500';
 
-                                                return (
-                                                    <Card key={key}>
-                                                        <CardHeader className="pb-3 px-4">
-                                                            <CardTitle className="text-sm font-medium capitalize">{key.replace('_', ' ')}</CardTitle>
-                                                        </CardHeader>
-                                                        <CardContent className="space-y-2 px-4 pb-4">
-                                                            <div className="flex justify-between items-center">
-                                                                <span className="text-xs text-muted-foreground">{t('service_management.today')}</span>
-                                                                <span className="text-sm font-semibold">{formatNumber(val?.today)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center">
-                                                                <span className="text-xs text-muted-foreground">{t('service_management.total')}</span>
-                                                                <span className="text-sm font-semibold">{formatNumber(val?.total)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center pt-2 border-t">
-                                                                <span className="text-xs text-muted-foreground">{t('service_management.change')}</span>
-                                                                <div className="flex items-center gap-1">
-                                                                    {PercentIcon && <PercentIcon className={`h-3 w-3 ${percentColor}`} />}
-                                                                    <span className={`text-xs font-semibold ${percentColor}`}>{percentText}</span>
+                                                    return (
+                                                        <Card key={key}>
+                                                            <CardHeader className="px-4 pb-3">
+                                                                <CardTitle className="text-sm font-medium capitalize">
+                                                                    {key.replace(
+                                                                        '_',
+                                                                        ' ',
+                                                                    )}
+                                                                </CardTitle>
+                                                            </CardHeader>
+                                                            <CardContent className="space-y-2 px-4 pb-4">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {t(
+                                                                            'service_management.today',
+                                                                        )}
+                                                                    </span>
+                                                                    <span className="text-sm font-semibold">
+                                                                        {formatNumber(
+                                                                            val?.today,
+                                                                        )}
+                                                                    </span>
                                                                 </div>
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                );
-                                            })}
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {t(
+                                                                            'service_management.total',
+                                                                        )}
+                                                                    </span>
+                                                                    <span className="text-sm font-semibold">
+                                                                        {formatNumber(
+                                                                            val?.total,
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between border-t pt-2">
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {t(
+                                                                            'service_management.change',
+                                                                        )}
+                                                                    </span>
+                                                                    <div className="flex items-center gap-1">
+                                                                        {PercentIcon && (
+                                                                            <PercentIcon
+                                                                                className={`h-3 w-3 ${percentColor}`}
+                                                                            />
+                                                                        )}
+                                                                        <span
+                                                                            className={`text-xs font-semibold ${percentColor}`}
+                                                                        >
+                                                                            {
+                                                                                percentText
+                                                                            }
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </CardContent>
+                                                        </Card>
+                                                    );
+                                                })}
                                         </div>
 
-                                        <div className="flex flex-wrap gap-3 mt-4">
+                                        <div className="mt-4 flex flex-wrap gap-3">
                                             {(() => {
-                                                const rawStatus = campaignDetail.effective_status || campaignDetail.status;
-                                                const normalizedStatus = rawStatus ? String(rawStatus).toUpperCase() : '';
-                                                const isDeleted = ['DELETED', 'ARCHIVED', 'REMOVED'].includes(normalizedStatus);
-                                                const isPaused = normalizedStatus === 'PAUSED';
+                                                const rawStatus =
+                                                    campaignDetail.effective_status ||
+                                                    campaignDetail.status;
+                                                const normalizedStatus =
+                                                    rawStatus
+                                                        ? String(
+                                                              rawStatus,
+                                                          ).toUpperCase()
+                                                        : '';
+                                                const isDeleted = [
+                                                    'DELETED',
+                                                    'ARCHIVED',
+                                                    'REMOVED',
+                                                ].includes(normalizedStatus);
+                                                const isPaused =
+                                                    normalizedStatus ===
+                                                    'PAUSED';
 
                                                 return (
                                                     <>
                                                         {isPaused ? (
                                                             <Button
                                                                 variant="outline"
-                                                                onClick={() => setResumeDialogOpen(true)}
-                                                                disabled={isDeleted}
+                                                                onClick={() =>
+                                                                    setResumeDialogOpen(
+                                                                        true,
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    isDeleted
+                                                                }
                                                             >
                                                                 <Play className="mr-2 h-4 w-4" />
-                                                                {t('service_management.campaign_resume')}
+                                                                {t(
+                                                                    'service_management.campaign_resume',
+                                                                )}
                                                             </Button>
                                                         ) : (
                                                             <Button
                                                                 variant="outline"
-                                                                onClick={() => setPauseDialogOpen(true)}
-                                                                disabled={isDeleted}
+                                                                onClick={() =>
+                                                                    setPauseDialogOpen(
+                                                                        true,
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    isDeleted
+                                                                }
                                                             >
                                                                 <Pause className="mr-2 h-4 w-4" />
-                                                                {t('service_management.campaign_pause')}
+                                                                {t(
+                                                                    'service_management.campaign_pause',
+                                                                )}
                                                             </Button>
                                                         )}
                                                         <Button
                                                             variant="destructive"
-                                                            onClick={() => setEndDialogOpen(true)}
+                                                            onClick={() =>
+                                                                setEndDialogOpen(
+                                                                    true,
+                                                                )
+                                                            }
                                                             disabled={isDeleted}
                                                         >
                                                             <Trash2 className="mr-2 h-4 w-4" />
-                                                            {t('service_management.campaign_end')}
+                                                            {t(
+                                                                'service_management.campaign_end',
+                                                            )}
                                                         </Button>
                                                         <Button
                                                             variant="default"
                                                             onClick={async () => {
-                                                                setBudgetDialogOpen(true);
-                                                                if (isAgencyOrCustomer && walletBalance === null && !walletBalanceLoading) {
-                                                                    setWalletBalanceLoading(true);
+                                                                setBudgetDialogOpen(
+                                                                    true,
+                                                                );
+                                                                if (
+                                                                    isAgencyOrCustomer &&
+                                                                    walletBalance ===
+                                                                        null &&
+                                                                    !walletBalanceLoading
+                                                                ) {
+                                                                    setWalletBalanceLoading(
+                                                                        true,
+                                                                    );
                                                                     try {
-                                                                        const response = await axios.get('/wallet/me');
-                                                                        setWalletBalance(response.data?.data?.balance ?? 0);
+                                                                        const response =
+                                                                            await axios.get(
+                                                                                '/wallet/me',
+                                                                            );
+                                                                        setWalletBalance(
+                                                                            response
+                                                                                .data
+                                                                                ?.data
+                                                                                ?.balance ??
+                                                                                0,
+                                                                        );
                                                                     } catch (e) {
-                                                                        console.error('Failed to fetch wallet balance', e);
+                                                                        console.error(
+                                                                            'Failed to fetch wallet balance',
+                                                                            e,
+                                                                        );
                                                                     } finally {
-                                                                        setWalletBalanceLoading(false);
+                                                                        setWalletBalanceLoading(
+                                                                            false,
+                                                                        );
                                                                     }
                                                                 }
                                                             }}
                                                             disabled={isDeleted}
                                                         >
                                                             <Wallet className="mr-2 h-4 w-4" />
-                                                            {t('service_management.campaign_update_budget')}
+                                                            {t(
+                                                                'service_management.campaign_update_budget',
+                                                            )}
                                                         </Button>
                                                     </>
                                                 );
@@ -911,22 +1313,34 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
     };
 
     const issueCampaigns = useMemo(
-        () => campaigns.filter((c) => c.status_severity && c.status_severity !== 'success'),
+        () =>
+            campaigns.filter(
+                (c) => c.status_severity && c.status_severity !== 'success',
+            ),
         [campaigns],
     );
 
     return (
         <>
-            <Head title={t('menu.service_management', { defaultValue: 'Quản lý tài khoản' })} />
+            <Head
+                title={t('menu.service_management', {
+                    defaultValue: 'Quản lý tài khoản',
+                })}
+            />
             <div className="space-y-6">
                 {!selectedAccount ? (
                     <>
                         <div>
                             <h1 className="text-2xl font-semibold">
-                                {t('service_management.title', { defaultValue: 'Quản lý tài khoản' })}
+                                {t('service_management.title', {
+                                    defaultValue: 'Quản lý tài khoản',
+                                })}
                             </h1>
                             <p className="text-muted-foreground">
-                                {t('service_management.subtitle', { defaultValue: 'Danh sách tài khoản quảng cáo' })}
+                                {t('service_management.subtitle', {
+                                    defaultValue:
+                                        'Danh sách tài khoản quảng cáo',
+                                })}
                             </p>
                         </div>
 
@@ -935,7 +1349,10 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm text-muted-foreground">
-                                        {t('business_manager.stats.total', { defaultValue: 'Tổng số lượng tài khoản' })}
+                                        {t('business_manager.stats.total', {
+                                            defaultValue:
+                                                'Tổng số lượng tài khoản',
+                                        })}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="text-2xl font-semibold">
@@ -945,7 +1362,9 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm text-muted-foreground">
-                                        {t('business_manager.stats.active', { defaultValue: 'Active' })}
+                                        {t('business_manager.stats.active', {
+                                            defaultValue: 'Active',
+                                        })}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="text-2xl font-semibold text-green-600">
@@ -955,7 +1374,9 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm text-muted-foreground">
-                                        {t('business_manager.stats.disabled', { defaultValue: 'Disabled' })}
+                                        {t('business_manager.stats.disabled', {
+                                            defaultValue: 'Disabled',
+                                        })}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="text-2xl font-semibold text-red-600">
@@ -976,22 +1397,42 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                             renderFooterRows={(columnCount) => (
                                 <TableRow className="bg-muted/40 font-medium">
                                     <TableCell colSpan={2}>
-                                        <div>{t('service_management.total_results', { defaultValue: 'Total results' })}</div>
+                                        <div>
+                                            {t(
+                                                'service_management.total_results',
+                                                {
+                                                    defaultValue:
+                                                        'Total results',
+                                                },
+                                            )}
+                                        </div>
                                         <div className="text-xs font-normal text-muted-foreground">
-                                            {t('service_management.rows_displayed', {
-                                                defaultValue: '{{shown}} / {{total}} rows displayed',
-                                                shown: paginator.data.length,
-                                                total: paginator.meta.total,
-                                            })}
+                                            {t(
+                                                'service_management.rows_displayed',
+                                                {
+                                                    defaultValue:
+                                                        '{{shown}} / {{total}} rows displayed',
+                                                    shown: paginator.data
+                                                        .length,
+                                                    total: paginator.meta.total,
+                                                },
+                                            )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="whitespace-nowrap text-right">
-                                        {formatAccountNumber(totals?.total_reach)}
+                                    <TableCell className="text-right whitespace-nowrap">
+                                        {formatAccountNumber(
+                                            totals?.total_reach,
+                                        )}
                                     </TableCell>
-                                    <TableCell className="whitespace-nowrap text-right">
-                                        {formatAccountCurrency(totals?.total_spend, totals?.currency)}
+                                    <TableCell className="text-right whitespace-nowrap">
+                                        {formatAccountCurrency(
+                                            totals?.total_spend,
+                                            totals?.currency,
+                                        )}
                                     </TableCell>
-                                    {columnCount > 4 ? <TableCell colSpan={columnCount - 4} /> : null}
+                                    {columnCount > 4 ? (
+                                        <TableCell colSpan={columnCount - 4} />
+                                    ) : null}
                                 </TableRow>
                             )}
                         />
@@ -1005,77 +1446,134 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
             <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{t('service_management.campaign_update_budget')}</DialogTitle>
+                        <DialogTitle>
+                            {t('service_management.campaign_update_budget')}
+                        </DialogTitle>
                         <DialogDescription>
                             {selectedAccount?.platform === _PlatformType.META
-                                ? t('service_management.campaign_update_budget_help_meta')
-                                : t('service_management.campaign_update_budget_help_google')}
+                                ? t(
+                                      'service_management.campaign_update_budget_help_meta',
+                                  )
+                                : t(
+                                      'service_management.campaign_update_budget_help_google',
+                                  )}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         {isAgencyOrCustomer && (
                             <div className="text-sm text-muted-foreground">
                                 {walletBalanceLoading
-                                    ? t('service_management.campaign_update_budget_wallet_balance_loading')
+                                    ? t(
+                                          'service_management.campaign_update_budget_wallet_balance_loading',
+                                      )
                                     : walletBalance !== null
-                                        ? t('service_management.campaign_update_budget_wallet_balance', { balance: walletBalance.toLocaleString() })
-                                        : null}
+                                      ? t(
+                                            'service_management.campaign_update_budget_wallet_balance',
+                                            {
+                                                balance:
+                                                    walletBalance.toLocaleString(),
+                                            },
+                                        )
+                                      : null}
                             </div>
                         )}
                         <div className="space-y-2">
-                            <Label htmlFor="budget">{t('service_management.campaign_update_budget_amount_label')}</Label>
+                            <Label htmlFor="budget">
+                                {t(
+                                    'service_management.campaign_update_budget_amount_label',
+                                )}
+                            </Label>
                             <Input
                                 id="budget"
                                 type="number"
                                 value={budgetAmount}
-                                onChange={(e) => setBudgetAmount(e.target.value)}
+                                onChange={(e) =>
+                                    setBudgetAmount(e.target.value)
+                                }
                                 placeholder="0.00"
                             />
                         </div>
                         {isAgencyOrCustomer && (
                             <div className="space-y-2">
-                                <Label htmlFor="password">{t('service_management.campaign_update_budget_wallet_password_label')}</Label>
+                                <Label htmlFor="password">
+                                    {t(
+                                        'service_management.campaign_update_budget_wallet_password_label',
+                                    )}
+                                </Label>
                                 <Input
                                     id="password"
                                     type="password"
                                     value={budgetWalletPassword}
-                                    onChange={(e) => setBudgetWalletPassword(e.target.value)}
+                                    onChange={(e) =>
+                                        setBudgetWalletPassword(e.target.value)
+                                    }
                                 />
                             </div>
                         )}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setBudgetDialogOpen(false)} disabled={budgetSubmitting}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setBudgetDialogOpen(false)}
+                            disabled={budgetSubmitting}
+                        >
                             {t('common.cancel')}
                         </Button>
                         <Button
                             onClick={async () => {
-                                if (!budgetAmount || Number(budgetAmount) <= 0) {
+                                if (
+                                    !budgetAmount ||
+                                    Number(budgetAmount) <= 0
+                                ) {
                                     toast.error(t('common.invalid_amount'));
                                     return;
                                 }
                                 setBudgetSubmitting(true);
                                 try {
-                                    const platformPrefix = selectedAccount?.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
-                                    const fieldName = selectedAccount?.platform === _PlatformType.GOOGLE ? 'budget' : 'spend-cap';
-                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/${fieldName}`, {
-                                        amount: Number(budgetAmount),
-                                        wallet_password: budgetWalletPassword
-                                    });
-                                    toast.success(t('service_management.campaign_update_budget_success', { amount: budgetAmount }));
+                                    const platformPrefix =
+                                        selectedAccount?.platform ===
+                                        _PlatformType.GOOGLE
+                                            ? 'google-ads'
+                                            : 'meta';
+                                    const fieldName =
+                                        selectedAccount?.platform ===
+                                        _PlatformType.GOOGLE
+                                            ? 'budget'
+                                            : 'spend-cap';
+                                    await axios.post(
+                                        `/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/${fieldName}`,
+                                        {
+                                            amount: Number(budgetAmount),
+                                            wallet_password:
+                                                budgetWalletPassword,
+                                        },
+                                    );
+                                    toast.success(
+                                        t(
+                                            'service_management.campaign_update_budget_success',
+                                            { amount: budgetAmount },
+                                        ),
+                                    );
                                     setBudgetDialogOpen(false);
                                     setBudgetAmount('');
                                     setBudgetWalletPassword('');
                                     refreshCurrentCampaign();
                                 } catch (e: any) {
-                                    toast.error(e?.response?.data?.message || t('service_management.campaign_update_budget_error'));
+                                    toast.error(
+                                        e?.response?.data?.message ||
+                                            t(
+                                                'service_management.campaign_update_budget_error',
+                                            ),
+                                    );
                                 } finally {
                                     setBudgetSubmitting(false);
                                 }
                             }}
                             disabled={budgetSubmitting}
                         >
-                            {budgetSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {budgetSubmitting && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
                             {t('common.submit')}
                         </Button>
                     </DialogFooter>
@@ -1086,11 +1584,19 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
             <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{t('service_management.campaign_pause')}</DialogTitle>
-                        <DialogDescription>{t('service_management.campaign_pause_warning')}</DialogDescription>
+                        <DialogTitle>
+                            {t('service_management.campaign_pause')}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {t('service_management.campaign_pause_warning')}
+                        </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setPauseDialogOpen(false)} disabled={pauseSubmitting}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setPauseDialogOpen(false)}
+                            disabled={pauseSubmitting}
+                        >
                             {t('common.cancel')}
                         </Button>
                         <Button
@@ -1098,22 +1604,40 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                             onClick={async () => {
                                 setPauseSubmitting(true);
                                 try {
-                                    const platformPrefix = selectedAccount?.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
-                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/status`, {
-                                        status: 'PAUSED'
-                                    });
-                                    toast.success(t('service_management.campaign_pause_success'));
+                                    const platformPrefix =
+                                        selectedAccount?.platform ===
+                                        _PlatformType.GOOGLE
+                                            ? 'google-ads'
+                                            : 'meta';
+                                    await axios.post(
+                                        `/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/status`,
+                                        {
+                                            status: 'PAUSED',
+                                        },
+                                    );
+                                    toast.success(
+                                        t(
+                                            'service_management.campaign_pause_success',
+                                        ),
+                                    );
                                     setPauseDialogOpen(false);
                                     refreshCurrentCampaign();
                                 } catch (e: any) {
-                                    toast.error(e?.response?.data?.message || t('service_management.campaign_pause_error'));
+                                    toast.error(
+                                        e?.response?.data?.message ||
+                                            t(
+                                                'service_management.campaign_pause_error',
+                                            ),
+                                    );
                                 } finally {
                                     setPauseSubmitting(false);
                                 }
                             }}
                             disabled={pauseSubmitting}
                         >
-                            {pauseSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {pauseSubmitting && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
                             {t('common.confirm')}
                         </Button>
                     </DialogFooter>
@@ -1124,34 +1648,64 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
             <Dialog open={resumeDialogOpen} onOpenChange={setResumeDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{t('service_management.campaign_resume')}</DialogTitle>
-                        <DialogDescription>{t('service_management.campaign_resume_warning')}</DialogDescription>
+                        <DialogTitle>
+                            {t('service_management.campaign_resume')}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {t('service_management.campaign_resume_warning')}
+                        </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setResumeDialogOpen(false)} disabled={resumeSubmitting}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setResumeDialogOpen(false)}
+                            disabled={resumeSubmitting}
+                        >
                             {t('common.cancel')}
                         </Button>
                         <Button
                             onClick={async () => {
                                 setResumeSubmitting(true);
                                 try {
-                                    const platformPrefix = selectedAccount?.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
-                                    const status = selectedAccount?.platform === _PlatformType.GOOGLE ? 'ENABLED' : 'ACTIVE';
-                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/status`, {
-                                        status
-                                    });
-                                    toast.success(t('service_management.campaign_resume_success'));
+                                    const platformPrefix =
+                                        selectedAccount?.platform ===
+                                        _PlatformType.GOOGLE
+                                            ? 'google-ads'
+                                            : 'meta';
+                                    const status =
+                                        selectedAccount?.platform ===
+                                        _PlatformType.GOOGLE
+                                            ? 'ENABLED'
+                                            : 'ACTIVE';
+                                    await axios.post(
+                                        `/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/status`,
+                                        {
+                                            status,
+                                        },
+                                    );
+                                    toast.success(
+                                        t(
+                                            'service_management.campaign_resume_success',
+                                        ),
+                                    );
                                     setResumeDialogOpen(false);
                                     refreshCurrentCampaign();
                                 } catch (e: any) {
-                                    toast.error(e?.response?.data?.message || t('service_management.campaign_resume_error'));
+                                    toast.error(
+                                        e?.response?.data?.message ||
+                                            t(
+                                                'service_management.campaign_resume_error',
+                                            ),
+                                    );
                                 } finally {
                                     setResumeSubmitting(false);
                                 }
                             }}
                             disabled={resumeSubmitting}
                         >
-                            {resumeSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {resumeSubmitting && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
                             {t('common.confirm')}
                         </Button>
                     </DialogFooter>
@@ -1162,11 +1716,19 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
             <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{t('service_management.campaign_end')}</DialogTitle>
-                        <DialogDescription>{t('service_management.campaign_end_warning')}</DialogDescription>
+                        <DialogTitle>
+                            {t('service_management.campaign_end')}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {t('service_management.campaign_end_warning')}
+                        </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setEndDialogOpen(false)} disabled={endSubmitting}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setEndDialogOpen(false)}
+                            disabled={endSubmitting}
+                        >
                             {t('common.cancel')}
                         </Button>
                         <Button
@@ -1174,25 +1736,47 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
                             onClick={async () => {
                                 setEndSubmitting(true);
                                 try {
-                                    const platformPrefix = selectedAccount?.platform === _PlatformType.GOOGLE ? 'google-ads' : 'meta';
-                                    const status = selectedAccount?.platform === _PlatformType.GOOGLE ? 'REMOVED' : 'DELETED';
-                                    await axios.post(`/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/status`, {
-                                        status
-                                    });
-                                    toast.success(t('service_management.campaign_end_success'));
+                                    const platformPrefix =
+                                        selectedAccount?.platform ===
+                                        _PlatformType.GOOGLE
+                                            ? 'google-ads'
+                                            : 'meta';
+                                    const status =
+                                        selectedAccount?.platform ===
+                                        _PlatformType.GOOGLE
+                                            ? 'REMOVED'
+                                            : 'DELETED';
+                                    await axios.post(
+                                        `/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/status`,
+                                        {
+                                            status,
+                                        },
+                                    );
+                                    toast.success(
+                                        t(
+                                            'service_management.campaign_end_success',
+                                        ),
+                                    );
                                     setEndDialogOpen(false);
                                     setSelectedCampaign(null);
                                     setCampaignDetail(null);
                                     refreshCampaignListOnly();
                                 } catch (e: any) {
-                                    toast.error(e?.response?.data?.message || t('service_management.campaign_end_error'));
+                                    toast.error(
+                                        e?.response?.data?.message ||
+                                            t(
+                                                'service_management.campaign_end_error',
+                                            ),
+                                    );
                                 } finally {
                                     setEndSubmitting(false);
                                 }
                             }}
                             disabled={endSubmitting}
                         >
-                            {endSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {endSubmitting && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
                             {t('common.confirm')}
                         </Button>
                     </DialogFooter>
@@ -1203,7 +1787,10 @@ const ServiceManagementIndex = ({ paginator, stats, totals, childManagers }: Pro
 };
 
 ServiceManagementIndex.layout = (page: React.ReactNode) => (
-    <AppLayout breadcrumbs={[{ title: 'menu.service_management' }]} children={page} />
+    <AppLayout
+        breadcrumbs={[{ title: 'menu.service_management' }]}
+        children={page}
+    />
 );
 
 export default ServiceManagementIndex;

@@ -91,6 +91,7 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
     }, [props.auth]);
     const currentUserRole = authUser?.role;
     const isAgencyOrCustomer = currentUserRole === _UserRole.AGENCY || currentUserRole === _UserRole.CUSTOMER;
+    const isAdmin = currentUserRole === _UserRole.ADMIN;
 
     const handleHideBusinessManager = (item: BusinessManagerItem) => {
         const primaryBmId = item.bm_ids?.[0] || item.parent_bm_id;
@@ -298,7 +299,7 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                                 <Eye className="h-4 w-4 mr-1" />
                                 {t('common.view_account', { defaultValue: 'Xem tài khoản' })}
                             </Button>
-                            {row.original.platform === _PlatformType.META && (
+                            {isAdmin && row.original.platform === _PlatformType.META && (
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -316,7 +317,7 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                 },
             },
         ],
-        [t, isAgencyOrCustomer, walletBalance, walletBalanceLoading]
+        [t, isAgencyOrCustomer, isAdmin, walletBalance, walletBalanceLoading]
     );
 
     const hiddenColumns: ColumnDef<BusinessManagerItem>[] = useMemo(
@@ -402,11 +403,15 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
         { key: 'all' as const, label: 'All', value: undefined },
         { key: _PlatformType.META, label: 'Facebook', value: _PlatformType.META },
         { key: _PlatformType.GOOGLE, label: 'Google', value: _PlatformType.GOOGLE },
-        {
-            key: 'hidden' as const,
-            label: `${t('business_manager.hidden_tab', { defaultValue: 'BM đã ẩn' })} (${hiddenBusinessManagers.length})`,
-            value: undefined,
-        },
+        ...(isAdmin
+            ? [
+                  {
+                      key: 'hidden' as const,
+                      label: `${t('business_manager.hidden_tab', { defaultValue: 'BM đã ẩn' })} (${hiddenBusinessManagers.length})`,
+                      value: undefined,
+                  },
+              ]
+            : []),
     ];
 
     const currentStats = useMemo(() => {

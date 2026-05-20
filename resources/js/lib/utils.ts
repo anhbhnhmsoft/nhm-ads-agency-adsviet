@@ -28,6 +28,31 @@ export function formatCurrency(value: any, currency: string = 'USD') {
     }).format(val);
 }
 
+export function formatMoney(value: any, currency: string = 'USD', language: string = 'vi') {
+    const val = typeof value === 'string' ? parseFloat(value) : value;
+    if (val === null || val === undefined || isNaN(val)) return '-';
+
+    const normalizedCurrency = (currency || 'USD').toUpperCase();
+    const isVietnamese = language.toLowerCase().startsWith('vi');
+    const numberOptions: Intl.NumberFormatOptions = {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    };
+
+    if (isVietnamese) {
+        return `${new Intl.NumberFormat('vi-VN', numberOptions).format(val)} ${normalizedCurrency}`;
+    }
+
+    const symbols: Record<string, string> = {
+        USD: '$',
+        USDT: '$',
+        VND: 'đ',
+    };
+    const suffix = symbols[normalizedCurrency] ?? ` ${normalizedCurrency}`;
+
+    return `${new Intl.NumberFormat('en-US', numberOptions).format(val)}${suffix}`;
+}
+
 export function formatNumber(value: any, options: Intl.NumberFormatOptions = {}) {
     const val = typeof value === 'string' ? parseFloat(value) : value;
     if (val === null || val === undefined || isNaN(val)) return '--';

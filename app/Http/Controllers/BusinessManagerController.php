@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Core\Controller;
 use App\Core\QueryListDTO;
+use App\Common\Constants\User\UserRole;
 use App\Http\Resources\BusinessManagerListResource;
 use App\Service\BusinessManagerService;
 use App\Service\TicketService;
@@ -32,7 +33,8 @@ class BusinessManagerController extends Controller
         $params = $this->extractQueryPagination($request);
         $filter = $params->get('filter') ?? [];
         $filter['view'] = 'bm';
-        $hiddenBusinessManagers = $this->getHiddenMetaBusinessManagers();
+        $isAdmin = (int) $request->user()?->role === UserRole::ADMIN->value;
+        $hiddenBusinessManagers = $isAdmin ? $this->getHiddenMetaBusinessManagers() : [];
 
         $result = $this->businessManagerService->getListBusinessManagers(
             new QueryListDTO(
@@ -199,6 +201,10 @@ class BusinessManagerController extends Controller
 
     public function hideMetaBusinessManager(string $bmId): RedirectResponse
     {
+        if ((int) auth()->user()?->role !== UserRole::ADMIN->value) {
+            abort(403);
+        }
+
         $bm = MetaBusinessManager::query()
             ->where('bm_id', $bmId)
             ->first();
@@ -214,6 +220,10 @@ class BusinessManagerController extends Controller
 
     public function restoreMetaBusinessManager(string $bmId): RedirectResponse
     {
+        if ((int) auth()->user()?->role !== UserRole::ADMIN->value) {
+            abort(403);
+        }
+
         $bm = MetaBusinessManager::query()
             ->where('bm_id', $bmId)
             ->first();

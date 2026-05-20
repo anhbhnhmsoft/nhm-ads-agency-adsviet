@@ -49,9 +49,14 @@ class DashboardService
                 ->count();
             
             $googleTotalBalance = 0.0;
+            $googleBalancesByCurrency = [];
             foreach ($googleAccounts as $account) {
                 if ($account->balance !== null) {
-                    $googleTotalBalance += (float) $account->balance;
+                    $balance = (float) $account->balance;
+                    $currency = strtoupper((string) ($account->currency ?? 'USD'));
+
+                    $googleTotalBalance += $balance;
+                    $googleBalancesByCurrency[$currency] = ($googleBalancesByCurrency[$currency] ?? 0.0) + $balance;
                 }
             }
 
@@ -73,9 +78,14 @@ class DashboardService
                 ->count();
             
             $metaTotalBalance = 0.0;
+            $metaBalancesByCurrency = [];
             foreach ($metaAccounts as $account) {
                 if ($account->balance !== null) {
-                    $metaTotalBalance += (float) $account->balance;
+                    $balance = (float) $account->balance;
+                    $currency = strtoupper((string) ($account->currency ?? 'USD'));
+
+                    $metaTotalBalance += $balance;
+                    $metaBalancesByCurrency[$currency] = ($metaBalancesByCurrency[$currency] ?? 0.0) + $balance;
                 }
             }
 
@@ -83,11 +93,13 @@ class DashboardService
                 'google' => [
                     'active_accounts' => $googleActiveAccounts,
                     'total_balance' => number_format($googleTotalBalance, 2, '.', ''),
+                    'balances_by_currency' => $this->formatBalancesByCurrency($googleBalancesByCurrency),
                     'is_filtered' => !empty($googleSettingId),
                 ],
                 'meta' => [
                     'active_accounts' => $metaActiveAccounts,
                     'total_balance' => number_format($metaTotalBalance, 2, '.', ''),
+                    'balances_by_currency' => $this->formatBalancesByCurrency($metaBalancesByCurrency),
                     'is_filtered' => !empty($metaSettingId),
                 ],
             ]);
@@ -98,6 +110,20 @@ class DashboardService
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
+    }
+
+    private function formatBalancesByCurrency(array $balancesByCurrency): array
+    {
+        ksort($balancesByCurrency);
+
+        return array_map(
+            fn (string $currency, float $amount): array => [
+                'currency' => $currency,
+                'amount' => number_format($amount, 2, '.', ''),
+            ],
+            array_keys($balancesByCurrency),
+            $balancesByCurrency
+        );
     }
 
     /**

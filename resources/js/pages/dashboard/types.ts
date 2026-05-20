@@ -88,6 +88,7 @@ export type SpendingRankingItem = {
     account_status: number;
     status_label: string;
     total_spend: number;
+    currency?: string | null;
 };
 
 export type SpendingRanking = {
@@ -105,10 +106,12 @@ export type AdminDashboardData = {
         google: {
             active_accounts: number;
             total_balance: string;
+            balances_by_currency?: PlatformBalance[];
         };
         meta: {
             active_accounts: number;
             total_balance: string;
+            balances_by_currency?: PlatformBalance[];
         };
     };
     pending_tickets_by_type?: {
@@ -123,3 +126,7 @@ export type AdminDashboardData = {
 
 export type AdminPendingTransactions = LaravelPaginator<AdminPendingTransaction>;
 
+export type PlatformBalance = {
+    currency: string;
+    amount: string;
+};

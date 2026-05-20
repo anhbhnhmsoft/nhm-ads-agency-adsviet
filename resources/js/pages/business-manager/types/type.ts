@@ -1,5 +1,5 @@
-import type { LaravelPaginator } from '@/lib/types/type';
 import { _PlatformType } from '@/lib/types/constants';
+import type { LaravelPaginator } from '@/lib/types/type';
 
 export type BusinessManagerListQuery = {
     filter: {
@@ -43,7 +43,6 @@ export type BusinessManagerItem = {
     account_status_label?: string | null;
     spend_cap?: string | null;
     amount_spent?: string | null;
-    threshold?: string | null;
     remaining_amount?: number | string | null;
     created_time?: string | null;
     account_type?: string | null;
@@ -87,11 +86,14 @@ export type BusinessManagerStats = {
     total_accounts: number;
     active_accounts: number;
     disabled_accounts: number;
-    by_platform: Record<number, {
-        total_accounts: number;
-        active_accounts: number;
-        disabled_accounts: number;
-    }>;
+    by_platform: Record<
+        number,
+        {
+            total_accounts: number;
+            active_accounts: number;
+            disabled_accounts: number;
+        }
+    >;
 };
 
 export type BusinessManagerTotals = {

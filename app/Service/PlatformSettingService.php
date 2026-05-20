@@ -79,11 +79,6 @@ class PlatformSettingService
                     uniqueKey: $platform,
                 );
 
-                // Kích hoạt đồng bộ ngay lập tức
-                if (!$disabled) {
-                    $this->dispatchSyncJob($created);
-                }
-
                 return ServiceReturn::success(
                     data: $created,
                     message: __('platform_setting.created_success')
@@ -121,11 +116,6 @@ class PlatformSettingService
                 key: CacheKey::CACHE_PLATFORM_SETTING_ACTIVE,
                 uniqueKey: $setting->platform,
             );
-
-            // Kích hoạt đồng bộ nếud dnag hoạt động
-            if (!$setting->disabled) {
-                $this->dispatchSyncJob($setting);
-            }
 
             return ServiceReturn::success(
                 data: $setting,

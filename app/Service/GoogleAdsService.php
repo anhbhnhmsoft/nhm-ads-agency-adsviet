@@ -461,6 +461,7 @@ class GoogleAdsService
                     'account_status' => $account->account_status,
                     'status_label' => $statusLabel,
                     'total_spend' => (float) $insight->total_spend,
+                    'currency' => $account->currency ?? 'USD',
                 ];
             }
 

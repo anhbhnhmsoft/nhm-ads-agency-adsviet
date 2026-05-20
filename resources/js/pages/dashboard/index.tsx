@@ -30,8 +30,8 @@ import {
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { WalletTransaction } from '@/pages/wallet/types/type';
-import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransactions, DashboardData, SpendingRanking } from './types';
-import { formatDateForQuery } from '@/lib/utils';
+import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransactions, DashboardData, PlatformBalance, SpendingRanking } from './types';
+import { formatDateForQuery, formatMoney } from '@/lib/utils';
 
 const breadcrumbs: IBreadcrumbItem[] = [
     {
@@ -59,7 +59,7 @@ type Props = {
 };
 
 export default function Index({ dashboardData, adminDashboardData, adminPendingTransactions, dashboardError, selectedPlatform = 'meta', profitByPlatform }: Props) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { props } = usePage();
     const authUser = useMemo(() => {
         const authProp = props.auth as { user?: IUser | null } | IUser | null | undefined;
@@ -105,20 +105,12 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
         withdraw_type?: 'bank' | 'usdt';
     } | null>(null);
 
-    const currencyFormatter = useMemo(
-        () =>
-            new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            }),
-        []
-    );
-
     const formatCurrency = (value: string | number) => {
-        const num = typeof value === 'string' ? parseFloat(value) : value;
-        return currencyFormatter.format(num);
+        return formatMoney(value, 'USD', i18n.language);
+    };
+
+    const formatAccountCurrency = (value: string | number, currency?: string | null) => {
+        return formatMoney(value, currency || 'USD', i18n.language);
     };
 
     const formatPercent = (value: number) => {
@@ -250,17 +242,21 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                 platform="meta"
                                 activeAccounts={adminDashboardData.platform_accounts.meta.active_accounts}
                                 totalBalance={adminDashboardData.platform_accounts.meta.total_balance}
+                                balancesByCurrency={adminDashboardData.platform_accounts.meta.balances_by_currency}
                                 profitData={profitByPlatform?.find(p => p.platform === 1)} // PlatformType::META = 1
                                 t={t}
                                 formatCurrency={formatCurrency}
+                                formatAccountCurrency={formatAccountCurrency}
                             />
                             <PlatformAccountCard
                                 platform="google"
                                 activeAccounts={adminDashboardData.platform_accounts.google.active_accounts}
                                 totalBalance={adminDashboardData.platform_accounts.google.total_balance}
+                                balancesByCurrency={adminDashboardData.platform_accounts.google.balances_by_currency}
                                 profitData={profitByPlatform?.find(p => p.platform === 2)} // PlatformType::GOOGLE = 2
                                 t={t}
                                 formatCurrency={formatCurrency}
+                                formatAccountCurrency={formatAccountCurrency}
                             />
                         </div>
                     )}
@@ -464,7 +460,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                                                 </Badge>
                                                             </TableCell>
                                                             <TableCell className="text-right font-semibold text-orange-500">
-                                                                {formatCurrency(item.total_spend)}
+                                                                {formatAccountCurrency(item.total_spend, item.currency)}
                                                             </TableCell>
                                                         </TableRow>
                                                     );
@@ -934,15 +930,20 @@ type PlatformAccountCardProps = {
     platform: 'meta' | 'google';
     activeAccounts: number;
     totalBalance: string;
+    balancesByCurrency?: PlatformBalance[];
     profitData?: ProfitByPlatformData | null;
     t: (key: string, options?: any) => string;
     formatCurrency: (value: string | number) => string;
+    formatAccountCurrency: (value: string | number, currency?: string | null) => string;
 };
 
-function PlatformAccountCard({ platform, activeAccounts, totalBalance, profitData, t, formatCurrency }: PlatformAccountCardProps) {
+function PlatformAccountCard({ platform, activeAccounts, totalBalance, balancesByCurrency, profitData, t, formatCurrency, formatAccountCurrency }: PlatformAccountCardProps) {
     const platformLabel = platform === 'meta' 
         ? t('dashboard.platform_meta')
         : t('dashboard.platform_google_ads');
+    const balances = balancesByCurrency?.length
+        ? balancesByCurrency
+        : [{ amount: totalBalance, currency: 'USD' }];
     
     return (
         <Card>
@@ -960,8 +961,12 @@ function PlatformAccountCard({ platform, activeAccounts, totalBalance, profitDat
                     <div className="text-sm text-muted-foreground mb-1">
                         {t('dashboard.platform_total_balance', { defaultValue: 'Số dư khả dụng của các tài khoản' })}
                     </div>
-                    <div className="text-3xl font-bold text-orange-500">
-                        {formatCurrency(totalBalance)}
+                    <div className="space-y-1 text-3xl font-bold text-orange-500">
+                        {balances.map((balance) => (
+                            <div key={balance.currency}>
+                                {formatAccountCurrency(balance.amount, balance.currency)}
+                            </div>
+                        ))}
                     </div>
                 </div>
                 {profitData && (

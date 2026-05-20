@@ -503,11 +503,10 @@ class BusinessManagerService
                             'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
                             'spend_cap' => null,
                             'amount_spent' => '0',
-                            'threshold' => null,
                             'remaining_amount' => null,
                             'created_time' => null,
                             'account_type' => null,
-                            'timezone' => $account->time_zone ?? null,
+                            'timezone' => $this->formatTimezone($account->time_zone ?? null),
                             'payment_card' => $account->payment_card ?? null,
                             'currency' => $account->currency ?? 'USD',
                             'accounts' => [
@@ -580,7 +579,6 @@ class BusinessManagerService
                         'account_status_label' => null,
                         'spend_cap' => null,
                         'amount_spent' => null,
-                        'threshold' => null,
                         'remaining_amount' => null,
                         'created_time' => null,
                         'account_type' => null,
@@ -1307,13 +1305,12 @@ class BusinessManagerService
                         'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
                         'spend_cap' => $account->spend_cap,
                         'amount_spent' => $account->amount_spent,
-                        'threshold' => null,
                         'remaining_amount' => $remainingAmount,
                         'created_time' => $account->created_time,
                         'account_type' => isset($account->is_prepay_account)
                             ? ((bool) $account->is_prepay_account ? 'Prepay' : 'Postpay')
                             : null,
-                        'timezone' => $account->timezone_name ?? $account->timezone_id ?? null,
+                        'timezone' => $this->formatTimezone($account->timezone_name ?? null, $account->timezone_id ?? null),
                         'payment_card' => $account->payment_card ?? null,
                         'currency' => $account->currency ?? 'USD',
                         'is_direct_access' => (bool) ($bmDirectAccessMap[$sourceBmId] ?? false),
@@ -1377,11 +1374,10 @@ class BusinessManagerService
                         'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
                         'spend_cap' => null,
                         'amount_spent' => '0',
-                        'threshold' => null,
                         'remaining_amount' => null,
                         'created_time' => null,
                         'account_type' => null,
-                        'timezone' => $account->time_zone ?? null,
+                        'timezone' => $this->formatTimezone($account->time_zone ?? null),
                         'payment_card' => null,
                         'currency' => $account->currency ?? 'USD',
                         'accounts' => [
@@ -1424,13 +1420,12 @@ class BusinessManagerService
             'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
             'spend_cap' => $account->spend_cap ?? null,
             'amount_spent' => $account->amount_spent ?? null,
-            'threshold' => null,
             'remaining_amount' => $remainingAmount,
             'created_time' => $account->created_time,
             'account_type' => isset($account->is_prepay_account)
                 ? ((bool) $account->is_prepay_account ? 'Prepay' : 'Postpay')
                 : null,
-            'timezone' => $account->timezone_name ?? $account->timezone_id ?? null,
+            'timezone' => $this->formatTimezone($account->timezone_name ?? null, $account->timezone_id ?? null),
             'payment_card' => $account->payment_card ?? null,
             'currency' => $account->currency ?? 'USD',
             'accounts' => [
@@ -1489,6 +1484,30 @@ class BusinessManagerService
         }
 
         return $ids;
+    }
+
+    private function formatTimezone(mixed $timezoneName, mixed $fallback = null): ?string
+    {
+        $name = is_string($timezoneName) ? trim($timezoneName) : '';
+        if ($name === '') {
+            return $fallback !== null && $fallback !== '' ? (string) $fallback : null;
+        }
+
+        try {
+            $timezone = new \DateTimeZone($name);
+            $offsetSeconds = $timezone->getOffset(new \DateTimeImmutable('now', $timezone));
+            $absoluteSeconds = abs($offsetSeconds);
+            $hours = intdiv($absoluteSeconds, 3600);
+            $minutes = intdiv($absoluteSeconds % 3600, 60);
+            $sign = $offsetSeconds >= 0 ? '+' : '-';
+            $offset = $minutes === 0
+                ? $sign . $hours
+                : sprintf('%s%d:%02d', $sign, $hours, $minutes);
+
+            return $offset . ' | ' . $name;
+        } catch (\Throwable) {
+            return $name;
+        }
     }
 
     private function resolveBmName(array $bmIds, array $bmNameMap): ?string
