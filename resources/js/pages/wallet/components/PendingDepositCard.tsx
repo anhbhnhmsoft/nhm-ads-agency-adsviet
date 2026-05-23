@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useCancelDeposit } from '../hooks/use-cancel-deposit';
 import type { PendingDeposit } from '@/pages/wallet/types/type';
+import { getTransactionDescription } from '@/lib/types/wallet-transaction-description';
 
 type Props = {
     t: (key: string, opts?: Record<string, any>) => string;
@@ -20,9 +21,11 @@ type Props = {
 };
 
 const PendingDepositCard = ({ t, pending }: Props) => {
-    const qrValue = pending.pay_address || pending.deposit_address || '';
+    const invoiceUrl = pending.reference_id?.startsWith('http') ? pending.reference_id : null;
+    const qrValue = pending.pay_address || pending.deposit_address || invoiceUrl || '';
     const { cancelDeposit, loading } = useCancelDeposit();
     const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
+    const description = pending.description ? getTransactionDescription(pending.description, t) : null;
 
     const handleCancel = () => {
         setShowConfirmDialog(true);
@@ -46,6 +49,11 @@ const PendingDepositCard = ({ t, pending }: Props) => {
                             <div className="text-sm">{t('wallet.amount')}</div>
                             <div className="font-semibold">{pending.amount} USDT</div>
                         </div>
+                        {description && (
+                            <div className="rounded-md border border-yellow-300 bg-yellow-100 px-3 py-2 text-sm font-medium text-yellow-900 dark:border-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-100">
+                                {description}
+                            </div>
+                        )}
                         {(pending.pay_address || pending.deposit_address) && (
                             <div>
                                 <div className="text-sm">
@@ -54,6 +62,18 @@ const PendingDepositCard = ({ t, pending }: Props) => {
                                 <div className="font-mono break-all text-sm">
                                     {pending.pay_address ?? pending.deposit_address}
                                 </div>
+                            </div>
+                        )}
+                        {invoiceUrl && (
+                            <div>
+                                <div className="text-sm">
+                                    {t('wallet.payment_invoice', { defaultValue: 'Hóa đơn thanh toán' })}
+                                </div>
+                                <Button type="button" variant="outline" asChild>
+                                    <a href={invoiceUrl} target="_blank" rel="noreferrer">
+                                        {t('wallet.open_payment_invoice', { defaultValue: 'Mở hóa đơn thanh toán' })}
+                                    </a>
+                                </Button>
                             </div>
                         )}
                         <div className="pt-2">

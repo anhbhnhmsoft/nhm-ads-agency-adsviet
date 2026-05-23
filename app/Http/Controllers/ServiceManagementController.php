@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Core\Controller;
 use App\Core\QueryListDTO;
+use App\Jobs\MetaApi\SyncMetaPlatformJob;
 use App\Service\BusinessManagerService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -44,6 +45,7 @@ class ServiceManagementController extends Controller
             'total_spend' => 0,
             'total_reach' => 0,
             'currency' => 'USD',
+            'totals_by_currency' => [],
         ];
         if ($data) {
             if (is_array($data) && isset($data['paginator'])) {
@@ -119,5 +121,21 @@ class ServiceManagementController extends Controller
                 'childManagers' => fn () => $this->businessManagerService->getChildManagersForFilter(),
             ]
         );
+    }
+
+    public function syncMetaInsights(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $bmId = trim((string) $request->input('bm_id', ''));
+        if ($bmId === '') {
+            return response()->json([
+                'message' => 'Vui lòng chọn BM/MCC con cần đồng bộ',
+            ], 422);
+        }
+
+        SyncMetaPlatformJob::dispatch($bmId, session('active_meta_setting_id'));
+
+        return response()->json([
+            'message' => __('common.processing'),
+        ]);
     }
 }

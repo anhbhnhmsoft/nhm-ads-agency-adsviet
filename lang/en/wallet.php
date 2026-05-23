@@ -24,6 +24,7 @@ return [
         'rejected' => 'Rejected',
         'completed' => 'Completed',
         'cancelled' => 'Cancelled',
+        'underpaid' => 'Underpaid',
     ],
     'flash' => [
         'deposit_created' => 'Deposit order created. Please wait for admin to confirm your transfer.',
@@ -75,6 +76,7 @@ return [
         'deposit_created' => 'User created a deposit order',
         'withdraw_created_bank' => 'User created a withdrawal order via local bank',
         'withdraw_created_usdt' => 'User created a withdrawal order via USDT',
+        'deposit_underpaid' => 'Customer underpaid. Please send the remaining amount or contact support',
         'deposit_approved' => 'Admin approved deposit',
         'withdraw_completed' => 'Admin approved and completed withdrawal',
         'deposit_cancelled_user' => 'User cancelled deposit order',
@@ -97,4 +99,3 @@ return [
         'wallet_balance_not_enough' => 'Insufficient balance',
     ],
 ];
-

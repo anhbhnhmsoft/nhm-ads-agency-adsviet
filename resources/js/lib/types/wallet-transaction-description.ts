@@ -2,6 +2,7 @@ export enum WalletTransactionDescription {
     DEPOSIT_CREATED = 'wallet.transaction_description.deposit_created',
     WITHDRAW_CREATED_BANK = 'wallet.transaction_description.withdraw_created_bank',
     WITHDRAW_CREATED_USDT = 'wallet.transaction_description.withdraw_created_usdt',
+    DEPOSIT_UNDERPAID = 'wallet.transaction_description.deposit_underpaid',
     DEPOSIT_APPROVED = 'wallet.transaction_description.deposit_approved',
     WITHDRAW_COMPLETED = 'wallet.transaction_description.withdraw_completed',
     DEPOSIT_CANCELLED_USER = 'wallet.transaction_description.deposit_cancelled_user',
@@ -32,4 +33,3 @@ export function getTransactionDescription(
 
     return description;
 }
-

@@ -6,6 +6,7 @@ use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\User\UserRole;
 use App\Common\Constants\ServicePackage\Meta\MetaAdsAccountStatus;
+use App\Common\Constants\ServicePackage\Meta\MetaAdsDisableReason;
 use App\Common\Constants\Google\GoogleCustomerStatus;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
@@ -378,7 +379,7 @@ class BusinessManagerService
                             $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
                             $reachValue = $insight && isset($insight->total_reach) ? (int) $insight->total_reach : 0;
                         } else {
-                            $spendValue = (string) ($account->amount_spent ?? '0');
+                            $spendValue = (string) $this->normalizeMetaAccountMoney($account->amount_spent ?? 0, $account->currency ?? 'USD');
                             $reach = $this->metaAdsAccountInsightRepository->query()
                                 ->where('meta_account_id', $account->id)
                                 ->selectRaw('COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
@@ -386,8 +387,8 @@ class BusinessManagerService
                             $reachValue = $reach && isset($reach->total_reach) ? (int) $reach->total_reach : 0;
                         }
 
-                        $balanceValue = (string) ($account->balance ?? '0');
-                        $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null);
+                        $balanceValue = (string) $this->normalizeMetaAccountMoney($account->balance ?? 0, $account->currency ?? 'USD');
+                        $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null, $account->currency ?? 'USD');
                         $status = $account->account_status !== null ? (int) $account->account_status : null;
                         $isActive = $this->isAccountActive((int) $platform, $status);
 
@@ -501,6 +502,7 @@ class BusinessManagerService
                             'total_balance' => $balanceValue,
                             'account_status' => $account->account_status,
                             'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
+                            'account_status_severity' => $this->getAccountStatusSeverity((int) $platform, $status),
                             'spend_cap' => null,
                             'amount_spent' => '0',
                             'remaining_amount' => null,
@@ -509,6 +511,7 @@ class BusinessManagerService
                             'timezone' => $this->formatTimezone($account->time_zone ?? null),
                             'payment_card' => $account->payment_card ?? null,
                             'currency' => $account->currency ?? 'USD',
+                            'last_synced_at' => $account->last_synced_at,
                             'accounts' => [
                                 ['currency' => $account->currency ?? 'USD'],
                             ],
@@ -577,6 +580,7 @@ class BusinessManagerService
                         'total_balance' => '0',
                         'account_status' => null,
                         'account_status_label' => null,
+                        'account_status_severity' => null,
                         'spend_cap' => null,
                         'amount_spent' => null,
                         'remaining_amount' => null,
@@ -804,10 +808,16 @@ class BusinessManagerService
                 usort($bmArray, fn ($a, $b) => (float) ($b['total_spend'] ?? 0) <=> (float) ($a['total_spend'] ?? 0));
             }
 
+            $totalsByCurrency = $this->calculateTotalsByCurrency($bmArray);
+            $primaryTotal = count($totalsByCurrency) === 1
+                ? $totalsByCurrency[0]
+                : null;
+
             $totals = [
-                'total_spend' => array_sum(array_map(fn ($item) => (float) ($item['total_spend'] ?? 0), $bmArray)),
+                'total_spend' => $primaryTotal['total_spend'] ?? 0,
                 'total_reach' => array_sum(array_map(fn ($item) => (int) ($item['total_reach'] ?? 0), $bmArray)),
-                'currency' => $bmArray[0]['currency'] ?? $this->currencyExchangeService->targetCurrency(),
+                'currency' => $primaryTotal['currency'] ?? ($bmArray[0]['currency'] ?? $this->currencyExchangeService->targetCurrency()),
+                'totals_by_currency' => $totalsByCurrency,
             ];
 
             $perPage = $queryListDTO->perPage ?? 10;
@@ -897,15 +907,102 @@ class BusinessManagerService
         return null;
     }
 
-    private function calculateRemainingAmount(mixed $spendCap, mixed $amountSpent): ?float
+    private function getAccountStatusSeverity(int $platform, ?int $status): ?string
     {
-        $limit = is_numeric($spendCap) ? (float) $spendCap : null;
+        if ($status === null) {
+            return null;
+        }
+
+        if ($platform === PlatformType::META->value) {
+            return MetaAdsAccountStatus::fromValue($status)?->severity();
+        }
+
+        if ($platform === PlatformType::GOOGLE->value) {
+            $enum = GoogleCustomerStatus::fromValue($status);
+            return $enum === GoogleCustomerStatus::ENABLED ? 'success' : 'error';
+        }
+
+        return null;
+    }
+
+    private function calculateTotalsByCurrency(array $items): array
+    {
+        $totals = [];
+
+        foreach ($items as $item) {
+            $currency = strtoupper((string) ($item['currency'] ?? $this->currencyExchangeService->targetCurrency()));
+            if ($currency === '') {
+                $currency = $this->currencyExchangeService->targetCurrency();
+            }
+
+            if (!isset($totals[$currency])) {
+                $totals[$currency] = [
+                    'currency' => $currency,
+                    'total_spend' => 0.0,
+                ];
+            }
+
+            $totals[$currency]['total_spend'] += (float) ($item['total_spend'] ?? 0);
+        }
+
+        return array_values($totals);
+    }
+
+    private function normalizeMetaAccountMoney(mixed $value, ?string $currency): ?float
+    {
+        if ($value === null || $value === '' || !is_numeric($value)) {
+            return null;
+        }
+
+        $amount = (float) $value;
+        $currency = strtoupper((string) ($currency ?: 'USD'));
+        $zeroDecimalCurrencies = [
+            'BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW',
+            'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+        ];
+
+        return in_array($currency, $zeroDecimalCurrencies, true)
+            ? $amount
+            : $amount / 100;
+    }
+
+    private function calculateRemainingAmount(mixed $spendCap, mixed $amountSpent, ?string $currency = null): ?float
+    {
+        $limit = $this->normalizeMetaAccountMoney($spendCap, $currency);
         if ($limit === null || $limit <= 0) {
             return null;
         }
 
-        $spent = is_numeric($amountSpent) ? (float) $amountSpent : 0.0;
+        $spent = $this->normalizeMetaAccountMoney($amountSpent, $currency) ?? 0.0;
         return max(0.0, $limit - $spent);
+    }
+
+    private function getMetaDisableReasonLabel(mixed $reason): ?string
+    {
+        if ($reason === null || $reason === '') {
+            return null;
+        }
+
+        $code = (int) $reason;
+        if ($code <= 0) {
+            return null;
+        }
+
+        return (MetaAdsDisableReason::fromValue($code) ?? MetaAdsDisableReason::OTHER)->label();
+    }
+
+    private function getMetaDisableReasonSeverity(mixed $reason): ?string
+    {
+        if ($reason === null || $reason === '') {
+            return null;
+        }
+
+        $code = (int) $reason;
+        if ($code <= 0) {
+            return null;
+        }
+
+        return (MetaAdsDisableReason::fromValue($code) ?? MetaAdsDisableReason::OTHER)->severity();
     }
 
     private function isMetaBusinessManagerHidden(array $item, array $hiddenMetaBmIds): bool
@@ -1052,9 +1149,9 @@ class BusinessManagerService
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
-                            'spend_cap' => $account->spend_cap,
-                            'amount_spent' => $account->amount_spent,
-                            'balance' => $account->balance,
+                            'spend_cap' => $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD'),
+                            'amount_spent' => $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD'),
+                            'balance' => $this->normalizeMetaAccountMoney($account->balance ?? null, $account->currency ?? 'USD'),
                             'currency' => $account->currency,
                             'account_status' => $account->account_status,
                             'total_campaigns' => $account->meta_ads_campaigns_count ?? 0,
@@ -1114,9 +1211,9 @@ class BusinessManagerService
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
                         'service_user_id' => $account->service_user_id ? (string) $account->service_user_id : null,
-                        'spend_cap' => $account->spend_cap,
-                        'amount_spent' => $account->amount_spent,
-                        'balance' => $account->balance,
+                        'spend_cap' => $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD'),
+                        'amount_spent' => $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD'),
+                        'balance' => $this->normalizeMetaAccountMoney($account->balance ?? null, $account->currency ?? 'USD'),
                         'currency' => $account->currency,
                         'account_status' => $account->account_status,
                         'total_campaigns' => $account->meta_ads_campaigns_count ?? 0,
@@ -1268,7 +1365,7 @@ class BusinessManagerService
                         $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
                         $reachValue = $insight && isset($insight->total_reach) ? (int) $insight->total_reach : 0;
                     } else {
-                        $spendValue = (string) ($account->amount_spent ?? '0');
+                        $spendValue = (string) $this->normalizeMetaAccountMoney($account->amount_spent ?? 0, $account->currency ?? 'USD');
                         $reach = $this->metaAdsAccountInsightRepository->query()
                             ->where('meta_account_id', $account->id)
                             ->selectRaw('COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
@@ -1276,8 +1373,8 @@ class BusinessManagerService
                         $reachValue = $reach && isset($reach->total_reach) ? (int) $reach->total_reach : 0;
                     }
 
-                    $balanceValue = (string) ($account->balance ?? '0');
-                    $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null);
+                    $balanceValue = (string) $this->normalizeMetaAccountMoney($account->balance ?? 0, $account->currency ?? 'USD');
+                    $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null, $account->currency ?? 'USD');
                     $status = $account->account_status !== null ? (int) $account->account_status : null;
                     $isActive = $this->isAccountActive((int) $platform, $status);
 
@@ -1303,8 +1400,12 @@ class BusinessManagerService
                         'total_balance' => $balanceValue,
                         'account_status' => $account->account_status,
                         'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
-                        'spend_cap' => $account->spend_cap,
-                        'amount_spent' => $account->amount_spent,
+                        'account_status_severity' => $this->getAccountStatusSeverity((int) $platform, $status),
+                        'disable_reason' => $this->getMetaDisableReasonLabel($account->disable_reason ?? null),
+                        'disable_reason_code' => $account->disable_reason !== null && $account->disable_reason !== '' ? (int) $account->disable_reason : null,
+                        'disable_reason_severity' => $this->getMetaDisableReasonSeverity($account->disable_reason ?? null),
+                        'spend_cap' => $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD'),
+                        'amount_spent' => $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD'),
                         'remaining_amount' => $remainingAmount,
                         'created_time' => $account->created_time,
                         'account_type' => isset($account->is_prepay_account)
@@ -1313,6 +1414,7 @@ class BusinessManagerService
                         'timezone' => $this->formatTimezone($account->timezone_name ?? null, $account->timezone_id ?? null),
                         'payment_card' => $account->payment_card ?? null,
                         'currency' => $account->currency ?? 'USD',
+                        'last_synced_at' => $account->last_synced_at,
                         'is_direct_access' => (bool) ($bmDirectAccessMap[$sourceBmId] ?? false),
                         'accounts' => [
                             ['currency' => $account->currency ?? 'USD'],
@@ -1372,6 +1474,7 @@ class BusinessManagerService
                         'total_balance' => $balanceValue,
                         'account_status' => $account->account_status,
                         'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
+                        'account_status_severity' => $this->getAccountStatusSeverity((int) $platform, $status),
                         'spend_cap' => null,
                         'amount_spent' => '0',
                         'remaining_amount' => null,
@@ -1418,8 +1521,22 @@ class BusinessManagerService
             'total_balance' => $balanceValue,
             'account_status' => $account->account_status,
             'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
-            'spend_cap' => $account->spend_cap ?? null,
-            'amount_spent' => $account->amount_spent ?? null,
+            'account_status_severity' => $this->getAccountStatusSeverity((int) $platform, $status),
+            'disable_reason' => (int) $platform === PlatformType::META->value
+                ? $this->getMetaDisableReasonLabel($account->disable_reason ?? null)
+                : null,
+            'disable_reason_code' => (int) $platform === PlatformType::META->value && $account->disable_reason !== null && $account->disable_reason !== ''
+                ? (int) $account->disable_reason
+                : null,
+            'disable_reason_severity' => (int) $platform === PlatformType::META->value
+                ? $this->getMetaDisableReasonSeverity($account->disable_reason ?? null)
+                : null,
+            'spend_cap' => (int) $platform === PlatformType::META->value
+                ? $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD')
+                : ($account->spend_cap ?? null),
+            'amount_spent' => (int) $platform === PlatformType::META->value
+                ? $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD')
+                : ($account->amount_spent ?? null),
             'remaining_amount' => $remainingAmount,
             'created_time' => $account->created_time,
             'account_type' => isset($account->is_prepay_account)
@@ -1428,6 +1545,7 @@ class BusinessManagerService
             'timezone' => $this->formatTimezone($account->timezone_name ?? null, $account->timezone_id ?? null),
             'payment_card' => $account->payment_card ?? null,
             'currency' => $account->currency ?? 'USD',
+            'last_synced_at' => $account->last_synced_at,
             'accounts' => [
                 ['currency' => $account->currency ?? 'USD'],
             ],

@@ -18,6 +18,7 @@ return [
         'string' => 'Password is invalid.',
         'min' => 'Password must be at least :min characters.',
     ],
+    'password_confirmation_mismatch' => 'Password confirmation does not match.',
     'current_password' => [
         'required' => 'Current password is required.',
         'string' => 'Current password is invalid.',
@@ -71,4 +72,3 @@ return [
         'in' => 'Invalid network. Only BEP20 or TRC20 are accepted.',
     ],
 ];
-

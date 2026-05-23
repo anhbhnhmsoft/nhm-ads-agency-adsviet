@@ -18,7 +18,7 @@ class RegisterUserRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'username' => ['required', 'string', 'max:255','unique:users,username'],
-            'password' => [new PasswordRule],
+            'password' => [new PasswordRule, 'confirmed'],
             'role' => ['required', Rule::in([UserRole::CUSTOMER->value, UserRole::AGENCY->value])],
             'refer_code' => 'required|string|exists:users,referral_code',
         ];
@@ -35,6 +35,7 @@ class RegisterUserRequest extends FormRequest
             'username.max' => __('common_validation.username.max', ['max' => 255]),
             'role.required' => __('auth.register.validation.role.required'),
             'role.in' => __('auth.register.validation.role.in'),
+            'password.confirmed' => __('common_validation.password_confirmation_mismatch'),
             'refer_code.required' => __('auth.register.validation.refer_code_required'),
             'refer_code.string' => __('auth.register.validation.refer_code_string'),
             'refer_code.exists' => __('auth.register.validation.refer_code_invalid'),

@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('transactions:expire')
     ->everyFiveMinutes();
 
-// Sync ads service user mỗi giờ
-Schedule::command('app:sync-ads-service-user')->hourly();
+// Sync ads service user mỗi 30 phút
+Schedule::command('app:sync-ads-service-user')->everyThirtyMinutes();
 
 // Gửi cảnh báo ví thấp mỗi ngày lúc 09:00
 Schedule::command('notifications:wallet-low-balance')->dailyAt('09:00');
@@ -19,8 +19,8 @@ Schedule::command('accounts:check-and-auto-pause')->everyTwoMinutes();
 // Billing postpay hằng ngày (02:00)
 Schedule::command('services:bill-postpay')->dailyAt('02:00');
 
-// Đồng bộ toàn bộ các Platform (BM+MCC) 3 lần / ngày (8 tiếng 1 lần)
-Schedule::job(SyncAllPlatformsJob::class)->hourly();
+// Đồng bộ toàn bộ các Platform (BM+MCC) mỗi 30 phút
+Schedule::job(SyncAllPlatformsJob::class)->everyThirtyMinutes();
 
 // routes/console.php
 Schedule::command('app:calculate-spending-commission')->monthlyOn(1, '01:00');

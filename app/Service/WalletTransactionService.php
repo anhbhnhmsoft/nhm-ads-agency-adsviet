@@ -149,7 +149,7 @@ class WalletTransactionService
     }
 
     // Tạo lệnh nạp tiền (DEPOSIT) cho user
-    public function createDepositOrder(int $userId, float $amount, string $network, string $depositAddress, ?string $customerName = null, ?string $customerEmail = null, ?string $paymentId = null, ?string $payAddress = null, ?\DateTime $expiresAt = null): ServiceReturn
+    public function createDepositOrder(int $userId, float $amount, string $network, string $depositAddress, ?string $customerName = null, ?string $customerEmail = null, ?string $paymentId = null, ?string $payAddress = null, ?\DateTime $expiresAt = null, ?string $referenceId = null): ServiceReturn
     {
         try {
             $wallet = $this->walletRepository->findByUserId($userId);
@@ -164,8 +164,10 @@ class WalletTransactionService
                 'status' => WalletTransactionStatus::PENDING->value,
                 'description' => WalletTransactionDescription::DEPOSIT_CREATED->value,
                 'network' => $network,
+                'reference_id' => $referenceId,
                 'deposit_address' => $depositAddress,
                 'customer_name' => $customerName,
+                'customer_email' => $customerEmail,
                 'payment_id' => $paymentId,
                 'pay_address' => $payAddress,
                 'expires_at' => $expiresAt,
@@ -426,6 +428,35 @@ class WalletTransactionService
         }
     }
 
+    public function findPendingCoinRemitterDeposits(?array $networks = null, ?float $amount = null, int $limit = 25): ServiceReturn
+    {
+        try {
+            $query = $this->transactionRepository->query()
+                ->where('type', WalletTransactionType::DEPOSIT->value)
+                ->where('status', WalletTransactionStatus::PENDING->value)
+                ->whereNotNull('payment_id')
+                ->where(function ($query) {
+                    $query->where('reference_id', 'like', '%coinremitter%')
+                        ->orWhere('deposit_address', 'like', '%coinremitter%');
+                });
+
+            if (!empty($networks)) {
+                $query->whereIn('network', $networks);
+            }
+
+            if ($amount !== null) {
+                $query->where('amount', $amount);
+            }
+
+            return ServiceReturn::success(
+                data: $query->latest()->limit($limit)->get()
+            );
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@findPendingCoinRemitterDeposits error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     // Duyệt lệnh nạp (DEPOSIT) thành công và cập nhập số dư cho user
     public function approveDeposit(int $transactionId, ?string $txHash = null): ServiceReturn
     {
@@ -673,6 +704,8 @@ class WalletTransactionService
                 'deposit_address' => $pendingTx->deposit_address,
                 'payment_id' => $pendingTx->payment_id,
                 'pay_address' => $pendingTx->pay_address,
+                'reference_id' => $pendingTx->reference_id,
+                'description' => $pendingTx->description,
                 'expires_at' => $expiresAt->toIso8601String(),
                 'expires_in' => max($expiresAt->diffInSeconds(now()), 0),
             ];
@@ -1046,5 +1079,3 @@ class WalletTransactionService
         }
     }
 }
-
-

@@ -16,6 +16,7 @@ import {
     CheckCircle2,
     XCircle,
     ShoppingCart,
+    AlertTriangle,
 } from 'lucide-react';
 import type { WalletTransaction } from '@/pages/wallet/types/type';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,8 @@ const formatter = new Intl.NumberFormat('vi-VN', {
 });
 
 const WalletTransactionsCard = ({ t, transactions }: Props) => {
+    const underpaidDescription = 'wallet.transaction_description.deposit_underpaid';
+
     const getTransactionIcon = (type?: number | null) => {
         switch (type) {
             case TRANSACTION_TYPE.DEPOSIT:
@@ -149,7 +152,18 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                 return dateB - dateA;
                             })
                             .map((tx) => {
-                                const statusClass = getStatusColor(tx.status);
+                                const isUnderpaid = tx.description === underpaidDescription;
+                                const statusClass = isUnderpaid
+                                    ? 'bg-yellow-500 text-white'
+                                    : getStatusColor(tx.status);
+                                const statusLabel = isUnderpaid
+                                    ? t('wallet.transaction_status.underpaid', { defaultValue: 'Thanh toán thiếu' })
+                                    : t(`wallet.transaction_status.${getStatusKey(tx.status)}`, {
+                                        defaultValue: String(tx.status),
+                                    });
+                                const statusIcon = isUnderpaid
+                                    ? <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                                    : getStatusIcon(tx.status);
                                 const explorerUrl = getExplorerUrl(tx.network, tx.txHash);
 
                                 return (
@@ -167,9 +181,7 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                                         })}
                                                     </span>
                                                     <Badge className={cn(statusClass, 'text-xs')}>
-                                                        {t(`wallet.transaction_status.${getStatusKey(tx.status)}`, {
-                                                            defaultValue: String(tx.status),
-                                                        })}
+                                                        {statusLabel}
                                                     </Badge>
                                                 </div>
                                                 {tx.description && (
@@ -178,7 +190,7 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                                     </p>
                                                 )}
                                                 <div className="hidden mt-1 sm:flex items-center gap-2 text-xs text-muted-foreground">
-                                                    {getStatusIcon(tx.status)}
+                                                    {statusIcon}
                                                     {tx.createdAt && (
                                                         <span>{getTimeSince(tx.createdAt)}</span>
                                                     )}
@@ -198,7 +210,7 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                                 {formatUSDT(tx.amount)}
                                             </div>
                                             <div className="sm:hidden ms-4 mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                                                    {getStatusIcon(tx.status)}
+                                                    {statusIcon}
                                                     {tx.createdAt && (
                                                         <span>{getTimeSince(tx.createdAt)}</span>
                                                     )}
@@ -238,5 +250,4 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
 };
 
 export default WalletTransactionsCard;
-
 

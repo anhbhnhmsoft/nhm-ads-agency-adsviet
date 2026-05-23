@@ -44,6 +44,8 @@ export interface PendingDeposit {
     deposit_address?: string;
     pay_address?: string;
     payment_id?: string;
+    reference_id?: string;
+    description?: string | null;
     expires_at: string;
     expires_in?: number;
 }
@@ -78,4 +80,3 @@ export type PasswordFormData = {
   new_password: string;
   confirm_password: string;
 };
-

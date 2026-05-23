@@ -7,6 +7,7 @@ enum WalletTransactionDescription: string
     case DEPOSIT_CREATED = 'wallet.transaction_description.deposit_created';
     case WITHDRAW_CREATED_BANK = 'wallet.transaction_description.withdraw_created_bank';
     case WITHDRAW_CREATED_USDT = 'wallet.transaction_description.withdraw_created_usdt';
+    case DEPOSIT_UNDERPAID = 'wallet.transaction_description.deposit_underpaid';
     case DEPOSIT_APPROVED = 'wallet.transaction_description.deposit_approved';
     case WITHDRAW_COMPLETED = 'wallet.transaction_description.withdraw_completed';
     case DEPOSIT_CANCELLED_USER = 'wallet.transaction_description.deposit_cancelled_user';
@@ -39,4 +40,3 @@ enum WalletTransactionDescription: string
         return null;
     }
 }
-

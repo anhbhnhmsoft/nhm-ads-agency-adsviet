@@ -19,6 +19,7 @@ return [
         'string' => 'Mật khẩu không hợp lệ.',
         'min' => 'Mật khẩu phải có ít nhất :min ký tự.',
     ],
+    'password_confirmation_mismatch' => 'Xác nhận mật khẩu không khớp.',
     'current_password' => [
         'required' => 'Mật khẩu hiện tại là bắt buộc.',
         'string' => 'Mật khẩu hiện tại không hợp lệ.',

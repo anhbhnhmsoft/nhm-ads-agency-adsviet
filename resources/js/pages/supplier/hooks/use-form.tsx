@@ -14,7 +14,7 @@ export const useFormCreateSupplier = () => {
         name: '',
         open_fee: '0',
         supplier_fee_percent: '0',
-        monthly_spending_fee_structure: DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
+        monthly_spending_fee_structure: [],
         disabled: false,
     });
 
@@ -34,11 +34,7 @@ export const useFormEditSupplier = (id: string, item: SupplierItem) => {
         name: item.name,
         open_fee: item.open_fee ? parseFloat(Number(item.open_fee).toFixed(2)).toString() : '0',
         supplier_fee_percent: item.supplier_fee_percent ? parseFloat(Number(item.supplier_fee_percent).toFixed(2)).toString() : '0',
-        monthly_spending_fee_structure:
-            (item.monthly_spending_fee_structure &&
-                item.monthly_spending_fee_structure.length > 0
-                ? item.monthly_spending_fee_structure
-                : DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE),
+        monthly_spending_fee_structure: item.monthly_spending_fee_structure ?? [],
         disabled: item.disabled,
     });
 
@@ -52,4 +48,3 @@ export const useFormEditSupplier = (id: string, item: SupplierItem) => {
         submit,
     };
 };
-

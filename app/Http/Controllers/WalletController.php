@@ -13,6 +13,7 @@ use App\Http\Requests\Wallet\WalletTopUpRequest;
 use App\Http\Requests\Wallet\WalletWithdrawRequest;
 use App\Http\Requests\API\Wallet\WalletCampaignBudgetUpdateRequest;
 use App\Service\ConfigService;
+use App\Service\CoinRemitterService;
 use App\Service\WalletTransactionService;
 use App\Service\WalletService;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,7 @@ class WalletController extends Controller
         protected WalletService $walletService,
         protected ConfigService $configService,
         protected WalletTransactionService $walletTransactionService,
+        protected CoinRemitterService $coinRemitterService,
     ) {}
 
     public function index()
@@ -50,11 +52,25 @@ class WalletController extends Controller
                 'address' => $configs['BEP20_WALLET_ADDRESS']['value'],
             ];
         }
+        if (empty($configs['BEP20_WALLET_ADDRESS']['value'] ?? null) && $this->coinRemitterService->isConfigured('BEP20')) {
+            $availableNetworks[] = [
+                'key' => 'BEP20',
+                'config_key' => 'COINREMITTER_BEP20',
+                'address' => 'CoinRemitter',
+            ];
+        }
         if (!empty($configs['TRC20_WALLET_ADDRESS']['value'] ?? null)) {
             $availableNetworks[] = [
                 'key' => 'TRC20',
                 'config_key' => 'TRC20_WALLET_ADDRESS',
                 'address' => $configs['TRC20_WALLET_ADDRESS']['value'],
+            ];
+        }
+        if (empty($configs['TRC20_WALLET_ADDRESS']['value'] ?? null) && $this->coinRemitterService->isConfigured('TRC20')) {
+            $availableNetworks[] = [
+                'key' => 'TRC20',
+                'config_key' => 'COINREMITTER_TRC20',
+                'address' => 'CoinRemitter',
             ];
         }
 
@@ -302,6 +318,86 @@ class WalletController extends Controller
                 'network' => $data['network'],
             ]);
 
+            if ($this->coinRemitterService->isConfigured($data['network'])) {
+                $orderId = 'wallet_'.$user->id.'_'.str_replace('.', '', (string) microtime(true));
+                $notifyUrl = config('services.coinremitter.include_invoice_notify_url')
+                    ? route('coinremitter_webhook')
+                    : null;
+
+                $invoiceResult = $this->coinRemitterService->createInvoice(
+                    network: $data['network'],
+                    amount: (float) $data['amount'],
+                    orderId: $orderId,
+                    name: 'Adsviet top up',
+                    notifyUrl: $notifyUrl,
+                    successUrl: route('wallet_index'),
+                    failUrl: route('wallet_index'),
+                );
+
+                if ($invoiceResult->isError()) {
+                    Logging::web('WalletController@myTopUp: CoinRemitter invoice failed', [
+                        'network' => $data['network'],
+                        'notify_url_in_payload' => $notifyUrl,
+                        'error' => $invoiceResult->getMessage(),
+                    ]);
+                    FlashMessage::error($invoiceResult->getMessage());
+                    return redirect()->back();
+                }
+
+                $invoice = $invoiceResult->getData();
+                $invoiceId = is_array($invoice) ? $this->coinRemitterService->invoiceId($invoice) : null;
+                $invoiceUrl = is_array($invoice) ? $this->coinRemitterService->invoiceUrl($invoice) : null;
+                $payAddress = is_array($invoice) ? $this->coinRemitterService->payAddress($invoice) : null;
+
+                if (!$invoiceId) {
+                    Logging::error('WalletController@myTopUp: CoinRemitter invoice missing id', [
+                        'network' => $data['network'],
+                        'invoice' => $invoice,
+                    ]);
+                    FlashMessage::error(__('common_error.server_error'));
+                    return redirect()->back();
+                }
+
+                Logging::web('WalletController@myTopUp: CoinRemitter invoice created', [
+                    'network' => $data['network'],
+                    'order_id' => $orderId,
+                    'invoice_id' => $invoiceId,
+                    'invoice_url' => $invoiceUrl,
+                    'notify_url_in_payload' => $notifyUrl,
+                ]);
+
+                $createResult = $this->walletTransactionService->createDepositOrder(
+                    userId: (int) $user->id,
+                    amount: (float) $data['amount'],
+                    network: $data['network'],
+                    depositAddress: $payAddress ?: ($invoiceUrl ?: 'CoinRemitter'),
+                    customerName: $customerName,
+                    customerEmail: $user->email ?? $user->username ?? null,
+                    paymentId: $invoiceId,
+                    payAddress: $payAddress,
+                    expiresAt: now()->addMinutes($this->coinRemitterService->getExpireMinutes()),
+                    referenceId: $invoiceUrl ?: $orderId,
+                );
+
+                if ($createResult->isSuccess()) {
+                    $transaction = $createResult->getData();
+                    Logging::web('WalletController@myTopUp: CoinRemitter deposit order created', [
+                        'transaction_id' => $transaction->id ?? null,
+                        'invoice_id' => $invoiceId,
+                    ]);
+
+                    FlashMessage::success(__('wallet.flash.deposit_created'));
+                } else {
+                    Logging::web('WalletController@myTopUp: Failed to create CoinRemitter deposit order', [
+                        'error' => $createResult->getMessage(),
+                        'invoice_id' => $invoiceId,
+                    ]);
+                    FlashMessage::error($createResult->getMessage());
+                }
+
+                return redirect()->back();
+            }
+
             // Kiểm tra mạng đã chọn có được cấu hình chưa (có địa chỉ ví chưa)
             $configResult = $this->configService->getAll();
             $configs = $configResult->isSuccess() ? $configResult->getData() : [];
@@ -330,6 +426,7 @@ class WalletController extends Controller
                 network: $data['network'],
                 depositAddress: $networkAddress,
                 customerName: $customerName,
+                customerEmail: $user->email ?? $user->username ?? null,
                 paymentId: null,
                 payAddress: null,
                 expiresAt: $expiresAt,
@@ -427,5 +524,3 @@ class WalletController extends Controller
         }
     }
 }
-
-

@@ -15,9 +15,9 @@ class MetaAdsAccountResource extends JsonResource
         $status = MetaAdsAccountStatus::fromValue($this->account_status);
 
         // Tính trạng thái hết tiền (không lưu DB, chỉ tính động)
-        $spendCap = $this->spend_cap !== null ? (float) $this->spend_cap : null;
-        $amountSpent = $this->amount_spent !== null ? (float) $this->amount_spent : null;
-        $balance = $this->balance !== null ? (float) $this->balance : null;
+        $spendCap = $this->normalizeMetaAccountMoney($this->spend_cap, $this->currency);
+        $amountSpent = $this->normalizeMetaAccountMoney($this->amount_spent, $this->currency);
+        $balance = $this->normalizeMetaAccountMoney($this->balance, $this->currency);
         $balanceExhausted = false;
 
         // Case 1: nếu có balance -> xem là hết tiền khi balance <= 0
@@ -54,9 +54,9 @@ class MetaAdsAccountResource extends JsonResource
             'disable_reason' => $disableReasonEnum?->label(),
             'disable_reason_code' => $disableReasonCode,
             'disable_reason_severity' => $disableReasonEnum?->severity(),
-            'spend_cap' => $this->spend_cap,
-            'amount_spent' => $this->amount_spent,
-            'balance' => $this->balance,
+            'spend_cap' => $spendCap,
+            'amount_spent' => $amountSpent,
+            'balance' => $balance,
             'balance_exhausted' => $balanceExhausted,
             'currency' => $this->currency,
             'is_prepay_account' => $this->is_prepay_account,
@@ -65,5 +65,23 @@ class MetaAdsAccountResource extends JsonResource
             'payment_card' => $this->payment_card,
             'last_synced_at' => $this->last_synced_at,
         ];
+    }
+
+    private function normalizeMetaAccountMoney(mixed $value, ?string $currency): ?float
+    {
+        if ($value === null || $value === '' || !is_numeric($value)) {
+            return null;
+        }
+
+        $amount = (float) $value;
+        $currency = strtoupper((string) ($currency ?: 'USD'));
+        $zeroDecimalCurrencies = [
+            'BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW',
+            'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+        ];
+
+        return in_array($currency, $zeroDecimalCurrencies, true)
+            ? $amount
+            : $amount / 100;
     }
 }

@@ -3,13 +3,14 @@ import CustomerRoleCard from '@/pages/auth/components/CustomerRoleCard';
 import { useFormRegister } from '@/pages/auth/hooks/use-form';
 import { TelegramUser } from '@/pages/auth/types/types';
 import { Head } from '@inertiajs/react';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
+import { Eye, EyeOff } from 'lucide-react';
 
 type Props = {
     social_data: {
@@ -24,6 +25,8 @@ const RegisterNewUser = ({ social_data }: Props) => {
     const { form, handleSubmit } = useFormRegister();
 
     const { data, setData, processing, errors } = form;
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
 
     useEffect(() => {
         if (social_data.type === 'telegram') {
@@ -110,20 +113,75 @@ const RegisterNewUser = ({ social_data }: Props) => {
                                 {t('common.password')}
                             </Label>
                         </div>
-                        <Input
-                            id="password"
-                            value={data.password}
-                            onChange={(e) =>
-                                setData('password', e.target.value)
-                            }
-                            type="password"
-                            name="password"
-                            required
-                            tabIndex={2}
-                            autoComplete="current-password"
-                            placeholder={t('common.password')}
-                        />
+                        <div className="relative">
+                            <Input
+                                id="password"
+                                value={data.password}
+                                onChange={(e) =>
+                                    setData('password', e.target.value)
+                                }
+                                type={showPassword ? 'text' : 'password'}
+                                name="password"
+                                required
+                                tabIndex={2}
+                                autoComplete="new-password"
+                                placeholder={t('common.password')}
+                                className="pr-10"
+                            />
+                            <button
+                                type="button"
+                                tabIndex={-1}
+                                className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center text-gray-400 hover:text-gray-700"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="h-5 w-5" />
+                                ) : (
+                                    <Eye className="h-5 w-5" />
+                                )}
+                            </button>
+                        </div>
                         <InputError message={errors.password} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <div className="flex items-center">
+                            <Label htmlFor="password_confirmation">
+                                <span className="text-red-500">*</span>
+                                {t('common.password_confirmation')}
+                            </Label>
+                        </div>
+                        <div className="relative">
+                            <Input
+                                id="password_confirmation"
+                                value={data.password_confirmation}
+                                onChange={(e) =>
+                                    setData('password_confirmation', e.target.value)
+                                }
+                                type={showPasswordConfirmation ? 'text' : 'password'}
+                                name="password_confirmation"
+                                required
+                                tabIndex={3}
+                                autoComplete="new-password"
+                                placeholder={t('common.password_confirmation')}
+                                className="pr-10"
+                            />
+                            <button
+                                type="button"
+                                tabIndex={-1}
+                                className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center text-gray-400 hover:text-gray-700"
+                                onClick={() => setShowPasswordConfirmation((prev) => !prev)}
+                                aria-label={showPasswordConfirmation ? 'Hide password' : 'Show password'}
+                            >
+                                {showPasswordConfirmation ? (
+                                    <EyeOff className="h-5 w-5" />
+                                ) : (
+                                    <Eye className="h-5 w-5" />
+                                )}
+                            </button>
+                        </div>
+                        <InputError message={errors.password_confirmation} />
                     </div>
 
                     <div className="grid gap-2">

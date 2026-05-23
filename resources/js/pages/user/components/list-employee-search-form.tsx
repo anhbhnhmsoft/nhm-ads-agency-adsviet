@@ -26,7 +26,7 @@ const ListEmployeeSearchForm = () => {
                         <Input
                             id="keyword"
                             autoComplete="off"
-                            placeholder="name, id, username"
+                            placeholder={t('user.employee_keyword_placeholder')}
                             value={query.keyword || ''}
                             onChange={(e) => {
                                 setQuery({ keyword: e.target.value });
@@ -42,7 +42,7 @@ const ListEmployeeSearchForm = () => {
                         render={() => (
                             <Button className={'cursor-pointer'} onClick={() => handleSearch()}>
                                 <Search />
-                                Tìm
+                                {t('common.search')}
                             </Button>
                         )}
                     />

@@ -51,6 +51,23 @@ return [
         'ipn_secret_key' => env('NOWPAYMENTS_IPN_SECRET_KEY'),
         'base_url' => env('NOWPAYMENTS_BASE_URL', 'https://api.nowpayments.io/v1'),
     ],
+    'coinremitter' => [
+        'base_url' => env('COINREMITTER_BASE_URL', 'https://api.coinremitter.com/v1'),
+        'invoice_expire_minutes' => (int) env('COINREMITTER_INVOICE_EXPIRE_MINUTES', 30),
+        'include_invoice_notify_url' => (bool) env('COINREMITTER_INCLUDE_INVOICE_NOTIFY_URL', false),
+        'networks' => [
+            'TRC20' => [
+                'coin' => env('COINREMITTER_TRC20_COIN', 'USDTTRC20'),
+                'api_key' => env('COINREMITTER_TRC20_API_KEY'),
+                'password' => env('COINREMITTER_TRC20_PASSWORD'),
+            ],
+            'BEP20' => [
+                'coin' => env('COINREMITTER_BEP20_COIN'),
+                'api_key' => env('COINREMITTER_BEP20_API_KEY'),
+                'password' => env('COINREMITTER_BEP20_PASSWORD'),
+            ],
+        ],
+    ],
     'exchange_rate' => [
         'base_url' => env('EXCHANGE_RATE_API_BASE_URL', 'https://open.er-api.com/v6/latest'),
         'target_currency' => env('EXCHANGE_RATE_TARGET_CURRENCY', 'USD'),

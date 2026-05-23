@@ -167,6 +167,56 @@ const ServiceManagementIndex = ({
     // Wallet balance cho Agency/Customer khi update budget
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [walletBalanceLoading, setWalletBalanceLoading] = useState(false);
+    const [syncMetaSubmitting, setSyncMetaSubmitting] = useState(false);
+
+    const selectedMetaBmId =
+        query.platform === _PlatformType.META
+            ? query.child_manager_id || query.manager_id
+            : undefined;
+
+    const lastSyncedAt = useMemo(() => {
+        const dates = paginator.data
+            .map((item) => item.last_synced_at)
+            .filter(Boolean)
+            .map((value) => new Date(value as string))
+            .filter((date) => !Number.isNaN(date.getTime()))
+            .sort((a, b) => b.getTime() - a.getTime());
+
+        return dates[0]?.toISOString() ?? null;
+    }, [paginator.data]);
+
+    const handleSyncMetaInsights = useCallback(async () => {
+        if (!selectedMetaBmId) {
+            toast.error(
+                t('service_management.sync_meta_select_bm', {
+                    defaultValue: 'Vui lòng chọn BM/MCC con cần đồng bộ',
+                }),
+            );
+            return;
+        }
+
+        setSyncMetaSubmitting(true);
+        try {
+            await axios.post('/service-management/sync-meta-insights', {
+                bm_id: selectedMetaBmId,
+            });
+            toast.success(
+                t('service_management.sync_meta_queued', {
+                    defaultValue:
+                        'Đã đưa yêu cầu đồng bộ Meta vào hàng đợi',
+                }),
+            );
+        } catch (e: any) {
+            toast.error(
+                e?.response?.data?.message ||
+                    t('service_management.sync_meta_failed', {
+                        defaultValue: 'Không thể gửi yêu cầu đồng bộ Meta',
+                    }),
+            );
+        } finally {
+            setSyncMetaSubmitting(false);
+        }
+    }, [selectedMetaBmId, t]);
 
     const loadCampaigns = useCallback(
         async (
@@ -359,6 +409,52 @@ const ServiceManagementIndex = ({
         return formatMoney(value, currency || 'USD', i18n.language);
     };
 
+    const formatTotalsSpend = () => {
+        const totalsByCurrency = totals?.totals_by_currency ?? [];
+        if (totalsByCurrency.length > 1) {
+            return (
+                <div className="space-y-1">
+                    {totalsByCurrency.map((item) => (
+                        <div key={item.currency}>
+                            {formatAccountCurrency(
+                                item.total_spend,
+                                item.currency,
+                            )}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        const singleTotal = totalsByCurrency[0];
+        return formatAccountCurrency(
+            singleTotal?.total_spend ?? totals?.total_spend,
+            singleTotal?.currency ?? totals?.currency,
+        );
+    };
+
+    const getAccountStatusClassName = (
+        severity?: string | null,
+        label?: string | null,
+    ) => {
+        const normalizedLabel = (label ?? '').toLowerCase();
+        if (severity === 'success') {
+            return 'border-green-200 bg-green-100 text-green-700 hover:bg-green-100';
+        }
+        if (
+            severity === 'warning' ||
+            normalizedLabel.includes('nợ') ||
+            normalizedLabel.includes('unsettled') ||
+            normalizedLabel.includes('need to pay')
+        ) {
+            return 'border-orange-200 bg-orange-100 text-orange-700 hover:bg-orange-100';
+        }
+        if (severity === 'error') {
+            return 'border-red-200 bg-red-100 text-red-700 hover:bg-red-100';
+        }
+        return '';
+    };
+
     const formatAccountNumber = (value: unknown) => {
         const n = parseNumber(value);
         if (n === null) return '-';
@@ -373,6 +469,19 @@ const ServiceManagementIndex = ({
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return value;
         return date.toLocaleDateString('vi-VN');
+    };
+
+    const formatDateTimeFull = (value?: string | null) => {
+        if (!value) return '-';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+        });
     };
 
     const formatPercentChange = (val: any) => {
@@ -397,6 +506,18 @@ const ServiceManagementIndex = ({
                         <div className="truncate text-xs text-muted-foreground">
                             ID: {row.original.account_id || '-'}
                         </div>
+                        {row.original.disable_reason && (
+                            <div
+                                className={
+                                    row.original.disable_reason_severity ===
+                                    'error'
+                                        ? 'mt-1 text-xs font-medium text-red-600'
+                                        : 'mt-1 text-xs font-medium text-orange-600'
+                                }
+                            >
+                                {row.original.disable_reason}
+                            </div>
+                        )}
                     </div>
                 ),
             },
@@ -454,6 +575,11 @@ const ServiceManagementIndex = ({
                                 ? 'secondary'
                                 : 'outline'
                         }
+                        className={getAccountStatusClassName(
+                            row.original.account_status_severity,
+                            row.original.account_status_label,
+                        )}
+                        title={row.original.disable_reason || undefined}
                     >
                         {row.original.account_status_label ||
                             row.original.account_status ||
@@ -516,14 +642,6 @@ const ServiceManagementIndex = ({
                     defaultValue: 'Creation time',
                 }),
                 cell: ({ row }) => formatDateTime(row.original.created_time),
-                meta: { cellClassName: 'whitespace-nowrap' },
-            },
-            {
-                accessorKey: 'account_type',
-                header: t('service_management.account_type', {
-                    defaultValue: 'Account type',
-                }),
-                cell: ({ row }) => row.original.account_type || '-',
                 meta: { cellClassName: 'whitespace-nowrap' },
             },
             {
@@ -1392,6 +1510,34 @@ const ServiceManagementIndex = ({
                             handleSearch={handleSearch}
                             handleReset={handleReset}
                         />
+                        {query.platform === _PlatformType.META && (
+                            <div className="-mt-4 flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-end">
+                                <span>
+                                    {t('service_management.last_synced_at', {
+                                        defaultValue: 'Cập nhật lần cuối',
+                                    })}
+                                    : {formatDateTimeFull(lastSyncedAt)}
+                                </span>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleSyncMetaInsights}
+                                    disabled={
+                                        syncMetaSubmitting || !selectedMetaBmId
+                                    }
+                                >
+                                    {syncMetaSubmitting ? (
+                                        <Loader2 className="animate-spin" />
+                                    ) : (
+                                        <RefreshCw />
+                                    )}
+                                    {t('service_management.sync_meta', {
+                                        defaultValue:
+                                            'Cập nhật dữ liệu Meta',
+                                    })}
+                                </Button>
+                            </div>
+                        )}
 
                         <DataTable
                             columns={accountColumns}
@@ -1427,10 +1573,7 @@ const ServiceManagementIndex = ({
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right whitespace-nowrap">
-                                        {formatAccountCurrency(
-                                            totals?.total_spend,
-                                            totals?.currency,
-                                        )}
+                                        {formatTotalsSpend()}
                                     </TableCell>
                                     {columnCount > 4 ? (
                                         <TableCell colSpan={columnCount - 4} />

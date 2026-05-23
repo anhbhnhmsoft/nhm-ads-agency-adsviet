@@ -24,6 +24,7 @@ return [
         'rejected' => 'Từ chối',
         'completed' => 'Hoàn thành',
         'cancelled' => 'Đã hủy',
+        'underpaid' => 'Thanh toán thiếu',
     ],
     'flash' => [
         'deposit_created' => 'Lệnh nạp đã được tạo. Vui lòng chuyển khoản theo hướng dẫn và chờ admin duyệt.',
@@ -75,6 +76,7 @@ return [
         'deposit_created' => 'User tạo lệnh nạp tiền',
         'withdraw_created_bank' => 'User tạo lệnh rút tiền qua ngân hàng địa phương',
         'withdraw_created_usdt' => 'User tạo lệnh rút tiền qua USDT',
+        'deposit_underpaid' => 'Khách đã thanh toán thiếu, vui lòng chuyển tiếp phần còn thiếu hoặc liên hệ hỗ trợ',
         'deposit_approved' => 'Admin duyệt nạp tiền',
         'withdraw_completed' => 'Admin duyệt và đã chuyển tiền rút',
         'deposit_cancelled_user' => 'User hủy lệnh nạp từ màn hình chờ',
@@ -98,5 +100,3 @@ return [
         'wallet_balance_not_enough' => 'Số dư không đủ',
     ],
 ];
-
-

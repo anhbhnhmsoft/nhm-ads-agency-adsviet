@@ -22,6 +22,7 @@ export type RegisterNewUserRequest = {
     name: string;
     username: string;
     password: string;
+    password_confirmation: string;
     refer_code:string;
     type: 'telegram' | 'gmail';
     email?: string;

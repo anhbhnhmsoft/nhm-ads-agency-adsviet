@@ -52,6 +52,10 @@ const Edit = ({ supplier }: Props) => {
         setData('monthly_spending_fee_structure', DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE);
     };
 
+    const handleClearMonthlyTemplate = () => {
+        setData('monthly_spending_fee_structure', []);
+    };
+
     return (
         <AppLayout>
             <div className="space-y-6">
@@ -161,6 +165,15 @@ const Edit = ({ supplier }: Props) => {
                                         <RotateCcw className="mr-2 h-4 w-4" />
                                         {t('supplier.monthly_spending_reset_template', { defaultValue: 'Sử dụng mẫu mặc định' })}
                                     </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={handleClearMonthlyTemplate}
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        {t('supplier.monthly_spending_clear', { defaultValue: 'Không dùng biểu phí' })}
+                                    </Button>
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 gap-3">
@@ -211,16 +224,17 @@ const Edit = ({ supplier }: Props) => {
                                                         index,
                                                     )
                                                 }
-                                                disabled={
-                                                    data.monthly_spending_fee_structure
-                                                        .length === 1
-                                                }
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     );
                                 })}
+                                {data.monthly_spending_fee_structure.length === 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('supplier.monthly_spending_empty', { defaultValue: 'Nhà cung cấp đang dùng phí cố định, không áp dụng biểu phí theo mức chi tiêu.' })}
+                                    </p>
+                                )}
                             </div>
                             {monthlySpendingError && (
                                 <span className="text-sm text-red-500">
@@ -280,4 +294,3 @@ const Edit = ({ supplier }: Props) => {
 };
 
 export default Edit;
-

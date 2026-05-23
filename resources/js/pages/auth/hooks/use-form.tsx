@@ -29,6 +29,7 @@ export const useFormRegister = () => {
         name: '',
         username: '',
         password: '',
+        password_confirmation: '',
         type: 'telegram',
         refer_code: '',
         email: '',

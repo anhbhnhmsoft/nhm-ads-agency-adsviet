@@ -41,6 +41,10 @@ export type BusinessManagerItem = {
     total_balance?: string | null;
     account_status?: number | null;
     account_status_label?: string | null;
+    account_status_severity?: 'success' | 'warning' | 'error' | string | null;
+    disable_reason?: string | null;
+    disable_reason_code?: number | null;
+    disable_reason_severity?: 'success' | 'warning' | 'error' | string | null;
     spend_cap?: string | null;
     amount_spent?: string | null;
     remaining_amount?: number | string | null;
@@ -49,6 +53,7 @@ export type BusinessManagerItem = {
     timezone?: string | number | null;
     payment_card?: string | null;
     currency?: string | null;
+    last_synced_at?: string | null;
     accounts?: Array<{
         currency?: string | null;
     }>;
@@ -100,4 +105,8 @@ export type BusinessManagerTotals = {
     total_spend: number;
     total_reach: number;
     currency?: string | null;
+    totals_by_currency?: Array<{
+        currency: string;
+        total_spend: number | string;
+    }>;
 };

@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServicePackageController;
 use App\Http\Controllers\ServiceOrderController;
 use App\Http\Controllers\ServiceManagementController;
+use App\Http\Controllers\CoinRemitterWebhookController;
 // use App\Http\Controllers\NowPaymentsWebhookController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\UserController;
@@ -25,10 +26,32 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\CommissionReportController;
 use App\Http\Controllers\CommissionController;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\HandleAppearance;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetLocale;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 // Route Webhook NowPayments tạm thời tắt vì chuyển sang duyệt nạp thủ công
 // Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('nowpayments_webhook');
+Route::post('/webhooks/coinremitter', [CoinRemitterWebhookController::class, 'handle'])
+    ->withoutMiddleware([
+        AddQueuedCookiesToResponse::class,
+        AddLinkHeadersForPreloadedAssets::class,
+        HandleAppearance::class,
+        HandleInertiaRequests::class,
+        SetLocale::class,
+        ShareErrorsFromSession::class,
+        StartSession::class,
+        ValidateCsrfToken::class,
+        VerifyCsrfToken::class,
+    ])
+    ->name('coinremitter_webhook');
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
 Route::middleware(['guest:web'])->group(function () {
@@ -174,6 +197,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
 
     Route::prefix('/service-management')->group(function () {
         Route::get('/', [ServiceManagementController::class, 'index'])->name('service_management_index');
+        Route::post('/sync-meta-insights', [ServiceManagementController::class, 'syncMetaInsights'])->name('service_management_sync_meta_insights');
     });
 
     Route::prefix('/spend-report')->group(function () {
