@@ -428,7 +428,7 @@ class WalletTransactionService
         }
     }
 
-    public function findPendingCoinRemitterDeposits(?array $networks = null, ?float $amount = null, int $limit = 25): ServiceReturn
+    public function findPendingCoinRemitterDeposits(?array $networks = null, ?float $amount = null, int $limit = 25, string|int|null $walletId = null): ServiceReturn
     {
         try {
             $query = $this->transactionRepository->query()
@@ -446,6 +446,10 @@ class WalletTransactionService
 
             if ($amount !== null) {
                 $query->where('amount', $amount);
+            }
+
+            if ($walletId !== null) {
+                $query->where('wallet_id', $walletId);
             }
 
             return ServiceReturn::success(

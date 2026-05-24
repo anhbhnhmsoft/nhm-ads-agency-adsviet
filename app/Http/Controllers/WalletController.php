@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Common\Constants\Config\ConfigName;
+use App\Common\Constants\Wallet\WalletTransactionDescription;
+use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Core\Logging;
@@ -41,6 +43,14 @@ class WalletController extends Controller
         $walletResult = $this->walletService->getWalletForUser((int) $user->id);
         $wallet = $walletResult->isSuccess() ? $walletResult->getData() : null;
         $walletError = $walletResult->isError() ? $walletResult->getMessage() : null;
+
+        if ($wallet) {
+            $this->reconcileCoinRemitterDepositsForWallet((int) $wallet['id']);
+
+            $walletResult = $this->walletService->getWalletForUser((int) $user->id);
+            $wallet = $walletResult->isSuccess() ? $walletResult->getData() : $wallet;
+            $walletError = $walletResult->isError() ? $walletResult->getMessage() : $walletError;
+        }
 
         // Lấy cấu hình usdt từ config
         $configResult = $this->configService->getAll();
@@ -89,6 +99,104 @@ class WalletController extends Controller
             'networks' => $availableNetworks,
             'pending_deposit' => $pending,
         ]);
+    }
+
+    private function reconcileCoinRemitterDepositsForWallet(int $walletId): void
+    {
+        $pendingResult = $this->walletTransactionService->findPendingCoinRemitterDeposits(
+            limit: 5,
+            walletId: $walletId,
+        );
+
+        if ($pendingResult->isError()) {
+            Logging::web('WalletController@index: Failed to load pending CoinRemitter deposits', [
+                'wallet_id' => $walletId,
+                'error' => $pendingResult->getMessage(),
+            ]);
+
+            return;
+        }
+
+        foreach ($pendingResult->getData() as $transaction) {
+            $invoiceId = (string) ($transaction->payment_id ?? '');
+            $network = (string) ($transaction->network ?? '');
+
+            if ($invoiceId === '' || $network === '' || !$this->coinRemitterService->isConfigured($network)) {
+                continue;
+            }
+
+            $invoiceResult = $this->coinRemitterService->getInvoice($network, $invoiceId);
+            if ($invoiceResult->isError()) {
+                Logging::web('WalletController@index: Failed to reconcile CoinRemitter invoice', [
+                    'wallet_id' => $walletId,
+                    'transaction_id' => $transaction->id ?? null,
+                    'invoice_id' => $invoiceId,
+                    'network' => $network,
+                    'error' => $invoiceResult->getMessage(),
+                ]);
+
+                continue;
+            }
+
+            $invoice = $invoiceResult->getData();
+            $invoice = is_array($invoice) ? $invoice : [];
+            $status = $this->coinRemitterService->status($invoice);
+
+            if ($this->coinRemitterService->isPaidStatus($status)) {
+                $approveResult = $this->walletTransactionService->approveDeposit(
+                    transactionId: (int) $transaction->id,
+                    txHash: $this->coinRemitterService->txHash($invoice),
+                );
+
+                if ($approveResult->isError()) {
+                    Logging::web('WalletController@index: Failed to approve reconciled CoinRemitter deposit', [
+                        'wallet_id' => $walletId,
+                        'transaction_id' => $transaction->id ?? null,
+                        'invoice_id' => $invoiceId,
+                        'network' => $network,
+                        'invoice_status' => $status,
+                        'error' => $approveResult->getMessage(),
+                    ]);
+
+                    continue;
+                }
+
+                Logging::web('WalletController@index: Reconciled CoinRemitter deposit approved', [
+                    'wallet_id' => $walletId,
+                    'transaction_id' => $transaction->id ?? null,
+                    'invoice_id' => $invoiceId,
+                    'network' => $network,
+                    'invoice_status' => $status,
+                ]);
+
+                continue;
+            }
+
+            if ($this->coinRemitterService->isFailedStatus($status)) {
+                $this->walletTransactionService->updateTransactionStatus(
+                    transactionId: (int) $transaction->id,
+                    status: WalletTransactionStatus::REJECTED->value,
+                );
+
+                Logging::web('WalletController@index: Reconciled CoinRemitter deposit rejected', [
+                    'wallet_id' => $walletId,
+                    'transaction_id' => $transaction->id ?? null,
+                    'invoice_id' => $invoiceId,
+                    'network' => $network,
+                    'invoice_status' => $status,
+                ]);
+
+                continue;
+            }
+
+            if ($status === CoinRemitterService::STATUS_UNDER_PAID) {
+                $this->walletTransactionService->updateTransactionStatus(
+                    transactionId: (int) $transaction->id,
+                    status: WalletTransactionStatus::PENDING->value,
+                    description: WalletTransactionDescription::DEPOSIT_UNDERPAID->value,
+                );
+            }
+        }
     }
 
     /**
