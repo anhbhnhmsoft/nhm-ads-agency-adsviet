@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Common\Constants\Config\ConfigType;
 use App\Core\BaseRepository;
 use App\Models\Config;
 use Illuminate\Database\Eloquent\Collection;
@@ -33,9 +34,18 @@ class ConfigRepository extends BaseRepository
     public function updateMany(array $configs): bool
     {
         foreach ($configs as $key => $value) {
-            $this->updateByKey($key, ['value' => $value]);
+            $config = Config::withTrashed()->firstOrNew(['key' => $key]);
+            $config->fill([
+                'type' => $config->type ?? ConfigType::STRING->value,
+                'value' => $value ?? '',
+            ]);
+
+            if ($config->trashed()) {
+                $config->restore();
+            }
+
+            $config->save();
         }
         return true;
     }
 }
-

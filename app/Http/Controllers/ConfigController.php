@@ -34,7 +34,7 @@ class ConfigController extends Controller
                 'id' => null,
                 'key' => $key,
                 'type' => ConfigType::STRING->value,
-                'value' => '',
+                'value' => $this->defaultValue($configName),
             ];
         }
 
@@ -42,6 +42,7 @@ class ConfigController extends Controller
             view: 'config/index',
             data: [
                 'configs' => $allConfigs,
+                'coinRemitterNetworks' => $this->coinRemitterNetworks(),
             ]
         );
     }
@@ -61,5 +62,21 @@ class ConfigController extends Controller
         }
         return redirect()->back();
     }
-}
 
+    private function defaultValue(ConfigName $configName): string
+    {
+        return match ($configName) {
+            default => '',
+        };
+    }
+
+    private function coinRemitterNetworks(): array
+    {
+        return collect((array) config('services.coinremitter.networks', []))
+            ->filter(fn($credentials) => !empty($credentials['coin'] ?? null))
+            ->keys()
+            ->map(fn($network) => strtoupper((string) $network))
+            ->values()
+            ->all();
+    }
+}

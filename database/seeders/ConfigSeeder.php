@@ -39,6 +39,30 @@ class ConfigSeeder extends Seeder
                 'value' => '200',
                 'description' => 'Ngưỡng cảnh báo (USD) để tạm dừng tài khoản',
             ],
+            [
+                'key' => ConfigName::COINREMITTER_TRC20_API_KEY->value,
+                'type' => ConfigType::STRING->value,
+                'value' => '',
+                'description' => 'API key ví CoinRemitter TRC20',
+            ],
+            [
+                'key' => ConfigName::COINREMITTER_TRC20_PASSWORD->value,
+                'type' => ConfigType::STRING->value,
+                'value' => '',
+                'description' => 'Wallet password ví CoinRemitter TRC20',
+            ],
+            [
+                'key' => ConfigName::COINREMITTER_BEP20_API_KEY->value,
+                'type' => ConfigType::STRING->value,
+                'value' => '',
+                'description' => 'API key ví CoinRemitter BEP20',
+            ],
+            [
+                'key' => ConfigName::COINREMITTER_BEP20_PASSWORD->value,
+                'type' => ConfigType::STRING->value,
+                'value' => '',
+                'description' => 'Wallet password ví CoinRemitter BEP20',
+            ],
         ];
 
         foreach ($configs as $config) {
@@ -49,4 +73,3 @@ class ConfigSeeder extends Seeder
         }
     }
 }
-

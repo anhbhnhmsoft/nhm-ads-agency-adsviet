@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Common\Constants\Config\ConfigName;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
 use Illuminate\Support\Arr;
@@ -15,6 +16,13 @@ class CoinRemitterService
     public const STATUS_OVER_PAID = 3;
     public const STATUS_EXPIRED = 4;
     public const STATUS_CANCELLED = 5;
+
+    private const SUPPORTED_NETWORKS = ['TRC20', 'BEP20'];
+
+    public function __construct(
+        protected ConfigService $configService,
+    ) {
+    }
 
     public function isConfigured(string $network): bool
     {
@@ -35,6 +43,29 @@ class CoinRemitterService
     public function getExpireMinutes(): int
     {
         return max((int) config('services.coinremitter.invoice_expire_minutes', 30), 1);
+    }
+
+    public function shouldIncludeInvoiceNotifyUrl(): bool
+    {
+        return (bool) config('services.coinremitter.include_invoice_notify_url', false);
+    }
+
+    public function networksForCoinSymbol(string $coinSymbol): ?array
+    {
+        $symbol = strtoupper(trim($coinSymbol));
+        if ($symbol === '') {
+            return null;
+        }
+
+        $networks = [];
+        foreach ($this->supportedNetworks() as $network) {
+            $coin = strtoupper(trim((string) ($this->credentials($network)['coin'] ?? '')));
+            if ($coin === $symbol) {
+                $networks[] = $network;
+            }
+        }
+
+        return $networks ?: null;
     }
 
     public function createInvoice(
@@ -161,7 +192,7 @@ class CoinRemitterService
     private function post(string $network, string $endpoint, array $payload): ServiceReturn
     {
         $credentials = $this->credentials($network);
-        $url = rtrim((string) config('services.coinremitter.base_url', 'https://api.coinremitter.com/v1'), '/')
+        $url = rtrim($this->baseUrl(), '/')
             . '/' . ltrim($endpoint, '/');
 
         try {
@@ -230,8 +261,55 @@ class CoinRemitterService
     private function credentials(string $network): array
     {
         $key = strtoupper($network);
+        $fallback = (array) config("services.coinremitter.networks.$key", []);
 
-        return (array) config("services.coinremitter.networks.$key", []);
+        if (!in_array($key, self::SUPPORTED_NETWORKS, true)) {
+            return $fallback;
+        }
+
+        return [
+            'coin' => $fallback['coin'] ?? null,
+            'api_key' => $this->configValue($this->networkConfigName($key, 'api_key'), $fallback['api_key'] ?? null),
+            'password' => $this->configValue($this->networkConfigName($key, 'password'), $fallback['password'] ?? null),
+        ];
+    }
+
+    private function baseUrl(): string
+    {
+        return (string) config('services.coinremitter.base_url', 'https://api.coinremitter.com/v1');
+    }
+
+    private function configValue(ConfigName $key, mixed $default = null): mixed
+    {
+        $value = $this->configService->getValue($key, null);
+
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        return $value;
+    }
+
+    private function networkConfigName(string $network, string $field): ConfigName
+    {
+        return match ($network) {
+            'BEP20' => match ($field) {
+                'api_key' => ConfigName::COINREMITTER_BEP20_API_KEY,
+                'password' => ConfigName::COINREMITTER_BEP20_PASSWORD,
+            },
+            default => match ($field) {
+                'api_key' => ConfigName::COINREMITTER_TRC20_API_KEY,
+                'password' => ConfigName::COINREMITTER_TRC20_PASSWORD,
+            },
+        };
+    }
+
+    private function supportedNetworks(): array
+    {
+        return array_values(array_unique([
+            ...self::SUPPORTED_NETWORKS,
+            ...array_keys((array) config('services.coinremitter.networks', [])),
+        ]));
     }
 
     private function formatAmount(float $amount): string

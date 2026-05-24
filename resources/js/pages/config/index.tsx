@@ -1,25 +1,32 @@
-import { ReactNode } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { useTranslation } from 'react-i18next';
-import { useForm } from '@inertiajs/react';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import InputError from '@/components/input-error';
+import AppLayout from '@/layouts/app-layout';
 import { _ConfigName, configNameLabel } from '@/lib/types/constants';
-import { config_update } from '@/routes';
 import type { ConfigItem } from '@/pages/config/types/type';
+import { config_update } from '@/routes';
+import { useForm } from '@inertiajs/react';
+import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     configs: Record<string, ConfigItem>;
+    coinRemitterNetworks: string[];
 };
 
-const ConfigIndex = ({ configs }: Props) => {
+const ConfigIndex = ({ configs, coinRemitterNetworks }: Props) => {
     const { t } = useTranslation();
     const { data, setData, put, processing, errors } = useForm({
         configs: Object.fromEntries(
-            Object.entries(configs).map(([key, item]) => [key, item.value])
+            Object.entries(configs).map(([key, item]) => [key, item.value]),
         ),
     });
 
@@ -28,115 +35,199 @@ const ConfigIndex = ({ configs }: Props) => {
         put(config_update().url);
     };
 
+    const setConfigValue = (key: _ConfigName, value: string) => {
+        setData('configs', {
+            ...data.configs,
+            [key]: value,
+        });
+    };
+
+    const renderInput = (
+        key: _ConfigName,
+        defaultLabel: string,
+        placeholder: string,
+        type: React.HTMLInputTypeAttribute = 'text',
+    ) => (
+        <div className="space-y-2">
+            <Label htmlFor={key}>
+                {t(configNameLabel[key], { defaultValue: defaultLabel })}
+            </Label>
+            <Input
+                id={key}
+                type={type}
+                value={data.configs[key] || ''}
+                onChange={(e) => setConfigValue(key, e.target.value)}
+                placeholder={placeholder}
+            />
+            <InputError message={errors[`configs.${key}`]} />
+        </div>
+    );
+
+    const hasCoinRemitterNetwork = (network: string) =>
+        coinRemitterNetworks.includes(network);
+
     return (
         <div>
             <h1 className="text-xl font-semibold">
-                {t('menu.crypto_wallet_config', { defaultValue: 'Cấu hình ví Crypto' })}
+                {t('menu.crypto_wallet_config', {
+                    defaultValue: 'Cấu hình ví Crypto',
+                })}
             </h1>
             <Card className="mt-4">
                 <CardHeader>
-                    <CardTitle>{t('config.title', { defaultValue: 'Cấu hình địa chỉ ví' })}</CardTitle>
+                    <CardTitle>
+                        {t('config.title', {
+                            defaultValue: 'Cấu hình địa chỉ ví',
+                        })}
+                    </CardTitle>
                     <CardDescription>
-                        {t('config.description', { defaultValue: 'Cấu hình địa chỉ ví để nhận tiền từ giao dịch crypto' })}
+                        {t('config.description', {
+                            defaultValue:
+                                'Cấu hình địa chỉ ví để nhận tiền từ giao dịch crypto',
+                        })}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor={_ConfigName.BEP20_WALLET_ADDRESS}>
-                                    {t(configNameLabel[_ConfigName.BEP20_WALLET_ADDRESS], {
-                                        defaultValue: 'Địa chỉ ví BEP20',
+                            <div className="space-y-1">
+                                <h2 className="text-base font-medium">
+                                    {t('config.manual_wallet_section', {
+                                        defaultValue: 'Ví nạp thủ công',
                                     })}
-                                </Label>
-                                <Input
-                                    id={_ConfigName.BEP20_WALLET_ADDRESS}
-                                    value={data.configs[_ConfigName.BEP20_WALLET_ADDRESS] || ''}
-                                    onChange={(e) =>
-                                        setData('configs', {
-                                            ...data.configs,
-                                            [_ConfigName.BEP20_WALLET_ADDRESS]: e.target.value,
-                                        })
-                                    }
-                                    placeholder={t('config.bep20_placeholder', {
-                                        defaultValue: 'Nhập địa chỉ ví Binance Smart Chain (BEP20)',
-                                    })}
-                                />
-                                <InputError message={errors[`configs.${_ConfigName.BEP20_WALLET_ADDRESS}`]} />
+                                </h2>
+                                <p className="text-sm text-muted-foreground">
+                                    {t(
+                                        'config.manual_wallet_section_description',
+                                        {
+                                            defaultValue:
+                                                'Nếu nhập địa chỉ ví thủ công, khách sẽ tạo lệnh nạp để admin duyệt. Để trống nếu muốn dùng CoinRemitter cho mạng đó.',
+                                        },
+                                    )}
+                                </p>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor={_ConfigName.TRC20_WALLET_ADDRESS}>
-                                    {t(configNameLabel[_ConfigName.TRC20_WALLET_ADDRESS], {
-                                        defaultValue: 'Địa chỉ ví TRC20',
-                                    })}
-                                </Label>
-                                <Input
-                                    id={_ConfigName.TRC20_WALLET_ADDRESS}
-                                    value={data.configs[_ConfigName.TRC20_WALLET_ADDRESS] || ''}
-                                    onChange={(e) =>
-                                        setData('configs', {
-                                            ...data.configs,
-                                            [_ConfigName.TRC20_WALLET_ADDRESS]: e.target.value,
-                                        })
-                                    }
-                                    placeholder={t('config.trc20_placeholder', {
-                                        defaultValue: 'Nhập địa chỉ ví Tron (TRC20)',
-                                    })}
-                                />
-                                <InputError message={errors[`configs.${_ConfigName.TRC20_WALLET_ADDRESS}`]} />
+                            {renderInput(
+                                _ConfigName.BEP20_WALLET_ADDRESS,
+                                'Địa chỉ ví BEP20',
+                                t('config.bep20_placeholder', {
+                                    defaultValue:
+                                        'Nhập địa chỉ ví Binance Smart Chain (BEP20)',
+                                }),
+                            )}
+
+                            {renderInput(
+                                _ConfigName.TRC20_WALLET_ADDRESS,
+                                'Địa chỉ ví TRC20',
+                                t('config.trc20_placeholder', {
+                                    defaultValue:
+                                        'Nhập địa chỉ ví Tron (TRC20)',
+                                }),
+                            )}
+
+                            <div className="space-y-4 border-t pt-5">
+                                <div className="space-y-1">
+                                    <h2 className="text-base font-medium">
+                                        {t('config.coinremitter_section', {
+                                            defaultValue: 'CoinRemitter',
+                                        })}
+                                    </h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t(
+                                            'config.coinremitter_section_description',
+                                            {
+                                                defaultValue:
+                                                    'Cấu hình API ví CoinRemitter để hệ thống tự tạo hóa đơn nạp tiền và nhận webhook.',
+                                            },
+                                        )}
+                                    </p>
+                                </div>
+
+                                {hasCoinRemitterNetwork('TRC20') && (
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        {renderInput(
+                                            _ConfigName.COINREMITTER_TRC20_API_KEY,
+                                            'TRC20 API key',
+                                            'Nhập API key ví TRC20',
+                                            'password',
+                                        )}
+                                        {renderInput(
+                                            _ConfigName.COINREMITTER_TRC20_PASSWORD,
+                                            'TRC20 API password',
+                                            'Nhập API password ví TRC20',
+                                            'password',
+                                        )}
+                                    </div>
+                                )}
+
+                                {hasCoinRemitterNetwork('BEP20') && (
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        {renderInput(
+                                            _ConfigName.COINREMITTER_BEP20_API_KEY,
+                                            'BEP20 API key',
+                                            'Nhập API key ví BEP20',
+                                            'password',
+                                        )}
+                                        {renderInput(
+                                            _ConfigName.COINREMITTER_BEP20_PASSWORD,
+                                            'BEP20 API password',
+                                            'Nhập API password ví BEP20',
+                                            'password',
+                                        )}
+                                    </div>
+                                )}
+
+                                {coinRemitterNetworks.length === 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('config.coinremitter_no_networks', {
+                                            defaultValue:
+                                                'Chưa có mạng CoinRemitter nào được bật trong .env.',
+                                        })}
+                                    </p>
+                                )}
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor={_ConfigName.POSTPAY_MIN_BALANCE}>
-                                    {t(configNameLabel[_ConfigName.POSTPAY_MIN_BALANCE], {
-                                        defaultValue: 'Số dư tối thiểu để đăng ký thanh toán trả sau',
-                                    })}
-                                </Label>
-                                <Input
-                                    id={_ConfigName.POSTPAY_MIN_BALANCE}
-                                    value={data.configs[_ConfigName.POSTPAY_MIN_BALANCE] || ''}
-                                    onChange={(e) =>
-                                        setData('configs', {
-                                            ...data.configs,
-                                            [_ConfigName.POSTPAY_MIN_BALANCE]: e.target.value,
-                                        })
-                                    }
-                                    placeholder={t('config.postpay_min_balance_placeholder', {
-                                        defaultValue: 'Nhập số dư tối thiểu để đăng ký thanh toán trả sau',
-                                    })}
-                                />
-                                <InputError message={errors[`configs.${_ConfigName.POSTPAY_MIN_BALANCE}`]} />
-                            </div>
+                            <div className="space-y-4 border-t pt-5">
+                                <div className="space-y-1">
+                                    <h2 className="text-base font-medium">
+                                        {t('config.wallet_rules_section', {
+                                            defaultValue: 'Quy tắc ví',
+                                        })}
+                                    </h2>
+                                </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor={_ConfigName.THRESHOLD_PAUSE}>
-                                    {t(configNameLabel[_ConfigName.THRESHOLD_PAUSE], {
-                                        defaultValue: 'Ngưỡng cảnh báo (USD) để tạm dừng tài khoản',
-                                    })}
-                                </Label>
-                                <Input
-                                    id={_ConfigName.THRESHOLD_PAUSE}
-                                    value={data.configs[_ConfigName.THRESHOLD_PAUSE] || ''}
-                                    onChange={(e) =>
-                                        setData('configs', {
-                                            ...data.configs,
-                                            [_ConfigName.THRESHOLD_PAUSE]: e.target.value,
-                                        })
-                                    }
-                                    placeholder={t('config.threshold_pause_placeholder', {
-                                        defaultValue: 'Nhập ngưỡng cảnh báo (USD) để tạm dừng tài khoản',
-                                    })}
-                                />
-                                <InputError message={errors[`configs.${_ConfigName.THRESHOLD_PAUSE}`]} />
+                                {renderInput(
+                                    _ConfigName.POSTPAY_MIN_BALANCE,
+                                    'Số dư tối thiểu để đăng ký thanh toán trả sau',
+                                    t(
+                                        'config.postpay_min_balance_placeholder',
+                                        {
+                                            defaultValue:
+                                                'Nhập số dư tối thiểu để đăng ký thanh toán trả sau',
+                                        },
+                                    ),
+                                )}
+
+                                {renderInput(
+                                    _ConfigName.THRESHOLD_PAUSE,
+                                    'Ngưỡng cảnh báo (USD) để tạm dừng tài khoản',
+                                    t('config.threshold_pause_placeholder', {
+                                        defaultValue:
+                                            'Nhập ngưỡng cảnh báo (USD) để tạm dừng tài khoản',
+                                    }),
+                                )}
                             </div>
                         </div>
 
                         <div className="flex justify-end">
                             <Button type="submit" disabled={processing}>
                                 {processing
-                                    ? t('common.saving', { defaultValue: 'Đang lưu...' })
-                                    : t('common.save_changes', { defaultValue: 'Lưu thay đổi' })}
+                                    ? t('common.saving', {
+                                          defaultValue: 'Đang lưu...',
+                                      })
+                                    : t('common.save_changes', {
+                                          defaultValue: 'Lưu thay đổi',
+                                      })}
                             </Button>
                         </div>
                     </form>
@@ -147,8 +238,10 @@ const ConfigIndex = ({ configs }: Props) => {
 };
 
 ConfigIndex.layout = (page: ReactNode) => (
-    <AppLayout breadcrumbs={[{ title: 'menu.crypto_wallet_config' }]} children={page} />
+    <AppLayout
+        breadcrumbs={[{ title: 'menu.crypto_wallet_config' }]}
+        children={page}
+    />
 );
 
 export default ConfigIndex;
-

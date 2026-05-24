@@ -125,6 +125,10 @@ class CoinRemitterWebhookControllerTest extends TestCase
             ->andReturn(ServiceReturn::success());
 
         $coinRemitter = Mockery::mock(CoinRemitterService::class);
+        $coinRemitter->shouldReceive('networksForCoinSymbol')
+            ->once()
+            ->with('TCN')
+            ->andReturn(['TRC20']);
         $coinRemitter->shouldReceive('getInvoice')
             ->once()
             ->with('TRC20', '0UJjQ2s')
@@ -188,6 +192,10 @@ class CoinRemitterWebhookControllerTest extends TestCase
             ->andReturn(ServiceReturn::success());
 
         $coinRemitter = Mockery::mock(CoinRemitterService::class);
+        $coinRemitter->shouldReceive('networksForCoinSymbol')
+            ->once()
+            ->with('TCN')
+            ->andReturn(['TRC20']);
         $coinRemitter->shouldReceive('getInvoice')
             ->once()
             ->with('TRC20', '0UJjQ2s')
@@ -256,6 +264,10 @@ class CoinRemitterWebhookControllerTest extends TestCase
         $walletTransactions->shouldNotReceive('approveDeposit');
 
         $coinRemitter = Mockery::mock(CoinRemitterService::class);
+        $coinRemitter->shouldReceive('networksForCoinSymbol')
+            ->once()
+            ->with('TCN')
+            ->andReturn(['TRC20']);
         $coinRemitter->shouldReceive('getInvoice')
             ->once()
             ->with('TRC20', 'GZk9WRv')

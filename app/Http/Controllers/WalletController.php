@@ -320,7 +320,7 @@ class WalletController extends Controller
 
             if ($this->coinRemitterService->isConfigured($data['network'])) {
                 $orderId = 'wallet_'.$user->id.'_'.str_replace('.', '', (string) microtime(true));
-                $notifyUrl = config('services.coinremitter.include_invoice_notify_url')
+                $notifyUrl = $this->coinRemitterService->shouldIncludeInvoiceNotifyUrl()
                     ? route('coinremitter_webhook')
                     : null;
 

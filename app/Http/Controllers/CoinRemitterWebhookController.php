@@ -270,14 +270,6 @@ class CoinRemitterWebhookController
             return null;
         }
 
-        $networks = [];
-        foreach ((array) config('services.coinremitter.networks', []) as $network => $credentials) {
-            $coin = strtoupper(trim((string) ($credentials['coin'] ?? '')));
-            if ($coin === $symbol) {
-                $networks[] = (string) $network;
-            }
-        }
-
-        return $networks ?: null;
+        return $this->coinRemitterService->networksForCoinSymbol($symbol);
     }
 }
