@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import type {
+    Network,
+    PasswordFormData,
+    TopUpFormData,
+    WalletTab,
+    WithdrawFormData,
+} from '@/pages/wallet/types/type';
 import type { InertiaFormProps } from '@inertiajs/react';
-import type { Network, TopUpFormData, WalletTab, WithdrawFormData, PasswordFormData } from '@/pages/wallet/types/type';
+import React, { useState } from 'react';
 
 type Props = {
     t: (key: string, opts?: Record<string, any>) => string;
@@ -88,23 +94,36 @@ const WalletActionsTabs = ({
                                 </Label>
                                 <select
                                     id="network"
-                                    className="border-input bg-background text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background transition-colors placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                     value={topUpForm.data.network || ''}
-                                    onChange={(e) => topUpForm.setData('network', e.target.value as 'BEP20' | 'TRC20')}
+                                    onChange={(e) =>
+                                        topUpForm.setData(
+                                            'network',
+                                            e.target.value as 'BEP20' | 'TRC20',
+                                        )
+                                    }
                                     disabled={networks.length === 0}
                                     required
                                 >
-                                    <option value="" disabled>{t('service_user.select_network_placeholder')}</option>
+                                    <option value="" disabled>
+                                        {t(
+                                            'service_user.select_network_placeholder',
+                                        )}
+                                    </option>
                                     {networks.map((n) => (
                                         <option key={n.key} value={n.key}>
-                                            {n.address ? `${n.key} (${n.address})` : n.key}
+                                            {n.key}
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={topUpForm.errors.network as any} />
+                                <InputError
+                                    message={topUpForm.errors.network as any}
+                                />
                                 {networks.length === 0 && (
                                     <div className="text-sm text-muted-foreground">
-                                        {t('service_user.network_not_configured')}
+                                        {t(
+                                            'service_user.network_not_configured',
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -118,13 +137,24 @@ const WalletActionsTabs = ({
                                     step="0.01"
                                     min="1"
                                     value={topUpForm.data.amount}
-                                    onChange={(e) => topUpForm.setData('amount', e.target.value)}
+                                    onChange={(e) =>
+                                        topUpForm.setData(
+                                            'amount',
+                                            e.target.value,
+                                        )
+                                    }
                                     placeholder="1.00"
                                     required
                                 />
                                 <InputError message={topUpForm.errors.amount} />
                             </div>
-                            <Button type="submit" disabled={topUpForm.processing || networks.length === 0}>
+                            <Button
+                                type="submit"
+                                disabled={
+                                    topUpForm.processing ||
+                                    networks.length === 0
+                                }
+                            >
                                 {topUpForm.processing
                                     ? t('common.processing')
                                     : t('service_user.create_deposit_order')}
@@ -153,7 +183,10 @@ const WalletActionsTabs = ({
                                             : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
-                                    {t('wallet.withdraw_via_bank', { defaultValue: 'Qua ngân hàng địa phương' })}
+                                    {t('wallet.withdraw_via_bank', {
+                                        defaultValue:
+                                            'Qua ngân hàng địa phương',
+                                    })}
                                 </button>
                                 <button
                                     type="button"
@@ -174,11 +207,16 @@ const WalletActionsTabs = ({
                                             : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
-                                    {t('wallet.withdraw_via_usdt', { defaultValue: 'Qua USDT' })}
+                                    {t('wallet.withdraw_via_usdt', {
+                                        defaultValue: 'Qua USDT',
+                                    })}
                                 </button>
                             </div>
 
-                            <form onSubmit={handleWithdraw} className="space-y-4">
+                            <form
+                                onSubmit={handleWithdraw}
+                                className="space-y-4"
+                            >
                                 <div className="space-y-2">
                                     <Label htmlFor="withdraw-amount">
                                         {t('wallet.amount')}
@@ -189,11 +227,18 @@ const WalletActionsTabs = ({
                                         step="0.01"
                                         min="0.01"
                                         value={withdrawForm.data.amount}
-                                        onChange={(e) => withdrawForm.setData('amount', e.target.value)}
+                                        onChange={(e) =>
+                                            withdrawForm.setData(
+                                                'amount',
+                                                e.target.value,
+                                            )
+                                        }
                                         placeholder="0.00"
                                         required
                                     />
-                                    <InputError message={withdrawForm.errors.amount} />
+                                    <InputError
+                                        message={withdrawForm.errors.amount}
+                                    />
                                 </div>
 
                                 {withdrawType === 'bank' ? (
@@ -205,76 +250,173 @@ const WalletActionsTabs = ({
                                             <Input
                                                 id="withdraw-bank-name"
                                                 type="text"
-                                                value={withdrawForm.data.bank_name || ''}
-                                                onChange={(e) => withdrawForm.setData('bank_name', e.target.value)}
-                                                placeholder={t('service_user.enter_bank_name')}
+                                                value={
+                                                    withdrawForm.data
+                                                        .bank_name || ''
+                                                }
+                                                onChange={(e) =>
+                                                    withdrawForm.setData(
+                                                        'bank_name',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder={t(
+                                                    'service_user.enter_bank_name',
+                                                )}
                                                 required
                                             />
-                                            <InputError message={withdrawForm.errors.bank_name} />
+                                            <InputError
+                                                message={
+                                                    withdrawForm.errors
+                                                        .bank_name
+                                                }
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="withdraw-account-holder">
-                                                {t('service_user.account_holder')}
+                                                {t(
+                                                    'service_user.account_holder',
+                                                )}
                                             </Label>
                                             <Input
                                                 id="withdraw-account-holder"
                                                 type="text"
-                                                value={withdrawForm.data.account_holder || ''}
-                                                onChange={(e) => withdrawForm.setData('account_holder', e.target.value)}
-                                                placeholder={t('service_user.enter_account_holder')}
+                                                value={
+                                                    withdrawForm.data
+                                                        .account_holder || ''
+                                                }
+                                                onChange={(e) =>
+                                                    withdrawForm.setData(
+                                                        'account_holder',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder={t(
+                                                    'service_user.enter_account_holder',
+                                                )}
                                                 required
                                             />
-                                            <InputError message={withdrawForm.errors.account_holder} />
+                                            <InputError
+                                                message={
+                                                    withdrawForm.errors
+                                                        .account_holder
+                                                }
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="withdraw-account-number">
-                                                {t('service_user.account_number')}
+                                                {t(
+                                                    'service_user.account_number',
+                                                )}
                                             </Label>
                                             <Input
                                                 id="withdraw-account-number"
                                                 type="text"
-                                                value={withdrawForm.data.account_number || ''}
-                                                onChange={(e) => withdrawForm.setData('account_number', e.target.value)}
-                                                placeholder={t('service_user.enter_account_number')}
+                                                value={
+                                                    withdrawForm.data
+                                                        .account_number || ''
+                                                }
+                                                onChange={(e) =>
+                                                    withdrawForm.setData(
+                                                        'account_number',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder={t(
+                                                    'service_user.enter_account_number',
+                                                )}
                                                 required
                                             />
-                                            <InputError message={withdrawForm.errors.account_number} />
+                                            <InputError
+                                                message={
+                                                    withdrawForm.errors
+                                                        .account_number
+                                                }
+                                            />
                                         </div>
                                     </>
                                 ) : (
                                     <>
                                         <div className="space-y-2">
                                             <Label htmlFor="withdraw-crypto-address">
-                                                {t('wallet.crypto_address', { defaultValue: 'Địa chỉ ví crypto' })}
+                                                {t('wallet.crypto_address', {
+                                                    defaultValue:
+                                                        'Địa chỉ ví crypto',
+                                                })}
                                             </Label>
                                             <Input
                                                 id="withdraw-crypto-address"
                                                 type="text"
-                                                value={withdrawForm.data.crypto_address || ''}
-                                                onChange={(e) => withdrawForm.setData('crypto_address', e.target.value)}
-                                                placeholder={t('wallet.enter_crypto_address', { defaultValue: 'Nhập địa chỉ ví crypto' })}
+                                                value={
+                                                    withdrawForm.data
+                                                        .crypto_address || ''
+                                                }
+                                                onChange={(e) =>
+                                                    withdrawForm.setData(
+                                                        'crypto_address',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder={t(
+                                                    'wallet.enter_crypto_address',
+                                                    {
+                                                        defaultValue:
+                                                            'Nhập địa chỉ ví crypto',
+                                                    },
+                                                )}
                                                 required
                                             />
-                                            <InputError message={withdrawForm.errors.crypto_address} />
+                                            <InputError
+                                                message={
+                                                    withdrawForm.errors
+                                                        .crypto_address
+                                                }
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="withdraw-network">
-                                                {t('wallet.select_network', { defaultValue: 'Chọn mạng' })}
+                                                {t('wallet.select_network', {
+                                                    defaultValue: 'Chọn mạng',
+                                                })}
                                             </Label>
                                             <select
                                                 id="withdraw-network"
-                                                className="border-input bg-background text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
-                                                value={withdrawForm.data.network || ''}
-                                                onChange={(e) => withdrawForm.setData('network', e.target.value as 'TRC20' | 'BEP20')}
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background transition-colors placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                value={
+                                                    withdrawForm.data.network ||
+                                                    ''
+                                                }
+                                                onChange={(e) =>
+                                                    withdrawForm.setData(
+                                                        'network',
+                                                        e.target.value as
+                                                            | 'TRC20'
+                                                            | 'BEP20',
+                                                    )
+                                                }
                                                 required
                                             >
                                                 <option value="" disabled>
-                                                    {t('wallet.select_network_placeholder', { defaultValue: 'Chọn TRC20 hoặc BEP20' })}
+                                                    {t(
+                                                        'wallet.select_network_placeholder',
+                                                        {
+                                                            defaultValue:
+                                                                'Chọn TRC20 hoặc BEP20',
+                                                        },
+                                                    )}
                                                 </option>
-                                                <option value="TRC20">TRC20</option>
-                                                <option value="BEP20">BEP20</option>
+                                                <option value="TRC20">
+                                                    TRC20
+                                                </option>
+                                                <option value="BEP20">
+                                                    BEP20
+                                                </option>
                                             </select>
-                                            <InputError message={withdrawForm.errors.network} />
+                                            <InputError
+                                                message={
+                                                    withdrawForm.errors.network
+                                                }
+                                            />
                                         </div>
                                     </>
                                 )}
@@ -287,13 +429,25 @@ const WalletActionsTabs = ({
                                         id="withdraw-password"
                                         type="password"
                                         value={withdrawForm.data.password}
-                                        onChange={(e) => withdrawForm.setData('password', e.target.value)}
-                                        placeholder={t('service_user.enter_wallet_password')}
+                                        onChange={(e) =>
+                                            withdrawForm.setData(
+                                                'password',
+                                                e.target.value,
+                                            )
+                                        }
+                                        placeholder={t(
+                                            'service_user.enter_wallet_password',
+                                        )}
                                         required
                                     />
-                                    <InputError message={withdrawForm.errors.password} />
+                                    <InputError
+                                        message={withdrawForm.errors.password}
+                                    />
                                 </div>
-                                <Button type="submit" disabled={withdrawForm.processing}>
+                                <Button
+                                    type="submit"
+                                    disabled={withdrawForm.processing}
+                                >
                                     {withdrawForm.processing
                                         ? t('common.processing')
                                         : t('wallet.withdraw')}
@@ -303,7 +457,10 @@ const WalletActionsTabs = ({
                     )}
 
                     {activeTab === 'password' && (
-                        <form onSubmit={handleChangePassword} className="space-y-4">
+                        <form
+                            onSubmit={handleChangePassword}
+                            className="space-y-4"
+                        >
                             {walletHasPassword && (
                                 <div className="space-y-2">
                                     <Label htmlFor="current-password">
@@ -312,14 +469,25 @@ const WalletActionsTabs = ({
                                     <Input
                                         id="current-password"
                                         type="password"
-                                        value={passwordForm.data.current_password}
+                                        value={
+                                            passwordForm.data.current_password
+                                        }
                                         onChange={(e) =>
-                                            passwordForm.setData('current_password', e.target.value)
+                                            passwordForm.setData(
+                                                'current_password',
+                                                e.target.value,
+                                            )
                                         }
                                         required
-                                        placeholder={t('service_user.enter_current_password')}
+                                        placeholder={t(
+                                            'service_user.enter_current_password',
+                                        )}
                                     />
-                                    <InputError message={passwordForm.errors.current_password} />
+                                    <InputError
+                                        message={
+                                            passwordForm.errors.current_password
+                                        }
+                                    />
                                 </div>
                             )}
                             <div className="space-y-2">
@@ -330,12 +498,21 @@ const WalletActionsTabs = ({
                                     id="new-password"
                                     type="password"
                                     value={passwordForm.data.new_password}
-                                    onChange={(e) => passwordForm.setData('new_password', e.target.value)}
-                                    placeholder={t('service_user.enter_new_password')}
+                                    onChange={(e) =>
+                                        passwordForm.setData(
+                                            'new_password',
+                                            e.target.value,
+                                        )
+                                    }
+                                    placeholder={t(
+                                        'service_user.enter_new_password',
+                                    )}
                                     required
                                     minLength={6}
                                 />
-                                <InputError message={passwordForm.errors.new_password} />
+                                <InputError
+                                    message={passwordForm.errors.new_password}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="confirm-password">
@@ -346,15 +523,27 @@ const WalletActionsTabs = ({
                                     type="password"
                                     value={passwordForm.data.confirm_password}
                                     onChange={(e) =>
-                                        passwordForm.setData('confirm_password', e.target.value)
+                                        passwordForm.setData(
+                                            'confirm_password',
+                                            e.target.value,
+                                        )
                                     }
-                                    placeholder={t('service_user.enter_confirm_password')}
+                                    placeholder={t(
+                                        'service_user.enter_confirm_password',
+                                    )}
                                     required
                                     minLength={6}
                                 />
-                                <InputError message={passwordForm.errors.confirm_password} />
+                                <InputError
+                                    message={
+                                        passwordForm.errors.confirm_password
+                                    }
+                                />
                             </div>
-                            <Button type="submit" disabled={passwordForm.processing}>
+                            <Button
+                                type="submit"
+                                disabled={passwordForm.processing}
+                            >
                                 {passwordForm.processing
                                     ? t('common.processing')
                                     : t('service_user.change_password')}
@@ -368,5 +557,3 @@ const WalletActionsTabs = ({
 };
 
 export default WalletActionsTabs;
-
-
