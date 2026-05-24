@@ -9,6 +9,13 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { _ConfigName, configNameLabel } from '@/lib/types/constants';
 import type { ConfigItem } from '@/pages/config/types/type';
@@ -65,6 +72,10 @@ const ConfigIndex = ({ configs, coinRemitterNetworks }: Props) => {
 
     const hasCoinRemitterNetwork = (network: string) =>
         coinRemitterNetworks.includes(network);
+    const depositMethod =
+        data.configs[_ConfigName.CRYPTO_DEPOSIT_METHOD] === 'coinremitter'
+            ? 'coinremitter'
+            : 'manual';
 
     return (
         <div>
@@ -90,102 +101,165 @@ const ConfigIndex = ({ configs, coinRemitterNetworks }: Props) => {
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-4">
-                            <div className="space-y-1">
-                                <h2 className="text-base font-medium">
-                                    {t('config.manual_wallet_section', {
-                                        defaultValue: 'Ví nạp thủ công',
-                                    })}
-                                </h2>
-                                <p className="text-sm text-muted-foreground">
+                            <div className="space-y-2">
+                                <Label
+                                    htmlFor={_ConfigName.CRYPTO_DEPOSIT_METHOD}
+                                >
                                     {t(
-                                        'config.manual_wallet_section_description',
+                                        configNameLabel[
+                                            _ConfigName.CRYPTO_DEPOSIT_METHOD
+                                        ],
                                         {
                                             defaultValue:
-                                                'Nếu nhập địa chỉ ví thủ công, khách sẽ tạo lệnh nạp để admin duyệt. Để trống nếu muốn dùng CoinRemitter cho mạng đó.',
+                                                'Phương thức nạp crypto',
                                         },
                                     )}
-                                </p>
+                                </Label>
+                                <Select
+                                    value={depositMethod}
+                                    onValueChange={(value) =>
+                                        setConfigValue(
+                                            _ConfigName.CRYPTO_DEPOSIT_METHOD,
+                                            value,
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id={_ConfigName.CRYPTO_DEPOSIT_METHOD}
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="manual">
+                                            {t('config.deposit_method_manual', {
+                                                defaultValue: 'Ví thủ công',
+                                            })}
+                                        </SelectItem>
+                                        <SelectItem value="coinremitter">
+                                            {t(
+                                                'config.deposit_method_coinremitter',
+                                                {
+                                                    defaultValue:
+                                                        'CoinRemitter',
+                                                },
+                                            )}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError
+                                    message={
+                                        errors[
+                                            `configs.${_ConfigName.CRYPTO_DEPOSIT_METHOD}`
+                                        ]
+                                    }
+                                />
                             </div>
 
-                            {renderInput(
-                                _ConfigName.BEP20_WALLET_ADDRESS,
-                                'Địa chỉ ví BEP20',
-                                t('config.bep20_placeholder', {
-                                    defaultValue:
-                                        'Nhập địa chỉ ví Binance Smart Chain (BEP20)',
-                                }),
-                            )}
-
-                            {renderInput(
-                                _ConfigName.TRC20_WALLET_ADDRESS,
-                                'Địa chỉ ví TRC20',
-                                t('config.trc20_placeholder', {
-                                    defaultValue:
-                                        'Nhập địa chỉ ví Tron (TRC20)',
-                                }),
-                            )}
-
-                            <div className="space-y-4 border-t pt-5">
-                                <div className="space-y-1">
-                                    <h2 className="text-base font-medium">
-                                        {t('config.coinremitter_section', {
-                                            defaultValue: 'CoinRemitter',
-                                        })}
-                                    </h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t(
-                                            'config.coinremitter_section_description',
-                                            {
-                                                defaultValue:
-                                                    'Cấu hình API ví CoinRemitter để hệ thống tự tạo hóa đơn nạp tiền và nhận webhook.',
-                                            },
-                                        )}
-                                    </p>
-                                </div>
-
-                                {hasCoinRemitterNetwork('TRC20') && (
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        {renderInput(
-                                            _ConfigName.COINREMITTER_TRC20_API_KEY,
-                                            'TRC20 API key',
-                                            'Nhập API key ví TRC20',
-                                            'password',
-                                        )}
-                                        {renderInput(
-                                            _ConfigName.COINREMITTER_TRC20_PASSWORD,
-                                            'TRC20 API password',
-                                            'Nhập API password ví TRC20',
-                                            'password',
-                                        )}
+                            {depositMethod === 'manual' && (
+                                <>
+                                    <div className="space-y-1">
+                                        <h2 className="text-base font-medium">
+                                            {t('config.manual_wallet_section', {
+                                                defaultValue: 'Ví nạp thủ công',
+                                            })}
+                                        </h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            {t(
+                                                'config.manual_wallet_section_description',
+                                                {
+                                                    defaultValue:
+                                                        'Khách sẽ tạo lệnh nạp theo địa chỉ ví và admin duyệt thủ công.',
+                                                },
+                                            )}
+                                        </p>
                                     </div>
-                                )}
 
-                                {hasCoinRemitterNetwork('BEP20') && (
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        {renderInput(
-                                            _ConfigName.COINREMITTER_BEP20_API_KEY,
-                                            'BEP20 API key',
-                                            'Nhập API key ví BEP20',
-                                            'password',
-                                        )}
-                                        {renderInput(
-                                            _ConfigName.COINREMITTER_BEP20_PASSWORD,
-                                            'BEP20 API password',
-                                            'Nhập API password ví BEP20',
-                                            'password',
-                                        )}
-                                    </div>
-                                )}
-
-                                {coinRemitterNetworks.length === 0 && (
-                                    <p className="text-sm text-muted-foreground">
-                                        {t('config.coinremitter_no_networks', {
+                                    {renderInput(
+                                        _ConfigName.BEP20_WALLET_ADDRESS,
+                                        'Địa chỉ ví BEP20',
+                                        t('config.bep20_placeholder', {
                                             defaultValue:
-                                                'Chưa có mạng CoinRemitter nào được bật trong .env.',
-                                        })}
-                                    </p>
-                                )}
-                            </div>
+                                                'Nhập địa chỉ ví Binance Smart Chain (BEP20)',
+                                        }),
+                                    )}
+
+                                    {renderInput(
+                                        _ConfigName.TRC20_WALLET_ADDRESS,
+                                        'Địa chỉ ví TRC20',
+                                        t('config.trc20_placeholder', {
+                                            defaultValue:
+                                                'Nhập địa chỉ ví Tron (TRC20)',
+                                        }),
+                                    )}
+                                </>
+                            )}
+
+                            {depositMethod === 'coinremitter' && (
+                                <div className="space-y-4 border-t pt-5">
+                                    <div className="space-y-1">
+                                        <h2 className="text-base font-medium">
+                                            {t('config.coinremitter_section', {
+                                                defaultValue: 'CoinRemitter',
+                                            })}
+                                        </h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            {t(
+                                                'config.coinremitter_section_description',
+                                                {
+                                                    defaultValue:
+                                                        'Cấu hình API ví CoinRemitter để hệ thống tự tạo hóa đơn nạp tiền và nhận webhook.',
+                                                },
+                                            )}
+                                        </p>
+                                    </div>
+
+                                    {hasCoinRemitterNetwork('TRC20') && (
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            {renderInput(
+                                                _ConfigName.COINREMITTER_TRC20_API_KEY,
+                                                'TRC20 API key',
+                                                'Nhập API key ví TRC20',
+                                                'password',
+                                            )}
+                                            {renderInput(
+                                                _ConfigName.COINREMITTER_TRC20_PASSWORD,
+                                                'TRC20 API password',
+                                                'Nhập API password ví TRC20',
+                                                'password',
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {hasCoinRemitterNetwork('BEP20') && (
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            {renderInput(
+                                                _ConfigName.COINREMITTER_BEP20_API_KEY,
+                                                'BEP20 API key',
+                                                'Nhập API key ví BEP20',
+                                                'password',
+                                            )}
+                                            {renderInput(
+                                                _ConfigName.COINREMITTER_BEP20_PASSWORD,
+                                                'BEP20 API password',
+                                                'Nhập API password ví BEP20',
+                                                'password',
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {coinRemitterNetworks.length === 0 && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {t(
+                                                'config.coinremitter_no_networks',
+                                                {
+                                                    defaultValue:
+                                                        'Chưa có mạng CoinRemitter nào được bật trong .env.',
+                                                },
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="space-y-4 border-t pt-5">
                                 <div className="space-y-1">

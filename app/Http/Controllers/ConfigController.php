@@ -34,7 +34,7 @@ class ConfigController extends Controller
                 'id' => null,
                 'key' => $key,
                 'type' => ConfigType::STRING->value,
-                'value' => $this->defaultValue($configName),
+                'value' => $this->defaultValue($configName, $configs),
             ];
         }
 
@@ -54,6 +54,14 @@ class ConfigController extends Controller
             'configs.*' => ['nullable', 'string'],
         ]);
 
+        $methodKey = ConfigName::CRYPTO_DEPOSIT_METHOD->value;
+        if (
+            isset($validated['configs'][$methodKey])
+            && !in_array($validated['configs'][$methodKey], ['manual', 'coinremitter'], true)
+        ) {
+            $validated['configs'][$methodKey] = 'manual';
+        }
+
         $result = $this->configService->update($validated['configs']);
         if ($result->isSuccess()) {
             FlashMessage::success(__('common_success.update_success'));
@@ -63,11 +71,24 @@ class ConfigController extends Controller
         return redirect()->back();
     }
 
-    private function defaultValue(ConfigName $configName): string
+    private function defaultValue(ConfigName $configName, array $configs = []): string
     {
         return match ($configName) {
+            ConfigName::CRYPTO_DEPOSIT_METHOD => $this->defaultDepositMethod($configs),
             default => '',
         };
+    }
+
+    private function defaultDepositMethod(array $configs): string
+    {
+        $hasManualWallet = !empty($configs[ConfigName::BEP20_WALLET_ADDRESS->value]['value'] ?? null)
+            || !empty($configs[ConfigName::TRC20_WALLET_ADDRESS->value]['value'] ?? null);
+
+        if ($hasManualWallet) {
+            return 'manual';
+        }
+
+        return count($this->coinRemitterNetworks()) > 0 ? 'coinremitter' : 'manual';
     }
 
     private function coinRemitterNetworks(): array

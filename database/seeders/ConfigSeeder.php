@@ -15,6 +15,12 @@ class ConfigSeeder extends Seeder
     public function run(): void
     {
         $configs = [
+            [
+                'key' => ConfigName::CRYPTO_DEPOSIT_METHOD->value,
+                'type' => ConfigType::STRING->value,
+                'value' => 'manual',
+                'description' => 'Phương thức nạp crypto: manual hoặc coinremitter',
+            ],
 //            [
 //                'key' => ConfigName::BEP20_WALLET_ADDRESS->value,
 //                'type' => ConfigType::STRING->value,
@@ -49,7 +55,7 @@ class ConfigSeeder extends Seeder
                 'key' => ConfigName::COINREMITTER_TRC20_PASSWORD->value,
                 'type' => ConfigType::STRING->value,
                 'value' => '',
-                'description' => 'Wallet password ví CoinRemitter TRC20',
+                'description' => 'API password ví CoinRemitter TRC20',
             ],
             [
                 'key' => ConfigName::COINREMITTER_BEP20_API_KEY->value,
@@ -61,7 +67,7 @@ class ConfigSeeder extends Seeder
                 'key' => ConfigName::COINREMITTER_BEP20_PASSWORD->value,
                 'type' => ConfigType::STRING->value,
                 'value' => '',
-                'description' => 'Wallet password ví CoinRemitter BEP20',
+                'description' => 'API password ví CoinRemitter BEP20',
             ],
         ];
 

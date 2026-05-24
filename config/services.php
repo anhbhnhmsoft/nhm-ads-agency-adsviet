@@ -57,7 +57,7 @@ return [
         'include_invoice_notify_url' => (bool) env('COINREMITTER_INCLUDE_INVOICE_NOTIFY_URL', false),
         'networks' => [
             'TRC20' => [
-                'coin' => env('COINREMITTER_TRC20_COIN', 'USDTTRC20'),
+                'coin' => env('COINREMITTER_TRC20_COIN'),
                 'api_key' => env('COINREMITTER_TRC20_API_KEY'),
                 'password' => env('COINREMITTER_TRC20_PASSWORD'),
             ],

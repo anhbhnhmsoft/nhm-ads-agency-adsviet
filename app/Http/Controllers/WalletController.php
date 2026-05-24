@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Common\Constants\Config\ConfigName;
 use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Core\Logging;
@@ -44,29 +45,31 @@ class WalletController extends Controller
         // Lấy cấu hình usdt từ config
         $configResult = $this->configService->getAll();
         $configs = $configResult->isSuccess() ? $configResult->getData() : [];
+        $depositMethod = $this->cryptoDepositMethod($configs);
         $availableNetworks = [];
-        if (!empty($configs['BEP20_WALLET_ADDRESS']['value'] ?? null)) {
+
+        if ($depositMethod === 'manual' && !empty($configs['BEP20_WALLET_ADDRESS']['value'] ?? null)) {
             $availableNetworks[] = [
                 'key' => 'BEP20',
                 'config_key' => 'BEP20_WALLET_ADDRESS',
                 'address' => $configs['BEP20_WALLET_ADDRESS']['value'],
             ];
         }
-        if (empty($configs['BEP20_WALLET_ADDRESS']['value'] ?? null) && $this->coinRemitterService->isConfigured('BEP20')) {
+        if ($depositMethod === 'coinremitter' && $this->coinRemitterService->isConfigured('BEP20')) {
             $availableNetworks[] = [
                 'key' => 'BEP20',
                 'config_key' => 'COINREMITTER_BEP20',
                 'address' => 'CoinRemitter',
             ];
         }
-        if (!empty($configs['TRC20_WALLET_ADDRESS']['value'] ?? null)) {
+        if ($depositMethod === 'manual' && !empty($configs['TRC20_WALLET_ADDRESS']['value'] ?? null)) {
             $availableNetworks[] = [
                 'key' => 'TRC20',
                 'config_key' => 'TRC20_WALLET_ADDRESS',
                 'address' => $configs['TRC20_WALLET_ADDRESS']['value'],
             ];
         }
-        if (empty($configs['TRC20_WALLET_ADDRESS']['value'] ?? null) && $this->coinRemitterService->isConfigured('TRC20')) {
+        if ($depositMethod === 'coinremitter' && $this->coinRemitterService->isConfigured('TRC20')) {
             $availableNetworks[] = [
                 'key' => 'TRC20',
                 'config_key' => 'COINREMITTER_TRC20',
@@ -117,6 +120,25 @@ class WalletController extends Controller
                 'balance' => $wallet['balance'] ?? 0,
             ],
         ]);
+    }
+
+    private function cryptoDepositMethod(array $configs): string
+    {
+        $value = strtolower((string) ($configs[ConfigName::CRYPTO_DEPOSIT_METHOD->value]['value'] ?? ''));
+        if (in_array($value, ['manual', 'coinremitter'], true)) {
+            return $value;
+        }
+
+        $hasManualWallet = !empty($configs[ConfigName::BEP20_WALLET_ADDRESS->value]['value'] ?? null)
+            || !empty($configs[ConfigName::TRC20_WALLET_ADDRESS->value]['value'] ?? null);
+
+        if ($hasManualWallet) {
+            return 'manual';
+        }
+
+        return $this->coinRemitterService->isConfigured('BEP20') || $this->coinRemitterService->isConfigured('TRC20')
+            ? 'coinremitter'
+            : 'manual';
     }
 
     /**
@@ -318,7 +340,19 @@ class WalletController extends Controller
                 'network' => $data['network'],
             ]);
 
-            if ($this->coinRemitterService->isConfigured($data['network'])) {
+            $configResult = $this->configService->getAll();
+            $configs = $configResult->isSuccess() ? $configResult->getData() : [];
+            $depositMethod = $this->cryptoDepositMethod($configs);
+
+            if ($depositMethod === 'coinremitter') {
+                if (!$this->coinRemitterService->isConfigured($data['network'])) {
+                    Logging::web('WalletController@myTopUp: CoinRemitter network not configured', [
+                        'network' => $data['network'],
+                    ]);
+                    FlashMessage::error(__('wallet.network_not_configured'));
+                    return redirect()->back();
+                }
+
                 $orderId = 'wallet_'.$user->id.'_'.str_replace('.', '', (string) microtime(true));
                 $notifyUrl = $this->coinRemitterService->shouldIncludeInvoiceNotifyUrl()
                     ? route('coinremitter_webhook')
@@ -399,8 +433,6 @@ class WalletController extends Controller
             }
 
             // Kiểm tra mạng đã chọn có được cấu hình chưa (có địa chỉ ví chưa)
-            $configResult = $this->configService->getAll();
-            $configs = $configResult->isSuccess() ? $configResult->getData() : [];
             $networkConfigKey = $data['network'] === 'BEP20' ? 'BEP20_WALLET_ADDRESS' : 'TRC20_WALLET_ADDRESS';
             $networkAddress = $configs[$networkConfigKey]['value'] ?? null;
             
