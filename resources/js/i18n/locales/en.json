@@ -266,6 +266,7 @@
     "bm_id": "Business Manager ID",
     "accounts": "Ad accounts",
     "account_name": "Ad account",
+    "customer": "Customer",
     "bm_mcc": "BM / MCC",
     "reach": "Reach",
     "amount_spent": "Amount spent",

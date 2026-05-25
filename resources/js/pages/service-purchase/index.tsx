@@ -181,19 +181,31 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             case _PlatformType.GOOGLE:
                 return {
                     name: 'Google Ads',
-                    icon: <img src={GoogleIcon} alt="Google" className="w-8 h-8" />,
+                    icon: (
+                        <img
+                            src={GoogleIcon}
+                            alt="Google"
+                            className="h-8 w-8 shrink-0 object-contain"
+                        />
+                    ),
                     color: 'bg-[#4285f4]',
                 };
             case _PlatformType.META:
                 return {
                     name: 'Facebook Ads',
-                    icon: <img src={FacebookIcon} alt="Facebook" className="w-8 h-8" />,
+                    icon: (
+                        <img
+                            src={FacebookIcon}
+                            alt="Facebook"
+                            className="h-8 w-8 shrink-0 object-contain"
+                        />
+                    ),
                     color: 'bg-[#4285f4]',
                 };
             default:
                 return {
                     name: 'Other',
-                    icon: <DollarSign className="w-8 h-8" />,
+                    icon: <DollarSign className="h-8 w-8 shrink-0" />,
                     color: 'bg-gray-500',
                 };
         }
@@ -410,17 +422,25 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             <Card key={pkg.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                     <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="text-3xl">{platformInfo.icon}</div>
-                            <div>
-                                <CardTitle className="text-lg">{pkg.name}</CardTitle>
-                                <Badge className={`${platformInfo.color} text-white text-xs mt-1`}>
+                        <div className="flex min-w-0 items-start gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center">
+                                {platformInfo.icon}
+                            </div>
+                            <div className="min-w-0">
+                                <CardTitle className="text-lg leading-snug">
+                                    {pkg.name}
+                                </CardTitle>
+                                <Badge
+                                    className={`${platformInfo.color} text-white text-xs mt-1`}
+                                >
                                     {platformInfo.name}
                                 </Badge>
                             </div>
                         </div>
                         {!pkg.disabled && (
-                            <Badge variant="default">Active</Badge>
+                            <Badge variant="default" className="ml-2 shrink-0">
+                                Active
+                            </Badge>
                         )}
                     </div>
                 </CardHeader>
@@ -530,8 +550,10 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             <Card className="max-w-2xl mx-auto">
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                            <span className="text-2xl">{platformInfo.icon}</span>
+                        <CardTitle className="flex min-w-0 items-center gap-2">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+                                {platformInfo.icon}
+                            </span>
                             {t('service_purchase.order_summary')}: {selectedPackage.name}
                         </CardTitle>
                         <Button className="hidden sm:block" variant="outline" onClick={() => setSelectedPackage(null)}>

@@ -416,18 +416,13 @@ class BusinessManagerService
                             ? $bmNameMap[$accountBmId]
                             : $this->resolveBmName($bmIdsForRow, $bmNameMap);
                         
-                        // Ưu tiên hiển thị tên Nhóm tài sản (Tên khách hàng) nếu có (Có thể có nhiều nhóm)
+                        // Tên nhóm tài sản / tên hiển thị đơn dịch vụ là tên khách hàng, không phải tên BM.
                         $assetGroupNames = $accountToGroupNamesMap[$account->id] ?? [];
-                        
-                        if (!empty($assetGroupNames)) {
-                            // Nếu thuộc nhiều nhóm, nối tên bằng dấu phẩy (Pete Willam, Test...)
-                            $displayBmName = implode(', ', $assetGroupNames);
-                        } else {
-                            // Nếu không có nhóm nào, dùng tên BM hoặc tên hiển thị cấu hình
-                            $displayBmName = !empty($config['display_name']) ? $config['display_name'] : $bmDisplayName;
-                        }
+                        $customerName = !empty($assetGroupNames)
+                            ? implode(', ', $assetGroupNames)
+                            : (!empty($config['display_name']) ? $config['display_name'] : $ownerName);
 
-                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, $reachValue, $remainingAmount);
+                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $bmDisplayName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, $reachValue, $remainingAmount, $customerName);
                     }
                 } elseif ($platform === PlatformType::GOOGLE->value) {
                     $accounts = $this->googleAccountRepository->query()
@@ -480,7 +475,7 @@ class BusinessManagerService
                             ? ($mccParentMap[$customerManagerId] ?? null)
                             : (isset($bmIdsForRow[0]) ? ($mccParentMap[$bmIdsForRow[0]] ?? null) : null);
 
-                        $displayMccName = !empty($config['display_name']) ? $config['display_name'] : $mccDisplayName;
+                        $customerName = !empty($config['display_name']) ? $config['display_name'] : $ownerName;
 
                         $accountsList[] = [
                             'id' => (string) $account->id,
@@ -488,10 +483,11 @@ class BusinessManagerService
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
                             'bm_ids' => $bmIdsForRow,
-                            'bm_name' => $displayMccName,
+                            'bm_name' => $mccDisplayName,
                             'parent_bm_id' => $parentMccId,
                             'name' => $account->account_name ?? $config['display_name'] ?? $ownerName,
                             'platform' => $platform,
+                            'customer_name' => $customerName,
                             'owner_name' => $ownerName,
                             'owner_id' => $serviceUser->user_id,
                             'total_campaigns' => $totalCampaigns,
@@ -570,6 +566,7 @@ class BusinessManagerService
                         'parent_bm_id' => $bm->parent_bm_id ? (string) $bm->parent_bm_id : null,
                         'name' => $bm->name ?: (string) $bm->bm_id,
                         'platform' => PlatformType::META->value,
+                        'customer_name' => null,
                         'owner_name' => null,
                         'owner_id' => null,
                         'total_accounts' => 0,
@@ -655,6 +652,7 @@ class BusinessManagerService
                         str_contains($this->normalizeSearchValue($item['account_name'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['account_id'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['owner_name'] ?? null), $needle)
+                        || str_contains($this->normalizeSearchValue($item['customer_name'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['bm_name'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['bm_ids'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['scope_bm_name'] ?? null), $needle)
@@ -737,7 +735,7 @@ class BusinessManagerService
                         continue;
                     }
 
-                    // Nếu có tên BM/Asset Group khác nhau thì tách dòng riêng (để hiện Pete Willam, Test...)
+                    // Nếu có tên BM/MCC khác nhau thì tách dòng riêng.
                     $shouldCollapseMetaToDirect = !$managerId
                         && (!$childManagerId || (bool) ($bmDirectAccessMap[$childManagerId] ?? false));
 
@@ -777,6 +775,7 @@ class BusinessManagerService
                             'name' => $item['bm_name'] ?? $item['name'] ?? $primaryBmId,
                             'platform' => $platform,
                             'service_user_id' => $item['service_user_id'] ?? null,
+                            'customer_name' => $item['customer_name'] ?? null,
                             'owner_name' => $item['owner_name'] ?? null,
                             'owner_id' => $item['owner_id'] ?? null,
                             'total_accounts' => $itemAccountCount,
@@ -796,6 +795,10 @@ class BusinessManagerService
                         $currentBalance = isset($bmMap[$key]['total_balance']) ? (float) $bmMap[$key]['total_balance'] : 0.0;
                         $bmMap[$key]['total_spend'] = (string) ($currentSpend + $spendNum);
                         $bmMap[$key]['total_balance'] = (string) ($currentBalance + $balanceNum);
+                        $bmMap[$key]['customer_name'] = $this->joinUniqueNames([
+                            $bmMap[$key]['customer_name'] ?? null,
+                            $item['customer_name'] ?? null,
+                        ]);
                     }
                 }
 
@@ -1031,6 +1034,21 @@ class BusinessManagerService
         }
 
         return mb_strtolower(trim((string) $value));
+    }
+
+    private function joinUniqueNames(array $names): ?string
+    {
+        $unique = [];
+        foreach ($names as $name) {
+            foreach (explode(',', (string) $name) as $part) {
+                $part = trim($part);
+                if ($part !== '') {
+                    $unique[$part] = $part;
+                }
+            }
+        }
+
+        return $unique ? implode(', ', array_values($unique)) : null;
     }
 
     /**
@@ -1347,13 +1365,9 @@ class BusinessManagerService
                         : ($bmNameMap[$sourceBmId] ?? null);
                     $scopeBmName = $bmNameMap[$sourceBmId] ?? $sourceBmId;
 
-                    // Ưu tiên hiển thị tên Nhóm tài sản (Tên khách hàng) nếu có (Có thể có nhiều nhóm)
+                    // Tên nhóm tài sản là tên khách hàng, không phải tên BM.
                     $assetGroupNames = $accountToGroupNamesMap[$account->id] ?? [];
-                    if (!empty($assetGroupNames)) {
-                        $displayBmName = implode(', ', $assetGroupNames);
-                    } else {
-                        $displayBmName = $bmDisplayName;
-                    }
+                    $customerName = !empty($assetGroupNames) ? implode(', ', $assetGroupNames) : null;
 
                     // Tính spend cho từng account
                     if ($dateStart && $dateEnd) {
@@ -1386,10 +1400,11 @@ class BusinessManagerService
                         'bm_ids' => [$accountBmId],
                         'scope_bm_ids' => [$sourceBmId],
                         'scope_bm_name' => $scopeBmName,
-                        'bm_name' => $displayBmName,
+                        'bm_name' => $bmDisplayName,
                         'parent_bm_id' => $parentBmId,
                         'name' => $account->account_name,
                         'platform' => $platform,
+                        'customer_name' => $customerName,
                         'owner_name' => $platformSetting->name ?: 'System (Chưa gán)',
                         'owner_id' => null,
                         'total_accounts' => 1,
@@ -1464,6 +1479,7 @@ class BusinessManagerService
                         'parent_bm_id' => $parentMccId,
                         'name' => $account->account_name,
                         'platform' => $platform,
+                        'customer_name' => null,
                         'owner_name' => 'System (Chưa gán)',
                         'owner_id' => null,
                         'total_accounts' => 1,
@@ -1497,7 +1513,7 @@ class BusinessManagerService
     /**
      * Helper tạo mảng data cho item trong danh sách BM/MCC
      */
-    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, ?int $reachValue = null, ?float $remainingAmount = null): array
+    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, ?int $reachValue = null, ?float $remainingAmount = null, ?string $customerName = null): array
     {
         $status = $account->account_status !== null ? (int) $account->account_status : null;
 
@@ -1511,6 +1527,7 @@ class BusinessManagerService
             'parent_bm_id' => $parentBmIdForRow,
             'name' => $account->account_name ?? $ownerName,
             'platform' => $platform,
+            'customer_name' => $customerName ?: $ownerName,
             'owner_name' => $ownerName,
             'owner_id' => $serviceUser->user_id,
             'total_campaigns' => $totalCampaigns,

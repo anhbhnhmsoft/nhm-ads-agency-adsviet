@@ -28,6 +28,7 @@ export type BusinessManagerItem = {
     name: string;
     platform: _PlatformType | number;
     service_user_id?: string;
+    customer_name?: string | null;
     owner_name?: string | null;
     owner_id?: string | null;
     total_campaigns?: number;

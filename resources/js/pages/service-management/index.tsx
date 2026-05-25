@@ -56,7 +56,12 @@ import {
 import { TableCell, TableRow } from '@/components/ui/table';
 
 import { _PlatformType, _UserRole } from '@/lib/types/constants';
-import { formatCurrency, formatDateForQuery, formatMoney, formatNumber } from '@/lib/utils';
+import {
+    formatCurrency,
+    formatDateForQuery,
+    formatMoney,
+    formatNumber,
+} from '@/lib/utils';
 import BusinessManagerSearchForm from '@/pages/business-manager/components/search-form';
 import type {
     BusinessManagerItem,
@@ -202,8 +207,7 @@ const ServiceManagementIndex = ({
             });
             toast.success(
                 t('service_management.sync_meta_queued', {
-                    defaultValue:
-                        'Đã đưa yêu cầu đồng bộ Meta vào hàng đợi',
+                    defaultValue: 'Đã đưa yêu cầu đồng bộ Meta vào hàng đợi',
                 }),
             );
         } catch (e: any) {
@@ -455,15 +459,6 @@ const ServiceManagementIndex = ({
         return '';
     };
 
-    const formatAccountNumber = (value: unknown) => {
-        const n = parseNumber(value);
-        if (n === null) return '-';
-        return n.toLocaleString('vi-VN', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        });
-    };
-
     const formatDateTime = (value?: string | null) => {
         if (!value) return '-';
         const date = new Date(value);
@@ -522,6 +517,19 @@ const ServiceManagementIndex = ({
                 ),
             },
             {
+                accessorKey: 'customer_name',
+                header: t('service_management.customer', {
+                    defaultValue: 'Khách hàng',
+                }),
+                cell: ({ row }) => (
+                    <div className="min-w-0 truncate">
+                        {row.original.customer_name ||
+                            row.original.owner_name ||
+                            '-'}
+                    </div>
+                ),
+            },
+            {
                 accessorKey: 'bm_name',
                 header: t('service_management.bm_mcc', {
                     defaultValue: 'BM / MCC',
@@ -539,15 +547,6 @@ const ServiceManagementIndex = ({
                         </div>
                     );
                 },
-            },
-            {
-                accessorKey: 'total_reach',
-                header: t('service_management.reach', {
-                    defaultValue: 'Reach',
-                }),
-                cell: ({ row }) =>
-                    formatAccountNumber(row.original.total_reach),
-                meta: { cellClassName: 'whitespace-nowrap text-right' },
             },
             {
                 accessorKey: 'total_spend',
@@ -1532,8 +1531,7 @@ const ServiceManagementIndex = ({
                                         <RefreshCw />
                                     )}
                                     {t('service_management.sync_meta', {
-                                        defaultValue:
-                                            'Cập nhật dữ liệu Meta',
+                                        defaultValue: 'Cập nhật dữ liệu Meta',
                                     })}
                                 </Button>
                             </div>
@@ -1544,7 +1542,7 @@ const ServiceManagementIndex = ({
                             paginator={paginator}
                             renderFooterRows={(columnCount) => (
                                 <TableRow className="bg-muted/40 font-medium">
-                                    <TableCell colSpan={2}>
+                                    <TableCell colSpan={3}>
                                         <div>
                                             {t(
                                                 'service_management.total_results',
@@ -1566,11 +1564,6 @@ const ServiceManagementIndex = ({
                                                 },
                                             )}
                                         </div>
-                                    </TableCell>
-                                    <TableCell className="text-right whitespace-nowrap">
-                                        {formatAccountNumber(
-                                            totals?.total_reach,
-                                        )}
                                     </TableCell>
                                     <TableCell className="text-right whitespace-nowrap">
                                         {formatTotalsSpend()}
