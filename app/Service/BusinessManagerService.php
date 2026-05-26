@@ -682,6 +682,8 @@ class BusinessManagerService
                 ));
             }
 
+            $accountsList = $this->deduplicateAccountRows($accountsList, $childManagerId);
+
             $keyword = trim((string) ($filter['keyword'] ?? ''));
             if ($keyword !== '') {
                 $needle = mb_strtolower($keyword);
@@ -1060,6 +1062,51 @@ class BusinessManagerService
         return count(array_intersect($ids, $hiddenMetaBmIds)) > 0;
     }
 
+    private function deduplicateAccountRows(array $items, ?string $preferredScopeBmId = null): array
+    {
+        $rows = [];
+
+        foreach ($items as $item) {
+            $accountId = $item['account_id'] ?? null;
+            if (!$accountId) {
+                $rows['row-' . ($item['id'] ?? count($rows))] = $item;
+                continue;
+            }
+
+            $key = ($item['platform'] ?? 'unknown') . '|' . (string) $accountId;
+            if (!isset($rows[$key])) {
+                $rows[$key] = $item;
+                continue;
+            }
+
+            $rows[$key] = $this->preferAccountRow($rows[$key], $item, $preferredScopeBmId);
+        }
+
+        return array_values($rows);
+    }
+
+    private function preferAccountRow(array $current, array $candidate, ?string $preferredScopeBmId = null): array
+    {
+        $score = function (array $item) use ($preferredScopeBmId): int {
+            $score = 0;
+            $scopeBmIds = array_map('strval', $item['scope_bm_ids'] ?? []);
+
+            if ($preferredScopeBmId && in_array($preferredScopeBmId, $scopeBmIds, true)) {
+                $score += 100;
+            }
+            if (!empty($item['service_user_id'])) {
+                $score += 10;
+            }
+            if (!empty($item['customer_name'])) {
+                $score += 5;
+            }
+
+            return $score;
+        };
+
+        return $score($candidate) > $score($current) ? $candidate : $current;
+    }
+
     /**
      * Chuẩn hóa giá trị dùng cho tìm kiếm keyword
      */
@@ -1390,8 +1437,8 @@ class BusinessManagerService
                 }
 
                 $metaAccounts = $this->metaAccountRepository->query()
+                    ->with(['serviceUser.user'])
                     ->whereIn('account_id', $accessAccountIds)
-                    ->whereNull('service_user_id')
                     ->get()
                     ->keyBy(fn ($account) => (string) $account->account_id);
 
@@ -1411,7 +1458,11 @@ class BusinessManagerService
 
                     // Tên nhóm tài sản là tên khách hàng, không phải tên BM.
                     $assetGroupNames = $accountToGroupNamesMap[$account->id] ?? [];
-                    $customerName = !empty($assetGroupNames) ? implode(', ', $assetGroupNames) : null;
+                    $serviceUser = $account->serviceUser ?? null;
+                    $serviceUserOwner = $serviceUser?->user;
+                    $customerName = !empty($assetGroupNames)
+                        ? implode(', ', $assetGroupNames)
+                        : ($serviceUserOwner?->name ?? $serviceUserOwner?->username ?? null);
 
                     // Tính spend cho từng account
                     if ($dateStart && $dateEnd) {
@@ -1440,7 +1491,7 @@ class BusinessManagerService
                         'id' => (string) $account->id,
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
-                        'service_user_id' => null,
+                        'service_user_id' => $account->service_user_id ? (string) $account->service_user_id : null,
                         'bm_ids' => [$accountBmId],
                         'scope_bm_ids' => [$sourceBmId],
                         'scope_bm_name' => $scopeBmName,
@@ -1449,8 +1500,8 @@ class BusinessManagerService
                         'name' => $account->account_name,
                         'platform' => $platform,
                         'customer_name' => $customerName,
-                        'owner_name' => $platformSetting->name ?: 'System (Chưa gán)',
-                        'owner_id' => null,
+                        'owner_name' => $serviceUserOwner?->name ?? $serviceUserOwner?->username ?? ($platformSetting->name ?: 'System (Chưa gán)'),
+                        'owner_id' => $serviceUser?->user_id,
                         'total_accounts' => 1,
                         'active_accounts' => $isActive ? 1 : 0,
                         'disabled_accounts' => $isActive ? 0 : 1,
