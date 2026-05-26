@@ -311,7 +311,8 @@ class BusinessManagerService
                     $bmParentMap,
                     $mccParentMap,
                     $accountToGroupNamesMap,
-                    $bmDirectAccessMap
+                    $bmDirectAccessMap,
+                    $childManagerId
                 );
                 $accountsList = array_merge($accountsList, $platformConfigAccounts);
             }
@@ -1321,7 +1322,7 @@ class BusinessManagerService
     /**
      * Lấy accounts từ platform config
      */
-    private function getAccountsFromPlatformConfig(?Carbon $dateStart, ?Carbon $dateEnd, ?int $platformFilter, array $bmNameMap, array $mccNameMap, ?array $bmParentMap = null, ?array $mccParentMap = null, array $accountToGroupNamesMap = [], array $bmDirectAccessMap = []): array
+    private function getAccountsFromPlatformConfig(?Carbon $dateStart, ?Carbon $dateEnd, ?int $platformFilter, array $bmNameMap, array $mccNameMap, ?array $bmParentMap = null, ?array $mccParentMap = null, array $accountToGroupNamesMap = [], array $bmDirectAccessMap = [], ?string $childManagerId = null): array
     {
         $accountsList = [];
 
@@ -1362,6 +1363,11 @@ class BusinessManagerService
                         ->pluck('bm_id')
                         ->map(fn ($id) => (string) $id)
                         ->toArray();
+                }
+
+                if ($childManagerId) {
+                    $sourceBmIds[] = $childManagerId;
+                    $sourceBmIds = array_values(array_unique(array_filter($sourceBmIds)));
                 }
 
                 if (empty($sourceBmIds)) {
