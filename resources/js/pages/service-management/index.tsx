@@ -54,6 +54,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { TableCell, TableRow } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 import { _PlatformType, _UserRole } from '@/lib/types/constants';
 import {
@@ -501,18 +506,6 @@ const ServiceManagementIndex = ({
                         <div className="truncate text-xs text-muted-foreground">
                             ID: {row.original.account_id || '-'}
                         </div>
-                        {row.original.disable_reason && (
-                            <div
-                                className={
-                                    row.original.disable_reason_severity ===
-                                    'error'
-                                        ? 'mt-1 text-xs font-medium text-red-600'
-                                        : 'mt-1 text-xs font-medium text-orange-600'
-                                }
-                            >
-                                {row.original.disable_reason}
-                            </div>
-                        )}
                     </div>
                 ),
             },
@@ -567,24 +560,47 @@ const ServiceManagementIndex = ({
                 header: t('service_management.account_status', {
                     defaultValue: 'Account status',
                 }),
-                cell: ({ row }) => (
-                    <Badge
-                        variant={
-                            row.original.account_status_label
-                                ? 'secondary'
-                                : 'outline'
-                        }
-                        className={getAccountStatusClassName(
-                            row.original.account_status_severity,
-                            row.original.account_status_label,
-                        )}
-                        title={row.original.disable_reason || undefined}
-                    >
-                        {row.original.account_status_label ||
-                            row.original.account_status ||
-                            '-'}
-                    </Badge>
-                ),
+                cell: ({ row }) => {
+                    const statusBadge = (
+                        <Badge
+                            variant={
+                                row.original.account_status_label
+                                    ? 'secondary'
+                                    : 'outline'
+                            }
+                            className={getAccountStatusClassName(
+                                row.original.account_status_severity,
+                                row.original.account_status_label,
+                            )}
+                            title={row.original.disable_reason || undefined}
+                        >
+                            {row.original.account_status_label ||
+                                row.original.account_status ||
+                                '-'}
+                        </Badge>
+                    );
+
+                    if (!row.original.disable_reason) {
+                        return statusBadge;
+                    }
+
+                    return (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="inline-flex cursor-help">
+                                    {statusBadge}
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent
+                                side="top"
+                                align="center"
+                                className="max-w-[320px] text-left leading-relaxed whitespace-normal"
+                            >
+                                {row.original.disable_reason}
+                            </TooltipContent>
+                        </Tooltip>
+                    );
+                },
                 meta: { cellClassName: 'whitespace-nowrap' },
             },
             {
