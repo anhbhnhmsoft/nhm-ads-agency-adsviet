@@ -368,6 +368,30 @@ class BusinessManagerService
                         ->where('service_user_id', $serviceUser->id)
                         ->get();
 
+                    $accountIds = $accounts
+                        ->pluck('account_id')
+                        ->map(fn ($id) => (string) $id)
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->toArray();
+
+                    $scopeBmIdsByAccount = empty($accountIds)
+                        ? []
+                        : $this->metaAccountBusinessManagerAccessRepository->query()
+                            ->whereIn('account_id', $accountIds)
+                            ->get(['account_id', 'source_bm_id'])
+                            ->groupBy(fn ($access) => (string) $access->account_id)
+                            ->map(fn ($rows) => $rows
+                                ->pluck('source_bm_id')
+                                ->map(fn ($id) => (string) $id)
+                                ->filter()
+                                ->unique()
+                                ->values()
+                                ->toArray()
+                            )
+                            ->toArray();
+
                     foreach ($accounts as $account) {
                         // Tính spend cho từng account
                         if ($dateStart && $dateEnd) {
@@ -422,7 +446,9 @@ class BusinessManagerService
                             ? implode(', ', $assetGroupNames)
                             : (!empty($config['display_name']) ? $config['display_name'] : $ownerName);
 
-                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $bmDisplayName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, $reachValue, $remainingAmount, $customerName);
+                        $scopeBmIdsForRow = $scopeBmIdsByAccount[(string) $account->account_id] ?? [];
+
+                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $bmDisplayName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, $reachValue, $remainingAmount, $customerName, $scopeBmIdsForRow);
                     }
                 } elseif ($platform === PlatformType::GOOGLE->value) {
                     $accounts = $this->googleAccountRepository->query()
@@ -1513,7 +1539,7 @@ class BusinessManagerService
     /**
      * Helper tạo mảng data cho item trong danh sách BM/MCC
      */
-    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, ?int $reachValue = null, ?float $remainingAmount = null, ?string $customerName = null): array
+    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, ?int $reachValue = null, ?float $remainingAmount = null, ?string $customerName = null, array $scopeBmIds = []): array
     {
         $status = $account->account_status !== null ? (int) $account->account_status : null;
 
@@ -1523,6 +1549,7 @@ class BusinessManagerService
             'account_name' => $account->account_name,
             'service_user_id' => (string) $serviceUser->id,
             'bm_ids' => $bmIdsForRow,
+            'scope_bm_ids' => $scopeBmIds,
             'bm_name' => $displayBmName,
             'parent_bm_id' => $parentBmIdForRow,
             'name' => $account->account_name ?? $ownerName,
