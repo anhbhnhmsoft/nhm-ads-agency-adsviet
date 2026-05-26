@@ -46,6 +46,7 @@ class ServiceManagementController extends Controller
             'total_reach' => 0,
             'currency' => 'USD',
             'totals_by_currency' => [],
+            'last_synced_at' => null,
         ];
         if ($data) {
             if (is_array($data) && isset($data['paginator'])) {

@@ -411,10 +411,11 @@ class BusinessManagerService
                             $insight = $this->metaAdsAccountInsightRepository->query()
                                 ->where('meta_account_id', $account->id)
                                 ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
-                                ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend, COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
+                                ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend, COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach, MIN(last_synced_at) as last_synced_at')
                                 ->first();
                             $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
                             $reachValue = $insight && isset($insight->total_reach) ? (int) $insight->total_reach : 0;
+                            $lastSyncedAt = $insight?->last_synced_at;
                         } else {
                             $spendValue = (string) $this->normalizeMetaAccountMoney($account->amount_spent ?? 0, $account->currency ?? 'USD');
                             $reach = $this->metaAdsAccountInsightRepository->query()
@@ -422,6 +423,7 @@ class BusinessManagerService
                                 ->selectRaw('COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
                                 ->first();
                             $reachValue = $reach && isset($reach->total_reach) ? (int) $reach->total_reach : 0;
+                            $lastSyncedAt = $account->last_synced_at;
                         }
 
                         $balanceValue = (string) $this->normalizeMetaAccountMoney($account->balance ?? 0, $account->currency ?? 'USD');
@@ -461,7 +463,7 @@ class BusinessManagerService
 
                         $scopeBmIdsForRow = $scopeBmIdsByAccount[(string) $account->account_id] ?? [];
 
-                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $bmDisplayName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, $reachValue, $remainingAmount, $customerName, $scopeBmIdsForRow);
+                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $bmDisplayName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, $reachValue, $remainingAmount, $customerName, $scopeBmIdsForRow, $lastSyncedAt);
                     }
                 } elseif ($platform === PlatformType::GOOGLE->value) {
                     $accounts = $this->googleAccountRepository->query()
@@ -862,6 +864,9 @@ class BusinessManagerService
                 'total_reach' => array_sum(array_map(fn ($item) => (int) ($item['total_reach'] ?? 0), $bmArray)),
                 'currency' => $primaryTotal['currency'] ?? ($bmArray[0]['currency'] ?? $this->currencyExchangeService->targetCurrency()),
                 'totals_by_currency' => $totalsByCurrency,
+                'last_synced_at' => (int) ($filter['platform'] ?? 0) === PlatformType::META->value
+                    ? $this->resolveMetaResultLastSyncedAt($bmArray)
+                    : null,
             ];
 
             $perPage = $queryListDTO->perPage ?? 10;
@@ -1062,6 +1067,10 @@ class BusinessManagerService
             return in_array($preferredScopeBmId, $hiddenMetaBmIds, true);
         }
 
+        if (!empty($scopeBmIds)) {
+            return empty(array_diff($scopeBmIds, $hiddenMetaBmIds));
+        }
+
         $ids = array_filter(array_merge($bmIds, $scopeBmIds, [(string) ($item['parent_bm_id'] ?? '')]));
 
         return count(array_intersect($ids, $hiddenMetaBmIds)) > 0;
@@ -1140,6 +1149,41 @@ class BusinessManagerService
         }
 
         return $unique ? implode(', ', array_values($unique)) : null;
+    }
+
+    /**
+     * Use the oldest visible account timestamp as the freshness of the result set.
+     * A failed account sync keeps its prior timestamp and prevents a misleading
+     * "last updated" value for the complete result.
+     */
+    private function resolveMetaResultLastSyncedAt(array $items): ?string
+    {
+        $metaRows = array_values(array_filter(
+            $items,
+            fn ($item) =>
+                ($item['platform'] ?? null) === PlatformType::META->value
+                && !empty($item['account_id'])
+        ));
+
+        if (empty($metaRows)) {
+            return null;
+        }
+
+        $syncedAtValues = array_values(array_filter(array_map(
+            fn ($item) => $item['last_synced_at'] ?? null,
+            $metaRows
+        )));
+
+        if (count($syncedAtValues) !== count($metaRows)) {
+            return null;
+        }
+
+        $oldest = collect($syncedAtValues)
+            ->map(fn ($value) => Carbon::parse($value))
+            ->sortBy(fn (Carbon $value) => $value->getTimestamp())
+            ->first();
+
+        return $oldest?->toIso8601String();
     }
 
     /**
@@ -1404,10 +1448,18 @@ class BusinessManagerService
 
             if ($platform === PlatformType::META->value) {
                 $bmId = $this->platformSettingService->getMetaScopedBusinessManagerId($config);
-                // Chỉ lấy tài khoản của BM gốc hoặc BM con (Để lọc bỏ các BM lạ từ Token Admin)
+                // Only expose accounts reached through the configured BM scope.
                 $sourceBmIds = [];
                 if ($bmId) {
-                    $sourceBmIds = [(string) $bmId];
+                    $sourceBmIds = $this->getMetaBmAndDescendantIds((string) $bmId);
+
+                    if ($childManagerId) {
+                        if (!in_array($childManagerId, $sourceBmIds, true)) {
+                            continue;
+                        }
+
+                        $sourceBmIds = [$childManagerId];
+                    }
                 } else {
                     $sourceBmIds = $this->metaBusinessManagerRepository->query()
                         ->whereNull('hidden_at')
@@ -1417,7 +1469,7 @@ class BusinessManagerService
                         ->toArray();
                 }
 
-                if ($childManagerId) {
+                if (!$bmId && $childManagerId) {
                     $sourceBmIds[] = $childManagerId;
                     $sourceBmIds = array_values(array_unique(array_filter($sourceBmIds)));
                 }
@@ -1474,10 +1526,11 @@ class BusinessManagerService
                         $insight = $this->metaAdsAccountInsightRepository->query()
                             ->where('meta_account_id', $account->id)
                             ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
-                            ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend, COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
+                            ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend, COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach, MIN(last_synced_at) as last_synced_at')
                             ->first();
                         $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
                         $reachValue = $insight && isset($insight->total_reach) ? (int) $insight->total_reach : 0;
+                        $lastSyncedAt = $insight?->last_synced_at;
                     } else {
                         $spendValue = (string) $this->normalizeMetaAccountMoney($account->amount_spent ?? 0, $account->currency ?? 'USD');
                         $reach = $this->metaAdsAccountInsightRepository->query()
@@ -1485,6 +1538,7 @@ class BusinessManagerService
                             ->selectRaw('COALESCE(SUM(CAST(reach AS DECIMAL(15,2))), 0) as total_reach')
                             ->first();
                         $reachValue = $reach && isset($reach->total_reach) ? (int) $reach->total_reach : 0;
+                        $lastSyncedAt = $account->last_synced_at;
                     }
 
                     $balanceValue = (string) $this->normalizeMetaAccountMoney($account->balance ?? 0, $account->currency ?? 'USD');
@@ -1529,7 +1583,7 @@ class BusinessManagerService
                         'timezone' => $this->formatTimezone($account->timezone_name ?? null, $account->timezone_id ?? null),
                         'payment_card' => $account->payment_card ?? null,
                         'currency' => $account->currency ?? 'USD',
-                        'last_synced_at' => $account->last_synced_at,
+                        'last_synced_at' => $lastSyncedAt,
                         'is_direct_access' => (bool) ($bmDirectAccessMap[$sourceBmId] ?? false),
                         'accounts' => [
                             ['currency' => $account->currency ?? 'USD'],
@@ -1613,7 +1667,7 @@ class BusinessManagerService
     /**
      * Helper tạo mảng data cho item trong danh sách BM/MCC
      */
-    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, ?int $reachValue = null, ?float $remainingAmount = null, ?string $customerName = null, array $scopeBmIds = []): array
+    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, ?int $reachValue = null, ?float $remainingAmount = null, ?string $customerName = null, array $scopeBmIds = [], mixed $lastSyncedAt = null): array
     {
         $status = $account->account_status !== null ? (int) $account->account_status : null;
 
@@ -1663,7 +1717,7 @@ class BusinessManagerService
             'timezone' => $this->formatTimezone($account->timezone_name ?? null, $account->timezone_id ?? null),
             'payment_card' => $account->payment_card ?? null,
             'currency' => $account->currency ?? 'USD',
-            'last_synced_at' => $account->last_synced_at,
+            'last_synced_at' => $lastSyncedAt ?? $account->last_synced_at,
             'accounts' => [
                 ['currency' => $account->currency ?? 'USD'],
             ],

@@ -106,6 +106,7 @@ export type BusinessManagerTotals = {
     total_spend: number;
     total_reach: number;
     currency?: string | null;
+    last_synced_at?: string | null;
     totals_by_currency?: Array<{
         currency: string;
         total_spend: number | string;

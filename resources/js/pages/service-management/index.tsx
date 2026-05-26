@@ -184,16 +184,7 @@ const ServiceManagementIndex = ({
             ? query.child_manager_id || query.manager_id
             : undefined;
 
-    const lastSyncedAt = useMemo(() => {
-        const dates = paginator.data
-            .map((item) => item.last_synced_at)
-            .filter(Boolean)
-            .map((value) => new Date(value as string))
-            .filter((date) => !Number.isNaN(date.getTime()))
-            .sort((a, b) => b.getTime() - a.getTime());
-
-        return dates[0]?.toISOString() ?? null;
-    }, [paginator.data]);
+    const lastSyncedAt = totals.last_synced_at ?? null;
 
     const handleSyncMetaInsights = useCallback(async () => {
         if (!selectedMetaBmId) {
