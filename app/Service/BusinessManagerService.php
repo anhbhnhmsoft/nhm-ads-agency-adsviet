@@ -149,6 +149,10 @@ class BusinessManagerService
                 $dateEnd = Carbon::parse($filter['end_date'])->endOfDay();
             }
 
+            $childManagerId = isset($filter['child_manager_id']) && $filter['child_manager_id'] !== ''
+                ? (string) $filter['child_manager_id']
+                : null;
+
             // Lấy user hiện tại để check role
             $user = Auth::user();
 
@@ -168,7 +172,7 @@ class BusinessManagerService
                 $googleSettingId = session('active_google_setting_id');
                 
                 if ($metaSettingId || $googleSettingId) {
-                    $query->where(function ($subQ) use ($metaSettingId, $googleSettingId) {
+                    $query->where(function ($subQ) use ($metaSettingId, $googleSettingId, $childManagerId) {
                         $hasFilter = false;
 
                         if ($metaSettingId) {
@@ -183,13 +187,26 @@ class BusinessManagerService
                                 });
                                 $hasFilter = true;
                             } elseif ($metaSetting && $metaBmId) {
-                                $subQ->orWhere(function ($metaQ) use ($metaBmId) {
+                                $subQ->orWhere(function ($metaQ) use ($metaBmId, $childManagerId) {
                                     $metaQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::META->value))
                                           ->where(function ($jsonQ) use ($metaBmId) {
                                               $jsonQ->whereJsonContains('config_account->business_manager_id', $metaBmId)
                                                     ->orWhereJsonContains('config_account->bm_id', $metaBmId)
                                                     ->orWhereJsonContains('config_account->child_bm_id', $metaBmId);
                                           });
+
+                                    if ($childManagerId) {
+                                        $metaQ->orWhere(function ($scopeQ) use ($childManagerId) {
+                                            $scopeQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::META->value))
+                                                ->whereHas('metaAccount', function ($accountQ) use ($childManagerId) {
+                                                    $accountQ->whereIn('account_id', function ($accessQ) use ($childManagerId) {
+                                                        $accessQ->select('account_id')
+                                                            ->from('meta_account_business_manager_accesses')
+                                                            ->where('source_bm_id', $childManagerId);
+                                                    });
+                                                });
+                                        });
+                                    }
                                 });
                                 $hasFilter = true;
                             }
@@ -242,11 +259,6 @@ class BusinessManagerService
             }
 
             $serviceUsers = $query->get();
-
-            // Filter theo BM/MCC con nếu có
-            $childManagerId = isset($filter['child_manager_id']) && $filter['child_manager_id'] !== ''
-                ? (string) $filter['child_manager_id']
-                : null;
 
             $bmNameMap = $this->metaBusinessManagerRepository->query()
                 ->whereNull('hidden_at')
