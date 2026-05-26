@@ -678,7 +678,7 @@ class BusinessManagerService
             if (!empty($hiddenMetaBmIds)) {
                 $accountsList = array_values(array_filter(
                     $accountsList,
-                    fn ($item) => !$this->isMetaBusinessManagerHidden($item, $hiddenMetaBmIds)
+                    fn ($item) => !$this->isMetaBusinessManagerHidden($item, $hiddenMetaBmIds, $childManagerId)
                 ));
             }
 
@@ -1049,7 +1049,7 @@ class BusinessManagerService
         return (MetaAdsDisableReason::fromValue($code) ?? MetaAdsDisableReason::OTHER)->severity();
     }
 
-    private function isMetaBusinessManagerHidden(array $item, array $hiddenMetaBmIds): bool
+    private function isMetaBusinessManagerHidden(array $item, array $hiddenMetaBmIds, ?string $preferredScopeBmId = null): bool
     {
         if (($item['platform'] ?? null) !== PlatformType::META->value) {
             return false;
@@ -1057,6 +1057,11 @@ class BusinessManagerService
 
         $bmIds = array_map('strval', $item['bm_ids'] ?? []);
         $scopeBmIds = array_map('strval', $item['scope_bm_ids'] ?? []);
+
+        if ($preferredScopeBmId && in_array($preferredScopeBmId, $scopeBmIds, true)) {
+            return in_array($preferredScopeBmId, $hiddenMetaBmIds, true);
+        }
+
         $ids = array_filter(array_merge($bmIds, $scopeBmIds, [(string) ($item['parent_bm_id'] ?? '')]));
 
         return count(array_intersect($ids, $hiddenMetaBmIds)) > 0;
