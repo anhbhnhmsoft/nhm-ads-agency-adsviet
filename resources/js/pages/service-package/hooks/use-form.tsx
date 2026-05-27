@@ -9,13 +9,13 @@ import React from 'react';
 import { service_packages_create, service_packages_update } from '@/routes';
 
 export const DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE: MonthlySpendingFeeItem[] = [
-    { range: '$10,000 – $50,000', fee_percent: '5%' },
-    { range: '$50,000 – $100,000', fee_percent: '4.5%' },
-    { range: '$100,000 – $300,000', fee_percent: '4%' },
-    { range: '$300,000 – $500,000', fee_percent: '3.5%' },
+    { range: '$10,000 – $50,000', fee_percent: '1%' },
+    { range: '$50,000 – $100,000', fee_percent: '1.5%' },
+    { range: '$100,000 – $300,000', fee_percent: '2%' },
+    { range: '$300,000 – $500,000', fee_percent: '2.5%' },
     { range: '$500,000 – $1,000,000', fee_percent: '3%' },
-    { range: '$1,000,000 – $2,000,000', fee_percent: '2.5%' },
-    { range: '$2,000,000 – $10,000,000', fee_percent: '2%' },
+    { range: '$1,000,000 – $2,000,000', fee_percent: '3.5%' },
+    { range: '$2,000,000 – $10,000,000', fee_percent: '4%' },
 ];
 
 export const useFormCreateServicePackage = () => {
@@ -33,7 +33,6 @@ export const useFormCreateServicePackage = () => {
         supplier_id: null,
         set_up_time: '0',
         disabled: false,
-        cashback_percent: '0',
         monthly_spending_fee_structure: DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
     });
 
@@ -63,7 +62,6 @@ export const useFormEditServicePackage = (id: string, item: ServicePackageItem) 
         supplier_id: item.supplier_id || null,
         set_up_time: item.set_up_time.toString(),
         disabled: item.disabled,
-        cashback_percent: item.cashback_percent || '0',
         monthly_spending_fee_structure:
             (item.monthly_spending_fee_structure &&
                 item.monthly_spending_fee_structure.length > 0

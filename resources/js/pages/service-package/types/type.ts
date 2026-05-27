@@ -31,7 +31,6 @@ export type CreateServicePackageForm = {
     supplier_id?: string | null;
     set_up_time: string;
     disabled: boolean;
-    cashback_percent: string;
     monthly_spending_fee_structure: MonthlySpendingFeeItem[];
 };
 
@@ -55,7 +54,6 @@ export type ServicePackageItem = {
     disabled: boolean;
     description: string;
     range_min_top_up: string;
-    cashback_percent: string;
     monthly_spending_fee_structure: MonthlySpendingFeeItem[];
 };
 

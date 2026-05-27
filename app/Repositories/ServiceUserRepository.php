@@ -79,7 +79,7 @@ class ServiceUserRepository extends BaseRepository
         return $this->query()
             ->where('status', ServiceUserStatus::ACTIVE->value)
             ->whereHas('package', function ($query) {
-                $query->where('cashback_percent', '>', 0);
+                $query->whereNotNull('monthly_spending_fee_structure');
             })
             ->with(['package', 'user.wallet'])
             ->get();

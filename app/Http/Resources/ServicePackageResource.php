@@ -30,7 +30,6 @@ class ServicePackageResource extends JsonResource
             'supplier_id' => $this->supplier_id,
             'set_up_time' => $this->set_up_time,
             'disabled' => $this->disabled,
-            'cashback_percent' => $this->cashback_percent,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

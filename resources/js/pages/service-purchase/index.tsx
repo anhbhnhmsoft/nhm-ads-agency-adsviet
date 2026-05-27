@@ -241,33 +241,6 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         return (topUpAmount * feePercent) / 100;
     };
 
-    const parseRange = (range: string) => {
-        const trimmed = (range || '').trim();
-        if (!trimmed) return null;
-        if (trimmed.includes('-')) {
-            const [minStr, maxStr] = trimmed.split('-').map((s) => s.trim());
-            const min = parseFloat(minStr);
-            const max = parseFloat(maxStr);
-            if (Number.isFinite(min) && Number.isFinite(max)) return { min, max };
-        } else if (trimmed.endsWith('+')) {
-            const min = parseFloat(trimmed.replace('+', '').trim());
-            if (Number.isFinite(min)) return { min, max: null };
-        }
-        return null;
-    };
-
-    const getMonthlyFeePercent = (amount: number, tiers: { range: string; fee_percent: string }[]) => {
-        for (const tier of tiers) {
-            const parsed = parseRange(tier.range);
-            const feePercent = parseFloat(tier.fee_percent);
-            if (!parsed || !Number.isFinite(feePercent)) continue;
-            const { min, max } = parsed;
-            const match = amount >= min && (max === null || amount <= max);
-            if (match) return feePercent;
-        }
-        return null;
-    };
-
     // Validate top-up amount
     const validateTopUpAmount = (amount: string) => {
         if (!amount) return null;
@@ -538,13 +511,6 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
                 : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' });
         const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
-        const budgetNum = parseCurrencyInput(budgetValue);
-        // Nếu budget = 0 hoặc không có, không tính monthly fee (unlimited)
-        const monthlyFeePercent =
-            paymentType === 'postpay' && monthlySpendingTiers.length > 0 && budgetNum > 0
-                ? getMonthlyFeePercent(budgetNum, monthlySpendingTiers)
-                : null;
-        const monthlyFee = monthlyFeePercent ? (budgetNum * monthlyFeePercent) / 100 : 0;
 
         return (
             <Card className="max-w-2xl mx-auto">
@@ -882,12 +848,10 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                         }
                                     }}
                                     step="1"
-                                    disabled={paymentType === 'postpay'}
                                 />
                                 <Button
                                     variant="outline"
                                     onClick={() => setShowCalculator(!showCalculator)}
-                                    disabled={paymentType === 'postpay'}
                                 >
                                     <Calculator className="h-4 w-4" />
                                 </Button>
@@ -935,17 +899,6 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                     <span className="font-medium">{formatUSDT(serviceFee)}</span>
                                 </div>
                             </div>
-                            {paymentType === 'postpay' && monthlyFeePercent && (
-                                <div className="flex justify-between text-sm">
-                                    <span>
-                                        {t('service_purchase.monthly_fee_estimate', {
-                                            defaultValue: 'Ước tính phí tháng (trả sau)',
-                                        })}{' '}
-                                        ({monthlyFeePercent}%):
-                                    </span>
-                                    <span className="font-medium">{formatUSDT(monthlyFee)}</span>
-                                </div>
-                            )}
                             <div className="border-t pt-2">
                                 <div className="flex justify-between font-bold sm:text-lg text-md">
                                     <span>{t('service_purchase.total_cost')}:</span>

@@ -87,7 +87,11 @@ class CashbackService
             return ServiceReturn::error("No spend found for calculation period.");
         }
 
-        $cashbackPercent = (float) $service->package->cashback_percent;
+        $cashbackPercent = $this->resolveCashbackPercent($totalSpend, $service->package->monthly_spending_fee_structure ?? []);
+        if ($cashbackPercent === null || $cashbackPercent <= 0) {
+            return ServiceReturn::error("No cashback tier matched for calculation period.");
+        }
+
         $cashbackAmount = ($totalSpend * $cashbackPercent) / 100;
 
         if ($cashbackAmount <= 0) {
@@ -111,6 +115,62 @@ class CashbackService
         }
 
         return 0;
+    }
+
+    /**
+     * Tìm tỷ lệ cashback theo tier chi tiêu 30 ngày.
+     * Dữ liệu vẫn dùng key fee_percent để tương thích cấu trúc JSON hiện có.
+     */
+    protected function resolveCashbackPercent(float $spending, array $tiers): ?float
+    {
+        foreach ($tiers as $tier) {
+            $range = $tier['range'] ?? '';
+            $cashbackPercent = $this->parseNumber((string) ($tier['fee_percent'] ?? ''));
+            if ($cashbackPercent === null || $cashbackPercent <= 0) {
+                continue;
+            }
+
+            [$min, $max] = $this->parseRange((string) $range);
+            if ($min === null) {
+                continue;
+            }
+
+            if ($spending >= $min && ($max === null || $spending <= $max)) {
+                return $cashbackPercent;
+            }
+        }
+
+        return null;
+    }
+
+    protected function parseRange(string $range): array
+    {
+        $cleaned = str_replace(['$', ','], '', trim($range));
+        if ($cleaned === '') {
+            return [null, null];
+        }
+
+        $parts = preg_split('/[-–]/', $cleaned);
+        if (count($parts) >= 2) {
+            return [$this->parseNumber($parts[0]), $this->parseNumber($parts[1])];
+        }
+
+        if (str_ends_with($cleaned, '+')) {
+            return [$this->parseNumber(substr($cleaned, 0, -1)), null];
+        }
+
+        return [$this->parseNumber($cleaned), null];
+    }
+
+    protected function parseNumber(string $value): ?float
+    {
+        $clean = trim(str_replace(['%', ',', '$'], '', $value));
+        if ($clean === '') {
+            return null;
+        }
+
+        $parsed = (float) $clean;
+        return is_finite($parsed) ? $parsed : null;
     }
 
     /**

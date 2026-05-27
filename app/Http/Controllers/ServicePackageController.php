@@ -106,7 +106,6 @@ class ServicePackageController extends Controller
             'supplier_id' => ['nullable', 'string', 'exists:suppliers,id'],
             'set_up_time' => ['required', 'numeric', 'min:0'],
             'disabled' => ['required', 'boolean'],
-            'cashback_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ],
             [
             'name.required' => __('services.validation.name_invalid'),
@@ -132,9 +131,6 @@ class ServicePackageController extends Controller
             'set_up_time.required' => __('services.validation.set_up_time_invalid'),
             'disabled.required' => __('services.validation.disabled_invalid'),
             'disabled.boolean' => __('services.validation.disabled_invalid'),
-            'cashback_percent.numeric' => __('services.validation.cashback_percent_numeric', ['default' => 'Tỷ lệ cashback phải là số']),
-            'cashback_percent.min' => __('services.validation.cashback_percent_min', ['default' => 'Tỷ lệ cashback không được nhỏ hơn 0']),
-            'cashback_percent.max' => __('services.validation.cashback_percent_max', ['default' => 'Tỷ lệ cashback không được lớn hơn 100']),
         ]
         );
         //logic validate features
@@ -261,7 +257,6 @@ class ServicePackageController extends Controller
                 'supplier_id' => ['nullable', 'string', 'exists:suppliers,id'],
                 'set_up_time' => ['required', 'numeric', 'min:0'],
                 'disabled' => ['required', 'boolean'],
-                'cashback_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             ],
             [
                 'name.required' => __('services.validation.name_invalid'),
@@ -291,9 +286,6 @@ class ServicePackageController extends Controller
                 'set_up_time.numeric' => __('services.validation.set_up_time_invalid'),
                 'disabled.required' => __('services.validation.disabled_invalid'),
                 'disabled.boolean' => __('services.validation.disabled_invalid'),
-                'cashback_percent.numeric' => __('services.validation.cashback_percent_numeric', ['default' => 'Tỷ lệ cashback phải là số']),
-                'cashback_percent.min' => __('services.validation.cashback_percent_min', ['default' => 'Tỷ lệ cashback không được nhỏ hơn 0']),
-                'cashback_percent.max' => __('services.validation.cashback_percent_max', ['default' => 'Tỷ lệ cashback không được lớn hơn 100']),
             ]
         );
         //logic validate features
@@ -389,7 +381,8 @@ class ServicePackageController extends Controller
     }
 
     /**
-     * Chuẩn hóa dữ liệu cấu trúc phí theo mức chi tiêu hằng tháng
+     * Chuẩn hóa dữ liệu cashback theo bậc chi tiêu 30 ngày.
+     * Key fee_percent được giữ để tương thích cấu trúc JSON hiện có.
      */
     private function prepareMonthlySpendingData(array $form): array
     {

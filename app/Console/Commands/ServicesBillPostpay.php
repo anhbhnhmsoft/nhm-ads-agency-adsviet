@@ -81,13 +81,13 @@ class ServicesBillPostpay extends Command
 
                         $spending = $this->getSpendingBetween($serviceUser->id, $windowStartDate, $today->toDateString());
                         $package = $serviceUser->package;
-                        if (!$package || empty($package->monthly_spending_fee_structure)) {
+                        if (!$package) {
                             $serviceUser->last_postpay_billed_at = $today;
                             $serviceUser->save();
                             continue;
                         }
 
-                        $feePercent = $this->getMonthlyFeePercent($spending, $package->monthly_spending_fee_structure);
+                        $feePercent = (float) ($package->top_up_fee ?? 0);
                         if ($feePercent === null || $feePercent <= 0 || $spending <= 0) {
                             $serviceUser->last_postpay_billed_at = $today;
                             $serviceUser->save();
@@ -232,62 +232,6 @@ class ServicesBillPostpay extends Command
             ->sum(DB::raw('CAST(spend AS DECIMAL(18,4))'));
 
         return $metaSpend + $googleSpend;
-    }
-
-    /**
-     * Tìm fee percent theo tier min-max (range lưu dạng "min-max" hoặc "min+")
-     */
-    private function getMonthlyFeePercent(float $spending, array $tiers): ?float
-    {
-        foreach ($tiers as $tier) {
-            $range = $tier['range'] ?? '';
-            $feePercentRaw = $tier['fee_percent'] ?? '';
-            $feePercent = $this->parseNumber($feePercentRaw);
-            if ($feePercent === null || $feePercent <= 0) {
-                continue;
-            }
-
-            [$min, $max] = $this->parseRange($range);
-            if ($min === null) {
-                continue;
-            }
-            $match = $spending >= $min && ($max === null || $spending <= $max);
-            if ($match) {
-                return $feePercent;
-            }
-        }
-
-        return null;
-    }
-
-    private function parseRange(string $range): array
-    {
-        $cleaned = str_replace(['$', ','], '', trim($range));
-        if ($cleaned === '') {
-            return [null, null];
-        }
-        $parts = preg_split('/[-–]/', $cleaned);
-        if (count($parts) >= 2) {
-            $min = $this->parseNumber($parts[0]);
-            $max = $this->parseNumber($parts[1]);
-            return [$min, $max];
-        }
-        if (str_ends_with($cleaned, '+')) {
-            $min = $this->parseNumber(substr($cleaned, 0, -1));
-            return [$min, null];
-        }
-        $min = $this->parseNumber($cleaned);
-        return [$min, null];
-    }
-
-    private function parseNumber(string $value): ?float
-    {
-        $clean = trim(str_replace(['%', ',', '$'], '', $value));
-        if ($clean === '') {
-            return null;
-        }
-        $parsed = (float) $clean;
-        return is_finite($parsed) ? $parsed : null;
     }
 
     /**
