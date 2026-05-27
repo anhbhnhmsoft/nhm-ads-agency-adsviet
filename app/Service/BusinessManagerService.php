@@ -864,9 +864,10 @@ class BusinessManagerService
                 'total_reach' => array_sum(array_map(fn ($item) => (int) ($item['total_reach'] ?? 0), $bmArray)),
                 'currency' => $primaryTotal['currency'] ?? ($bmArray[0]['currency'] ?? $this->currencyExchangeService->targetCurrency()),
                 'totals_by_currency' => $totalsByCurrency,
-                'last_synced_at' => (int) ($filter['platform'] ?? 0) === PlatformType::META->value
-                    ? $this->resolveMetaResultLastSyncedAt($bmArray)
-                    : null,
+                'last_synced_at' => $this->resolveServiceManagementLastSyncedAt(
+                    isset($filter['platform']) && $filter['platform'] !== '' ? (int) $filter['platform'] : null,
+                    $childManagerId
+                ),
             ];
 
             $perPage = $queryListDTO->perPage ?? 10;
@@ -1152,38 +1153,103 @@ class BusinessManagerService
     }
 
     /**
-     * Use the oldest visible account timestamp as the freshness of the result set.
-     * A failed account sync keeps its prior timestamp and prevents a misleading
-     * "last updated" value for the complete result.
+     * The visible "last updated" timestamp is the latest successful platform sync
+     * for the selected platform/BM scope, not a date-filtered insight timestamp.
      */
-    private function resolveMetaResultLastSyncedAt(array $items): ?string
+    private function resolveServiceManagementLastSyncedAt(?int $platform, ?string $childManagerId): ?string
     {
-        $metaRows = array_values(array_filter(
-            $items,
-            fn ($item) =>
-                ($item['platform'] ?? null) === PlatformType::META->value
-                && !empty($item['account_id'])
-        ));
+        $timestamps = [];
 
-        if (empty($metaRows)) {
-            return null;
+        if ($platform === null || $platform === PlatformType::META->value) {
+            $timestamps[] = $this->resolveMetaPlatformLastSyncedAt($childManagerId);
         }
 
-        $syncedAtValues = array_values(array_filter(array_map(
-            fn ($item) => $item['last_synced_at'] ?? null,
-            $metaRows
-        )));
-
-        if (count($syncedAtValues) !== count($metaRows)) {
-            return null;
+        if ($platform === null || $platform === PlatformType::GOOGLE->value) {
+            $timestamps[] = $this->resolveGooglePlatformLastSyncedAt($childManagerId);
         }
 
-        $oldest = collect($syncedAtValues)
+        $latest = collect($timestamps)
+            ->filter()
             ->map(fn ($value) => Carbon::parse($value))
-            ->sortBy(fn (Carbon $value) => $value->getTimestamp())
+            ->sortByDesc(fn (Carbon $value) => $value->getTimestamp())
             ->first();
 
-        return $oldest?->toIso8601String();
+        return $latest?->toIso8601String();
+    }
+
+    private function resolveMetaPlatformLastSyncedAt(?string $childManagerId): ?string
+    {
+        $sourceBmIds = [];
+
+        if ($childManagerId) {
+            $sourceBmIds = $this->getMetaBmAndDescendantIds($childManagerId);
+        } else {
+            $activeMetaSetting = $this->resolveActivePlatformSetting(PlatformType::META->value);
+            $activeMetaBmId = $activeMetaSetting
+                ? $this->platformSettingService->getMetaScopedBusinessManagerId($activeMetaSetting->config ?? [])
+                : null;
+
+            if ($activeMetaBmId) {
+                $sourceBmIds = $this->getMetaBmAndDescendantIds((string) $activeMetaBmId);
+            }
+        }
+
+        $managerQuery = $this->metaBusinessManagerRepository->query();
+        $accessQuery = $this->metaAccountBusinessManagerAccessRepository->query();
+        $accountQuery = $this->metaAccountRepository->query();
+
+        if (!empty($sourceBmIds)) {
+            $managerQuery->whereIn('bm_id', $sourceBmIds);
+            $accessQuery->whereIn('source_bm_id', $sourceBmIds);
+            $accountQuery->whereIn('business_manager_id', $sourceBmIds);
+        }
+
+        $timestamp = collect([
+            $managerQuery->max('last_synced_at'),
+            $accessQuery->max('last_synced_at'),
+            $accountQuery->max('last_synced_at'),
+        ])
+            ->filter()
+            ->map(fn ($value) => Carbon::parse($value))
+            ->sortByDesc(fn (Carbon $value) => $value->getTimestamp())
+            ->first();
+
+        return $timestamp?->toIso8601String();
+    }
+
+    private function resolveGooglePlatformLastSyncedAt(?string $childManagerId): ?string
+    {
+        $managerIds = [];
+
+        if ($childManagerId) {
+            $managerIds = $this->getGoogleMccAndDescendantIds($childManagerId);
+        } else {
+            $activeGoogleSetting = $this->resolveActivePlatformSetting(PlatformType::GOOGLE->value);
+            $activeGoogleManagerId = $activeGoogleSetting ? ($activeGoogleSetting->config['login_customer_id'] ?? null) : null;
+
+            if ($activeGoogleManagerId) {
+                $managerIds = $this->getGoogleMccAndDescendantIds((string) $activeGoogleManagerId);
+            }
+        }
+
+        $managerQuery = $this->googleMccManagerRepository->query();
+        $accountQuery = $this->googleAccountRepository->query();
+
+        if (!empty($managerIds)) {
+            $managerQuery->whereIn('mcc_id', $managerIds);
+            $accountQuery->whereIn('customer_manager_id', $managerIds);
+        }
+
+        $timestamp = collect([
+            $managerQuery->max('last_synced_at'),
+            $accountQuery->max('last_synced_at'),
+        ])
+            ->filter()
+            ->map(fn ($value) => Carbon::parse($value))
+            ->sortByDesc(fn (Carbon $value) => $value->getTimestamp())
+            ->first();
+
+        return $timestamp?->toIso8601String();
     }
 
     /**
@@ -1760,6 +1826,31 @@ class BusinessManagerService
                 ->whereIn('parent_bm_id', $queue)
                 ->whereNull('hidden_at')
                 ->pluck('bm_id')
+                ->map(fn ($id) => (string) $id)
+                ->filter(fn ($id) => !in_array($id, $ids, true))
+                ->values()
+                ->toArray();
+
+            if (empty($children)) {
+                break;
+            }
+
+            $ids = array_values(array_unique(array_merge($ids, $children)));
+            $queue = $children;
+        }
+
+        return $ids;
+    }
+
+    private function getGoogleMccAndDescendantIds(string $mccId): array
+    {
+        $ids = [(string) $mccId];
+        $queue = [(string) $mccId];
+
+        while (!empty($queue)) {
+            $children = $this->googleMccManagerRepository->query()
+                ->whereIn('parent_mcc_id', $queue)
+                ->pluck('mcc_id')
                 ->map(fn ($id) => (string) $id)
                 ->filter(fn ($id) => !in_array($id, $ids, true))
                 ->values()
