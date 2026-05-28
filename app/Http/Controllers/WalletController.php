@@ -17,6 +17,7 @@ use App\Http\Requests\Wallet\WalletWithdrawRequest;
 use App\Http\Requests\API\Wallet\WalletCampaignBudgetUpdateRequest;
 use App\Service\ConfigService;
 use App\Service\CoinRemitterService;
+use App\Service\PaymentoService;
 use App\Service\WalletTransactionService;
 use App\Service\WalletService;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +32,7 @@ class WalletController extends Controller
         protected ConfigService $configService,
         protected WalletTransactionService $walletTransactionService,
         protected CoinRemitterService $coinRemitterService,
+        protected PaymentoService $paymentoService,
     ) {}
 
     public function index()
@@ -46,6 +48,7 @@ class WalletController extends Controller
 
         if ($wallet) {
             $this->reconcileCoinRemitterDepositsForWallet((int) $wallet['id']);
+            $this->reconcilePaymentoDepositsForWallet((int) $wallet['id']);
 
             $walletResult = $this->walletService->getWalletForUser((int) $user->id);
             $wallet = $walletResult->isSuccess() ? $walletResult->getData() : $wallet;
@@ -84,6 +87,13 @@ class WalletController extends Controller
                 'key' => 'TRC20',
                 'config_key' => 'COINREMITTER_TRC20',
                 'address' => 'CoinRemitter',
+            ];
+        }
+        if ($depositMethod === 'paymento' && $this->paymentoService->isConfigured()) {
+            $availableNetworks[] = [
+                'key' => 'PAYMENTO',
+                'config_key' => 'PAYMENTO',
+                'address' => 'Paymento',
             ];
         }
 
@@ -199,6 +209,72 @@ class WalletController extends Controller
         }
     }
 
+    private function reconcilePaymentoDepositsForWallet(int $walletId): void
+    {
+        $pendingResult = $this->walletTransactionService->findPendingPaymentoDeposits(
+            limit: 5,
+            walletId: $walletId,
+        );
+
+        if ($pendingResult->isError()) {
+            Logging::web('WalletController@index: Failed to load pending Paymento deposits', [
+                'wallet_id' => $walletId,
+                'error' => $pendingResult->getMessage(),
+            ]);
+
+            return;
+        }
+
+        foreach ($pendingResult->getData() as $transaction) {
+            $token = (string) ($transaction->payment_id ?? '');
+            if ($token === '' || !$this->paymentoService->isConfigured()) {
+                continue;
+            }
+
+            $verifyResult = $this->paymentoService->verifyPayment($token);
+            if ($verifyResult->isError()) {
+                Logging::web('WalletController@index: Failed to reconcile Paymento payment', [
+                    'wallet_id' => $walletId,
+                    'transaction_id' => $transaction->id ?? null,
+                    'token' => $token,
+                    'error' => $verifyResult->getMessage(),
+                ]);
+
+                continue;
+            }
+
+            $verified = $verifyResult->getData();
+            $verified = is_array($verified) ? $verified : [];
+            $status = $this->paymentoService->status($verified);
+
+            if ($this->paymentoService->isPaidStatus($status)) {
+                $approveResult = $this->walletTransactionService->approveDeposit(
+                    transactionId: (int) $transaction->id,
+                    txHash: $this->paymentoService->paymentId($verified),
+                );
+
+                if ($approveResult->isError()) {
+                    Logging::web('WalletController@index: Failed to approve reconciled Paymento deposit', [
+                        'wallet_id' => $walletId,
+                        'transaction_id' => $transaction->id ?? null,
+                        'token' => $token,
+                        'payment_status' => $status,
+                        'error' => $approveResult->getMessage(),
+                    ]);
+                }
+
+                continue;
+            }
+
+            if ($this->paymentoService->isFailedStatus($status)) {
+                $this->walletTransactionService->updateTransactionStatus(
+                    transactionId: (int) $transaction->id,
+                    status: WalletTransactionStatus::REJECTED->value,
+                );
+            }
+        }
+    }
+
     /**
      * Trả về thông tin ví dạng JSON cho user hiện tại (dùng cho Inertia/React)
      */
@@ -233,7 +309,7 @@ class WalletController extends Controller
     private function cryptoDepositMethod(array $configs): string
     {
         $value = strtolower((string) ($configs[ConfigName::CRYPTO_DEPOSIT_METHOD->value]['value'] ?? ''));
-        if (in_array($value, ['manual', 'coinremitter'], true)) {
+        if (in_array($value, ['manual', 'coinremitter', 'paymento'], true)) {
             return $value;
         }
 
@@ -246,7 +322,7 @@ class WalletController extends Controller
 
         return $this->coinRemitterService->isConfigured('BEP20') || $this->coinRemitterService->isConfigured('TRC20')
             ? 'coinremitter'
-            : 'manual';
+            : ($this->paymentoService->isConfigured() ? 'paymento' : 'manual');
     }
 
     /**
@@ -533,6 +609,75 @@ class WalletController extends Controller
                     Logging::web('WalletController@myTopUp: Failed to create CoinRemitter deposit order', [
                         'error' => $createResult->getMessage(),
                         'invoice_id' => $invoiceId,
+                    ]);
+                    FlashMessage::error($createResult->getMessage());
+                }
+
+                return redirect()->back();
+            }
+
+            if ($depositMethod === 'paymento') {
+                if (!$this->paymentoService->isConfigured()) {
+                    Logging::web('WalletController@myTopUp: Paymento not configured');
+                    FlashMessage::error(__('wallet.network_not_configured'));
+                    return redirect()->back();
+                }
+
+                $orderId = 'wallet_'.$user->id.'_'.str_replace('.', '', (string) microtime(true));
+                $paymentResult = $this->paymentoService->createPayment(
+                    amount: (float) $data['amount'],
+                    orderId: $orderId,
+                    returnUrl: route('wallet_index'),
+                    email: $user->email ?? $user->username ?? null,
+                );
+
+                if ($paymentResult->isError()) {
+                    Logging::web('WalletController@myTopUp: Paymento payment request failed', [
+                        'order_id' => $orderId,
+                        'error' => $paymentResult->getMessage(),
+                    ]);
+                    FlashMessage::error($paymentResult->getMessage());
+                    return redirect()->back();
+                }
+
+                $payment = $paymentResult->getData();
+                $token = is_array($payment) ? $this->paymentoService->token($payment) : null;
+                if (!$token) {
+                    Logging::error('WalletController@myTopUp: Paymento payment missing token', [
+                        'payment' => $payment,
+                    ]);
+                    FlashMessage::error(__('common_error.server_error'));
+                    return redirect()->back();
+                }
+
+                $gatewayUrl = $this->paymentoService->gatewayUrl($token);
+                $createResult = $this->walletTransactionService->createDepositOrder(
+                    userId: (int) $user->id,
+                    amount: (float) $data['amount'],
+                    network: 'PAYMENTO',
+                    depositAddress: 'Paymento',
+                    customerName: $customerName,
+                    customerEmail: $user->email ?? $user->username ?? null,
+                    paymentId: $token,
+                    payAddress: null,
+                    expiresAt: now()->addMinutes($this->paymentoService->getExpireMinutes()),
+                    referenceId: $gatewayUrl.'|order:'.$orderId,
+                );
+
+                if ($createResult->isSuccess()) {
+                    $transaction = $createResult->getData();
+                    Logging::web('WalletController@myTopUp: Paymento deposit order created', [
+                        'transaction_id' => $transaction->id ?? null,
+                        'order_id' => $orderId,
+                        'token' => $token,
+                    ]);
+
+                    FlashMessage::success(__('wallet.flash.deposit_created'));
+                } else {
+                    Logging::web('WalletController@myTopUp: Failed to create Paymento deposit order', [
+                        'error' => $createResult->getMessage(),
+                        'order_id' => $orderId,
+                        'token' => $token,
                     ]);
                     FlashMessage::error($createResult->getMessage());
                 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\ServicePackageController;
 use App\Http\Controllers\ServiceOrderController;
 use App\Http\Controllers\ServiceManagementController;
 use App\Http\Controllers\CoinRemitterWebhookController;
+use App\Http\Controllers\PaymentoWebhookController;
 // use App\Http\Controllers\NowPaymentsWebhookController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\UserController;
@@ -52,6 +53,19 @@ Route::post('/webhooks/coinremitter', [CoinRemitterWebhookController::class, 'ha
         VerifyCsrfToken::class,
     ])
     ->name('coinremitter_webhook');
+Route::post('/webhooks/paymento', [PaymentoWebhookController::class, 'handle'])
+    ->withoutMiddleware([
+        AddQueuedCookiesToResponse::class,
+        AddLinkHeadersForPreloadedAssets::class,
+        HandleAppearance::class,
+        HandleInertiaRequests::class,
+        SetLocale::class,
+        ShareErrorsFromSession::class,
+        StartSession::class,
+        ValidateCsrfToken::class,
+        VerifyCsrfToken::class,
+    ])
+    ->name('paymento_webhook');
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
 Route::middleware(['guest:web'])->group(function () {

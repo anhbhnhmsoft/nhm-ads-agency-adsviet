@@ -461,6 +461,32 @@ class WalletTransactionService
         }
     }
 
+    public function findPendingPaymentoDeposits(int $limit = 25, string|int|null $walletId = null): ServiceReturn
+    {
+        try {
+            $query = $this->transactionRepository->query()
+                ->where('type', WalletTransactionType::DEPOSIT->value)
+                ->where('status', WalletTransactionStatus::PENDING->value)
+                ->whereNotNull('payment_id')
+                ->where(function ($query) {
+                    $query->where('reference_id', 'like', '%paymento%')
+                        ->orWhere('deposit_address', 'like', '%paymento%')
+                        ->orWhere('network', 'PAYMENTO');
+                });
+
+            if ($walletId !== null) {
+                $query->where('wallet_id', $walletId);
+            }
+
+            return ServiceReturn::success(
+                data: $query->latest()->limit($limit)->get()
+            );
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@findPendingPaymentoDeposits error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
     // Duyệt lệnh nạp (DEPOSIT) thành công và cập nhập số dư cho user
     public function approveDeposit(int $transactionId, ?string $txHash = null): ServiceReturn
     {

@@ -32,7 +32,7 @@ export interface WalletData {
 }
 
 export type Network = {
-    key: 'BEP20' | 'TRC20';
+    key: 'BEP20' | 'TRC20' | 'PAYMENTO';
     config_key: string;
     address: string;
 };
@@ -40,7 +40,7 @@ export type Network = {
 export interface PendingDeposit {
     id: string;
     amount: number;
-    network: 'BEP20' | 'TRC20';
+    network: 'BEP20' | 'TRC20' | 'PAYMENTO';
     deposit_address?: string;
     pay_address?: string;
     payment_id?: string;
@@ -60,7 +60,7 @@ export interface WalletIndexProps {
 export type WalletTab = 'topup' | 'withdraw' | 'password';
 
 export type TopUpFormData = {
-  network?: 'BEP20' | 'TRC20';
+  network?: 'BEP20' | 'TRC20' | 'PAYMENTO';
   amount: string;
 };
 

@@ -68,6 +68,14 @@ return [
             ],
         ],
     ],
+    'paymento' => [
+        'base_url' => env('PAYMENTO_BASE_URL', 'https://api.paymento.io/v1'),
+        'gateway_url' => env('PAYMENTO_GATEWAY_URL', 'https://app.paymento.io/gateway'),
+        'api_key' => env('PAYMENTO_API_KEY'),
+        'secret_key' => env('PAYMENTO_SECRET_KEY'),
+        'expire_minutes' => (int) env('PAYMENTO_EXPIRE_MINUTES', 30),
+        'speed' => (int) env('PAYMENTO_SPEED', 1),
+    ],
     'exchange_rate' => [
         'base_url' => env('EXCHANGE_RATE_API_BASE_URL', 'https://open.er-api.com/v6/latest'),
         'target_currency' => env('EXCHANGE_RATE_TARGET_CURRENCY', 'USD'),

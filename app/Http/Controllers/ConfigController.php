@@ -43,6 +43,7 @@ class ConfigController extends Controller
             data: [
                 'configs' => $allConfigs,
                 'coinRemitterNetworks' => $this->coinRemitterNetworks(),
+                'paymentoWebhookUrl' => route('paymento_webhook'),
             ]
         );
     }
@@ -57,7 +58,7 @@ class ConfigController extends Controller
         $methodKey = ConfigName::CRYPTO_DEPOSIT_METHOD->value;
         if (
             isset($validated['configs'][$methodKey])
-            && !in_array($validated['configs'][$methodKey], ['manual', 'coinremitter'], true)
+            && !in_array($validated['configs'][$methodKey], ['manual', 'coinremitter', 'paymento'], true)
         ) {
             $validated['configs'][$methodKey] = 'manual';
         }
@@ -88,7 +89,14 @@ class ConfigController extends Controller
             return 'manual';
         }
 
-        return count($this->coinRemitterNetworks()) > 0 ? 'coinremitter' : 'manual';
+        if (count($this->coinRemitterNetworks()) > 0) {
+            return 'coinremitter';
+        }
+
+        $hasPaymento = !empty($configs[ConfigName::PAYMENTO_API_KEY->value]['value'] ?? null)
+            || !empty(config('services.paymento.api_key'));
+
+        return $hasPaymento ? 'paymento' : 'manual';
     }
 
     private function coinRemitterNetworks(): array

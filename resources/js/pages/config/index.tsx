@@ -27,9 +27,10 @@ import { useTranslation } from 'react-i18next';
 type Props = {
     configs: Record<string, ConfigItem>;
     coinRemitterNetworks: string[];
+    paymentoWebhookUrl: string;
 };
 
-const ConfigIndex = ({ configs, coinRemitterNetworks }: Props) => {
+const ConfigIndex = ({ configs, coinRemitterNetworks, paymentoWebhookUrl }: Props) => {
     const { t } = useTranslation();
     const { data, setData, put, processing, errors } = useForm({
         configs: Object.fromEntries(
@@ -72,10 +73,11 @@ const ConfigIndex = ({ configs, coinRemitterNetworks }: Props) => {
 
     const hasCoinRemitterNetwork = (network: string) =>
         coinRemitterNetworks.includes(network);
-    const depositMethod =
-        data.configs[_ConfigName.CRYPTO_DEPOSIT_METHOD] === 'coinremitter'
-            ? 'coinremitter'
-            : 'manual';
+    const depositMethod = ['manual', 'coinremitter', 'paymento'].includes(
+        data.configs[_ConfigName.CRYPTO_DEPOSIT_METHOD],
+    )
+        ? data.configs[_ConfigName.CRYPTO_DEPOSIT_METHOD]
+        : 'manual';
 
     return (
         <div>
@@ -143,6 +145,11 @@ const ConfigIndex = ({ configs, coinRemitterNetworks }: Props) => {
                                                         'CoinRemitter',
                                                 },
                                             )}
+                                        </SelectItem>
+                                        <SelectItem value="paymento">
+                                            {t('config.deposit_method_paymento', {
+                                                defaultValue: 'Paymento',
+                                            })}
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -258,6 +265,53 @@ const ConfigIndex = ({ configs, coinRemitterNetworks }: Props) => {
                                             )}
                                         </p>
                                     )}
+                                </div>
+                            )}
+
+                            {depositMethod === 'paymento' && (
+                                <div className="space-y-4 border-t pt-5">
+                                    <div className="space-y-1">
+                                        <h2 className="text-base font-medium">
+                                            {t('config.paymento_section', {
+                                                defaultValue: 'Paymento',
+                                            })}
+                                        </h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            {t(
+                                                'config.paymento_section_description',
+                                                {
+                                                    defaultValue:
+                                                        'Cấu hình API Paymento để tạo payment gateway và nhận IPN callback tự động.',
+                                                },
+                                            )}
+                                        </p>
+                                    </div>
+
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        {renderInput(
+                                            _ConfigName.PAYMENTO_API_KEY,
+                                            'Paymento API key',
+                                            'Nhập Merchant API key',
+                                            'password',
+                                        )}
+                                        {renderInput(
+                                            _ConfigName.PAYMENTO_SECRET_KEY,
+                                            'Paymento secret key',
+                                            'Nhập secret key dùng ký webhook',
+                                            'password',
+                                        )}
+                                    </div>
+
+                                    <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                                        <div className="font-medium">
+                                            {t('config.paymento_ipn_url', {
+                                                defaultValue: 'Paymento IPN URL',
+                                            })}
+                                        </div>
+                                        <div className="mt-1 break-all font-mono">
+                                            {paymentoWebhookUrl}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 

@@ -26,7 +26,7 @@ const WalletIndex = ({
     const [activeTab, setActiveTab] = useState<'topup' | 'withdraw' | 'password'>('topup');
 
     const topUpForm = useForm({
-        network: (networks[0]?.key as 'BEP20' | 'TRC20' | undefined) || undefined,
+        network: (networks[0]?.key as 'BEP20' | 'TRC20' | 'PAYMENTO' | undefined) || undefined,
         amount: '',
     });
 
@@ -205,4 +205,3 @@ WalletIndex.layout = (page: ReactNode) => (
 );
 
 export default WalletIndex;
-

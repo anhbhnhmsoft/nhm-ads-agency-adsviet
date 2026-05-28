@@ -25,7 +25,7 @@ class WalletMyTopUpRequest extends FormRequest
 
         return [
             'amount' => ['required', 'numeric', 'min:' . $minAmount],
-            'network' => ['required', 'string', 'in:BEP20,TRC20'],
+            'network' => ['required', 'string', 'in:BEP20,TRC20,PAYMENTO'],
         ];
     }
 

@@ -21,7 +21,8 @@ type Props = {
 };
 
 const PendingDepositCard = ({ t, pending }: Props) => {
-    const invoiceUrl = pending.reference_id?.startsWith('http') ? pending.reference_id : null;
+    const referenceUrl = pending.reference_id?.split('|')[0] ?? null;
+    const invoiceUrl = referenceUrl?.startsWith('http') ? referenceUrl : null;
     const qrValue = pending.pay_address || pending.deposit_address || invoiceUrl || '';
     const { cancelDeposit, loading } = useCancelDeposit();
     const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
