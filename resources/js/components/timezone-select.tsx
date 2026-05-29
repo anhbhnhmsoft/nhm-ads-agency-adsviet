@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTranslation } from 'react-i18next';
 
 type TimezoneOption = {
     value: string;
@@ -27,11 +28,13 @@ export function TimezoneSelect({
     value,
     onValueChange,
     options,
-    placeholder = 'Chọn múi giờ',
+    placeholder,
     id,
 }: TimezoneSelectProps) {
+    const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = React.useState('');
     const [open, setOpen] = React.useState(false);
+    const resolvedPlaceholder = placeholder ?? t('common.select_timezone');
 
     const filteredOptions = React.useMemo(() => {
         if (!searchQuery.trim()) {
@@ -57,8 +60,8 @@ export function TimezoneSelect({
             onOpenChange={setOpen}
         >
             <SelectTrigger id={id}>
-                <SelectValue placeholder={placeholder}>
-                    {selectedOption?.label || placeholder}
+                <SelectValue placeholder={resolvedPlaceholder}>
+                    {selectedOption?.label || resolvedPlaceholder}
                 </SelectValue>
             </SelectTrigger>
             <SelectContent className="p-0">
@@ -66,7 +69,7 @@ export function TimezoneSelect({
                     <div className="relative">
                         <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                            placeholder="Tìm kiếm múi giờ..."
+                            placeholder={t('common.search_timezone')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-8 h-9"
@@ -84,7 +87,7 @@ export function TimezoneSelect({
                     <div className="p-1">
                         {filteredOptions.length === 0 ? (
                             <div className="py-6 text-center text-sm text-muted-foreground">
-                                Không tìm thấy múi giờ nào
+                                {t('common.no_timezone_found')}
                             </div>
                         ) : (
                             filteredOptions.map((option) => (
@@ -102,4 +105,3 @@ export function TimezoneSelect({
         </Select>
     );
 }
-

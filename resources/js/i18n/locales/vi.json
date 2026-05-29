@@ -3,12 +3,15 @@
         "name": "Họ tên",
         "username": "Tên đăng nhập",
         "password": "Mật khẩu",
+        "show_password": "Hiện mật khẩu",
+        "hide_password": "Ẩn mật khẩu",
         "password_confirmation": "Xác nhận mật khẩu",
         "processing": "Đang xử lý...",
         "no_data": "Chưa có dữ liệu",
         "or": "Hoặc",
         "login": "Đăng nhập",
         "loading": "Đang xử lý...",
+        "sending": "Đang gửi...",
         "register": "Đăng ký",
         "refer_code": "Mã giới thiệu",
         "id": "ID",
@@ -67,7 +70,11 @@
         "previous": "Trước",
         "next": "Sau",
         "warning_threshold": "Ngưỡng cảnh báo riêng (USD)",
-        "warning_threshold_placeholder": ""
+        "warning_threshold_placeholder": "",
+        "select_timezone": "Chọn múi giờ",
+        "search_timezone": "Tìm kiếm múi giờ...",
+        "no_timezone_found": "Không tìm thấy múi giờ nào",
+        "no_data_display": "Không có dữ liệu nào để hiển thị."
     },
     "user_menu": {
         "profile": "Thông tin cá nhân",

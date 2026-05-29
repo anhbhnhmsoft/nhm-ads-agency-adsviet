@@ -204,7 +204,7 @@ export function AppSidebarHeader({
                 <div className="h-4 w-px bg-sidebar-border/50" />
 
                 <Select
-                    value={locale ?? 'vi'}
+                    value={locale ?? 'en'}
                     onValueChange={handleLocaleChange}
                     disabled={isPending}
                 >

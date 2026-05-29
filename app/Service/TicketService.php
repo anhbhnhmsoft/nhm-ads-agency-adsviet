@@ -7,6 +7,7 @@ use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\Ticket\TicketPriority;
 use App\Common\Constants\Ticket\TicketReplySide;
 use App\Common\Constants\Ticket\TicketStatus;
+use App\Common\Constants\NotificationType\NotificationType;
 use App\Common\Constants\User\UserRole;
 use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Core\Logging;
@@ -680,7 +681,13 @@ class TicketService
             );
 
             // Gửi thông báo
-            $this->telegramService->sendTicketNotification($chatIds, $message);
+            $this->telegramService->sendTicketNotification(
+                $chatIds,
+                $message,
+                null,
+                NotificationType::TICKET,
+                ['ticket_id' => $ticket->id]
+            );
         } catch (\Throwable $exception) {
             // Log lỗi nhưng không throw để không ảnh hưởng đến việc tạo ticket
             Logging::error(

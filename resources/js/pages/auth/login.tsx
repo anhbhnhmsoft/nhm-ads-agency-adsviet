@@ -79,7 +79,7 @@ const Login = ({ bot_username }: Props) => {
                                 tabIndex={-1}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 flex items-center"
                                 onClick={() => setShowPassword((prev) => !prev)}
-                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                aria-label={showPassword ? t('common.hide_password') : t('common.show_password')}
                             >
                                 {showPassword ? (
                                     <EyeOff className="w-5 h-5" />

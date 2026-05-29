@@ -32,6 +32,7 @@ class WalletTransactionService
         protected MailService $mailService,
         protected UserRepository $userRepository,
         protected NotificationService $notificationService,
+        protected TelegramService $telegramService,
     ) {
     }
 
@@ -148,6 +149,51 @@ class WalletTransactionService
         }
     }
 
+    private function notifySupportGroupDeposit(UserWalletTransaction $transaction): void
+    {
+        try {
+            $supportGroupId = config('services.telegram.support_group_id');
+            if (empty($supportGroupId)) {
+                return;
+            }
+
+            $transaction->loadMissing('wallet.user');
+            $customer = $transaction->wallet?->user;
+            if (!$customer) {
+                return;
+            }
+
+            $amount = abs((float) $transaction->amount);
+            $amountFormatted = fmod($amount, 1.0) === 0.0
+                ? number_format($amount, 0)
+                : number_format($amount, 2);
+            $content = $transaction->reference_id
+                ?: $transaction->payment_id
+                ?: ('TX'.$transaction->id);
+
+            $message = __('wallet.telegram.deposit_group_alert', [
+                'name' => htmlspecialchars($customer->name ?? $customer->username ?? ('User '.$customer->id), ENT_QUOTES, 'UTF-8'),
+                'network' => htmlspecialchars((string) ($transaction->network ?? 'N/A'), ENT_QUOTES, 'UTF-8'),
+                'amount' => htmlspecialchars($amountFormatted, ENT_QUOTES, 'UTF-8'),
+                'content' => htmlspecialchars((string) $content, ENT_QUOTES, 'UTF-8'),
+                'time' => now()->format('n/j/Y, g:i:s A'),
+            ]);
+
+            $this->telegramService->sendNotification(
+                chatId: (string) $supportGroupId,
+                message: $message,
+                userId: null,
+                type: NotificationType::WALLET,
+                data: ['transaction_id' => $transaction->id]
+            );
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'WalletTransactionService@notifySupportGroupDeposit error: '.$e->getMessage(),
+                exception: $e
+            );
+        }
+    }
+
     // Tạo lệnh nạp tiền (DEPOSIT) cho user
     public function createDepositOrder(int $userId, float $amount, string $network, string $depositAddress, ?string $customerName = null, ?string $customerEmail = null, ?string $paymentId = null, ?string $payAddress = null, ?\DateTime $expiresAt = null, ?string $referenceId = null): ServiceReturn
     {
@@ -176,6 +222,7 @@ class WalletTransactionService
             // Gửi thông báo cho user & admin
             $this->notifyTransaction($transaction, $wallet->user?->id);
             $this->notifyAdminsDeposit($transaction, 'created');
+            $this->notifySupportGroupDeposit($transaction);
 
             return ServiceReturn::success(data: $transaction);
         } catch (QueryException $e) {

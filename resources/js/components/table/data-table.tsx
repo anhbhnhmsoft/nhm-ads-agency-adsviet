@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LaravelPaginator } from '@/lib/types/type';
 import { DataTablePagination } from '@/components/table/pagination';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 declare module '@tanstack/react-table' {
     // @ts-ignore - Extending existing interface
     interface ColumnMeta {
@@ -32,6 +33,7 @@ export function DataTable<TData, TValue>({
     onRowSelectionChange,
     renderFooterRows,
 }: DataTableProps<TData, TValue>) {
+    const { t } = useTranslation();
     const [internalRowSelection, setInternalRowSelection] = useState<RowSelectionState>({});
     
     const selectionState = rowSelection !== undefined ? rowSelection : internalRowSelection;
@@ -106,7 +108,7 @@ export function DataTable<TData, TValue>({
                        ) : (
                                <TableRow>
                                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                                       Không có dữ liệu nào để hiển thị.
+                                       {t('common.no_data_display')}
                                    </TableCell>
                                </TableRow>
                            )}

@@ -23,7 +23,14 @@ type Props = {
 const PendingDepositCard = ({ t, pending }: Props) => {
     const referenceUrl = pending.reference_id?.split('|')[0] ?? null;
     const invoiceUrl = referenceUrl?.startsWith('http') ? referenceUrl : null;
-    const qrValue = pending.pay_address || pending.deposit_address || invoiceUrl || '';
+    const isHostedGateway =
+        pending.network === 'PAYMENTO' ||
+        pending.deposit_address?.toLowerCase() === 'paymento';
+    const qrValue =
+        pending.pay_address ||
+        (isHostedGateway ? invoiceUrl : pending.deposit_address) ||
+        invoiceUrl ||
+        '';
     const { cancelDeposit, loading } = useCancelDeposit();
     const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
     const description = pending.description ? getTransactionDescription(pending.description, t) : null;
@@ -55,7 +62,7 @@ const PendingDepositCard = ({ t, pending }: Props) => {
                                 {description}
                             </div>
                         )}
-                        {(pending.pay_address || pending.deposit_address) && (
+                        {(pending.pay_address || (!isHostedGateway && pending.deposit_address)) && (
                             <div>
                                 <div className="text-sm">
                                     {t('wallet.deposit_address', { defaultValue: 'Địa chỉ ví' })}

@@ -350,7 +350,7 @@ export function SupportRequestButton() {
                                 disabled={supportForm.processing}
                             >
                                 {supportForm.processing 
-                                    ? 'Đang gửi...' 
+                                    ? t('common.sending')
                                     : t('service_management.support_request_submit')
                                 }
                             </Button>
@@ -361,4 +361,3 @@ export function SupportRequestButton() {
         </>
     );
 }
-
