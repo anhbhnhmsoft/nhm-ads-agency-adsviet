@@ -241,10 +241,7 @@ const useMenu = () => {
                         title: t('ticket.deposit_app.title', { defaultValue: 'Nạp tiền vào tài khoản' }),
                         url: ticket_deposit_app().url,
                         active: isActive(ticket_deposit_app()),
-                        can_show: checkRole([
-                            _UserRole.CUSTOMER,
-                            _UserRole.AGENCY,
-                        ]),
+                        can_show: false,
                     },
                 ],
             },
