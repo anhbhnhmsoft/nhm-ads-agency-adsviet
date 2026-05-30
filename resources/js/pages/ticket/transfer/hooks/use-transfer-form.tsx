@@ -1,4 +1,4 @@
-import { useForm, router } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { ticket_transfer_store } from '@/routes';
 import { useTranslation } from 'react-i18next';
 
@@ -14,6 +14,10 @@ export const useTransferForm = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (form.processing) {
+            return;
+        }
         
         if (!form.data.platform) {
             form.setError('platform', t('ticket.transfer.platform_required', { defaultValue: 'Vui lòng chọn kênh quảng cáo' }));
@@ -55,12 +59,13 @@ export const useTransferForm = () => {
             notes: form.data.notes.trim(),
         };
 
-        router.post(ticket_transfer_store().url, submitData, {
+        form.transform(() => submitData);
+        form.post(ticket_transfer_store().url, {
             preserveScroll: true,
             onSuccess: () => {
                 form.reset();
             },
-            onError: (errors) => {
+            onError: (errors: Record<string, string>) => {
                 Object.keys(errors).forEach((key) => {
                     form.setError(key as keyof typeof form.data, errors[key] as string);
                 });
@@ -73,4 +78,3 @@ export const useTransferForm = () => {
         handleSubmit,
     };
 };
-

@@ -1,4 +1,4 @@
-import { useForm, router } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { ticket_share_store } from '@/routes';
 import { useTranslation } from 'react-i18next';
 
@@ -13,6 +13,10 @@ export const useShareForm = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (form.processing) {
+            return;
+        }
         
         if (!form.data.platform) {
             form.setError('platform', t('ticket.share.platform_required', { defaultValue: 'Vui lòng chọn kênh quảng cáo' }));
@@ -43,12 +47,13 @@ export const useShareForm = () => {
             notes: form.data.notes.trim(),
         };
 
-        router.post(ticket_share_store().url, submitData, {
+        form.transform(() => submitData);
+        form.post(ticket_share_store().url, {
             preserveScroll: true,
             onSuccess: () => {
                 form.reset();
             },
-            onError: (errors) => {
+            onError: (errors: Record<string, string>) => {
                 Object.keys(errors).forEach((key) => {
                     form.setError(key as keyof typeof form.data, errors[key] as string);
                 });
@@ -61,4 +66,3 @@ export const useShareForm = () => {
         handleSubmit,
     };
 };
-

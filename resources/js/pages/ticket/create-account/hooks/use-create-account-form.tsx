@@ -36,6 +36,10 @@ export const useCreateAccountForm = () => {
         notes?: string,
         onSuccess?: () => void
     ) => {
+        if (form.processing) {
+            return;
+        }
+
         const payload: CreateAccountFormData = {
             package_id: packageId,
             notes: notes || '',

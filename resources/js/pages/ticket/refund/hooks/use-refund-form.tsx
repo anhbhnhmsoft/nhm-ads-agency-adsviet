@@ -1,4 +1,4 @@
-import { useForm, router } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { ticket_refund_store } from '@/routes';
 import { useTranslation } from 'react-i18next';
 
@@ -14,6 +14,10 @@ export const useRefundForm = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (form.processing) {
+            return;
+        }
         
         if (!form.data.account_ids || form.data.account_ids.length === 0) {
             form.setError('account_ids', t('ticket.refund.account_ids_required', { defaultValue: 'Vui lòng chọn ít nhất một tài khoản' }));
@@ -34,12 +38,13 @@ export const useRefundForm = () => {
             notes: form.data.notes.trim(),
         };
 
-        router.post(ticket_refund_store().url, submitData, {
+        form.transform(() => submitData);
+        form.post(ticket_refund_store().url, {
             preserveScroll: true,
             onSuccess: () => {
                 form.reset();
             },
-            onError: (errors) => {
+            onError: (errors: Record<string, string>) => {
                 Object.keys(errors).forEach((key) => {
                     form.setError(key as keyof typeof form.data, errors[key] as string);
                 });
@@ -52,4 +57,3 @@ export const useRefundForm = () => {
         handleSubmit,
     };
 };
-

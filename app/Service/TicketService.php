@@ -665,6 +665,7 @@ class TicketService
             };
 
             $ticketUrl = url(route('ticket_show', ['id' => $ticket->id], false));
+            $subjectLabel = $this->getTicketSubjectLabel((string) $ticket->subject);
             
             $message = sprintf(
                 "🔔 <b>Yêu cầu hỗ trợ mới</b>\n\n" .
@@ -674,7 +675,7 @@ class TicketService
                 "⚡ <b>Mức độ:</b> %s\n" .
                 "🔗 <b>Link:</b> <a href=\"%s\">Xem chi tiết</a>",
                 htmlspecialchars($user->name ?? $user->username, ENT_QUOTES, 'UTF-8'),
-                htmlspecialchars($ticket->subject, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($subjectLabel, ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars(mb_substr($ticket->description, 0, 200) . (mb_strlen($ticket->description) > 200 ? '...' : ''), ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars($priorityLabel, ENT_QUOTES, 'UTF-8'),
                 $ticketUrl
@@ -695,6 +696,27 @@ class TicketService
                 exception: $exception
             );
         }
+    }
+
+    protected function getTicketSubjectLabel(string $subject): string
+    {
+        $knownSubjects = [
+            'transfer_request',
+            'refund_request',
+            'appeal_request',
+            'share_request',
+            'create_account_request',
+            'wallet_withdraw_app_request',
+            'wallet_deposit_app_request',
+            'deposit_app',
+            'withdraw_app',
+        ];
+
+        if (in_array($subject, $knownSubjects, true)) {
+            return __("ticket.{$subject}");
+        }
+
+        return $subject;
     }
 
     /**
