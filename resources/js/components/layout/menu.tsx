@@ -345,7 +345,7 @@ const useMenu = () => {
                 icon: <Settings />,
                 is_menu: true,
                 active: isActive(business_managers_index()),
-                can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE, _UserRole.CUSTOMER, _UserRole.AGENCY]),
+                can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE]),
             },
             {
                 title: t('menu.crypto_wallet_config'),

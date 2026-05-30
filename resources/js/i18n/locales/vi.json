@@ -1066,23 +1066,6 @@
             "total_campaign": "Total campaign",
             "no_accounts": "Chưa có tài khoản nào"
         },
-        "top_up": "Nạp tiền",
-        "top_up_dialog": {
-            "title": "Nạp tiền vào BM/MCC",
-            "description": "Nhập số tiền cần nạp vào tài khoản quảng cáo",
-            "amount_label": "Số tiền (USD)",
-            "amount_placeholder": "Nhập số tiền cần nạp",
-            "amount_invalid": "Số tiền không hợp lệ",
-            "note_label": "Ghi chú (tùy chọn)",
-            "note_placeholder": "Nhập ghi chú (nếu có)",
-            "submit": "Gửi yêu cầu",
-            "success": "Yêu cầu nạp tiền đã được gửi thành công",
-            "error": "Có lỗi xảy ra khi gửi yêu cầu nạp tiền",
-            "bm_not_found": "Không tìm thấy BM/MCC",
-            "no_accounts": "BM/MCC chưa có tài khoản",
-            "platform_not_found": "Không xác định được platform",
-            "ticket_subject": "Yêu cầu nạp tiền vào BM/MCC"
-        },
         "filter": {
             "period": "Khoảng thời gian",
             "day": "Ngày",

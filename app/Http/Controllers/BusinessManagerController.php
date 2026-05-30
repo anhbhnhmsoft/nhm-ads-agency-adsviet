@@ -7,19 +7,14 @@ use App\Core\QueryListDTO;
 use App\Common\Constants\User\UserRole;
 use App\Http\Resources\BusinessManagerListResource;
 use App\Service\BusinessManagerService;
-use App\Service\TicketService;
-use App\Common\Constants\Ticket\TicketMetadataType;
-use App\Common\Constants\Ticket\TicketPriority;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Validator;
 use App\Models\MetaBusinessManager;
 
 class BusinessManagerController extends Controller
 {
     public function __construct(
         protected BusinessManagerService $businessManagerService,
-        protected TicketService $ticketService,
     ) {
     }
 
@@ -30,6 +25,8 @@ class BusinessManagerController extends Controller
      */
     public function index(Request $request): \Inertia\Response
     {
+        $this->ensureInternalAccess();
+
         $params = $this->extractQueryPagination($request);
         $filter = $params->get('filter') ?? [];
         $filter['view'] = 'bm';
@@ -162,6 +159,8 @@ class BusinessManagerController extends Controller
      */
     public function getAccounts(string $bmId, Request $request)
     {
+        $this->ensureInternalAccess();
+
         $platform = $request->input('platform') ? (int) $request->input('platform') : null;
 
         $result = $this->businessManagerService->getAccountsByBmId($bmId, $platform);
@@ -184,6 +183,8 @@ class BusinessManagerController extends Controller
      */
     public function getChildBusinessManagers(string $parentBmId)
     {
+        $this->ensureInternalAccess();
+
         $result = $this->businessManagerService->getChildBusinessManagers($parentBmId);
 
         if ($result->isError()) {
@@ -237,62 +238,15 @@ class BusinessManagerController extends Controller
         return back()->with('success', __('business_manager.restore_success'));
     }
 
-    /**
-     * Nạp tiền vào BM/MCC (tạo ticket)
-     */
-    public function topUp(string $bmId, Request $request): RedirectResponse
+    private function ensureInternalAccess(): void
     {
-        $validator = Validator::make($request->all(), [
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'note' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        if ($validator->fails()) {
-            return back()->withErrors($validator->errors());
+        if (!in_array((int) auth()->user()?->role, [
+            UserRole::ADMIN->value,
+            UserRole::MANAGER->value,
+            UserRole::EMPLOYEE->value,
+        ], true)) {
+            abort(403);
         }
-
-        // Lấy thông tin BM/MCC để lấy platform
-        $bmResult = $this->businessManagerService->getAccountsByBmId($bmId);
-        if ($bmResult->isError() || !$bmResult->getData()) {
-            return back()->withErrors(['error' => __('business_manager.top_up_dialog.bm_not_found', ['default' => 'Không tìm thấy BM/MCC'])]);
-        }
-
-        $accounts = $bmResult->getData();
-        if (empty($accounts)) {
-            return back()->withErrors(['error' => __('business_manager.top_up_dialog.no_accounts', ['default' => 'BM/MCC chưa có tài khoản'])]);
-        }
-
-        // Lấy platform từ account đầu tiên
-        $firstAccount = $accounts[0];
-        $platform = $firstAccount['platform'] ?? null;
-
-        if (!$platform) {
-            return back()->withErrors(['error' => __('business_manager.top_up_dialog.platform_not_found', ['default' => 'Không xác định được platform'])]);
-        }
-
-        // Tạo ticket tương tự như deposit-app
-        $ticketData = [
-            'subject' => __('business_manager.top_up_dialog.ticket_subject', [
-                'default' => 'Yêu cầu nạp tiền vào BM/MCC',
-                'bm_id' => $bmId,
-            ]),
-            'description' => $request->input('note', ''),
-            'priority' => TicketPriority::HIGH->value,
-            'metadata' => [
-                'type' => TicketMetadataType::WALLET_DEPOSIT_APP->value,
-                'platform' => (int) $platform,
-                'bm_id' => $bmId,
-                'amount' => (float) $request->input('amount'),
-                'notes' => $request->input('note'),
-            ],
-        ];
-
-        $result = $this->ticketService->createTicket($ticketData);
-
-        if ($result->isError()) {
-            return back()->withErrors(['error' => $result->getMessage()]);
-        }
-
-        return back()->with('success', __('business_manager.top_up_dialog.success'));
     }
+
 }

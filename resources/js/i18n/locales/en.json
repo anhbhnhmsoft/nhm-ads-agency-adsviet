@@ -474,22 +474,6 @@
     "restore_success": "BM/MCC has been restored.",
     "restore_error": "Unable to restore BM/MCC.",
     "bm_not_found": "BM/MCC not found",
-    "top_up_dialog": {
-      "title": "Top up BM/MCC",
-      "description": "Enter the amount to top up the BM/MCC",
-      "amount_label": "Amount (USDT)",
-      "amount_placeholder": "Enter top-up amount",
-      "amount_invalid": "Invalid amount",
-      "note_label": "Note (optional)",
-      "note_placeholder": "Enter note (if any)",
-      "submit": "Top up",
-      "success": "Top up request has been created successfully. You will be redirected to the Support page.",
-      "error": "Failed to create top up request.",
-      "bm_not_found": "BM/MCC not found",
-      "no_accounts": "BM/MCC has no accounts",
-      "platform_not_found": "Platform not found",
-      "ticket_subject": "Top up request for BM/MCC"
-    },
     "filter": {
       "period": "Period of time",
       "day": "Day",
