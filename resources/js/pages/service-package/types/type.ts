@@ -54,6 +54,8 @@ export type ServicePackageItem = {
     disabled: boolean;
     description: string;
     range_min_top_up: string;
+    inventory_total_count?: number;
+    inventory_available_count?: number;
     monthly_spending_fee_structure: MonthlySpendingFeeItem[];
 };
 

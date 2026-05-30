@@ -19,6 +19,8 @@ export type ServicePackage = {
     set_up_time: number;
     range_min_top_up: string;
     disabled: boolean;
+    inventory_total_count?: number;
+    inventory_available_count?: number;
     monthly_spending_fee_structure?: MonthlySpendingFee[];
 };
 

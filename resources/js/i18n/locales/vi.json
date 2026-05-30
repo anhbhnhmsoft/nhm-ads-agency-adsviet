@@ -254,7 +254,7 @@
         "account_issue_description_full": "{{error}} tài khoản lỗi, {{warning}} tài khoản cần chú ý.",
         "account_issue_description_warning": "{{warning}} tài khoản cần được theo dõi thêm.",
         "campaign_issue_title": "Chiến dịch bị dừng hoặc lỗi",
-        "campaign_issue_description": "{{error}} chiến dịch đã bị nền tảng dừng. Kiểm tra ngay.",
+        "campaign_issue_description": "{{error}} chiến dịch đã bị nền tảng dừng.",
         "campaign_issue_warning_title": "Chiến dịch cần chú ý",
         "campaign_issue_warning_description": "{{warning}} chiến dịch đang tạm dừng hoặc hạn chế.",
         "campaign_tab_all": "Tất cả ({{count}})",
@@ -296,6 +296,13 @@
         "campaign_update_budget_wallet_password_required": "Vui lòng nhập mật khẩu ví để cập nhật ngân sách.",
         "campaign_update_budget_min_hint": "Giới hạn chi tiêu tối thiểu là {{amount}} USDT.",
         "campaign_update_budget_min_error": "Giới hạn chi tiêu phải lớn hơn hoặc bằng {{amount}} USDT.",
+        "account_top_up": "Nạp tiền",
+        "account_top_up_title": "Nạp tiền tài khoản quảng cáo",
+        "account_top_up_description": "Tạo yêu cầu để admin nạp tiền vào tài khoản quảng cáo đã chọn.",
+        "account_top_up_amount_label": "Số tiền nạp (USDT)",
+        "account_top_up_submit": "Gửi yêu cầu",
+        "account_top_up_success": "Đã tạo yêu cầu nạp tiền tài khoản quảng cáo.",
+        "account_top_up_error": "Không thể tạo yêu cầu nạp tiền tài khoản quảng cáo.",
         "campaign_not_selected": "Vui lòng chọn dịch vụ và chiến dịch trước.",
         "campaign_pause_not_supported_google": "Hiện chưa hỗ trợ tạm dừng trực tiếp chiến dịch Google Ads.",
         "campaign_end_not_supported_google": "Hiện chưa hỗ trợ kết thúc trực tiếp chiến dịch Google Ads.",
@@ -415,7 +422,9 @@
             "campaign_pause_google": "Tạm dừng chiến dịch Google Ads",
             "campaign_pause_meta": "Tạm dừng chiến dịch Meta Ads",
             "campaign_end_google": "Kết thúc chiến dịch Google Ads",
-            "campaign_end_meta": "Kết thúc chiến dịch Meta Ads"
+            "campaign_end_meta": "Kết thúc chiến dịch Meta Ads",
+            "account_top_up_google": "Nạp tiền tài khoản Google Ads",
+            "account_top_up_meta": "Nạp tiền tài khoản Meta Ads"
         },
         "transaction_status": {
             "unknown": "Không xác định",
@@ -436,7 +445,10 @@
             "deposit_cancelled_user": "User hủy lệnh nạp từ màn hình chờ",
             "deposit_cancelled_admin": "Admin hủy lệnh nạp tiền",
             "withdraw_cancelled_user": "User hủy lệnh rút tiền",
-            "withdraw_cancelled_admin": "Admin hủy lệnh rút tiền"
+            "withdraw_cancelled_admin": "Admin hủy lệnh rút tiền",
+            "account_top_up_created": "User yêu cầu nạp tiền tài khoản quảng cáo",
+            "account_top_up_detail": "User yêu cầu nạp tiền tài khoản :account (:account_id)",
+            "account_top_up_cancelled_admin": "Admin hủy yêu cầu nạp tiền tài khoản quảng cáo"
         },
         "account_number": "Số tài khoản",
         "account_holder": "Tên chủ tài khoản",

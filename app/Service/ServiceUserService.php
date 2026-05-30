@@ -43,6 +43,7 @@ class ServiceUserService
         protected MailService              $mailService,
         protected MetaAccountRepository $metaAccountRepository,
         protected GoogleAccountRepository $googleAccountRepository,
+        protected ServiceAccountInventoryService $serviceAccountInventoryService,
     )
     {
     }
@@ -318,6 +319,7 @@ class ServiceUserService
                 }
 
                 // Cập nhật status sang FAILED
+                $this->serviceAccountInventoryService->releaseForServiceUser((string) $serviceUser->id);
                 $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::FAILED->value;
                 $serviceUser->save();
 

@@ -16,6 +16,8 @@ return [
         'campaign_pause_meta' => 'Pause Meta Ads campaign',
         'campaign_end_google' => 'End Google Ads campaign',
         'campaign_end_meta' => 'End Meta Ads campaign',
+        'account_top_up_google' => 'Google Ads account top-up',
+        'account_top_up_meta' => 'Meta Ads account top-up',
     ],
     'transaction_status' => [
         'unknown' => 'Unknown',
@@ -41,6 +43,7 @@ return [
         'withdraw_success' => 'Withdrawal successful.',
         'deposit_checked' => 'Deposit verified successfully.',
         'campaign_budget_update_created' => 'Campaign budget update request created. Please wait for admin to process.',
+        'account_top_up_created' => 'Ad account top-up request created. Please wait for admin to process.',
         'campaign_pause_created' => 'Campaign pause request created. Please wait for admin to process.',
         'campaign_end_created' => 'Campaign end request created. Please wait for admin to process.',
     ],
@@ -93,6 +96,9 @@ return [
         'campaign_end_created' => 'User requested to end campaign',
         'campaign_end_detail' => 'User requested to end campaign :campaign on account :account',
         'campaign_end_cancelled_admin' => 'Admin cancelled the end campaign request',
+        'account_top_up_created' => 'User requested an ad account top-up',
+        'account_top_up_detail' => 'User requested a top-up for account :account (:account_id)',
+        'account_top_up_cancelled_admin' => 'Admin cancelled the ad account top-up request',
     ],
     'error' => [
         'wallet_not_found' => 'Wallet not found',

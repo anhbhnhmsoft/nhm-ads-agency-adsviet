@@ -32,6 +32,10 @@ class ServicePackageService
         try {
             $query = $this->servicePackageRepository
                 ->filterQuery($queryListDTO->filter);
+            $query->withCount([
+                'accountInventories as inventory_total_count',
+                'accountInventories as inventory_available_count' => fn ($inventoryQuery) => $inventoryQuery->where('status', 'available'),
+            ]);
             $query = $this->servicePackageRepository
                 ->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
@@ -92,7 +96,12 @@ class ServicePackageService
     public function getServicePackageById(string $id): ServiceReturn
     {
         try {
-            $data = $this->servicePackageRepository->find($id);
+            $data = $this->servicePackageRepository->query()
+                ->withCount([
+                    'accountInventories as inventory_total_count',
+                    'accountInventories as inventory_available_count' => fn ($inventoryQuery) => $inventoryQuery->where('status', 'available'),
+                ])
+                ->find($id);
             if (!$data) {
                 return ServiceReturn::error(__('common_error.not_found'));
             }

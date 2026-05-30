@@ -340,7 +340,7 @@
     "account_issue_description_full": "{{error}} accounts error, {{warning}} accounts need attention.",
     "account_issue_description_warning": "{{warning}} accounts need to be monitored.",
     "campaign_issue_title": "Campaigns stopped or with errors",
-    "campaign_issue_description": "{{error}} campaigns have been stopped by the platform. Check now.",
+    "campaign_issue_description": "{{error}} campaigns have been stopped by the platform.",
     "campaign_issue_warning_title": "Campaigns need attention",
     "campaign_issue_warning_description": "{{warning}} campaigns are paused or restricted.",
     "campaign_tab_all": "All ({{count}})",
@@ -382,6 +382,13 @@
     "campaign_update_budget_wallet_balance_error": "Unable to fetch wallet balance.",
     "campaign_update_budget_min_hint": "Minimum spend cap is {{amount}} USDT.",
     "campaign_update_budget_min_error": "Spend cap must be at least {{amount}} USDT.",
+    "account_top_up": "Top up",
+    "account_top_up_title": "Top up ad account",
+    "account_top_up_description": "Create a request for admins to top up the selected ad account.",
+    "account_top_up_amount_label": "Top-up amount (USDT)",
+    "account_top_up_submit": "Send request",
+    "account_top_up_success": "Ad account top-up request has been created.",
+    "account_top_up_error": "Unable to create ad account top-up request.",
     "campaign_not_selected": "Please select a service and campaign first.",
     "campaign_pause_not_supported_google": "Pausing campaigns directly for Google Ads is not yet supported.",
     "campaign_end_not_supported_google": "Ending campaigns directly for Google Ads is not yet supported.",
@@ -555,7 +562,9 @@
       "campaign_pause_google": "Pause Google Ads campaign",
       "campaign_pause_meta": "Pause Meta Ads campaign",
       "campaign_end_google": "End Google Ads campaign",
-      "campaign_end_meta": "End Meta Ads campaign"
+      "campaign_end_meta": "End Meta Ads campaign",
+      "account_top_up_google": "Google Ads account top-up",
+      "account_top_up_meta": "Meta Ads account top-up"
     },
     "transaction_status": {
       "unknown": "Unknown",
@@ -585,7 +594,10 @@
       "campaign_pause_cancelled_admin": "Admin cancelled the pause campaign request",
       "campaign_end_created": "User requested to end campaign",
       "campaign_end_detail": "User requested to end campaign :campaign on account :account",
-      "campaign_end_cancelled_admin": "Admin cancelled the end campaign request"
+      "campaign_end_cancelled_admin": "Admin cancelled the end campaign request",
+      "account_top_up_created": "User requested an ad account top-up",
+      "account_top_up_detail": "User requested a top-up for account :account (:account_id)",
+      "account_top_up_cancelled_admin": "Admin cancelled the ad account top-up request"
     },
     "account_number": "Account number",
     "account_holder": "Account holder",

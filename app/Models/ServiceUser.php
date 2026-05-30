@@ -73,4 +73,9 @@ class ServiceUser extends Model
     {
         return $this->hasMany(GoogleAccount::class, 'service_user_id');
     }
+
+    public function assignedAccountInventories()
+    {
+        return $this->hasMany(ServiceAccountInventory::class, 'assigned_service_user_id');
+    }
 }

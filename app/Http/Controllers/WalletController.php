@@ -9,6 +9,7 @@ use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Core\Logging;
 use App\Http\Requests\Wallet\WalletChangePasswordRequest;
+use App\Http\Requests\Wallet\WalletAccountTopUpRequest;
 use App\Http\Requests\Wallet\WalletMyTopUpRequest;
 use App\Http\Requests\Wallet\WalletMyWithdrawRequest;
 use App\Http\Requests\Wallet\WalletResetPasswordRequest;
@@ -359,6 +360,44 @@ class WalletController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('wallet.flash.campaign_budget_update_created'),
+            'data' => $result->getData(),
+        ]);
+    }
+
+    /**
+     * Web: Tạo yêu cầu nạp tiền vào tài khoản quảng cáo.
+     */
+    public function accountTopUp(WalletAccountTopUpRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => __('common_error.permission_denied'),
+            ], 401);
+        }
+
+        $data = $request->validated();
+
+        $result = $this->walletTransactionService->createAccountTopUpOrder(
+            userId: (int) $user->id,
+            amount: (float) $data['amount'],
+            walletPassword: $data['wallet_password'] ?? null,
+            platformType: (int) $data['platform_type'],
+            accountId: $data['account_id'] ?? null,
+            accountName: $data['account_name'] ?? null,
+        );
+
+        if ($result->isError()) {
+            return response()->json([
+                'success' => false,
+                'message' => $result->getMessage(),
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('wallet.flash.account_top_up_created'),
             'data' => $result->getData(),
         ]);
     }

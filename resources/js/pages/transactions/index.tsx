@@ -150,6 +150,8 @@ const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: Tr
                                             <option value="6">{t('wallet.transaction_type.service_purchase', { defaultValue: 'Mua dịch vụ' })}</option>
                                             <option value="7">{t('wallet.transaction_type.campaign_budget_update_google', { defaultValue: 'Cập nhật ngân sách Google Ads' })}</option>
                                             <option value="8">{t('wallet.transaction_type.campaign_budget_update_meta', { defaultValue: 'Cập nhật ngân sách Meta Ads' })}</option>
+                                            <option value="13">{t('wallet.transaction_type.account_top_up_google', { defaultValue: 'Nạp tiền tài khoản Google Ads' })}</option>
+                                            <option value="14">{t('wallet.transaction_type.account_top_up_meta', { defaultValue: 'Nạp tiền tài khoản Meta Ads' })}</option>
                                         </select>
                                     </div>
                                     <div className="space-y-2">
@@ -331,5 +333,4 @@ const TransactionsIndex = ({ transactions, pagination, filters, canApprove }: Tr
     );
 
     export default TransactionsIndex;
-
 

@@ -17,6 +17,9 @@ export enum WalletTransactionDescription {
     CAMPAIGN_END_CREATED = 'wallet.transaction_description.campaign_end_created',
     CAMPAIGN_END_DETAIL = 'wallet.transaction_description.campaign_end_detail',
     CAMPAIGN_END_CANCELLED_ADMIN = 'wallet.transaction_description.campaign_end_cancelled_admin',
+    ACCOUNT_TOP_UP_CREATED = 'wallet.transaction_description.account_top_up_created',
+    ACCOUNT_TOP_UP_DETAIL = 'wallet.transaction_description.account_top_up_detail',
+    ACCOUNT_TOP_UP_CANCELLED_ADMIN = 'wallet.transaction_description.account_top_up_cancelled_admin',
 }
 
 export function getTransactionDescription(

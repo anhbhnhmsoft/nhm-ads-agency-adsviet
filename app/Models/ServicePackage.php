@@ -58,4 +58,9 @@ class ServicePackage extends Model
     {
         return $this->hasMany(ServicePackageAllowedUser::class, 'service_package_id');
     }
+
+    public function accountInventories()
+    {
+        return $this->hasMany(ServiceAccountInventory::class, 'service_package_id');
+    }
 }

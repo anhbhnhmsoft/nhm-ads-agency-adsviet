@@ -23,6 +23,9 @@ enum WalletTransactionDescription: string
     case CAMPAIGN_END_CREATED = 'wallet.transaction_description.campaign_end_created';
     case CAMPAIGN_END_DETAIL = 'wallet.transaction_description.campaign_end_detail';
     case CAMPAIGN_END_CANCELLED_ADMIN = 'wallet.transaction_description.campaign_end_cancelled_admin';
+    case ACCOUNT_TOP_UP_CREATED = 'wallet.transaction_description.account_top_up_created';
+    case ACCOUNT_TOP_UP_DETAIL = 'wallet.transaction_description.account_top_up_detail';
+    case ACCOUNT_TOP_UP_CANCELLED_ADMIN = 'wallet.transaction_description.account_top_up_cancelled_admin';
     case CASHBACK = 'wallet.transaction_description.cashback';
 
     public function getTranslationKey(): string

@@ -16,6 +16,8 @@ return [
         'campaign_pause_meta' => 'Tạm dừng chiến dịch Meta Ads',
         'campaign_end_google' => 'Kết thúc chiến dịch Google Ads',
         'campaign_end_meta' => 'Kết thúc chiến dịch Meta Ads',
+        'account_top_up_google' => 'Nạp tiền tài khoản Google Ads',
+        'account_top_up_meta' => 'Nạp tiền tài khoản Meta Ads',
     ],
     'transaction_status' => [
         'unknown' => 'Không xác định',
@@ -41,6 +43,7 @@ return [
         'withdraw_success' => 'Rút tiền thành công.',
         'deposit_checked' => 'Kiểm tra nạp tiền thành công.',
         'campaign_budget_update_created' => 'Đã tạo yêu cầu cập nhật ngân sách chiến dịch. Vui lòng chờ admin xử lý.',
+        'account_top_up_created' => 'Đã tạo yêu cầu nạp tiền tài khoản quảng cáo. Vui lòng chờ admin xử lý.',
         'campaign_pause_created' => 'Đã tạo yêu cầu tạm dừng chiến dịch. Vui lòng chờ admin xử lý.',
         'campaign_end_created' => 'Đã tạo yêu cầu kết thúc chiến dịch. Vui lòng chờ admin xử lý.',
     ],
@@ -93,6 +96,9 @@ return [
         'campaign_end_created' => 'User yêu cầu kết thúc chiến dịch',
         'campaign_end_detail' => 'User yêu cầu kết thúc chiến dịch :campaign thuộc tài khoản :account',
         'campaign_end_cancelled_admin' => 'Admin hủy yêu cầu kết thúc chiến dịch',
+        'account_top_up_created' => 'User yêu cầu nạp tiền tài khoản quảng cáo',
+        'account_top_up_detail' => 'User yêu cầu nạp tiền tài khoản :account (:account_id)',
+        'account_top_up_cancelled_admin' => 'Admin hủy yêu cầu nạp tiền tài khoản quảng cáo',
         'cashback' => 'Hoàn tiền thưởng (Cashback) :percent% dựa trên tổng chi tiêu trong 30 ngày qua.',
     ],
     'error' => [

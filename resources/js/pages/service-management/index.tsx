@@ -178,6 +178,13 @@ const ServiceManagementIndex = ({
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [walletBalanceLoading, setWalletBalanceLoading] = useState(false);
     const [syncMetaSubmitting, setSyncMetaSubmitting] = useState(false);
+    const [accountTopUpDialogOpen, setAccountTopUpDialogOpen] = useState(false);
+    const [selectedAccountForTopUp, setSelectedAccountForTopUp] =
+        useState<BusinessManagerItem | null>(null);
+    const [accountTopUpAmount, setAccountTopUpAmount] = useState('');
+    const [accountTopUpWalletPassword, setAccountTopUpWalletPassword] =
+        useState('');
+    const [accountTopUpSubmitting, setAccountTopUpSubmitting] = useState(false);
 
     const selectedMetaBmId =
         query.platform === _PlatformType.META
@@ -185,6 +192,34 @@ const ServiceManagementIndex = ({
             : undefined;
 
     const lastSyncedAt = totals.last_synced_at ?? null;
+
+    const fetchWalletBalance = useCallback(async () => {
+        if (!isAgencyOrCustomer || walletBalanceLoading) {
+            return;
+        }
+
+        setWalletBalanceLoading(true);
+        try {
+            const response = await axios.get('/wallets/me');
+            setWalletBalance(response.data?.data?.balance ?? 0);
+        } catch (e) {
+            console.error('Failed to fetch wallet balance', e);
+            setWalletBalance(null);
+        } finally {
+            setWalletBalanceLoading(false);
+        }
+    }, [isAgencyOrCustomer, walletBalanceLoading]);
+
+    const openAccountTopUpDialog = useCallback(
+        async (account: BusinessManagerItem) => {
+            setSelectedAccountForTopUp(account);
+            setAccountTopUpDialogOpen(true);
+            if (isAgencyOrCustomer && walletBalance === null) {
+                await fetchWalletBalance();
+            }
+        },
+        [fetchWalletBalance, isAgencyOrCustomer, walletBalance],
+    );
 
     const handleSyncMetaInsights = useCallback(async () => {
         if (!selectedMetaBmId) {
@@ -675,38 +710,58 @@ const ServiceManagementIndex = ({
                         !!account.service_user_id ||
                         account.platform === _PlatformType.META;
                     return (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => loadCampaigns(account)}
-                            disabled={!canViewCampaigns}
-                            title={
-                                !canViewCampaigns
-                                    ? t(
-                                          'service_management.account_not_assigned',
-                                          {
-                                              defaultValue:
-                                                  'Tài khoản này chưa được gán với user nào',
-                                          },
-                                      )
-                                    : t(
-                                          'service_management.view_campaigns_tooltip',
-                                          {
-                                              defaultValue:
-                                                  'Xem danh sách chiến dịch đã được sync từ API',
-                                          },
-                                      )
-                            }
-                        >
-                            {t('service_management.view_campaigns', {
-                                defaultValue: 'Xem chiến dịch',
-                            })}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            {isAgencyOrCustomer && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        openAccountTopUpDialog(account);
+                                    }}
+                                >
+                                    <Wallet className="mr-2 h-4 w-4" />
+                                    {t('service_management.account_top_up', {
+                                        defaultValue: 'Nạp tiền',
+                                    })}
+                                </Button>
+                            )}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    loadCampaigns(account);
+                                }}
+                                disabled={!canViewCampaigns}
+                                title={
+                                    !canViewCampaigns
+                                        ? t(
+                                              'service_management.account_not_assigned',
+                                              {
+                                                  defaultValue:
+                                                      'Tài khoản này chưa được gán với user nào',
+                                              },
+                                          )
+                                        : t(
+                                              'service_management.view_campaigns_tooltip',
+                                              {
+                                                  defaultValue:
+                                                      'Xem danh sách chiến dịch đã được sync từ API',
+                                              },
+                                          )
+                                }
+                            >
+                                {t('service_management.view_campaigns', {
+                                    defaultValue: 'Xem chiến dịch',
+                                })}
+                            </Button>
+                        </div>
                     );
                 },
             },
         ],
-        [t, loadCampaigns],
+        [t, isAgencyOrCustomer, loadCampaigns, openAccountTopUpDialog],
     );
 
     const campaignColumns: ColumnDef<Campaign>[] = useMemo(
@@ -800,6 +855,9 @@ const ServiceManagementIndex = ({
             t,
             loadCampaignDetail,
             selectedAccount?.service_user_id,
+            fetchWalletBalance,
+            isAgencyOrCustomer,
+            walletBalance,
         ],
     );
 
@@ -813,6 +871,14 @@ const ServiceManagementIndex = ({
             value: 'last_30d',
         },
     ];
+
+    const issueCampaigns = useMemo(
+        () =>
+            campaigns.filter(
+                (c) => c.status_severity && c.status_severity !== 'success',
+            ),
+        [campaigns],
+    );
 
     const renderSpendChart = () => {
         if (!selectedCampaign) return null;
@@ -1038,7 +1104,7 @@ const ServiceManagementIndex = ({
                                         'service_management.campaign_issue_description',
                                         {
                                             defaultValue:
-                                                '{{error}} chiến dịch đã bị nền tảng dừng. Kiểm tra ngay.',
+                                                '{{error}} chiến dịch đã bị nền tảng dừng.',
                                             error: issueCampaigns.length,
                                         },
                                     )}
@@ -1384,35 +1450,9 @@ const ServiceManagementIndex = ({
                                                                 );
                                                                 if (
                                                                     isAgencyOrCustomer &&
-                                                                    walletBalance ===
-                                                                        null &&
-                                                                    !walletBalanceLoading
+                                                                    walletBalance === null
                                                                 ) {
-                                                                    setWalletBalanceLoading(
-                                                                        true,
-                                                                    );
-                                                                    try {
-                                                                        const response =
-                                                                            await axios.get(
-                                                                                '/wallet/me',
-                                                                            );
-                                                                        setWalletBalance(
-                                                                            response
-                                                                                .data
-                                                                                ?.data
-                                                                                ?.balance ??
-                                                                                0,
-                                                                        );
-                                                                    } catch (e) {
-                                                                        console.error(
-                                                                            'Failed to fetch wallet balance',
-                                                                            e,
-                                                                        );
-                                                                    } finally {
-                                                                        setWalletBalanceLoading(
-                                                                            false,
-                                                                        );
-                                                                    }
+                                                                    await fetchWalletBalance();
                                                                 }
                                                             }}
                                                             disabled={isDeleted}
@@ -1436,14 +1476,6 @@ const ServiceManagementIndex = ({
             </div>
         );
     };
-
-    const issueCampaigns = useMemo(
-        () =>
-            campaigns.filter(
-                (c) => c.status_severity && c.status_severity !== 'success',
-            ),
-        [campaigns],
-    );
 
     return (
         <>
@@ -1547,6 +1579,7 @@ const ServiceManagementIndex = ({
                         <DataTable
                             columns={accountColumns}
                             paginator={paginator}
+                            onRowClick={(account) => loadCampaigns(account)}
                             renderFooterRows={(columnCount) => (
                                 <TableRow className="bg-muted/40 font-medium">
                                     <TableCell colSpan={3}>
@@ -1586,6 +1619,197 @@ const ServiceManagementIndex = ({
                     renderCampaignView()
                 )}
             </div>
+
+            {/* Dialog Nạp tiền tài khoản quảng cáo */}
+            <Dialog
+                open={accountTopUpDialogOpen}
+                onOpenChange={(open) => {
+                    setAccountTopUpDialogOpen(open);
+                    if (!open && !accountTopUpSubmitting) {
+                        setSelectedAccountForTopUp(null);
+                        setAccountTopUpAmount('');
+                        setAccountTopUpWalletPassword('');
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {t('service_management.account_top_up_title', {
+                                defaultValue: 'Nạp tiền tài khoản quảng cáo',
+                            })}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {t('service_management.account_top_up_description', {
+                                defaultValue:
+                                    'Tạo yêu cầu để admin nạp tiền vào tài khoản quảng cáo đã chọn.',
+                            })}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="rounded-md bg-muted/50 p-3 text-sm">
+                            <div className="font-medium">
+                                {selectedAccountForTopUp?.account_name || '-'}
+                            </div>
+                            <div className="text-muted-foreground">
+                                ID:{' '}
+                                {selectedAccountForTopUp?.account_id ||
+                                    selectedAccountForTopUp?.id ||
+                                    '-'}
+                            </div>
+                        </div>
+                        {isAgencyOrCustomer && (
+                            <div className="text-sm text-muted-foreground">
+                                {walletBalanceLoading
+                                    ? t(
+                                          'service_management.campaign_update_budget_wallet_balance_loading',
+                                      )
+                                    : walletBalance !== null
+                                      ? t(
+                                            'service_management.campaign_update_budget_wallet_balance',
+                                            {
+                                                balance:
+                                                    walletBalance.toLocaleString(),
+                                            },
+                                        )
+                                      : t(
+                                            'service_management.campaign_update_budget_wallet_balance_error',
+                                        )}
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label htmlFor="account-top-up-amount">
+                                {t('service_management.account_top_up_amount_label', {
+                                    defaultValue: 'Số tiền nạp (USDT)',
+                                })}
+                            </Label>
+                            <Input
+                                id="account-top-up-amount"
+                                type="number"
+                                min={1}
+                                step="0.01"
+                                value={accountTopUpAmount}
+                                onChange={(event) =>
+                                    setAccountTopUpAmount(event.target.value)
+                                }
+                                placeholder="0.00"
+                            />
+                        </div>
+                        {isAgencyOrCustomer && (
+                            <div className="space-y-2">
+                                <Label htmlFor="account-top-up-password">
+                                    {t(
+                                        'service_management.campaign_update_budget_wallet_password_label',
+                                    )}
+                                </Label>
+                                <Input
+                                    id="account-top-up-password"
+                                    type="password"
+                                    value={accountTopUpWalletPassword}
+                                    onChange={(event) =>
+                                        setAccountTopUpWalletPassword(
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setAccountTopUpDialogOpen(false)}
+                            disabled={accountTopUpSubmitting}
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            onClick={async () => {
+                                const amount = Number(accountTopUpAmount);
+                                if (!accountTopUpAmount || amount <= 0) {
+                                    toast.error(t('common.invalid_amount'));
+                                    return;
+                                }
+
+                                if (
+                                    isAgencyOrCustomer &&
+                                    !accountTopUpWalletPassword
+                                ) {
+                                    toast.error(
+                                        t(
+                                            'service_management.campaign_update_budget_wallet_password_required',
+                                        ),
+                                    );
+                                    return;
+                                }
+
+                                if (!selectedAccountForTopUp?.platform) {
+                                    toast.error(
+                                        t('service_management.unsupported_platform', {
+                                            defaultValue:
+                                                'Nền tảng không được hỗ trợ',
+                                        }),
+                                    );
+                                    return;
+                                }
+
+                                setAccountTopUpSubmitting(true);
+                                try {
+                                    await axios.post('/wallets/account-top-up', {
+                                        amount,
+                                        wallet_password:
+                                            accountTopUpWalletPassword,
+                                        platform_type:
+                                            selectedAccountForTopUp.platform,
+                                        account_id:
+                                            selectedAccountForTopUp.account_id ||
+                                            selectedAccountForTopUp.id,
+                                        account_name:
+                                            selectedAccountForTopUp.account_name ||
+                                            selectedAccountForTopUp.id,
+                                    });
+
+                                    toast.success(
+                                        t(
+                                            'service_management.account_top_up_success',
+                                            {
+                                                defaultValue:
+                                                    'Đã tạo yêu cầu nạp tiền tài khoản quảng cáo.',
+                                            },
+                                        ),
+                                    );
+                                    setAccountTopUpDialogOpen(false);
+                                    setSelectedAccountForTopUp(null);
+                                    setAccountTopUpAmount('');
+                                    setAccountTopUpWalletPassword('');
+                                    setWalletBalance(null);
+                                } catch (e: any) {
+                                    toast.error(
+                                        e?.response?.data?.message ||
+                                            t(
+                                                'service_management.account_top_up_error',
+                                                {
+                                                    defaultValue:
+                                                        'Không thể tạo yêu cầu nạp tiền tài khoản quảng cáo.',
+                                                },
+                                            ),
+                                    );
+                                } finally {
+                                    setAccountTopUpSubmitting(false);
+                                }
+                            }}
+                            disabled={accountTopUpSubmitting}
+                        >
+                            {accountTopUpSubmitting && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            {t('service_management.account_top_up_submit', {
+                                defaultValue: 'Gửi yêu cầu',
+                            })}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Dialog Cập nhật ngân sách */}
             <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>

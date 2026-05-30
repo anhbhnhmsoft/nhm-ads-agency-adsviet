@@ -31,6 +31,7 @@ class ServicePurchaseService
         protected WalletRepository $walletRepository,
         protected UserWalletTransactionRepository $walletTransactionRepository,
         protected ConfigRepository $configRepository,
+        protected ServiceAccountInventoryService $serviceAccountInventoryService,
     ) {
     }
 
@@ -156,6 +157,28 @@ class ServicePurchaseService
                     'budget' => max(0, $budget), //tránh âm
                     'description' => "Mua gói dịch vụ: {$package->name}",
                 ]);
+
+                $serviceUser->setRelation('package', $package);
+
+                $autoAssignResult = $this->serviceAccountInventoryService->assignAvailableAccounts(
+                    serviceUser: $serviceUser,
+                    quantity: $accountsCount,
+                    configAccount: $defaultConfig,
+                );
+
+                if ($autoAssignResult->isError()) {
+                    $currentConfig = $serviceUser->config_account ?? [];
+                    if (!is_array($currentConfig)) {
+                        $currentConfig = [];
+                    }
+                    $currentConfig['auto_fulfillment'] = [
+                        'status' => 'pending_manual',
+                        'message' => $autoAssignResult->getMessage(),
+                        'checked_at' => now()->toDateTimeString(),
+                    ];
+                    $serviceUser->config_account = $currentConfig;
+                    $serviceUser->save();
+                }
 
                 // Lưu lịch sử ví: chỉ tạo giao dịch khi có thu tiền upfront
                 $walletTransaction = null;

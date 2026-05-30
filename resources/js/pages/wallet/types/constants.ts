@@ -12,6 +12,8 @@ export const TRANSACTION_TYPE = {
     CAMPAIGN_PAUSE_META: 10,
     CAMPAIGN_END_GOOGLE: 11,
     CAMPAIGN_END_META: 12,
+    ACCOUNT_TOP_UP_GOOGLE: 13,
+    ACCOUNT_TOP_UP_META: 14,
 } as const;
 
 export const TRANSACTION_STATUS = {
@@ -37,6 +39,8 @@ export const TRANSACTION_TYPE_MAP: Record<number, string> = {
     [TRANSACTION_TYPE.CAMPAIGN_PAUSE_META]: 'campaign_pause_meta',
     [TRANSACTION_TYPE.CAMPAIGN_END_GOOGLE]: 'campaign_end_google',
     [TRANSACTION_TYPE.CAMPAIGN_END_META]: 'campaign_end_meta',
+    [TRANSACTION_TYPE.ACCOUNT_TOP_UP_GOOGLE]: 'account_top_up_google',
+    [TRANSACTION_TYPE.ACCOUNT_TOP_UP_META]: 'account_top_up_meta',
 };
 
 export const TRANSACTION_STATUS_MAP: Record<number, string> = {
@@ -47,4 +51,3 @@ export const TRANSACTION_STATUS_MAP: Record<number, string> = {
     [TRANSACTION_STATUS.COMPLETED]: 'completed',
     [TRANSACTION_STATUS.CANCELLED]: 'cancelled',
 };
-

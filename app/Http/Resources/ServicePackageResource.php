@@ -26,6 +26,8 @@ class ServicePackageResource extends JsonResource
             'open_fee' => $this->open_fee,
             'range_min_top_up' => $this->range_min_top_up,
             'top_up_fee' => $this->top_up_fee,
+            'inventory_total_count' => (int) ($this->inventory_total_count ?? 0),
+            'inventory_available_count' => (int) ($this->inventory_available_count ?? 0),
             'supplier_fee_percent' => $this->supplier_fee_percent,
             'supplier_id' => $this->supplier_id,
             'set_up_time' => $this->set_up_time,

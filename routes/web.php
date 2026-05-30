@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServicePackageController;
+use App\Http\Controllers\ServiceAccountInventoryController;
 use App\Http\Controllers\ServiceOrderController;
 use App\Http\Controllers\ServiceManagementController;
 use App\Http\Controllers\CoinRemitterWebhookController;
@@ -141,6 +142,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/', [WalletController::class, 'index'])->name('wallet_index');
         Route::get('/me', [WalletController::class, 'me'])->name('wallet_me_json');
         Route::post('/campaign-budget-update', [WalletController::class, 'campaignBudgetUpdate'])->name('wallet_campaign_budget_update');
+        Route::post('/account-top-up', [WalletController::class, 'accountTopUp'])->name('wallet_account_top_up');
         Route::post('/campaign-pause', [WalletController::class, 'campaignPause'])->name('wallet_campaign_pause');
         Route::post('/campaign-end', [WalletController::class, 'campaignEnd'])->name('wallet_campaign_end');
         Route::get('/min-amount/{network}', [WalletController::class, 'getMinimalAmount'])->name('wallet_min_amount');
@@ -166,6 +168,9 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/', [ServicePackageController::class, 'index'])->name('service_packages_index');
         Route::get('/create', [ServicePackageController::class, 'createView'])->name('service_packages_create_view');
         Route::post('/create', [ServicePackageController::class, 'create'])->name('service_packages_create');
+        Route::get('/{id}/account-inventory', [ServiceAccountInventoryController::class, 'index'])->name('service_packages_account_inventory_index');
+        Route::post('/{id}/account-inventory/import', [ServiceAccountInventoryController::class, 'import'])->name('service_packages_account_inventory_import');
+        Route::delete('/{id}/account-inventory/{inventoryId}', [ServiceAccountInventoryController::class, 'destroy'])->name('service_packages_account_inventory_destroy');
         Route::get('/{id}/edit', [ServicePackageController::class, 'editView'])->name('service_packages_edit_view');
         Route::put('/{id}', [ServicePackageController::class, 'update'])->name('service_packages_update');
         Route::delete('/{id}', [ServicePackageController::class, 'destroy'])->name('service_packages_destroy');

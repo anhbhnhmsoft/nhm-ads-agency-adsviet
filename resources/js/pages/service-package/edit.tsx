@@ -17,7 +17,8 @@ import UserMultiSelect from '@/pages/service-package/components/user-multi-selec
 import { DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE, useFormEditServicePackage } from '@/pages/service-package/hooks/use-form';
 import { ServicePackageItem, ServicePackageOption, SupplierOption, UserOption } from '@/pages/service-package/types/type';
 import { service_packages_index } from '@/routes';
-import { ReactNode, useMemo } from 'react';
+import axios from 'axios';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 
@@ -28,15 +29,110 @@ type Props = {
     suppliers?: SupplierOption[];
     all_users?: UserOption[];
 };
+
+type InventoryItem = {
+    id: string;
+    account_id: string;
+    account_name?: string | null;
+    business_manager_id?: string | null;
+    customer_manager_id?: string | null;
+    status: 'available' | 'reserved' | 'assigned' | 'failed' | string;
+    assigned_service_user_id?: string | null;
+    link_target_type?: string | null;
+    link_target_value?: string | null;
+    last_error?: string | null;
+};
+
 const Edit = ({ meta_features, google_features, service_package, suppliers = [], all_users = [] }: Props) => {
     const { t } = useTranslation();
     const { form, submit } = useFormEditServicePackage(service_package.id, service_package);
 
     const { data, setData, processing, errors } = form;
+    const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+    const [inventoryImportText, setInventoryImportText] = useState('');
+    const [inventoryLoading, setInventoryLoading] = useState(false);
+    const [inventorySubmitting, setInventorySubmitting] = useState(false);
     const monthlySpendingError = Object.entries(errors).find(([key]) =>
         key.startsWith('monthly_spending_fee_structure'),
     )?.[1];
     const isPlatformEditable = false;
+    const inventoryUrl = `/service-packages/${service_package.id}/account-inventory`;
+
+    const loadInventory = async () => {
+        setInventoryLoading(true);
+        try {
+            const response = await axios.get(inventoryUrl);
+            setInventoryItems(response.data?.data || []);
+        } finally {
+            setInventoryLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadInventory();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [service_package.id]);
+
+    const inventoryStats = useMemo(() => {
+        return inventoryItems.reduce(
+            (acc, item) => {
+                acc.total += 1;
+                acc[item.status] = (acc[item.status] || 0) + 1;
+                return acc;
+            },
+            { total: 0 } as Record<string, number>,
+        );
+    }, [inventoryItems]);
+
+    const parseInventoryImport = () => {
+        return inventoryImportText
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((line) => {
+                const [account_id, account_name, manager_id, note] = line
+                    .split(/[,\t]/)
+                    .map((part) => part.trim());
+
+                return {
+                    account_id,
+                    account_name: account_name || undefined,
+                    business_manager_id:
+                        data.platform === _PlatformType.META
+                            ? manager_id || undefined
+                            : undefined,
+                    customer_manager_id:
+                        data.platform === _PlatformType.GOOGLE
+                            ? manager_id || undefined
+                            : undefined,
+                    note: note || undefined,
+                };
+            })
+            .filter((item) => item.account_id);
+    };
+
+    const handleImportInventory = async () => {
+        const accounts = parseInventoryImport();
+        if (accounts.length === 0) return;
+
+        setInventorySubmitting(true);
+        try {
+            await axios.post(`${inventoryUrl}/import`, { accounts });
+            setInventoryImportText('');
+            await loadInventory();
+        } finally {
+            setInventorySubmitting(false);
+        }
+    };
+
+    const handleDeleteInventory = async (inventoryId: string) => {
+        if (!confirm(t('common.confirm_delete', { defaultValue: 'Xác nhận xoá?' }))) {
+            return;
+        }
+
+        await axios.delete(`${inventoryUrl}/${inventoryId}`);
+        await loadInventory();
+    };
 
     /**
      * Lấy danh sách Features dựa trên Platform
@@ -731,6 +827,134 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                     )}
                 </div>
             )}
+
+            <div className="space-y-4 rounded-lg border bg-white p-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold">
+                            {t('service_packages.account_inventory_title', {
+                                defaultValue: 'Kho tài khoản bán tự động',
+                            })}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            {t('service_packages.account_inventory_description', {
+                                defaultValue:
+                                    'Mỗi dòng: account_id, tên tài khoản, BM/MCC, ghi chú. Khi khách mua gói này, hệ thống tự lấy account còn trống để giao.',
+                            })}
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-sm">
+                        <span className="rounded border px-2 py-1">
+                            Total: {inventoryStats.total || 0}
+                        </span>
+                        <span className="rounded border px-2 py-1 text-green-700">
+                            Available: {inventoryStats.available || 0}
+                        </span>
+                        <span className="rounded border px-2 py-1 text-blue-700">
+                            Assigned: {inventoryStats.assigned || 0}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <Textarea
+                        value={inventoryImportText}
+                        onChange={(event) =>
+                            setInventoryImportText(event.target.value)
+                        }
+                        placeholder={
+                            data.platform === _PlatformType.META
+                                ? 'act_123456789, Account name, 987654321, note'
+                                : '1234567890, Account name, 9876543210, note'
+                        }
+                        rows={4}
+                    />
+                    <Button
+                        type="button"
+                        onClick={handleImportInventory}
+                        disabled={inventorySubmitting || !inventoryImportText.trim()}
+                    >
+                        {inventorySubmitting
+                            ? t('common.loading', { defaultValue: 'Đang tải...' })
+                            : t('service_packages.account_inventory_import', {
+                                  defaultValue: 'Import kho',
+                              })}
+                    </Button>
+                </div>
+
+                <div className="overflow-x-auto rounded-md border">
+                    <table className="w-full min-w-[760px] text-sm">
+                        <thead className="bg-muted/50">
+                            <tr>
+                                <th className="p-2 text-left">Account</th>
+                                <th className="p-2 text-left">BM/MCC</th>
+                                <th className="p-2 text-left">Status</th>
+                                <th className="p-2 text-left">Target</th>
+                                <th className="p-2 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {inventoryLoading ? (
+                                <tr>
+                                    <td className="p-4 text-center text-muted-foreground" colSpan={5}>
+                                        {t('common.loading', { defaultValue: 'Đang tải...' })}
+                                    </td>
+                                </tr>
+                            ) : inventoryItems.length === 0 ? (
+                                <tr>
+                                    <td className="p-4 text-center text-muted-foreground" colSpan={5}>
+                                        {t('common.no_data_display')}
+                                    </td>
+                                </tr>
+                            ) : (
+                                inventoryItems.map((item) => (
+                                    <tr key={item.id} className="border-t">
+                                        <td className="p-2">
+                                            <div className="font-medium">
+                                                {item.account_name || item.account_id}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {item.account_id}
+                                            </div>
+                                            {item.last_error && (
+                                                <div className="mt-1 text-xs text-red-600">
+                                                    {item.last_error}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="p-2">
+                                            {item.business_manager_id ||
+                                                item.customer_manager_id ||
+                                                '-'}
+                                        </td>
+                                        <td className="p-2">
+                                            <span className="rounded border px-2 py-1">
+                                                {item.status}
+                                            </span>
+                                        </td>
+                                        <td className="p-2">
+                                            {item.link_target_value
+                                                ? `${item.link_target_type}: ${item.link_target_value}`
+                                                : '-'}
+                                        </td>
+                                        <td className="p-2 text-right">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleDeleteInventory(item.id)}
+                                                disabled={item.status === 'assigned'}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             <Button type="submit" disabled={processing}>
                 {t('common.save')}

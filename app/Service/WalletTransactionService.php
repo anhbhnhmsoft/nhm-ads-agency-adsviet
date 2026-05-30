@@ -355,6 +355,70 @@ class WalletTransactionService
     }
 
     /**
+     * Tạo lệnh nạp tiền vào tài khoản quảng cáo.
+     * Tiền bị trừ khỏi ví ngay; admin xử lý nạp trên nền tảng và duyệt giao dịch sau.
+     */
+    public function createAccountTopUpOrder(
+        int $userId,
+        float $amount,
+        ?string $walletPassword = null,
+        ?int $platformType = null,
+        ?string $accountId = null,
+        ?string $accountName = null
+    ): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($userId, $amount, $walletPassword, $platformType, $accountId, $accountName) {
+                $wallet = $this->walletRepository->findByUserId($userId);
+                if (!$wallet) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
+                }
+
+                if (!empty($wallet->password)) {
+                    if (empty($walletPassword) || !Hash::check($walletPassword, $wallet->password)) {
+                        return ServiceReturn::error(message: __('wallet.error.wallet_password_invalid'));
+                    }
+                }
+
+                if ((float) $wallet->balance < $amount) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_balance_not_enough'));
+                }
+
+                $newBalance = (float) $wallet->balance - $amount;
+                $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
+
+                $type = WalletTransactionType::ACCOUNT_TOP_UP_GOOGLE;
+                if ($platformType === \App\Common\Constants\Platform\PlatformType::META->value) {
+                    $type = WalletTransactionType::ACCOUNT_TOP_UP_META;
+                }
+
+                $description = __('wallet.transaction_description.account_top_up_created');
+                if ($accountId || $accountName) {
+                    $description = __('wallet.transaction_description.account_top_up_detail', [
+                        'account' => $accountName ?: '-',
+                        'account_id' => $accountId ?: '-',
+                    ]);
+                }
+
+                $transaction = $this->transactionRepository->create([
+                    'wallet_id' => $wallet->id,
+                    'amount' => -$amount,
+                    'type' => $type->value,
+                    'status' => WalletTransactionStatus::PENDING->value,
+                    'description' => $description,
+                ]);
+
+                $this->notifyTransaction($transaction, $wallet->user?->id);
+
+                return ServiceReturn::success(data: $transaction);
+            });
+        } catch (QueryException $e) {
+            Logging::error('WalletTransactionService@createAccountTopUpOrder error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
      * Tạo lệnh tạm dừng chiến dịch (CAMPAIGN_PAUSE)
      * - Không trừ tiền, chỉ tạo transaction để admin biết và xử lý thủ công
      */
@@ -963,6 +1027,51 @@ class WalletTransactionService
             });
         } catch (\Throwable $e) {
             Logging::error('WalletTransactionService@cancelCampaignBudgetUpdateByAdmin error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    // Admin hủy lệnh nạp tiền tài khoản quảng cáo và hoàn lại tiền
+    public function cancelAccountTopUpByAdmin(string|int $transactionId): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($transactionId) {
+                $transaction = $this->transactionRepository->query()->find($transactionId);
+                if (!$transaction) {
+                    return ServiceReturn::error(message: __('Giao dịch không tồn tại'));
+                }
+
+                if (!in_array(
+                    (int) $transaction->type,
+                    [
+                        WalletTransactionType::ACCOUNT_TOP_UP_GOOGLE->value,
+                        WalletTransactionType::ACCOUNT_TOP_UP_META->value,
+                    ],
+                    true
+                )) {
+                    return ServiceReturn::error(message: __('Không phải lệnh nạp tiền tài khoản quảng cáo'));
+                }
+
+                if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
+                    return ServiceReturn::error(message: __('Giao dịch không ở trạng thái chờ'));
+                }
+
+                $wallet = $this->walletRepository->query()->find($transaction->wallet_id);
+                if ($wallet) {
+                    $refundAmount = abs((float) $transaction->amount);
+                    $newBalance = (float) $wallet->balance + $refundAmount;
+                    $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
+                }
+
+                $this->transactionRepository->updateById($transactionId, [
+                    'status' => WalletTransactionStatus::CANCELLED->value,
+                    'description' => __('wallet.transaction_description.account_top_up_cancelled_admin'),
+                ]);
+
+                return ServiceReturn::success();
+            });
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@cancelAccountTopUpByAdmin error: '.$e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }

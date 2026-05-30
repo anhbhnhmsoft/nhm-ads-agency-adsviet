@@ -441,8 +441,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                         </div>
                     </div>
 
-                    {/* Limits */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+	                    {/* Limits */}
+	                    <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                             <span className="text-gray-500">{t('service_purchase.min_top_up')}:</span>
                             <span className="font-medium ml-2">{formatUSD(pkg.range_min_top_up)}</span>
@@ -451,9 +451,27 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             <span className="text-gray-500">{t('service_purchase.setup_time')}:</span>
                             <span className="font-medium ml-2">{pkg.set_up_time} {t('service_purchase.hours')}</span>
                         </div>
-                    </div>
+	                    </div>
 
-                    {/* Features */}
+	                    {(pkg.inventory_total_count || 0) > 0 && (
+	                        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+	                            <div className="font-medium">
+	                                {t('service_purchase.account_inventory_ready', {
+	                                    defaultValue: 'Kho tài khoản tự động',
+	                                })}
+	                            </div>
+	                            <div className="text-muted-foreground">
+	                                {t('service_purchase.account_inventory_available', {
+	                                    defaultValue:
+	                                        '{{available}} / {{total}} tài khoản sẵn sàng giao',
+	                                    available: pkg.inventory_available_count || 0,
+	                                    total: pkg.inventory_total_count || 0,
+	                                })}
+	                            </div>
+	                        </div>
+	                    )}
+
+	                    {/* Features */}
                     {features.length > 0 && (
                         <div className="min-h-48">
                             <div className="text-sm font-medium text-gray-700 mb-2">
