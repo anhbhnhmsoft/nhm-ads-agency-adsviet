@@ -635,6 +635,72 @@ class BusinessManagerService
                 });
             }
 
+            if ($viewMode === 'bm' && (empty($filter['platform']) || (int) $filter['platform'] === PlatformType::GOOGLE->value)) {
+                $existingGoogleMccIds = [];
+                foreach ($accountsList as $item) {
+                    if (($item['platform'] ?? null) !== PlatformType::GOOGLE->value) {
+                        continue;
+                    }
+
+                    foreach (($item['bm_ids'] ?? []) as $itemMccId) {
+                        $existingGoogleMccIds[] = (string) $itemMccId;
+                    }
+                }
+                $existingGoogleMccIds = array_values(array_unique($existingGoogleMccIds));
+
+                $activeGoogleSetting = $this->resolveActivePlatformSetting(PlatformType::GOOGLE->value);
+                $activeGoogleManagerId = $activeGoogleSetting
+                    ? ($activeGoogleSetting->config['login_customer_id'] ?? null)
+                    : null;
+
+                $emptyMccQuery = $this->googleMccManagerRepository->query();
+                if ($activeGoogleManagerId) {
+                    $googleScopeIds = $this->getGoogleMccAndDescendantIds((string) $activeGoogleManagerId);
+                    $emptyMccQuery->whereIn('mcc_id', $googleScopeIds);
+                }
+
+                if (!empty($existingGoogleMccIds)) {
+                    $emptyMccQuery->whereNotIn('mcc_id', $existingGoogleMccIds);
+                }
+
+                $emptyMccQuery->get(['mcc_id', 'parent_mcc_id', 'name', 'currency'])->each(function ($mcc) use (&$accountsList) {
+                    $accountsList[] = [
+                        'id' => 'google-mcc-' . (string) $mcc->mcc_id,
+                        'account_id' => null,
+                        'account_name' => null,
+                        'service_user_id' => null,
+                        'bm_ids' => [(string) $mcc->mcc_id],
+                        'bm_name' => $mcc->name ?: (string) $mcc->mcc_id,
+                        'parent_bm_id' => $mcc->parent_mcc_id ? (string) $mcc->parent_mcc_id : null,
+                        'name' => $mcc->name ?: (string) $mcc->mcc_id,
+                        'platform' => PlatformType::GOOGLE->value,
+                        'customer_name' => null,
+                        'owner_name' => null,
+                        'owner_id' => null,
+                        'total_accounts' => 0,
+                        'active_accounts' => 0,
+                        'disabled_accounts' => 0,
+                        'total_spend' => '0',
+                        'total_reach' => 0,
+                        'total_balance' => '0',
+                        'account_status' => null,
+                        'account_status_label' => null,
+                        'account_status_severity' => null,
+                        'spend_cap' => null,
+                        'amount_spent' => null,
+                        'remaining_amount' => null,
+                        'created_time' => null,
+                        'account_type' => null,
+                        'timezone' => null,
+                        'payment_card' => null,
+                        'currency' => $mcc->currency ?? 'USD',
+                        'accounts' => [
+                            ['currency' => $mcc->currency ?? 'USD'],
+                        ],
+                    ];
+                });
+            }
+
             if ($childManagerId) {
                 $accountsList = array_values(array_filter(
                     $accountsList,
@@ -1662,11 +1728,20 @@ class BusinessManagerService
                     continue;
                 }
 
-                // Lấy tất cả accounts từ Google mà có account_id thuộc MCC gốc
+                $mccScopeIds = $this->getGoogleMccAndDescendantIds((string) $mccId);
+                if ($childManagerId) {
+                    if (!in_array($childManagerId, $mccScopeIds, true)) {
+                        continue;
+                    }
+
+                    $mccScopeIds = [$childManagerId];
+                }
+
+                // Lấy tất cả accounts thuộc MCC gốc và MCC con đã sync.
                 // Tìm accounts có service_user_id = null (chưa được gán cho user nào)
                 $googleAccounts = $this->googleAccountRepository->query()
                     ->whereNull('service_user_id')
-                    ->where('customer_manager_id', $mccId)
+                    ->whereIn('customer_manager_id', $mccScopeIds)
                     ->get();
 
                 foreach ($googleAccounts as $account) {
@@ -1686,15 +1761,16 @@ class BusinessManagerService
                     $status = $account->account_status !== null ? (int) $account->account_status : null;
                     $isActive = $this->isAccountActive((int) $platform, $status);
 
-                    $mccDisplayName = $mccNameMap[$mccId] ?? null;
-                    $parentMccId = $mccParentMap[$mccId] ?? null;
+                    $accountMccId = (string) ($account->customer_manager_id ?: $mccId);
+                    $mccDisplayName = $mccNameMap[$accountMccId] ?? null;
+                    $parentMccId = $mccParentMap[$accountMccId] ?? null;
 
                     $accountsList[] = [
                         'id' => (string) $account->id,
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
                         'service_user_id' => null, // Chưa được gán cho user nào
-                        'bm_ids' => [$mccId],
+                        'bm_ids' => [$accountMccId],
                         'bm_name' => $mccDisplayName,
                         'parent_bm_id' => $parentMccId,
                         'name' => $account->account_name,
