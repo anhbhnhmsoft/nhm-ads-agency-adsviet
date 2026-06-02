@@ -384,6 +384,7 @@ class WalletController extends Controller
             amount: (float) $data['amount'],
             walletPassword: $data['wallet_password'] ?? null,
             platformType: (int) $data['platform_type'],
+            serviceUserId: $data['service_user_id'] ?? null,
             accountId: $data['account_id'] ?? null,
             accountName: $data['account_name'] ?? null,
         );

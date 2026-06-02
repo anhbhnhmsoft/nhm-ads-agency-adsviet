@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServicePackage\AccountBillingSource;
 use App\Common\Constants\ServicePackage\ServicePackageFeature;
 use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Common\Constants\User\UserRole;
@@ -93,6 +94,7 @@ class ServicePackageController extends Controller
             'description' => ['required', 'string'],
             'platform' => ['required', Rule::in(PlatformType::getValues())],
             'payment_type' => ['required', 'string', Rule::in(ServicePackagePaymentType::getValues())],
+            'billing_source' => ['nullable', 'string', Rule::in(AccountBillingSource::getValues())],
             'allowed_user_ids' => ['nullable', 'array'],
             'allowed_user_ids.*' => ['string', 'exists:users,id'],
             'features' => ['required', 'array'],
@@ -244,6 +246,7 @@ class ServicePackageController extends Controller
                 'description' => ['required', 'string'],
                 'platform' => ['required', Rule::in(PlatformType::getValues())],
                 'payment_type' => ['required', 'string', Rule::in(ServicePackagePaymentType::getValues())],
+                'billing_source' => ['nullable', 'string', Rule::in(AccountBillingSource::getValues())],
                 'allowed_user_ids' => ['nullable', 'array'],
                 'allowed_user_ids.*' => ['string', 'exists:users,id'],
                 'features' => ['required', 'array'],
@@ -386,6 +389,8 @@ class ServicePackageController extends Controller
      */
     private function prepareMonthlySpendingData(array $form): array
     {
+        $form['billing_source'] = $form['billing_source'] ?? AccountBillingSource::ADVIET_CARD->value;
+
         $form['monthly_spending_fee_structure'] = collect($form['monthly_spending_fee_structure'] ?? [])
             ->map(function ($row) {
                 return [

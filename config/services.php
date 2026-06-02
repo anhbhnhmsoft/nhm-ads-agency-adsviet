@@ -40,6 +40,7 @@ return [
         'bot_username' => env('TELEGRAM_BOT_USERNAME'),
         'url_telegram_auth' => env('TELEGRAM_URL_TELEGRAM_AUTH'),
         'support_group_id' => env('TELEGRAM_SUPPORT_GROUP_ID'),
+        'timezone' => env('TELEGRAM_TIMEZONE', 'Asia/Ho_Chi_Minh'),
     ],
     'binance' => [
         'key' => env('BINANCE_API_KEY'),

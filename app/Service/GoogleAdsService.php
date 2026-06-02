@@ -27,12 +27,14 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Google\Ads\GoogleAds\Lib\OAuth2TokenBuilder;
 use Google\Ads\GoogleAds\Util\V22\ResourceNames;
 use Google\Ads\GoogleAds\V22\Resources\Campaign;
+use Google\Ads\GoogleAds\V22\Resources\AccountBudgetProposal;
 use App\Repositories\GoogleAdsCampaignRepository;
 use Google\Ads\GoogleAds\Lib\V22\GoogleAdsClient;
 use Google\Ads\GoogleAds\V22\Services\GoogleAdsRow;
 use Google\Ads\GoogleAds\Lib\V22\GoogleAdsException;
 use App\Common\Constants\Google\GoogleCustomerStatus;
 use App\Common\Constants\Google\GoogleCampaignStatus;
+use Google\Ads\GoogleAds\V22\Enums\AccountBudgetProposalTypeEnum\AccountBudgetProposalType;
 use Google\Ads\GoogleAds\V22\Resources\CampaignBudget;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Repositories\GoogleAdsAccountInsightRepository;
@@ -41,7 +43,9 @@ use Google\Ads\GoogleAds\Lib\V22\GoogleAdsClientBuilder;
 use Google\Ads\GoogleAds\V22\Services\CampaignOperation;
 use Google\Ads\GoogleAds\V22\Services\MutateCampaignsRequest;
 use Google\Ads\GoogleAds\V22\Services\SearchGoogleAdsRequest;
+use Google\Ads\GoogleAds\V22\Services\AccountBudgetProposalOperation;
 use Google\Ads\GoogleAds\V22\Services\CampaignBudgetOperation;
+use Google\Ads\GoogleAds\V22\Services\MutateAccountBudgetProposalRequest;
 use Google\Ads\GoogleAds\V22\Services\MutateCampaignBudgetsRequest;
 use Google\Ads\GoogleAds\V22\Services\SearchGoogleAdsStreamRequest;
 use Google\Ads\GoogleAds\V22\Services\Client\GoogleAdsServiceClient;
@@ -1639,12 +1643,10 @@ SELECT
   customer_client.descriptive_name,
   customer_client.status,
   customer_client.currency_code,
-  customer_client.time_zone,
-  metrics.cost_micros
+  customer_client.time_zone
 FROM customer_client
 WHERE customer_client.manager = FALSE
   AND customer_client.status != 'CANCELED'
-  AND segments.date DURING TODAY
 GAQL;
 
             $syncedCount = 0;
@@ -1695,11 +1697,22 @@ GAQL;
                         ->where('account_id', (string) $accountId)
                         ->first();
 
-                    // Chỉ set service_user_id = null nếu account chưa được gán cho service_user nào
-                    // Nếu đã có service_user_id, giữ nguyên để không ghi đè dữ liệu của user
-                    // Lấy chi tiêu hôm nay từ metrics (O(1))
-                    $metrics = $row->getMetrics();
-                    $todaySpend = $this->convertMicrosToUnit($metrics?->getCostMicros() ?? 0);
+                    // Lấy chi tiêu hôm nay bằng query riêng trên resource customer.
+                    // metrics.cost_micros không tương thích với FROM customer_client.
+                    $todaySpend = 0.0;
+                    try {
+                        $todaySpend = $this->getCustomerTodaySpend($googleAdsService, (string) $accountId);
+                    } catch (\Throwable $spendError) {
+                        Logging::error(
+                            message: 'GoogleAdsService@syncFromManagerId: Failed to get today spend, but will still sync account',
+                            context: [
+                                'manager_id' => $managerId,
+                                'account_id' => $accountId,
+                                'error' => $spendError->getMessage(),
+                            ],
+                            exception: $spendError
+                        );
+                    }
 
                     $updateData = [
                         'account_name' => $customerClient->getDescriptiveName() ?? 'N/A',
@@ -1855,6 +1868,41 @@ GAQL;
                 'manager_id' => $managerId,
             ]);
         }
+    }
+
+    /**
+     * Lấy chi tiêu hôm nay của một customer account.
+     *
+     * Google Ads API cho phép chọn metrics.cost_micros với FROM customer,
+     * nhưng không cho phép chọn metric này với FROM customer_client.
+     */
+    protected function getCustomerTodaySpend(GoogleAdsServiceClient $googleAdsService, string $customerId): float
+    {
+        $query = <<<GAQL
+SELECT
+  customer.id,
+  metrics.cost_micros
+FROM customer
+WHERE segments.date DURING TODAY
+GAQL;
+
+        $request = new SearchGoogleAdsStreamRequest([
+            'customer_id' => $customerId,
+            'query' => $query,
+        ]);
+
+        $spend = 0.0;
+        foreach ($googleAdsService->searchStream($request)->readAll() as $response) {
+            foreach ($response->getResults() as $row) {
+                $metrics = $row->getMetrics();
+                if (!$metrics) {
+                    continue;
+                }
+                $spend += $this->convertMicrosToUnit($metrics->getCostMicros());
+            }
+        }
+
+        return $spend;
     }
 
     protected function fetchCampaignDailyMetrics(
@@ -2747,6 +2795,131 @@ GAQL;
                 message: 'GoogleAdsService@updateCampaignDailyBudget unexpected error: ' . $e->getMessage(),
                 exception: $e,
             );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Tăng giới hạn chi tiêu ở cấp tài khoản Google Ads bằng AccountBudgetProposal.
+     */
+    public function increaseAccountSpendingLimit(string $serviceUserId, ?string $accountId, float $amount): ServiceReturn
+    {
+        $serviceUserResult = $this->validateServiceUser($serviceUserId);
+        if ($serviceUserResult->isError()) {
+            return $serviceUserResult;
+        }
+
+        /** @var ServiceUser $serviceUser */
+        $serviceUser = $serviceUserResult->getData();
+
+        if ($amount <= 0) {
+            return ServiceReturn::error(message: __('google_ads.error.invalid_budget_amount'));
+        }
+
+        try {
+            $accountIdDigits = preg_replace('/[^0-9]/', '', (string) $accountId);
+            $googleAccount = $this->googleAccountRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->where(function ($query) use ($accountId, $accountIdDigits) {
+                    $query->where('id', $accountId)
+                        ->orWhere('account_id', $accountId)
+                        ->orWhere('account_id', $accountIdDigits);
+                })
+                ->first();
+
+            if (!$googleAccount || empty($googleAccount->account_id)) {
+                return ServiceReturn::error(message: __('google_ads.error.account_not_found'));
+            }
+
+            $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
+            if (empty($loginCustomerId)) {
+                return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
+
+            $client = $this->buildGoogleAdsClient($loginCustomerId);
+            $customerId = preg_replace('/[^0-9]/', '', (string) $googleAccount->account_id);
+            $googleAdsService = $client->getGoogleAdsServiceClient();
+
+            $query = <<<GAQL
+SELECT
+  account_budget.resource_name,
+  account_budget.approved_spending_limit_micros,
+  account_budget.amount_served_micros,
+  account_budget.approved_spending_limit_type
+FROM account_budget
+WHERE account_budget.status = 'APPROVED'
+ORDER BY account_budget.id DESC
+LIMIT 1
+GAQL;
+
+            $searchRequest = new SearchGoogleAdsRequest([
+                'customer_id' => $customerId,
+                'query' => $query,
+            ]);
+            $response = $googleAdsService->search($searchRequest);
+            $iterator = $response->getIterator();
+
+            if (!$iterator->valid()) {
+                return ServiceReturn::error(message: __('google_ads.error.account_budget_not_found'));
+            }
+
+            /** @var GoogleAdsRow $row */
+            $row = $iterator->current();
+            $accountBudget = $row->getAccountBudget();
+            if (!$accountBudget || !$accountBudget->getResourceName()) {
+                return ServiceReturn::error(message: __('google_ads.error.account_budget_not_found'));
+            }
+
+            $currentLimitMicros = (int) ($accountBudget->getApprovedSpendingLimitMicros() ?? 0);
+            $amountServedMicros = (int) ($accountBudget->getAmountServedMicros() ?? 0);
+            $baseLimitMicros = max($currentLimitMicros, $amountServedMicros);
+            $newLimitMicros = $baseLimitMicros + (int) round($amount * 1_000_000);
+
+            $proposal = new AccountBudgetProposal();
+            $proposal->setAccountBudget($accountBudget->getResourceName());
+            $proposal->setProposalType(AccountBudgetProposalType::UPDATE);
+            $proposal->setProposedSpendingLimitMicros($newLimitMicros);
+
+            $operation = new AccountBudgetProposalOperation();
+            $operation->setCreate($proposal);
+
+            $proposalService = $client->getAccountBudgetProposalServiceClient();
+            $mutateRequest = MutateAccountBudgetProposalRequest::build($customerId, $operation);
+            $mutateResponse = $proposalService->mutateAccountBudgetProposal($mutateRequest);
+
+            $balance = max(0, $this->convertMicrosToUnit($newLimitMicros - $amountServedMicros));
+            $this->googleAccountRepository->query()
+                ->where('id', $googleAccount->id)
+                ->update([
+                    'balance' => $balance,
+                    'balance_exhausted' => $balance <= 0,
+                ]);
+
+            return ServiceReturn::success(data: [
+                'resource_name' => $mutateResponse->getResult()?->getResourceName(),
+                'account_budget' => $accountBudget->getResourceName(),
+                'previous_limit' => $this->convertMicrosToUnit($currentLimitMicros),
+                'amount_served' => $this->convertMicrosToUnit($amountServedMicros),
+                'new_limit' => $this->convertMicrosToUnit($newLimitMicros),
+                'balance' => $balance,
+            ]);
+        } catch (GoogleAdsException | ApiException $e) {
+            Logging::error(
+                message: 'GoogleAdsService@increaseAccountSpendingLimit API error: ' . $e->getMessage(),
+                context: [
+                    'service_user_id' => $serviceUserId,
+                    'account_id' => $accountId,
+                ],
+                exception: $e
+            );
+
+            return ServiceReturn::error(message: __('google_ads.error.failed_to_update_account_spending_limit'));
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'GoogleAdsService@increaseAccountSpendingLimit unexpected error: ' . $e->getMessage(),
+                exception: $e
+            );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }

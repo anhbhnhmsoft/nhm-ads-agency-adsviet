@@ -915,6 +915,94 @@ class MetaBusinessService
     }
 
     /**
+     * Tăng giới hạn chi tiêu ở cấp tài khoản quảng cáo Meta.
+     */
+    public function increaseAdAccountSpendCap(?string $accountId, float $amountUsd): ServiceReturn
+    {
+        try {
+            if (empty($accountId)) {
+                return ServiceReturn::error(message: __('meta.error.account_not_found'));
+            }
+
+            if ($amountUsd <= 0) {
+                return ServiceReturn::error(message: __('meta.error.invalid_spend_cap_generic'));
+            }
+
+            $this->initApi();
+
+            $normalizedAccountId = str_starts_with($accountId, 'act_')
+                ? $accountId
+                : 'act_' . preg_replace('/[^0-9]/', '', $accountId);
+
+            $accountData = $this->api->call(
+                "/{$normalizedAccountId}",
+                'GET',
+                ['fields' => 'spend_cap,amount_spent,currency']
+            )->getContent();
+
+            $currency = strtoupper((string) ($accountData['currency'] ?? 'USD'));
+            $currentSpendCap = $this->normalizeAccountMoney($accountData['spend_cap'] ?? null, $currency) ?? 0.0;
+            $amountSpent = $this->normalizeAccountMoney($accountData['amount_spent'] ?? null, $currency) ?? 0.0;
+            $newSpendCap = max($currentSpendCap, $amountSpent) + $amountUsd;
+            $newSpendCapMinor = $this->toMetaMinorUnit($newSpendCap, $currency);
+
+            $response = $this->api->call(
+                "/{$normalizedAccountId}",
+                'POST',
+                ['spend_cap' => $newSpendCapMinor]
+            )->getContent();
+
+            \App\Models\MetaAccount::query()
+                ->where('account_id', preg_replace('/^act_/', '', $normalizedAccountId))
+                ->update(['spend_cap' => (string) $newSpendCapMinor]);
+
+            return ServiceReturn::success(data: [
+                'response' => $response,
+                'account_id' => $normalizedAccountId,
+                'currency' => $currency,
+                'previous_spend_cap' => $currentSpendCap,
+                'amount_spent' => $amountSpent,
+                'new_spend_cap' => $newSpendCap,
+            ]);
+        } catch (Exception $exception) {
+            $message = $exception->getMessage();
+            if (str_contains($message, 'Permissions error')) {
+                return ServiceReturn::error(message: __('meta.error.permissions_error'));
+            }
+
+            Logging::error('MetaBusinessService@increaseAdAccountSpendCap error: '.$message, exception: $exception);
+            return ServiceReturn::error(message: $message);
+        }
+    }
+
+    private function normalizeAccountMoney(mixed $value, ?string $currency): ?float
+    {
+        if ($value === null || $value === '' || !is_numeric($value)) {
+            return null;
+        }
+
+        $amount = (float) $value;
+        return in_array(strtoupper((string) ($currency ?: 'USD')), $this->zeroDecimalCurrencies(), true)
+            ? $amount
+            : $amount / 100;
+    }
+
+    private function toMetaMinorUnit(float $amount, ?string $currency): int
+    {
+        return in_array(strtoupper((string) ($currency ?: 'USD')), $this->zeroDecimalCurrencies(), true)
+            ? (int) round($amount)
+            : (int) round($amount * 100);
+    }
+
+    private function zeroDecimalCurrencies(): array
+    {
+        return [
+            'BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW',
+            'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+        ];
+    }
+
+    /**
      * Thực hiện gọi Batch Request lên Meta (Tối đa 50 requests/lần)
      * Tham khảo: https://developers.facebook.com/docs/graph-api/batch-requests/
      */

@@ -17,6 +17,8 @@ return [
         'failed_to_update_campaign_status' => 'Failed to update campaign status on Google Ads.',
         'failed_to_update_campaign_status_suspended' => 'Cannot update campaign status because the Google Ads account is suspended. Please resolve the suspension in Google Ads first.',
         'failed_to_update_campaign_budget' => 'Failed to update campaign budget on Google Ads.',
+        'account_budget_not_found' => 'Active Google Ads account budget was not found.',
+        'failed_to_update_account_spending_limit' => 'Failed to increase the Google Ads account spending limit. Please check billing/MCC permission or handle it manually.',
         'cannot_resume_spending_exceeded' => 'Cannot resume campaign. Lifetime spending (:spending USD) exceeds current balance (:balance USD) plus safety threshold (:threshold USD). Please top up your account before resuming.',
     ],
     'account_status' => [
@@ -41,4 +43,3 @@ return [
         'low_balance' => "⚠️ Google Ads low balance alert\n\nAccount \":accountName\" only has :balance :currency left (threshold :threshold :currency).\nPlease top up your Google Ads account to avoid interruptions.",
     ],
 ];
-

@@ -5,6 +5,9 @@ namespace App\Service;
 use App\Common\Constants\Wallet\WalletTransactionDescription;
 use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
+use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServicePackage\AccountBillingSource;
+use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
@@ -22,6 +25,7 @@ use App\Service\NotificationService;
 use App\Common\Constants\NotificationType\NotificationType;
 use App\Models\User;
 use App\Models\UserWalletTransaction;
+use App\Models\ServiceUser;
 
 class WalletTransactionService
 {
@@ -33,6 +37,8 @@ class WalletTransactionService
         protected UserRepository $userRepository,
         protected NotificationService $notificationService,
         protected TelegramService $telegramService,
+        protected MetaBusinessService $metaBusinessService,
+        protected GoogleAdsService $googleAdsService,
     ) {
     }
 
@@ -167,16 +173,20 @@ class WalletTransactionService
             $amountFormatted = fmod($amount, 1.0) === 0.0
                 ? number_format($amount, 0)
                 : number_format($amount, 2);
-            $content = $transaction->reference_id
-                ?: $transaction->payment_id
-                ?: ('TX'.$transaction->id);
+            $transactionCode = 'TX'.$transaction->id;
+            $orderCode = $this->supportGroupDepositOrderCode($transaction);
+            $timezone = (string) config('services.telegram.timezone', 'Asia/Ho_Chi_Minh');
+            $createdAt = $transaction->created_at
+                ? $transaction->created_at->copy()->timezone($timezone)
+                : now($timezone);
 
             $message = __('wallet.telegram.deposit_group_alert', [
                 'name' => htmlspecialchars($customer->name ?? $customer->username ?? ('User '.$customer->id), ENT_QUOTES, 'UTF-8'),
                 'network' => htmlspecialchars((string) ($transaction->network ?? 'N/A'), ENT_QUOTES, 'UTF-8'),
                 'amount' => htmlspecialchars($amountFormatted, ENT_QUOTES, 'UTF-8'),
-                'content' => htmlspecialchars((string) $content, ENT_QUOTES, 'UTF-8'),
-                'time' => now()->format('n/j/Y, g:i:s A'),
+                'transaction_code' => htmlspecialchars($transactionCode, ENT_QUOTES, 'UTF-8'),
+                'order_code' => htmlspecialchars($orderCode ?: '-', ENT_QUOTES, 'UTF-8'),
+                'time' => $createdAt->format('d/m/Y H:i:s'),
             ]);
 
             $this->telegramService->sendNotification(
@@ -192,6 +202,20 @@ class WalletTransactionService
                 exception: $e
             );
         }
+    }
+
+    private function supportGroupDepositOrderCode(UserWalletTransaction $transaction): ?string
+    {
+        $referenceId = (string) ($transaction->reference_id ?? '');
+        if ($referenceId !== '' && preg_match('/(?:^|\|)order:([^|]+)/', $referenceId, $matches)) {
+            return $matches[1];
+        }
+
+        if ($referenceId !== '' && !preg_match('/https?:\/\//i', $referenceId)) {
+            return $referenceId;
+        }
+
+        return null;
     }
 
     // Tạo lệnh nạp tiền (DEPOSIT) cho user
@@ -363,12 +387,13 @@ class WalletTransactionService
         float $amount,
         ?string $walletPassword = null,
         ?int $platformType = null,
+        ?string $serviceUserId = null,
         ?string $accountId = null,
         ?string $accountName = null
     ): ServiceReturn
     {
         try {
-            return DB::transaction(function () use ($userId, $amount, $walletPassword, $platformType, $accountId, $accountName) {
+            return DB::transaction(function () use ($userId, $amount, $walletPassword, $platformType, $serviceUserId, $accountId, $accountName) {
                 $wallet = $this->walletRepository->findByUserId($userId);
                 if (!$wallet) {
                     return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
@@ -406,6 +431,13 @@ class WalletTransactionService
                     'type' => $type->value,
                     'status' => WalletTransactionStatus::PENDING->value,
                     'description' => $description,
+                    'withdraw_info' => [
+                        'purpose' => 'account_top_up',
+                        'platform_type' => $platformType,
+                        'service_user_id' => $serviceUserId,
+                        'account_id' => $accountId,
+                        'account_name' => $accountName,
+                    ],
                 ]);
 
                 $this->notifyTransaction($transaction, $wallet->user?->id);
@@ -715,6 +747,104 @@ class WalletTransactionService
             Logging::error('WalletTransactionService@updateTransactionStatus error: '.$e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
+    }
+
+    public function approveAccountTopUpByAdmin(int $transactionId): ServiceReturn
+    {
+        try {
+            $transaction = $this->transactionRepository->query()
+                ->with('wallet.user')
+                ->find($transactionId);
+
+            if (!$transaction) {
+                return ServiceReturn::error(message: __('Giao dịch không tồn tại'));
+            }
+
+            if (!in_array((int) $transaction->type, [
+                WalletTransactionType::ACCOUNT_TOP_UP_GOOGLE->value,
+                WalletTransactionType::ACCOUNT_TOP_UP_META->value,
+            ], true)) {
+                return ServiceReturn::error(message: __('Không phải lệnh nạp tiền tài khoản quảng cáo'));
+            }
+
+            if ((int) $transaction->status !== WalletTransactionStatus::PENDING->value) {
+                return ServiceReturn::error(message: __('Giao dịch không ở trạng thái chờ'));
+            }
+
+            $metadata = is_array($transaction->withdraw_info) ? $transaction->withdraw_info : [];
+            $serviceUserId = isset($metadata['service_user_id']) ? (string) $metadata['service_user_id'] : null;
+            $accountId = isset($metadata['account_id']) ? (string) $metadata['account_id'] : null;
+            $platformType = isset($metadata['platform_type']) ? (int) $metadata['platform_type'] : null;
+            $amount = abs((float) $transaction->amount);
+
+            $billingSource = $this->resolveAccountTopUpBillingSource($serviceUserId);
+            $autoResult = null;
+
+            if ($billingSource === AccountBillingSource::ADVIET_CARD->value && $accountId) {
+                if ($platformType === PlatformType::META->value) {
+                    $autoResult = $this->metaBusinessService->increaseAdAccountSpendCap($accountId, $amount);
+                } elseif ($platformType === PlatformType::GOOGLE->value && $serviceUserId) {
+                    $autoResult = $this->googleAdsService->increaseAccountSpendingLimit($serviceUserId, $accountId, $amount);
+                }
+
+                if ($autoResult?->isError()) {
+                    return $autoResult;
+                }
+            }
+
+            $description = $transaction->description;
+            if ($billingSource === AccountBillingSource::CUSTOMER_CARD->value) {
+                $description = trim((string) $description . ' | Customer card: no account spending limit auto-increase; spending fee is charged separately.');
+            } elseif ($billingSource === AccountBillingSource::SUPPLIER_CREDIT_LINE->value) {
+                $description = trim((string) $description . ' | Supplier credit line: admin/supplier handles account spending limit manually unless supplier API is configured.');
+            } elseif ($autoResult?->isSuccess()) {
+                $description = trim((string) $description . ' | Auto increased account spending limit.');
+            }
+
+            return $this->updateTransactionStatus(
+                transactionId: $transactionId,
+                status: WalletTransactionStatus::COMPLETED->value,
+                description: $description
+            );
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@approveAccountTopUpByAdmin error: '.$e->getMessage(), exception: $e);
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    private function resolveAccountTopUpBillingSource(?string $serviceUserId): string
+    {
+        if (!$serviceUserId) {
+            return AccountBillingSource::ADVIET_CARD->value;
+        }
+
+        $serviceUser = ServiceUser::query()
+            ->with('package')
+            ->find($serviceUserId);
+
+        if (!$serviceUser) {
+            return AccountBillingSource::ADVIET_CARD->value;
+        }
+
+        $config = $serviceUser->config_account ?? [];
+        $source = $config['billing_source']
+            ?? $config['payment_source']
+            ?? $serviceUser->package?->billing_source
+            ?? null;
+
+        if (in_array($source, AccountBillingSource::getValues(), true)) {
+            return $source;
+        }
+
+        if (!empty($serviceUser->package?->supplier_id)) {
+            return AccountBillingSource::SUPPLIER_CREDIT_LINE->value;
+        }
+
+        if (($serviceUser->package?->payment_type ?? null) === ServicePackagePaymentType::POSTPAY->value) {
+            return AccountBillingSource::CUSTOMER_CARD->value;
+        }
+
+        return AccountBillingSource::ADVIET_CARD->value;
     }
 
     public function getPendingTransactionsSummary(int $limit = 10): ServiceReturn

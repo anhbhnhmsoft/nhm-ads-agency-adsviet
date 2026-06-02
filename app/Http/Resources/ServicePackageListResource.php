@@ -20,6 +20,7 @@ class ServicePackageListResource extends JsonResource
             'description' => $this->description,
             'platform' => $this->platform,
             'payment_type' => $this->payment_type ?? 'prepay',
+            'billing_source' => $this->billing_source ?? 'adviet_card',
             'can_use_postpay' => (bool) ($this->can_use_postpay ?? (($this->payment_type ?? 'prepay') === 'postpay')),
             'features' => $this->features,
             'monthly_spending_fee_structure' => $this->monthly_spending_fee_structure,

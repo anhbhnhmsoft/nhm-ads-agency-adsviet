@@ -1548,7 +1548,8 @@ const ServiceManagementIndex = ({
                             handleSearch={handleSearch}
                             handleReset={handleReset}
                         />
-                        {query.platform === _PlatformType.META && (
+                        {(lastSyncedAt ||
+                            query.platform === _PlatformType.META) && (
                             <div className="-mt-4 flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-end">
                                 <span>
                                     {t('service_management.last_synced_at', {
@@ -1556,23 +1557,27 @@ const ServiceManagementIndex = ({
                                     })}
                                     : {formatDateTimeFull(lastSyncedAt)}
                                 </span>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleSyncMetaInsights}
-                                    disabled={
-                                        syncMetaSubmitting || !selectedMetaBmId
-                                    }
-                                >
-                                    {syncMetaSubmitting ? (
-                                        <Loader2 className="animate-spin" />
-                                    ) : (
-                                        <RefreshCw />
-                                    )}
-                                    {t('service_management.sync_meta', {
-                                        defaultValue: 'Cập nhật dữ liệu Meta',
-                                    })}
-                                </Button>
+                                {query.platform === _PlatformType.META && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleSyncMetaInsights}
+                                        disabled={
+                                            syncMetaSubmitting ||
+                                            !selectedMetaBmId
+                                        }
+                                    >
+                                        {syncMetaSubmitting ? (
+                                            <Loader2 className="animate-spin" />
+                                        ) : (
+                                            <RefreshCw />
+                                        )}
+                                        {t('service_management.sync_meta', {
+                                            defaultValue:
+                                                'Cập nhật dữ liệu Meta',
+                                        })}
+                                    </Button>
+                                )}
                             </div>
                         )}
 
@@ -1761,6 +1766,8 @@ const ServiceManagementIndex = ({
                                             accountTopUpWalletPassword,
                                         platform_type:
                                             selectedAccountForTopUp.platform,
+                                        service_user_id:
+                                            selectedAccountForTopUp.service_user_id,
                                         account_id:
                                             selectedAccountForTopUp.account_id ||
                                             selectedAccountForTopUp.id,

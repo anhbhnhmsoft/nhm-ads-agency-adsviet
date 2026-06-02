@@ -167,16 +167,23 @@ class WalletTransactionController extends Controller
             [
                 WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_GOOGLE->value,
                 WalletTransactionType::CAMPAIGN_BUDGET_UPDATE_META->value,
+            ],
+            true
+        )) {
+            // Với lệnh cập nhật ngân sách chiến dịch: chỉ cập nhật status (tiền đã bị trừ khi tạo lệnh)
+            $result = $this->walletTransactionService->updateTransactionStatus(
+                transactionId: $id,
+                status: WalletTransactionStatus::COMPLETED->value
+            );
+        } elseif (in_array(
+            (int) $transaction->type,
+            [
                 WalletTransactionType::ACCOUNT_TOP_UP_GOOGLE->value,
                 WalletTransactionType::ACCOUNT_TOP_UP_META->value,
             ],
             true
         )) {
-            // Với lệnh dùng ví để xử lý trên nền tảng: chỉ cập nhật status (tiền đã bị trừ khi tạo lệnh)
-            $result = $this->walletTransactionService->updateTransactionStatus(
-                transactionId: $id,
-                status: WalletTransactionStatus::COMPLETED->value
-            );
+            $result = $this->walletTransactionService->approveAccountTopUpByAdmin($id);
         } elseif (in_array(
             (int) $transaction->type,
             [

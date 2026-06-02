@@ -67,7 +67,7 @@ return [
     ],
     'telegram' => [
         'low_balance' => "⚠️ Your wallet only has :balance USDT (threshold :threshold USDT).\nPlease top up to avoid service interruption.",
-        'deposit_group_alert' => "⚠️ <b>Deposit notification</b> ⚠️\n<b>Name:</b>:name\n<b>Network:</b> :network\n<b>Amount:</b> :amount\n<b>Content:</b> :content\n<b>Time:</b> :time",
+        'deposit_group_alert' => "⚠️ <b>Deposit notification</b> ⚠️\n<b>Name:</b>:name\n<b>Network:</b> :network\n<b>Amount:</b> :amount\n<b>Transaction:</b> :transaction_code\n<b>Order:</b> :order_code\n<b>Time:</b> :time",
     ],
     'postpay_charge_insufficient' => 'Hello :name, this postpaid billing is :charge USDT (open fee: :open_fee, monthly fee: :monthly_fee) but your wallet balance is :balance USDT. Please top up to keep services running.',
     'postpay_charge_label' => 'Postpay charge',
