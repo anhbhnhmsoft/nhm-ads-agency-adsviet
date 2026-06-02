@@ -1174,7 +1174,10 @@ class MetaService
                     $insightsUrl = "{$metaAccount->account_id}/insights?" . http_build_query([
                         'level' => 'account',
                         'time_increment' => 1,
-                        'date_preset' => 'last_30d',
+                        'time_range' => [
+                            'since' => Carbon::today()->subDays(30)->toDateString(),
+                            'until' => Carbon::today()->toDateString(),
+                        ],
                         'fields' => 'date_start,date_stop,spend,impressions,reach,frequency,clicks,inline_link_clicks,ctr,cpc,cpm,actions,purchase_roas'
                     ]);
                     $batchRequests[] = [
