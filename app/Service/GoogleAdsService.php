@@ -1633,9 +1633,16 @@ GAQL;
                 'manager_id' => $managerId,
             ]);
 
-            // Query customer_client để lấy tất cả các sub-accounts được quản lý bởi manager
-            // LƯU Ý: Chỉ loại bỏ CANCELED, sync tất cả các status khác (ENABLED, SUSPENDED, CLOSED, etc.)
-            // Điều này đảm bảo tất cả accounts hiển thị trên Google Ads đều được sync vào hệ thống
+            $managerIdsToSync = $this->googleMccManagerRepository->query()
+                ->where('mcc_id', (string) $managerId)
+                ->orWhere('parent_mcc_id', (string) $managerId)
+                ->pluck('mcc_id')
+                ->map(fn ($id) => (string) $id)
+                ->push((string) $managerId)
+                ->unique()
+                ->values()
+                ->toArray();
+
             $query = <<<GAQL
 SELECT
   customer_client.client_customer,
@@ -1650,95 +1657,106 @@ WHERE customer_client.manager = FALSE
 GAQL;
 
             $syncedCount = 0;
-            $request = new SearchGoogleAdsStreamRequest([
-                'customer_id' => (string) $managerId,
-                'query' => $query,
-            ]);
+            foreach ($managerIdsToSync as $customerManagerId) {
+                $request = new SearchGoogleAdsStreamRequest([
+                    'customer_id' => (string) $customerManagerId,
+                    'query' => $query,
+                ]);
 
-            $stream = $googleAdsService->searchStream($request);
-            foreach ($stream->readAll() as $response) {
-                foreach ($response->getResults() as $row) {
-                    $customerClient = $row->getCustomerClient();
-                    $clientCustomer = $customerClient?->getClientCustomer();
+                try {
+                    $stream = $googleAdsService->searchStream($request);
+                    foreach ($stream->readAll() as $response) {
+                        foreach ($response->getResults() as $row) {
+                            $customerClient = $row->getCustomerClient();
+                            $clientCustomer = $customerClient?->getClientCustomer();
 
-                    if (!$clientCustomer) {
-                        continue;
+                            if (!$clientCustomer) {
+                                continue;
+                            }
+
+                            $accountId = $this->extractIdFromResource($clientCustomer);
+                            if (!$accountId) {
+                                continue;
+                            }
+
+                            $rawStatus = $customerClient->getStatus();
+                            $mappedStatus = $this->mapStatusToInt($rawStatus);
+
+                            $balance = null;
+                            $balanceExhausted = false;
+                            try {
+                                $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $customerManagerId);
+                                $balance = $balanceData['balance'] ?? null;
+                                $balanceExhausted = $balanceData['exhausted'] ?? false;
+                            } catch (\Throwable $balanceError) {
+                                Logging::error(
+                                    message: 'GoogleAdsService@syncFromManagerId: Failed to get account balance, but will still sync account',
+                                    context: [
+                                        'manager_id' => $customerManagerId,
+                                        'root_manager_id' => $managerId,
+                                        'account_id' => $accountId,
+                                        'error' => $balanceError->getMessage(),
+                                    ],
+                                    exception: $balanceError
+                                );
+                            }
+
+                            $existingAccount = $this->googleAccountRepository->query()
+                                ->where('account_id', (string) $accountId)
+                                ->first();
+
+                            $todaySpend = 0.0;
+                            try {
+                                $todaySpend = $this->getCustomerTodaySpend($googleAdsService, (string) $accountId);
+                            } catch (\Throwable $spendError) {
+                                Logging::error(
+                                    message: 'GoogleAdsService@syncFromManagerId: Failed to get today spend, but will still sync account',
+                                    context: [
+                                        'manager_id' => $customerManagerId,
+                                        'root_manager_id' => $managerId,
+                                        'account_id' => $accountId,
+                                        'error' => $spendError->getMessage(),
+                                    ],
+                                    exception: $spendError
+                                );
+                            }
+
+                            $updateData = [
+                                'account_name' => $customerClient->getDescriptiveName() ?? 'N/A',
+                                'account_status' => $mappedStatus,
+                                'currency' => $customerClient->getCurrencyCode() ?? null,
+                                'customer_manager_id' => $customerManagerId,
+                                'time_zone' => $customerClient->getTimeZone() ?? null,
+                                'balance' => $balance,
+                                'balance_exhausted' => $balanceExhausted,
+                                'amount_spent' => $todaySpend,
+                                'last_synced_at' => now(),
+                            ];
+
+                            if (!$existingAccount || !$existingAccount->service_user_id) {
+                                $updateData['service_user_id'] = null;
+                            }
+
+                            $this->googleAccountRepository->query()->updateOrCreate(
+                                [
+                                    'account_id' => (string) $accountId,
+                                ],
+                                $updateData
+                            );
+
+                            $syncedCount++;
+                        }
                     }
-
-                    $accountId = $this->extractIdFromResource($clientCustomer);
-                    if (!$accountId) {
-                        continue;
-                    }
-
-                    $rawStatus = $customerClient->getStatus();
-                    $mappedStatus = $this->mapStatusToInt($rawStatus);
-
-                    // Lấy balance từ API
-                    $balance = null;
-                    $balanceExhausted = false;
-                    try {
-                        $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $managerId);
-                        $balance = $balanceData['balance'] ?? null;
-                        $balanceExhausted = $balanceData['exhausted'] ?? false;
-                    } catch (\Throwable $balanceError) {
-                        Logging::error(
-                            message: 'GoogleAdsService@syncFromManagerId: Failed to get account balance, but will still sync account',
-                            context: [
-                                'manager_id' => $managerId,
-                                'account_id' => $accountId,
-                                'error' => $balanceError->getMessage(),
-                            ],
-                            exception: $balanceError
-                        );
-                    }
-
-                    // Tìm account hiện tại để kiểm tra service_user_id
-                    $existingAccount = $this->googleAccountRepository->query()
-                        ->where('account_id', (string) $accountId)
-                        ->first();
-
-                    // Lấy chi tiêu hôm nay bằng query riêng trên resource customer.
-                    // metrics.cost_micros không tương thích với FROM customer_client.
-                    $todaySpend = 0.0;
-                    try {
-                        $todaySpend = $this->getCustomerTodaySpend($googleAdsService, (string) $accountId);
-                    } catch (\Throwable $spendError) {
-                        Logging::error(
-                            message: 'GoogleAdsService@syncFromManagerId: Failed to get today spend, but will still sync account',
-                            context: [
-                                'manager_id' => $managerId,
-                                'account_id' => $accountId,
-                                'error' => $spendError->getMessage(),
-                            ],
-                            exception: $spendError
-                        );
-                    }
-
-                    $updateData = [
-                        'account_name' => $customerClient->getDescriptiveName() ?? 'N/A',
-                        'account_status' => $mappedStatus,
-                        'currency' => $customerClient->getCurrencyCode() ?? null,
-                        'customer_manager_id' => $managerId,
-                        'time_zone' => $customerClient->getTimeZone() ?? null,
-                        'balance' => $balance,
-                        'balance_exhausted' => $balanceExhausted,
-                        'amount_spent' => $todaySpend, // Cập nhật chi tiêu hôm nay
-                        'last_synced_at' => now(),
-                    ];
-
-                    // Chỉ set service_user_id = null nếu account chưa có service_user_id
-                    if (!$existingAccount || !$existingAccount->service_user_id) {
-                        $updateData['service_user_id'] = null;
-                    }
-
-                    $this->googleAccountRepository->query()->updateOrCreate(
-                        [
-                            'account_id' => (string) $accountId,
+                } catch (\Throwable $managerSyncError) {
+                    Logging::error(
+                        message: 'GoogleAdsService@syncFromManagerId: Failed to sync accounts for manager',
+                        context: [
+                            'manager_id' => $customerManagerId,
+                            'root_manager_id' => $managerId,
+                            'error' => $managerSyncError->getMessage(),
                         ],
-                        $updateData
+                        exception: $managerSyncError
                     );
-
-                    $syncedCount++;
                 }
             }
 
