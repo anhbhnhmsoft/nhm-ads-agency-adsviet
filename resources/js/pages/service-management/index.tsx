@@ -1794,7 +1794,7 @@ const ServiceManagementIndex = ({
                                         value={selectedServiceId || ''}
                                         onValueChange={handleServiceChange}
                                     >
-                                        <SelectTrigger className="w-full">
+                                        <SelectTrigger className="w-full [&>span]:truncate [&>span]:block">
                                             <SelectValue
                                                 placeholder={t(
                                                     'service_management.select_service_placeholder',
@@ -1804,7 +1804,7 @@ const ServiceManagementIndex = ({
                                                 )}
                                             />
                                         </SelectTrigger>
-                                        <SelectContent className="max-h-[300px]">
+                                        <SelectContent className="max-h-[300px] max-w-[500px]">
                                             {activeServices.length === 0 ? (
                                                 <div className="p-2 text-sm text-center text-muted-foreground">
                                                     {t('service_management.no_active_services', {
@@ -1817,7 +1817,9 @@ const ServiceManagementIndex = ({
                                                         key={service.id}
                                                         value={String(service.id)}
                                                     >
-                                                        {service.display_label}
+                                                        <span className="truncate block max-w-[420px]" title={service.display_label}>
+                                                            {service.display_label}
+                                                        </span>
                                                     </SelectItem>
                                                 ))
                                             )}
