@@ -1,14 +1,15 @@
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE, useFormCreateSupplier } from '@/pages/supplier/hooks/use-form';
+import {
+    DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
+    useFormCreateSupplier,
+} from '@/pages/supplier/hooks/use-form';
 import { suppliers_index } from '@/routes';
-import { ReactNode, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useTranslation } from 'react-i18next';
 
 const Create = () => {
     const { t } = useTranslation();
@@ -46,7 +47,10 @@ const Create = () => {
     };
 
     const handleResetMonthlyTemplate = () => {
-        setData('monthly_spending_fee_structure', DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE);
+        setData(
+            'monthly_spending_fee_structure',
+            DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
+        );
     };
 
     const handleClearMonthlyTemplate = () => {
@@ -58,7 +62,9 @@ const Create = () => {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-semibold">
-                        {t('supplier.create_title', { defaultValue: 'Tạo nhà cung cấp' })}
+                        {t('supplier.create_title', {
+                            defaultValue: 'Tạo nhà cung cấp',
+                        })}
                     </h1>
                 </div>
 
@@ -66,11 +72,19 @@ const Create = () => {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {/* Name */}
                         <div className="flex flex-col gap-2 md:col-span-2">
-                            <Label>{t('supplier.name', { defaultValue: 'Tên nhà cung cấp' })}</Label>
+                            <Label>
+                                {t('supplier.name', {
+                                    defaultValue: 'Tên nhà cung cấp',
+                                })}
+                            </Label>
                             <Input
                                 value={data.name}
-                                placeholder={t('supplier.name_placeholder', { defaultValue: 'Nhập tên nhà cung cấp' })}
-                                onChange={(e) => setData('name', e.target.value)}
+                                placeholder={t('supplier.name_placeholder', {
+                                    defaultValue: 'Nhập tên nhà cung cấp',
+                                })}
+                                onChange={(e) =>
+                                    setData('name', e.target.value)
+                                }
                                 required
                             />
                             {errors.name && (
@@ -82,10 +96,17 @@ const Create = () => {
 
                         {/* Open fee */}
                         <div className="flex flex-col gap-2">
-                            <Label>{t('supplier.open_fee', { defaultValue: 'Chi phí mở tài khoản' })}</Label>
+                            <Label>
+                                {t('supplier.open_fee', {
+                                    defaultValue: 'Chi phí mở tài khoản',
+                                })}
+                            </Label>
                             <Input
                                 value={data.open_fee}
-                                placeholder={t('supplier.open_fee_placeholder', { defaultValue: '0' })}
+                                placeholder={t(
+                                    'supplier.open_fee_placeholder',
+                                    { defaultValue: '0' },
+                                )}
                                 type="number"
                                 step="any"
                                 min="0"
@@ -95,8 +116,9 @@ const Create = () => {
                                 required
                             />
                             <span className="text-sm text-slate-400">
-                                {t('supplier.open_fee_desc', { 
-                                    defaultValue: 'Chi phí mở tài khoản của nhà cung cấp. Áp dụng cho cả trả trước và trả sau. Nếu nhập 0 thì không tính phí mở tài khoản.' 
+                                {t('supplier.open_fee_desc', {
+                                    defaultValue:
+                                        'Chi phí mở tài khoản của nhà cung cấp. Áp dụng cho cả trả trước và trả sau. Nếu nhập 0 thì không tính phí mở tài khoản.',
                                 })}
                             </span>
                             {errors.open_fee && (
@@ -108,21 +130,32 @@ const Create = () => {
 
                         {/* Supplier fee percent */}
                         <div className="flex flex-col gap-2">
-                            <Label>{t('supplier.supplier_fee_percent', { defaultValue: 'Chi phí nhà cung cấp (%)' })}</Label>
+                            <Label>
+                                {t('supplier.supplier_fee_percent', {
+                                    defaultValue: 'Chi phí nhà cung cấp (%)',
+                                })}
+                            </Label>
                             <Input
                                 value={data.supplier_fee_percent || '0'}
-                                placeholder={t('supplier.supplier_fee_percent_placeholder', { defaultValue: '0' })}
+                                placeholder={t(
+                                    'supplier.supplier_fee_percent_placeholder',
+                                    { defaultValue: '0' },
+                                )}
                                 type="number"
                                 step="0.01"
                                 min="0"
                                 max="100"
                                 onChange={(e) => {
-                                    setData('supplier_fee_percent', e.target.value);
+                                    setData(
+                                        'supplier_fee_percent',
+                                        e.target.value,
+                                    );
                                 }}
                             />
                             <span className="text-sm text-slate-400">
-                                {t('supplier.supplier_fee_percent_desc', { 
-                                    defaultValue: 'Chi phí nhà cung cấp (%) trên số tiền nạp. Ví dụ: 8%' 
+                                {t('supplier.supplier_fee_percent_desc', {
+                                    defaultValue:
+                                        'Chi phí nhà cung cấp (%) trên số tiền nạp. Ví dụ: 8%',
                                 })}
                             </span>
                             {errors.supplier_fee_percent && (
@@ -133,14 +166,23 @@ const Create = () => {
                         </div>
 
                         {/* Monthly spending & fee structure */}
-                        <div className="md:col-span-2 space-y-3 rounded-lg border p-4">
+                        <div className="space-y-3 rounded-lg border p-4 md:col-span-2">
                             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                                 <div>
                                     <p className="font-medium">
-                                        {t('supplier.monthly_spending_title', { defaultValue: 'Monthly Spending & Fee Structure' })}
+                                        {t('supplier.monthly_spending_title', {
+                                            defaultValue:
+                                                'Monthly Spending & Fee Structure',
+                                        })}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        {t('supplier.monthly_spending_description', { defaultValue: 'Điền biểu phí theo mức chi tiêu cho phần trả sau' })}
+                                        {t(
+                                            'supplier.monthly_spending_description',
+                                            {
+                                                defaultValue:
+                                                    'Điền biểu phí theo mức chi tiêu cho phần trả sau',
+                                            },
+                                        )}
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
@@ -151,7 +193,10 @@ const Create = () => {
                                         onClick={handleAddMonthlySpendingRow}
                                     >
                                         <Plus className="mr-2 h-4 w-4" />
-                                        {t('supplier.monthly_spending_add_row', { defaultValue: 'Thêm dòng' })}
+                                        {t(
+                                            'supplier.monthly_spending_add_row',
+                                            { defaultValue: 'Thêm dòng' },
+                                        )}
                                     </Button>
                                     <Button
                                         type="button"
@@ -160,7 +205,13 @@ const Create = () => {
                                         onClick={handleResetMonthlyTemplate}
                                     >
                                         <RotateCcw className="mr-2 h-4 w-4" />
-                                        {t('supplier.monthly_spending_reset_template', { defaultValue: 'Sử dụng mẫu mặc định' })}
+                                        {t(
+                                            'supplier.monthly_spending_reset_template',
+                                            {
+                                                defaultValue:
+                                                    'Sử dụng mẫu mặc định',
+                                            },
+                                        )}
                                     </Button>
                                     <Button
                                         type="button"
@@ -169,67 +220,96 @@ const Create = () => {
                                         onClick={handleClearMonthlyTemplate}
                                     >
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        {t('supplier.monthly_spending_clear', { defaultValue: 'Không dùng biểu phí' })}
+                                        {t('supplier.monthly_spending_clear', {
+                                            defaultValue: 'Không dùng biểu phí',
+                                        })}
                                     </Button>
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 gap-3">
                                 <div className="hidden md:grid md:grid-cols-[1fr_1fr_auto] md:gap-3">
                                     <Label className="text-muted-foreground">
-                                        {t('supplier.monthly_spending_range_label', { defaultValue: 'Monthly Spending' })}
+                                        {t(
+                                            'supplier.monthly_spending_range_label',
+                                            {
+                                                defaultValue:
+                                                    'Monthly Spending',
+                                            },
+                                        )}
                                     </Label>
                                     <Label className="text-muted-foreground">
-                                        {t('supplier.monthly_spending_fee_label', { defaultValue: 'Fee %' })}
+                                        {t(
+                                            'supplier.monthly_spending_fee_label',
+                                            { defaultValue: 'Fee %' },
+                                        )}
                                     </Label>
                                     <div></div>
                                 </div>
-                                {data.monthly_spending_fee_structure.map((tier, index) => {
-                                    return (
-                                        <div
-                                            key={index}
-                                            className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]"
-                                        >
-                                            <Input
-                                                placeholder={t('supplier.monthly_spending_range_placeholder', { defaultValue: 'Ví dụ: $10,000 – $50,000' })}
-                                                value={tier.range}
-                                                onChange={(e) =>
-                                                    handleMonthlySpendingChange(
-                                                        index,
-                                                        'range',
-                                                        e.target.value,
-                                                    )
-                                                }
-                                            />
-                                            <Input
-                                                placeholder={t('supplier.monthly_spending_fee_placeholder', { defaultValue: 'Ví dụ: 5%' })}
-                                                value={tier.fee_percent}
-                                                onChange={(e) =>
-                                                    handleMonthlySpendingChange(
-                                                        index,
-                                                        'fee_percent',
-                                                        e.target.value,
-                                                    )
-                                                }
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                className="justify-self-start md:justify-self-end"
-                                                size="icon"
-                                                onClick={() =>
-                                                    handleRemoveMonthlySpendingRow(
-                                                        index,
-                                                    )
-                                                }
+                                {data.monthly_spending_fee_structure.map(
+                                    (tier, index) => {
+                                        return (
+                                            <div
+                                                key={index}
+                                                className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]"
                                             >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    );
-                                })}
-                                {data.monthly_spending_fee_structure.length === 0 && (
+                                                <Input
+                                                    placeholder={t(
+                                                        'supplier.monthly_spending_range_placeholder',
+                                                        {
+                                                            defaultValue:
+                                                                'Ví dụ: $10,000 – $50,000',
+                                                        },
+                                                    )}
+                                                    value={tier.range}
+                                                    onChange={(e) =>
+                                                        handleMonthlySpendingChange(
+                                                            index,
+                                                            'range',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                />
+                                                <Input
+                                                    placeholder={t(
+                                                        'supplier.monthly_spending_fee_placeholder',
+                                                        {
+                                                            defaultValue:
+                                                                'Ví dụ: 5%',
+                                                        },
+                                                    )}
+                                                    value={tier.fee_percent}
+                                                    onChange={(e) =>
+                                                        handleMonthlySpendingChange(
+                                                            index,
+                                                            'fee_percent',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    className="justify-self-start md:justify-self-end"
+                                                    size="icon"
+                                                    onClick={() =>
+                                                        handleRemoveMonthlySpendingRow(
+                                                            index,
+                                                        )
+                                                    }
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        );
+                                    },
+                                )}
+                                {data.monthly_spending_fee_structure.length ===
+                                    0 && (
                                     <p className="text-sm text-muted-foreground">
-                                        {t('supplier.monthly_spending_empty', { defaultValue: 'Nhà cung cấp đang dùng phí cố định, không áp dụng biểu phí theo mức chi tiêu.' })}
+                                        {t('supplier.monthly_spending_empty', {
+                                            defaultValue:
+                                                'Nhà cung cấp đang dùng phí cố định, không áp dụng biểu phí theo mức chi tiêu.',
+                                        })}
                                     </p>
                                 )}
                             </div>
@@ -252,13 +332,18 @@ const Create = () => {
                                 />
                                 <Label
                                     htmlFor="disabled"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                 >
-                                    {t('supplier.disabled', { defaultValue: 'Khóa nhà cung cấp' })}
+                                    {t('supplier.disabled', {
+                                        defaultValue: 'Khóa nhà cung cấp',
+                                    })}
                                 </Label>
                             </div>
                             <span className="text-sm text-slate-400">
-                                {t('supplier.disabled_desc', { defaultValue: 'Nếu khóa nhà cung cấp, không thể chọn trong form tạo/sửa gói dịch vụ' })}
+                                {t('supplier.disabled_desc', {
+                                    defaultValue:
+                                        'Nếu khóa nhà cung cấp, không thể chọn trong form tạo/sửa gói dịch vụ',
+                                })}
                             </span>
                             {errors.disabled && (
                                 <span className="text-sm text-red-500">
@@ -280,7 +365,9 @@ const Create = () => {
                         </Button>
                         <Button type="submit" disabled={processing}>
                             {processing
-                                ? t('common.processing', { defaultValue: 'Đang xử lý...' })
+                                ? t('common.processing', {
+                                      defaultValue: 'Đang xử lý...',
+                                  })
                                 : t('common.create', { defaultValue: 'Tạo' })}
                         </Button>
                     </div>

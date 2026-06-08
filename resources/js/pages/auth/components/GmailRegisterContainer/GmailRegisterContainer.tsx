@@ -17,11 +17,5 @@ export default function GmailRegisterContainer() {
         );
     }
 
-    return (
-        <GmailOtpVerify
-            email={email}
-            onBack={() => setStep('email')}
-        />
-    );
+    return <GmailOtpVerify email={email} onBack={() => setStep('email')} />;
 }
-

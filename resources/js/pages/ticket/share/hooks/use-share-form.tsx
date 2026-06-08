@@ -1,5 +1,5 @@
-import { useForm } from '@inertiajs/react';
 import { ticket_share_store } from '@/routes';
+import { useForm } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 
 export const useShareForm = () => {
@@ -17,29 +17,49 @@ export const useShareForm = () => {
         if (form.processing) {
             return;
         }
-        
+
         if (!form.data.platform) {
-            form.setError('platform', t('ticket.share.platform_required', { defaultValue: 'Vui lòng chọn kênh quảng cáo' }));
+            form.setError(
+                'platform',
+                t('ticket.share.platform_required', {
+                    defaultValue: 'Vui lòng chọn kênh quảng cáo',
+                }),
+            );
             return;
         }
 
         if (!form.data.account_id) {
-            form.setError('account_id', t('ticket.share.account_id_required', { defaultValue: 'Vui lòng chọn tài khoản' }));
+            form.setError(
+                'account_id',
+                t('ticket.share.account_id_required', {
+                    defaultValue: 'Vui lòng chọn tài khoản',
+                }),
+            );
             return;
         }
 
         if (!form.data.bm_bc_mcc_id || form.data.bm_bc_mcc_id.trim() === '') {
-            form.setError('bm_bc_mcc_id', t('ticket.share.bm_bc_mcc_id_required', { defaultValue: 'Vui lòng nhập ID BM/MCC' }));
+            form.setError(
+                'bm_bc_mcc_id',
+                t('ticket.share.bm_bc_mcc_id_required', {
+                    defaultValue: 'Vui lòng nhập ID BM/MCC',
+                }),
+            );
             return;
         }
 
         if (!form.data.notes || form.data.notes.trim() === '') {
-            form.setError('notes', t('ticket.share.notes_required', { defaultValue: 'Vui lòng nhập ghi chú' }));
+            form.setError(
+                'notes',
+                t('ticket.share.notes_required', {
+                    defaultValue: 'Vui lòng nhập ghi chú',
+                }),
+            );
             return;
         }
 
         const platformValue = parseInt(form.data.platform);
-        
+
         const submitData = {
             platform: platformValue,
             account_id: form.data.account_id,
@@ -55,7 +75,10 @@ export const useShareForm = () => {
             },
             onError: (errors: Record<string, string>) => {
                 Object.keys(errors).forEach((key) => {
-                    form.setError(key as keyof typeof form.data, errors[key] as string);
+                    form.setError(
+                        key as keyof typeof form.data,
+                        errors[key] as string,
+                    );
                 });
             },
         });

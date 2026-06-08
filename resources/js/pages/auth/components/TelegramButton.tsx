@@ -1,7 +1,7 @@
-import { FC, useEffect, useRef } from 'react';
 import { TelegramUser } from '@/pages/auth/types/types';
-import { router } from '@inertiajs/react';
 import { auth_telegram } from '@/routes';
+import { router } from '@inertiajs/react';
+import { FC, useEffect, useRef } from 'react';
 
 type Props = {
     bot_username: string;
@@ -32,7 +32,7 @@ const TelegramButton: FC<Props> = ({ bot_username }) => {
             // Xóa iframe được tạo bởi Telegram widget
             if (containerRef.current) {
                 const iframes = containerRef.current.querySelectorAll('iframe');
-                iframes.forEach(iframe => iframe.remove());
+                iframes.forEach((iframe) => iframe.remove());
             }
         };
 

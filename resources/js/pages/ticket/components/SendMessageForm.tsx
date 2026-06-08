@@ -1,9 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useTranslation } from 'react-i18next';
+import { ticket_add_message } from '@/routes';
 import { useForm } from '@inertiajs/react';
 import { Send } from 'lucide-react';
-import { ticket_add_message } from '@/routes';
+import { useTranslation } from 'react-i18next';
 
 interface SendMessageFormProps {
     ticketId: string;
@@ -31,23 +31,31 @@ export function SendMessageForm({ ticketId }: SendMessageFormProps) {
                 <Textarea
                     value={form.data.message}
                     onChange={(e) => form.setData('message', e.target.value)}
-                    placeholder={t('ticket.message_placeholder', { defaultValue: 'Nhập tin nhắn của bạn...' })}
+                    placeholder={t('ticket.message_placeholder', {
+                        defaultValue: 'Nhập tin nhắn của bạn...',
+                    })}
                     rows={4}
                     required
                 />
                 {form.errors.message && (
-                    <p className="text-sm text-red-500">{form.errors.message}</p>
+                    <p className="text-sm text-red-500">
+                        {form.errors.message}
+                    </p>
                 )}
             </div>
             <div className="flex justify-end">
-                <Button type="submit" disabled={form.processing || !form.data.message.trim()}>
+                <Button
+                    type="submit"
+                    disabled={form.processing || !form.data.message.trim()}
+                >
                     <Send className="mr-2 h-4 w-4" />
                     {form.processing
-                        ? t('common.processing', { defaultValue: 'Đang xử lý...' })
+                        ? t('common.processing', {
+                              defaultValue: 'Đang xử lý...',
+                          })
                         : t('ticket.send', { defaultValue: 'Gửi' })}
                 </Button>
             </div>
         </form>
     );
 }
-

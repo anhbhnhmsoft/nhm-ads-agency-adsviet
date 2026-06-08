@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import { usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 export const useEmailOtpSent = () => {
     const { flash } = usePage().props as any;
@@ -9,7 +9,11 @@ export const useEmailOtpSent = () => {
     });
 
     useEffect(() => {
-        if (flash?.info && typeof flash.info === 'string' && flash.info.includes('xác minh')) {
+        if (
+            flash?.info &&
+            typeof flash.info === 'string' &&
+            flash.info.includes('xác minh')
+        ) {
             setEmailOtpSent(true);
             sessionStorage.setItem('profile_email_otp_sent', 'true');
         }
@@ -22,4 +26,3 @@ export const useEmailOtpSent = () => {
 
     return { emailOtpSent, setEmailOtpSent, resetOtpSent };
 };
-

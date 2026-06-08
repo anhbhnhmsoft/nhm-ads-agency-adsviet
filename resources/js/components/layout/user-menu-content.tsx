@@ -1,16 +1,16 @@
+import { UserInfo } from '@/components/layout/user-info';
+import { Badge } from '@/components/ui/badge';
 import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { UserInfo } from '@/components/layout/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
+import { IUser } from '@/lib/types/type';
+import { logout, profile } from '@/routes';
 import { Link, router } from '@inertiajs/react';
 import { LogOut, Mail, Send, UserRound } from 'lucide-react';
-import { IUser } from '@/lib/types/type';
 import { useTranslation } from 'react-i18next';
-import { logout, profile } from '@/routes';
-import { Badge } from '@/components/ui/badge';
 
 interface UserMenuContentProps {
     user: IUser | null;

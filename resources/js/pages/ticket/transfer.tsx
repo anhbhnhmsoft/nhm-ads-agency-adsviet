@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
-import { useTranslation } from 'react-i18next';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import type { TransferPageProps } from './types/type';
-import { TransferTabs } from './transfer/components/TransferTabs';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TransferForm } from './transfer/components/TransferForm';
 import { TransferList } from './transfer/components/TransferList';
+import { TransferTabs } from './transfer/components/TransferTabs';
+import type { TransferPageProps } from './types/type';
 
 const TransferIndex = ({ tickets, accounts, error }: TransferPageProps) => {
     const { t } = useTranslation();
@@ -15,11 +15,17 @@ const TransferIndex = ({ tickets, accounts, error }: TransferPageProps) => {
 
     return (
         <div>
-            <Head title={t('ticket.transfer.title', { defaultValue: 'Chuyển tiền' })} />
-            
+            <Head
+                title={t('ticket.transfer.title', {
+                    defaultValue: 'Chuyển tiền',
+                })}
+            />
+
             <div className="mb-4">
                 <h1 className="text-2xl font-semibold">
-                    {t('ticket.transfer.title', { defaultValue: 'Chuyển tiền giữa các tài khoản' })}
+                    {t('ticket.transfer.title', {
+                        defaultValue: 'Chuyển tiền giữa các tài khoản',
+                    })}
                 </h1>
             </div>
 
@@ -39,8 +45,10 @@ const TransferIndex = ({ tickets, accounts, error }: TransferPageProps) => {
 };
 
 TransferIndex.layout = (page: React.ReactNode) => (
-    <AppLayout breadcrumbs={[{ title: 'ticket.transfer.title' }]} children={page} />
+    <AppLayout
+        breadcrumbs={[{ title: 'ticket.transfer.title' }]}
+        children={page}
+    />
 );
 
 export default TransferIndex;
-

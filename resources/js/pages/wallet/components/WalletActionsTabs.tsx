@@ -99,7 +99,10 @@ const WalletActionsTabs = ({
                                     onChange={(e) =>
                                         topUpForm.setData(
                                             'network',
-                                            e.target.value as 'BEP20' | 'TRC20' | 'PAYMENTO',
+                                            e.target.value as
+                                                | 'BEP20'
+                                                | 'TRC20'
+                                                | 'PAYMENTO',
                                         )
                                     }
                                     disabled={networks.length === 0}

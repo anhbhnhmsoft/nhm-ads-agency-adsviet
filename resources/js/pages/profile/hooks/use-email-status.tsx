@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ProfileUser, EmailStatus } from '../types/type';
+import type { EmailStatus, ProfileUser } from '../types/type';
 
 export const useEmailStatus = (user: ProfileUser): EmailStatus => {
     const { t } = useTranslation();
@@ -27,4 +27,3 @@ export const useEmailStatus = (user: ProfileUser): EmailStatus => {
         };
     }, [user.email, user.email_verified_at, t]);
 };
-

@@ -34,5 +34,3 @@ export const useFormUpdateCommission = (initialData: CreateCommissionForm) => {
 
     return { form, submit };
 };
-
-

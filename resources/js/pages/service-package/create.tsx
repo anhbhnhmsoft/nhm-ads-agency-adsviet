@@ -14,12 +14,19 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { _PlatformType } from '@/lib/types/constants';
 import UserMultiSelect from '@/pages/service-package/components/user-multi-select';
-import { DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE, useFormCreateServicePackage } from '@/pages/service-package/hooks/use-form';
-import { ServicePackageOption, SupplierOption, UserOption } from '@/pages/service-package/types/type';
+import {
+    DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
+    useFormCreateServicePackage,
+} from '@/pages/service-package/hooks/use-form';
+import {
+    ServicePackageOption,
+    SupplierOption,
+    UserOption,
+} from '@/pages/service-package/types/type';
 import { service_packages_index } from '@/routes';
-import { ReactNode, useMemo, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { ReactNode, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     meta_features: ServicePackageOption[];
@@ -27,7 +34,12 @@ type Props = {
     suppliers?: SupplierOption[];
     all_users?: UserOption[];
 };
-const Create = ({ meta_features, google_features, suppliers = [], all_users = [] }: Props) => {
+const Create = ({
+    meta_features,
+    google_features,
+    suppliers = [],
+    all_users = [],
+}: Props) => {
     const { t } = useTranslation();
 
     const { form, submit } = useFormCreateServicePackage();
@@ -38,7 +50,11 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
     )?.[1];
 
     useEffect(() => {
-        if ((data.platform === _PlatformType.META || data.platform === _PlatformType.GOOGLE) && data.features.length === 0) {
+        if (
+            (data.platform === _PlatformType.META ||
+                data.platform === _PlatformType.GOOGLE) &&
+            data.features.length === 0
+        ) {
             setData('features', [{ key: '', value: '' }]);
         }
     }, [data.platform]);
@@ -110,8 +126,13 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
         setData('monthly_spending_fee_structure', next);
     };
 
-    const parseMonthlyRangeToMinMax = (range: string): { min: string; max: string } => {
-        const cleaned = (range || '').replace(/\$/g, '').replace(/,/g, '').trim();
+    const parseMonthlyRangeToMinMax = (
+        range: string,
+    ): { min: string; max: string } => {
+        const cleaned = (range || '')
+            .replace(/\$/g, '')
+            .replace(/,/g, '')
+            .trim();
         if (!cleaned) return { min: '', max: '' };
 
         // dạng "10000-50000" hoặc "10000 – 50000"
@@ -126,7 +147,10 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
         // dạng "10000+"
         if (cleaned.endsWith('+')) {
             return {
-                min: cleaned.slice(0, -1).trim().replace(/[^\d.]/g, ''),
+                min: cleaned
+                    .slice(0, -1)
+                    .trim()
+                    .replace(/[^\d.]/g, ''),
                 max: '',
             };
         }
@@ -244,7 +268,11 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
 
                 {/* Supplier */}
                 <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.supplier', { defaultValue: 'Nhà cung cấp' })}</Label>
+                    <Label>
+                        {t('service_packages.supplier', {
+                            defaultValue: 'Nhà cung cấp',
+                        })}
+                    </Label>
                     <Select
                         value={data.supplier_id || undefined}
                         onValueChange={(value) => {
@@ -253,12 +281,18 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                     >
                         <SelectTrigger>
                             <SelectValue
-                                placeholder={t('service_packages.supplier_placeholder', { defaultValue: 'Chọn nhà cung cấp' })}
+                                placeholder={t(
+                                    'service_packages.supplier_placeholder',
+                                    { defaultValue: 'Chọn nhà cung cấp' },
+                                )}
                             />
                         </SelectTrigger>
                         <SelectContent>
                             {suppliers.map((supplier) => (
-                                <SelectItem key={supplier.id} value={supplier.id}>
+                                <SelectItem
+                                    key={supplier.id}
+                                    value={supplier.id}
+                                >
                                     {supplier.name}
                                 </SelectItem>
                             ))}
@@ -286,7 +320,9 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                         required
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder={t('service_packages.payment_type')} />
+                            <SelectValue
+                                placeholder={t('service_packages.payment_type')}
+                            />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectGroup>
@@ -308,7 +344,9 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
 
                 {data.payment_type === 'prepay' && (
                     <div className="flex flex-col gap-2 md:col-span-2">
-                        <Label>{t('service_packages.allowed_users_label')}</Label>
+                        <Label>
+                            {t('service_packages.allowed_users_label')}
+                        </Label>
                         <p className="text-sm text-muted-foreground">
                             {t('service_packages.allowed_users_description')}
                         </p>
@@ -342,7 +380,7 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                 </div>
 
                 {/* Monthly spending & fee structure */}
-                <div className="md:col-span-2 space-y-3 rounded-lg border p-4">
+                <div className="space-y-3 rounded-lg border p-4 md:col-span-2">
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                         <div>
                             <p className="font-medium">
@@ -380,66 +418,97 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                     <div className="grid grid-cols-1 gap-3">
                         <div className="hidden md:grid md:grid-cols-[1fr_1fr_1fr_auto] md:gap-3">
                             <Label className="text-muted-foreground">
-                                {t('service_packages.monthly_spending_min_label', { defaultValue: 'Min' })}
+                                {t(
+                                    'service_packages.monthly_spending_min_label',
+                                    { defaultValue: 'Min' },
+                                )}
                             </Label>
                             <Label className="text-muted-foreground">
-                                {t('service_packages.monthly_spending_max_label', { defaultValue: 'Max' })}
+                                {t(
+                                    'service_packages.monthly_spending_max_label',
+                                    { defaultValue: 'Max' },
+                                )}
                             </Label>
                             <Label className="text-muted-foreground">
-                                {t('service_packages.monthly_spending_fee_label')}
+                                {t(
+                                    'service_packages.monthly_spending_fee_label',
+                                )}
                             </Label>
                             <span />
                         </div>
-                        {data.monthly_spending_fee_structure.map((tier, index) => {
-                            const { min, max } = parseMonthlyRangeToMinMax(tier.range);
-                            return (
-                                <div
-                                    key={`monthly-tier-${index}`}
-                                    className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto]"
-                                >
-                                    <Input
-                                        placeholder={t('service_packages.monthly_spending_min_label', { defaultValue: 'Min' })}
-                                        type="number"
-                                        value={min}
-                                        onChange={(e) => handleMonthlyMinChange(index, e.target.value)}
-                                    />
-                                    <Input
-                                        placeholder={t('service_packages.monthly_spending_max_label', { defaultValue: 'Max' })}
-                                        type="number"
-                                        value={max}
-                                        onChange={(e) => handleMonthlyMaxChange(index, e.target.value)}
-                                    />
-                                    <Input
-                                        placeholder={t('service_packages.monthly_spending_fee_label')}
-                                        value={tier.fee_percent}
-                                        onChange={(e) =>
-                                            handleMonthlySpendingChange(
-                                                index,
-                                                'fee_percent',
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        className="justify-self-start md:justify-self-end"
-                                        size="icon"
-                                        onClick={() =>
-                                            handleRemoveMonthlySpendingRow(
-                                                index,
-                                            )
-                                        }
-                                        disabled={
-                                            data.monthly_spending_fee_structure
-                                                .length === 1
-                                        }
+                        {data.monthly_spending_fee_structure.map(
+                            (tier, index) => {
+                                const { min, max } = parseMonthlyRangeToMinMax(
+                                    tier.range,
+                                );
+                                return (
+                                    <div
+                                        key={`monthly-tier-${index}`}
+                                        className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto]"
                                     >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            );
-                        })}
+                                        <Input
+                                            placeholder={t(
+                                                'service_packages.monthly_spending_min_label',
+                                                { defaultValue: 'Min' },
+                                            )}
+                                            type="number"
+                                            value={min}
+                                            onChange={(e) =>
+                                                handleMonthlyMinChange(
+                                                    index,
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <Input
+                                            placeholder={t(
+                                                'service_packages.monthly_spending_max_label',
+                                                { defaultValue: 'Max' },
+                                            )}
+                                            type="number"
+                                            value={max}
+                                            onChange={(e) =>
+                                                handleMonthlyMaxChange(
+                                                    index,
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <Input
+                                            placeholder={t(
+                                                'service_packages.monthly_spending_fee_label',
+                                            )}
+                                            value={tier.fee_percent}
+                                            onChange={(e) =>
+                                                handleMonthlySpendingChange(
+                                                    index,
+                                                    'fee_percent',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            className="justify-self-start md:justify-self-end"
+                                            size="icon"
+                                            onClick={() =>
+                                                handleRemoveMonthlySpendingRow(
+                                                    index,
+                                                )
+                                            }
+                                            disabled={
+                                                data
+                                                    .monthly_spending_fee_structure
+                                                    .length === 1
+                                            }
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                );
+                            },
+                        )}
                     </div>
                     {monthlySpendingError && (
                         <span className="text-sm text-red-500">
@@ -504,7 +573,7 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                         type="number"
                         step={'any'}
                         onChange={(e) => {
-                            setData('top_up_fee',  e.target.value);
+                            setData('top_up_fee', e.target.value);
                         }}
                         required
                     />
@@ -559,14 +628,15 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                     </div>
                 </Label>
             </div>
-                {/* Features */}
+            {/* Features */}
             <h1 className="text-xl font-semibold">
                 {data.platform === _PlatformType.META
                     ? t('service_packages.meta_features')
                     : t('service_packages.google_features')}
             </h1>
-            
-            {(data.platform === _PlatformType.META || data.platform === _PlatformType.GOOGLE) ? (
+
+            {data.platform === _PlatformType.META ||
+            data.platform === _PlatformType.GOOGLE ? (
                 <div className="space-y-3 rounded-lg border p-4">
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                         <div>
@@ -577,8 +647,17 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                             </p>
                             <p className="text-sm text-muted-foreground">
                                 {data.platform === _PlatformType.META
-                                    ? t('service_packages.meta_features_desc', { defaultValue: 'Nhập các rule Meta Ads. Mỗi dòng là một rule với tiêu đề và mô tả.' })
-                                    : t('service_packages.google_features_desc', { defaultValue: 'Nhập các rule Google Ads. Mỗi dòng là một rule với tiêu đề và mô tả.' })}
+                                    ? t('service_packages.meta_features_desc', {
+                                          defaultValue:
+                                              'Nhập các rule Meta Ads. Mỗi dòng là một rule với tiêu đề và mô tả.',
+                                      })
+                                    : t(
+                                          'service_packages.google_features_desc',
+                                          {
+                                              defaultValue:
+                                                  'Nhập các rule Google Ads. Mỗi dòng là một rule với tiêu đề và mô tả.',
+                                          },
+                                      )}
                             </p>
                         </div>
                         <Button
@@ -586,21 +665,31 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                                const newFeatures = [...data.features, { key: '', value: '' }];
+                                const newFeatures = [
+                                    ...data.features,
+                                    { key: '', value: '' },
+                                ];
                                 setData('features', newFeatures);
                             }}
                         >
                             <Plus className="mr-2 h-4 w-4" />
-                            {t('service_packages.meta_features_add_rule', { defaultValue: '+ Thêm rule' })}
+                            {t('service_packages.meta_features_add_rule', {
+                                defaultValue: '+ Thêm rule',
+                            })}
                         </Button>
                     </div>
                     <div className="grid grid-cols-1 gap-3">
                         <div className="hidden md:grid md:grid-cols-[1fr_1fr_auto] md:gap-3">
                             <Label className="text-muted-foreground">
-                                {t('service_packages.meta_features_key_label', { defaultValue: 'Tiêu đề' })}
+                                {t('service_packages.meta_features_key_label', {
+                                    defaultValue: 'Tiêu đề',
+                                })}
                             </Label>
                             <Label className="text-muted-foreground">
-                                {t('service_packages.meta_features_value_label', { defaultValue: 'Mô tả' })}
+                                {t(
+                                    'service_packages.meta_features_value_label',
+                                    { defaultValue: 'Mô tả' },
+                                )}
                             </Label>
                             <span />
                         </div>
@@ -610,7 +699,10 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                                 className="grid gap-2 md:grid-cols-[1fr_1fr_auto]"
                             >
                                 <Input
-                                    placeholder={t('service_packages.meta_features_key_placeholder', { defaultValue: 'Nhập tiêu đề' })}
+                                    placeholder={t(
+                                        'service_packages.meta_features_key_placeholder',
+                                        { defaultValue: 'Nhập tiêu đề' },
+                                    )}
                                     value={feature.key || ''}
                                     onChange={(e) => {
                                         const newFeatures = [...data.features];
@@ -622,8 +714,15 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                                     }}
                                 />
                                 <Input
-                                    placeholder={t('service_packages.meta_features_value_placeholder', { defaultValue: 'Nhập mô tả' })}
-                                    value={typeof feature.value === 'string' ? feature.value : (feature.value?.toString() || '')}
+                                    placeholder={t(
+                                        'service_packages.meta_features_value_placeholder',
+                                        { defaultValue: 'Nhập mô tả' },
+                                    )}
+                                    value={
+                                        typeof feature.value === 'string'
+                                            ? feature.value
+                                            : feature.value?.toString() || ''
+                                    }
                                     onChange={(e) => {
                                         const newFeatures = [...data.features];
                                         // Lưu value dạng string (text) để admin nhập tự do
@@ -640,9 +739,10 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                                     className="justify-self-start md:justify-self-end"
                                     size="icon"
                                     onClick={() => {
-                                        const newFeatures = data.features.filter(
-                                            (_, idx) => idx !== index,
-                                        );
+                                        const newFeatures =
+                                            data.features.filter(
+                                                (_, idx) => idx !== index,
+                                            );
                                         setData('features', newFeatures);
                                     }}
                                 >
@@ -662,7 +762,10 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                     {availableFeatures.map((feature) => {
                         if (feature.type === 'boolean') {
                             return (
-                                <div key={feature.key} className={'flex flex-col gap-2'}>
+                                <div
+                                    key={feature.key}
+                                    className={'flex flex-col gap-2'}
+                                >
                                     <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 hover:bg-accent/50 has-aria-checked:border-[#4285f4] has-aria-checked:bg-orange-50">
                                         <Checkbox
                                             id={feature.key}
@@ -687,17 +790,22 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                                                 {feature.label}
                                             </p>
                                             <p className="text-sm text-muted-foreground">
-                                                {t('service_packages.toggle_desc')}
+                                                {t(
+                                                    'service_packages.toggle_desc',
+                                                )}
                                             </p>
                                         </div>
                                     </Label>
                                 </div>
-                            )
+                            );
                         }
 
                         if (feature.type === 'number') {
                             return (
-                                <div key={feature.key} className={'flex flex-col gap-2'}>
+                                <div
+                                    key={feature.key}
+                                    className={'flex flex-col gap-2'}
+                                >
                                     <Label htmlFor={feature.key}>
                                         {feature.label}
                                     </Label>
@@ -718,11 +826,13 @@ const Create = ({ meta_features, google_features, suppliers = [], all_users = []
                                         }
                                     />
                                 </div>
-                            )
+                            );
                         }
                     })}
                     {errors.features && (
-                        <p className="text-sm text-red-500">{errors.features}</p>
+                        <p className="text-sm text-red-500">
+                            {errors.features}
+                        </p>
                     )}
                 </div>
             )}

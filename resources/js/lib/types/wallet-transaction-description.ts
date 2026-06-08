@@ -24,10 +24,12 @@ export enum WalletTransactionDescription {
 
 export function getTransactionDescription(
     description: string | null | undefined,
-    t: (key: string, opts?: Record<string, any>) => string
+    t: (key: string, opts?: Record<string, any>) => string,
 ): string {
     if (!description) {
-        return t('wallet.transaction_description.unknown', { defaultValue: 'Không xác định' });
+        return t('wallet.transaction_description.unknown', {
+            defaultValue: 'Không xác định',
+        });
     }
 
     if (description.startsWith('wallet.transaction_description.')) {

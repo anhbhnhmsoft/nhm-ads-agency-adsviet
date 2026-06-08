@@ -1,10 +1,10 @@
-import { FormEvent } from 'react';
-import { useForm } from '@inertiajs/react';
-import { useTranslation } from 'react-i18next';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { auth_register_send_email_otp } from '@/routes';
+import { useForm } from '@inertiajs/react';
+import { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     onSuccess: (email: string) => void;
@@ -43,9 +43,10 @@ export default function GmailEmailStep({ onSuccess }: Props) {
             />
             <InputError message={form.errors.email} />
             <Button type="submit" disabled={form.processing}>
-                {form.processing ? t('auth.register.sending') : t('auth.register.send_code')}
+                {form.processing
+                    ? t('auth.register.sending')
+                    : t('auth.register.send_code')}
             </Button>
         </form>
     );
 }
-

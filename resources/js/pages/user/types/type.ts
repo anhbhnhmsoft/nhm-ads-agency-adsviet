@@ -1,5 +1,5 @@
-import { BaseSearchRequest, LaravelPaginator } from '@/lib/types/type';
 import { _UserRole } from '@/lib/types/constants';
+import { BaseSearchRequest, LaravelPaginator } from '@/lib/types/type';
 
 export type EmployeeListItem = {
     id: string;
@@ -9,19 +9,19 @@ export type EmployeeListItem = {
     disabled: boolean;
     referral_code: string;
     role: _UserRole;
-}
+};
 
 export type EmployeeListPagination = LaravelPaginator<EmployeeListItem>;
 
 export type EmployeeListQuery = BaseSearchRequest<{
     keyword?: string;
-}>
+}>;
 
 export type CustomerListQuery = BaseSearchRequest<{
     keyword?: string;
     manager_id?: string | null;
     employee_id?: string | null;
-}>
+}>;
 
 export type UserOption = {
     id: string;
@@ -53,7 +53,7 @@ export type CustomerListItem = {
         id?: string;
         username?: string;
     } | null;
-}
+};
 export type CustomerListPagination = LaravelPaginator<CustomerListItem>;
 
 export type Employee = {
@@ -63,7 +63,7 @@ export type Employee = {
     phone: string | null;
     role: number;
     disabled: boolean;
-}
+};
 
 export type EmployeeFormData = {
     id?: string;
@@ -73,20 +73,20 @@ export type EmployeeFormData = {
     phone?: string | null;
     role: number;
     disabled: boolean;
-}
+};
 
 export type Manager = {
     id: string;
     name: string;
     username: string;
-}
+};
 
 export type EmployeeForAssignment = {
     id: string;
     name: string;
     username: string;
     assigned: boolean;
-}
+};
 
 export interface WalletData {
     id: string;

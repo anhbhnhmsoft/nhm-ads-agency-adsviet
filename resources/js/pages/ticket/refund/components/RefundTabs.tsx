@@ -18,7 +18,9 @@ export const RefundTabs = ({ activeTab, onTabChange }: RefundTabsProps) => {
                         : 'text-muted-foreground'
                 }`}
             >
-                {t('ticket.refund.create_request', { defaultValue: 'Tạo yêu cầu' })}
+                {t('ticket.refund.create_request', {
+                    defaultValue: 'Tạo yêu cầu',
+                })}
             </button>
             <button
                 onClick={() => onTabChange('list')}
@@ -28,9 +30,10 @@ export const RefundTabs = ({ activeTab, onTabChange }: RefundTabsProps) => {
                         : 'text-muted-foreground'
                 }`}
             >
-                {t('ticket.refund.in_progress', { defaultValue: 'Đang thực hiện' })}
+                {t('ticket.refund.in_progress', {
+                    defaultValue: 'Đang thực hiện',
+                })}
             </button>
         </div>
     );
 };
-

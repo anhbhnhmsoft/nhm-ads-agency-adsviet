@@ -1,5 +1,5 @@
-import * as React from 'react';
-import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     Select,
     SelectContent,
@@ -7,8 +7,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Search } from 'lucide-react';
+import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 
 type TimezoneOption = {
@@ -44,7 +44,7 @@ export function TimezoneSelect({
         return options.filter(
             (option) =>
                 option.label.toLowerCase().includes(query) ||
-                option.value.toLowerCase().includes(query)
+                option.value.toLowerCase().includes(query),
         );
     }, [options, searchQuery]);
 
@@ -65,14 +65,14 @@ export function TimezoneSelect({
                 </SelectValue>
             </SelectTrigger>
             <SelectContent className="p-0">
-                <div className="sticky top-0 z-10 bg-white border-b p-2">
+                <div className="sticky top-0 z-10 border-b bg-white p-2">
                     <div className="relative">
-                        <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Search className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             placeholder={t('common.search_timezone')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8 h-9"
+                            className="h-9 pl-8"
                             onClick={(e) => e.stopPropagation()}
                             onKeyDown={(e) => {
                                 e.stopPropagation();

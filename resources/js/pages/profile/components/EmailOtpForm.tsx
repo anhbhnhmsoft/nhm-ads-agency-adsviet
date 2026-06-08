@@ -1,10 +1,10 @@
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { profile_verify_email_otp } from '@/routes';
+import { useForm } from '@inertiajs/react';
 import { FormEvent, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm } from '@inertiajs/react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { profile_verify_email_otp } from '@/routes';
 import type { ProfileUser } from '../types/type';
 
 type Props = {
@@ -19,13 +19,19 @@ const EmailOtpForm = ({ user, onVerified }: Props) => {
         otp: '',
     });
 
-    const handleVerifyOtp = (event?: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement>) => {
+    const handleVerifyOtp = (
+        event?: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement>,
+    ) => {
         if (event) {
             event.preventDefault();
         }
 
         // Validate client-side
-        if (!otpForm.data.otp || otpForm.data.otp.length !== 6 || !/^\d{6}$/.test(otpForm.data.otp)) {
+        if (
+            !otpForm.data.otp ||
+            otpForm.data.otp.length !== 6 ||
+            !/^\d{6}$/.test(otpForm.data.otp)
+        ) {
             otpForm.setError('otp', t('profile.otp_invalid'));
             return;
         }
@@ -48,7 +54,7 @@ const EmailOtpForm = ({ user, onVerified }: Props) => {
     return (
         <div className="mt-6 space-y-2 rounded-lg border p-4">
             <Label htmlFor="otp">{t('profile.enter_otp')}</Label>
-            <p className="text-xs text-muted-foreground mb-2">
+            <p className="mb-2 text-xs text-muted-foreground">
                 {t('profile.otp_sent_hint', { email: user.email })}
             </p>
             <div className="flex gap-2">
@@ -57,7 +63,9 @@ const EmailOtpForm = ({ user, onVerified }: Props) => {
                     type="text"
                     maxLength={6}
                     value={otpForm.data.otp}
-                    onChange={(event) => otpForm.setData('otp', event.target.value)}
+                    onChange={(event) =>
+                        otpForm.setData('otp', event.target.value)
+                    }
                     onKeyDown={(event) => {
                         if (event.key === 'Enter') {
                             event.preventDefault();
@@ -73,16 +81,24 @@ const EmailOtpForm = ({ user, onVerified }: Props) => {
                     type="button"
                     size="sm"
                     onClick={handleVerifyOtp}
-                    disabled={otpForm.processing || !otpForm.data.otp || otpForm.data.otp.length !== 6}
+                    disabled={
+                        otpForm.processing ||
+                        !otpForm.data.otp ||
+                        otpForm.data.otp.length !== 6
+                    }
                 >
-                    {otpForm.processing ? t('common.processing') : t('profile.verify_button')}
+                    {otpForm.processing
+                        ? t('common.processing')
+                        : t('profile.verify_button')}
                 </Button>
             </div>
             {otpForm.errors.otp && (
-                <p className="text-xs text-destructive mt-1">{otpForm.errors.otp}</p>
+                <p className="mt-1 text-xs text-destructive">
+                    {otpForm.errors.otp}
+                </p>
             )}
             {otpForm.hasErrors && Object.keys(otpForm.errors).length > 0 && (
-                <p className="text-xs text-destructive mt-1">
+                <p className="mt-1 text-xs text-destructive">
                     {Object.values(otpForm.errors)[0]}
                 </p>
             )}
@@ -91,4 +107,3 @@ const EmailOtpForm = ({ user, onVerified }: Props) => {
 };
 
 export default EmailOtpForm;
-

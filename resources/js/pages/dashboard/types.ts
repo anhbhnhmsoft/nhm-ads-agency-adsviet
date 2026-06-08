@@ -124,7 +124,8 @@ export type AdminDashboardData = {
     spending_ranking?: SpendingRanking;
 };
 
-export type AdminPendingTransactions = LaravelPaginator<AdminPendingTransaction>;
+export type AdminPendingTransactions =
+    LaravelPaginator<AdminPendingTransaction>;
 
 export type PlatformBalance = {
     currency: string;

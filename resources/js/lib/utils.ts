@@ -28,7 +28,11 @@ export function formatCurrency(value: any, currency: string = 'USD') {
     }).format(val);
 }
 
-export function formatMoney(value: any, currency: string = 'USD', language: string = 'vi') {
+export function formatMoney(
+    value: any,
+    currency: string = 'USD',
+    language: string = 'vi',
+) {
     const val = typeof value === 'string' ? parseFloat(value) : value;
     if (val === null || val === undefined || isNaN(val)) return '-';
 
@@ -53,13 +57,16 @@ export function formatMoney(value: any, currency: string = 'USD', language: stri
     return `${new Intl.NumberFormat('en-US', numberOptions).format(val)}${suffix}`;
 }
 
-export function formatNumber(value: any, options: Intl.NumberFormatOptions = {}) {
+export function formatNumber(
+    value: any,
+    options: Intl.NumberFormatOptions = {},
+) {
     const val = typeof value === 'string' ? parseFloat(value) : value;
     if (val === null || val === undefined || isNaN(val)) return '--';
     return new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
-        ...options
+        ...options,
     }).format(val);
 }
 

@@ -57,4 +57,3 @@ export const ticketTypeLabel: Record<_TicketType, string> = {
     [_TicketType.WALLET_WITHDRAW_APP]: 'ticket.type.wallet_withdraw_app',
     [_TicketType.WALLET_DEPOSIT_APP]: 'ticket.type.wallet_deposit_app',
 };
-

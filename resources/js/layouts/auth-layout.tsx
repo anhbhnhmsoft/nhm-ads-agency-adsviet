@@ -1,12 +1,11 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { ReactNode, useEffect } from 'react';
-import { ThemeProvider } from '@/components/theme-provider';
-import { useTranslation } from 'react-i18next';
-import { Shield } from 'lucide-react';
-import { usePage } from '@inertiajs/react';
-import { toast } from "sonner"
-import { Toaster } from "@/components/ui/sonner"
 import LoadingGlobal from '@/components/loading-global';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Card, CardContent } from '@/components/ui/card';
+import { Toaster } from '@/components/ui/sonner';
+import { usePage } from '@inertiajs/react';
+import { ReactNode, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
 export default function AuthLayout({
     children,
@@ -17,7 +16,7 @@ export default function AuthLayout({
     title?: string;
     description?: string;
 }) {
-    const {t} = useTranslation();
+    const { t } = useTranslation();
     const { flash } = usePage().props;
     const { logo_path } = usePage().props as { logo_path?: string };
 
@@ -37,15 +36,23 @@ export default function AuthLayout({
     }, [flash]);
 
     return (
-        <ThemeProvider defaultTheme={"light"}>
+        <ThemeProvider defaultTheme={'light'}>
             <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-[#e8f0fe] p-3 md:p-10">
                 <div className="flex w-full max-w-md flex-col gap-6">
-                    <div className="flex flex-col gap-2 items-center justify-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
                         <div className="flex items-center justify-center">
-                            <img src={`${logo_path}`} alt="logo" className="w-15 h-15" />
+                            <img
+                                src={`${logo_path}`}
+                                alt="logo"
+                                className="h-15 w-15"
+                            />
                         </div>
-                        <h1 className="text-2xl font-bold text-center">{t(title)}</h1>
-                        <p className="text-sm text-gray-500 text-center">{t(description)}</p>
+                        <h1 className="text-center text-2xl font-bold">
+                            {t(title)}
+                        </h1>
+                        <p className="text-center text-sm text-gray-500">
+                            {t(description)}
+                        </p>
                     </div>
                     <div className="flex flex-col gap-6">
                         <Card className="rounded-xl">
@@ -56,7 +63,7 @@ export default function AuthLayout({
                     </div>
                 </div>
             </div>
-            <Toaster expand visibleToasts={3} position="top-center"/>
+            <Toaster expand visibleToasts={3} position="top-center" />
             <LoadingGlobal />
         </ThemeProvider>
     );

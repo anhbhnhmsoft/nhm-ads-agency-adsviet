@@ -30,7 +30,11 @@ type Props = {
     paymentoWebhookUrl: string;
 };
 
-const ConfigIndex = ({ configs, coinRemitterNetworks, paymentoWebhookUrl }: Props) => {
+const ConfigIndex = ({
+    configs,
+    coinRemitterNetworks,
+    paymentoWebhookUrl,
+}: Props) => {
     const { t } = useTranslation();
     const { data, setData, put, processing, errors } = useForm({
         configs: Object.fromEntries(
@@ -147,9 +151,12 @@ const ConfigIndex = ({ configs, coinRemitterNetworks, paymentoWebhookUrl }: Prop
                                             )}
                                         </SelectItem>
                                         <SelectItem value="paymento">
-                                            {t('config.deposit_method_paymento', {
-                                                defaultValue: 'Paymento',
-                                            })}
+                                            {t(
+                                                'config.deposit_method_paymento',
+                                                {
+                                                    defaultValue: 'Paymento',
+                                                },
+                                            )}
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -305,10 +312,11 @@ const ConfigIndex = ({ configs, coinRemitterNetworks, paymentoWebhookUrl }: Prop
                                     <div className="rounded-md border bg-muted/40 p-3 text-sm">
                                         <div className="font-medium">
                                             {t('config.paymento_ipn_url', {
-                                                defaultValue: 'Paymento IPN URL',
+                                                defaultValue:
+                                                    'Paymento IPN URL',
                                             })}
                                         </div>
-                                        <div className="mt-1 break-all font-mono">
+                                        <div className="mt-1 font-mono break-all">
                                             {paymentoWebhookUrl}
                                         </div>
                                     </div>

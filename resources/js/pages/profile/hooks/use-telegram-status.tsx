@@ -10,7 +10,9 @@ export const useTelegramStatus = (user: ProfileUser): TelegramStatus => {
             return {
                 label: t('user_menu.connected'),
                 variant: 'default' as const,
-                description: t('profile.telegram_connected', { id: user.telegram_id }),
+                description: t('profile.telegram_connected', {
+                    id: user.telegram_id,
+                }),
             };
         }
         return {
@@ -20,4 +22,3 @@ export const useTelegramStatus = (user: ProfileUser): TelegramStatus => {
         };
     }, [user.telegram_id, t]);
 };
-

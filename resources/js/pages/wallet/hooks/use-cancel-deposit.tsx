@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { router } from '@inertiajs/react';
 import { wallet_deposit_cancel } from '@/routes';
+import { router } from '@inertiajs/react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export function useCancelDeposit() {
@@ -8,7 +8,10 @@ export function useCancelDeposit() {
     const [error, setError] = useState<string | null>(null);
     const { t } = useTranslation();
 
-    const cancelDeposit = (transactionId: string | number, onSuccess?: () => void) => {
+    const cancelDeposit = (
+        transactionId: string | number,
+        onSuccess?: () => void,
+    ) => {
         if (loading) return;
 
         setLoading(true);
@@ -26,16 +29,18 @@ export function useCancelDeposit() {
                     onSuccess?.();
                 },
                 onError: (errors) => {
-                    const errorMessage = 
-                        errors?.error || 
-                        errors?.message || 
-                        (typeof errors === 'string' ? errors :  t('wallet.generic_error'));
+                    const errorMessage =
+                        errors?.error ||
+                        errors?.message ||
+                        (typeof errors === 'string'
+                            ? errors
+                            : t('wallet.generic_error'));
                     setError(errorMessage);
                 },
                 onFinish: () => {
                     setLoading(false);
                 },
-            }
+            },
         );
     };
 
@@ -45,4 +50,3 @@ export function useCancelDeposit() {
         error,
     };
 }
-

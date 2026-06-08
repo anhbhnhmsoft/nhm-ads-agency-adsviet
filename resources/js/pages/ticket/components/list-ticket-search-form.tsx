@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardAction,
@@ -6,11 +7,10 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { useSearchTicketList } from '@/pages/ticket/hooks/use-search-ticket';
-import { Search } from 'lucide-react';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useSearchTicketList } from '@/pages/ticket/hooks/use-search-ticket';
+import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const ListTicketSearchForm = () => {
@@ -25,7 +25,9 @@ const ListTicketSearchForm = () => {
             <CardContent>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Field>
-                        <FieldLabel htmlFor="keyword">{t('common.keyword')}</FieldLabel>
+                        <FieldLabel htmlFor="keyword">
+                            {t('common.keyword')}
+                        </FieldLabel>
                         <Input
                             id="keyword"
                             autoComplete="off"
@@ -40,7 +42,10 @@ const ListTicketSearchForm = () => {
             </CardContent>
             <CardFooter>
                 <CardAction className="space-y-2 space-x-2">
-                    <Button className="cursor-pointer" onClick={() => handleSearch()}>
+                    <Button
+                        className="cursor-pointer"
+                        onClick={() => handleSearch()}
+                    >
                         <Search />
                         {t('common.search')}
                     </Button>
@@ -51,4 +56,3 @@ const ListTicketSearchForm = () => {
 };
 
 export default ListTicketSearchForm;
-

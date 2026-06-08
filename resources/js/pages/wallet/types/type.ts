@@ -60,23 +60,23 @@ export interface WalletIndexProps {
 export type WalletTab = 'topup' | 'withdraw' | 'password';
 
 export type TopUpFormData = {
-  network?: 'BEP20' | 'TRC20' | 'PAYMENTO';
-  amount: string;
+    network?: 'BEP20' | 'TRC20' | 'PAYMENTO';
+    amount: string;
 };
 
 export type WithdrawFormData = {
-  amount: string;
-  password: string;
-  bank_name?: string;
-  account_holder?: string;
-  account_number?: string;
-  crypto_address?: string;
-  network?: 'TRC20' | 'BEP20';
-  withdraw_type?: 'bank' | 'usdt';
+    amount: string;
+    password: string;
+    bank_name?: string;
+    account_holder?: string;
+    account_number?: string;
+    crypto_address?: string;
+    network?: 'TRC20' | 'BEP20';
+    withdraw_type?: 'bank' | 'usdt';
 };
 
 export type PasswordFormData = {
-  current_password: string;
-  new_password: string;
-  confirm_password: string;
+    current_password: string;
+    new_password: string;
+    confirm_password: string;
 };

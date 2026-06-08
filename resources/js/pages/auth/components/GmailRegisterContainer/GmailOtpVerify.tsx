@@ -1,10 +1,10 @@
-import { FormEvent } from 'react';
-import { useForm } from '@inertiajs/react';
-import { useTranslation } from 'react-i18next';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { auth_register_verify_email_otp } from '@/routes';
+import { useForm } from '@inertiajs/react';
+import { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     email: string;
@@ -44,14 +44,24 @@ export default function GmailOtpVerify({ email, onBack }: Props) {
             />
             <InputError message={form.errors.otp} />
             <div className="flex gap-2">
-                <Button type="button" variant="outline" disabled={form.processing} onClick={onBack}>
+                <Button
+                    type="button"
+                    variant="outline"
+                    disabled={form.processing}
+                    onClick={onBack}
+                >
                     {t('common.back')}
                 </Button>
-                <Button type="submit" disabled={form.processing} className="flex-1">
-                    {form.processing ? t('auth.register.verifying') : t('auth.register.verify_code')}
+                <Button
+                    type="submit"
+                    disabled={form.processing}
+                    className="flex-1"
+                >
+                    {form.processing
+                        ? t('auth.register.verifying')
+                        : t('auth.register.verify_code')}
                 </Button>
             </div>
         </form>
     );
 }
-

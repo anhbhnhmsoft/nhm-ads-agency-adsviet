@@ -3,51 +3,51 @@ import { _UserRole } from '@/lib/types/constants';
 import { IMenu } from '@/lib/types/type';
 import { resolveUrl } from '@/lib/utils';
 import {
-    dashboard,
-    service_packages_create_view,
-    service_packages_index,
-    suppliers_index,
-    suppliers_create_view,
-    commissions_index,
-    user_list,
-    user_list_employee,
-    config_index,
-    wallet_index,
-    service_purchase_index,
-    service_orders_index,
-    service_management_index,
-    spend_report_index,
-    ticket_index,
-    ticket_transfer,
-    ticket_refund,
-    ticket_appeal,
-    ticket_share,
-    ticket_withdraw_app,
-    ticket_deposit_app,
     business_managers_index,
+    commissions_index,
+    config_index,
     contact_index,
-    ticket_create_account,
+    dashboard,
+    profit_by_bm_mcc,
     profit_by_customer,
     profit_by_platform,
     profit_over_time,
-    profit_by_bm_mcc,
+    service_management_index,
+    service_orders_index,
+    service_packages_create_view,
+    service_packages_index,
+    service_purchase_index,
+    spend_report_index,
+    suppliers_create_view,
+    suppliers_index,
+    ticket_appeal,
+    ticket_create_account,
+    ticket_deposit_app,
+    ticket_index,
+    ticket_refund,
+    ticket_share,
+    ticket_transfer,
+    ticket_withdraw_app,
+    user_list,
+    user_list_employee,
+    wallet_index,
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
     BookUser,
     Boxes,
+    Building2,
+    DollarSign,
+    KanbanSquare,
     LayoutDashboard,
+    MessageSquare,
+    Percent,
+    Phone,
     Settings,
+    ShoppingCart,
+    TrendingUp,
     Users,
     Wallet,
-    ShoppingCart,
-    KanbanSquare,
-    MessageSquare,
-    DollarSign,
-    Phone,
-    TrendingUp,
-    Building2,
-    Percent,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -93,7 +93,8 @@ const useMenu = () => {
                 title: t('menu.financial_management'),
                 icon: <DollarSign />,
                 is_menu: true,
-                active: isActive('/transactions') ||
+                active:
+                    isActive('/transactions') ||
                     isActive(spend_report_index()) ||
                     isActive(wallet_index()) ||
                     isActive(service_orders_index()),
@@ -109,22 +110,38 @@ const useMenu = () => {
                         title: t('menu.transactions'),
                         url: '/transactions',
                         active: isActive('/transactions'),
-                        can_show: checkRole([_UserRole.ADMIN, _UserRole.CUSTOMER, _UserRole.AGENCY, _UserRole.EMPLOYEE, _UserRole.MANAGER]),
+                        can_show: checkRole([
+                            _UserRole.ADMIN,
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                            _UserRole.EMPLOYEE,
+                            _UserRole.MANAGER,
+                        ]),
                     },
                     {
                         title: t('menu.spend_report'),
                         url: spend_report_index().url,
                         active: isActive(spend_report_index()),
-                        can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
                     },
                     {
                         title: t('menu.my_wallet'),
                         url: wallet_index().url,
                         active: isActive(wallet_index()),
-                        can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
                     },
                     {
-                        title: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE])
+                        title: checkRole([
+                            _UserRole.ADMIN,
+                            _UserRole.MANAGER,
+                            _UserRole.EMPLOYEE,
+                        ])
                             ? t('menu.service_orders_admin')
                             : t('menu.service_orders'),
                         url: service_orders_index().url,
@@ -150,12 +167,17 @@ const useMenu = () => {
             },
             // Hỗ trợ
             {
-                title: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE])
+                title: checkRole([
+                    _UserRole.ADMIN,
+                    _UserRole.MANAGER,
+                    _UserRole.EMPLOYEE,
+                ])
                     ? t('menu.support_customer')
                     : t('menu.support'),
                 icon: <MessageSquare />,
                 is_menu: true,
-                active: isActive(ticket_index()) ||
+                active:
+                    isActive(ticket_index()) ||
                     isActive(ticket_create_account()) ||
                     isActive(ticket_transfer()) ||
                     isActive(ticket_refund()) ||
@@ -172,7 +194,9 @@ const useMenu = () => {
                 ]),
                 items: [
                     {
-                        title: t('ticket.list', { defaultValue: 'Quản lý hỗ trợ' }),
+                        title: t('ticket.list', {
+                            defaultValue: 'Quản lý hỗ trợ',
+                        }),
                         url: ticket_index().url,
                         active: isActive(ticket_index()),
                         can_show: checkRole([
@@ -184,7 +208,9 @@ const useMenu = () => {
                         ]),
                     },
                     {
-                        title: t('ticket.create_account.title', { defaultValue: 'Tạo tài khoản' }),
+                        title: t('ticket.create_account.title', {
+                            defaultValue: 'Tạo tài khoản',
+                        }),
                         url: ticket_create_account().url,
                         active: isActive(ticket_create_account()),
                         can_show: checkRole([
@@ -193,7 +219,9 @@ const useMenu = () => {
                         ]),
                     },
                     {
-                        title: t('ticket.transfer.title', { defaultValue: 'Chuyển tiền' }),
+                        title: t('ticket.transfer.title', {
+                            defaultValue: 'Chuyển tiền',
+                        }),
                         url: ticket_transfer().url,
                         active: isActive(ticket_transfer()),
                         can_show: checkRole([
@@ -202,7 +230,9 @@ const useMenu = () => {
                         ]),
                     },
                     {
-                        title: t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' }),
+                        title: t('ticket.refund.title', {
+                            defaultValue: 'Thanh lý tài khoản',
+                        }),
                         url: ticket_refund().url,
                         active: isActive(ticket_refund()),
                         can_show: checkRole([
@@ -211,7 +241,9 @@ const useMenu = () => {
                         ]),
                     },
                     {
-                        title: t('ticket.appeal.title', { defaultValue: 'Kháng tài khoản' }),
+                        title: t('ticket.appeal.title', {
+                            defaultValue: 'Kháng tài khoản',
+                        }),
                         url: ticket_appeal().url,
                         active: isActive(ticket_appeal()),
                         can_show: checkRole([
@@ -220,7 +252,9 @@ const useMenu = () => {
                         ]),
                     },
                     {
-                        title: t('ticket.share.title', { defaultValue: 'Share BM/BC/MCC' }),
+                        title: t('ticket.share.title', {
+                            defaultValue: 'Share BM/BC/MCC',
+                        }),
                         url: ticket_share().url,
                         active: isActive(ticket_share()),
                         can_show: checkRole([
@@ -229,7 +263,9 @@ const useMenu = () => {
                         ]),
                     },
                     {
-                        title: t('ticket.withdraw_app.title', { defaultValue: 'Rút ví app về ví khách' }),
+                        title: t('ticket.withdraw_app.title', {
+                            defaultValue: 'Rút ví app về ví khách',
+                        }),
                         url: ticket_withdraw_app().url,
                         active: isActive(ticket_withdraw_app()),
                         can_show: checkRole([
@@ -238,7 +274,9 @@ const useMenu = () => {
                         ]),
                     },
                     {
-                        title: t('ticket.deposit_app.title', { defaultValue: 'Nạp tiền vào tài khoản' }),
+                        title: t('ticket.deposit_app.title', {
+                            defaultValue: 'Nạp tiền vào tài khoản',
+                        }),
                         url: ticket_deposit_app().url,
                         active: isActive(ticket_deposit_app()),
                         can_show: false,
@@ -251,10 +289,7 @@ const useMenu = () => {
                 icon: <Phone />,
                 is_menu: true,
                 active: isActive(contact_index()),
-                can_show: checkRole([
-                    _UserRole.CUSTOMER,
-                    _UserRole.AGENCY,
-                ]),
+                can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
             },
             {
                 title: t('menu.user'),
@@ -329,7 +364,9 @@ const useMenu = () => {
                 can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER]),
             },
             {
-                title: t('menu.commissions_report', { defaultValue: 'Báo cáo hoa hồng' }),
+                title: t('menu.commissions_report', {
+                    defaultValue: 'Báo cáo hoa hồng',
+                }),
                 url: '/commissions-report',
                 icon: <TrendingUp />,
                 is_menu: true,
@@ -337,12 +374,18 @@ const useMenu = () => {
                 can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER]),
             },
             {
-                title: t('menu.business_managers', { defaultValue: 'Quản lý BM/MCC' }),
+                title: t('menu.business_managers', {
+                    defaultValue: 'Quản lý BM/MCC',
+                }),
                 url: business_managers_index().url,
                 icon: <Settings />,
                 is_menu: true,
                 active: isActive(business_managers_index()),
-                can_show: checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE]),
+                can_show: checkRole([
+                    _UserRole.ADMIN,
+                    _UserRole.MANAGER,
+                    _UserRole.EMPLOYEE,
+                ]),
             },
             {
                 title: t('menu.crypto_wallet_config'),
@@ -356,43 +399,53 @@ const useMenu = () => {
                 title: t('menu.profit', { defaultValue: 'Lợi nhuận' }),
                 icon: <TrendingUp />,
                 is_menu: true,
-                active: isActive(profit_by_customer()) ||
+                active:
+                    isActive(profit_by_customer()) ||
                     isActive(profit_by_platform()) ||
                     isActive(profit_over_time()) ||
                     isActive(profit_by_bm_mcc()),
-                can_show: checkRole([
-                    _UserRole.ADMIN,
-                    _UserRole.AGENCY,
-                ]),
+                can_show: checkRole([_UserRole.ADMIN, _UserRole.AGENCY]),
                 items: [
                     {
-                        title: t('menu.profit_by_customer', { defaultValue: 'Lợi nhuận theo khách hàng' }),
+                        title: t('menu.profit_by_customer', {
+                            defaultValue: 'Lợi nhuận theo khách hàng',
+                        }),
                         url: profit_by_customer().url,
                         active: isActive(profit_by_customer()),
                         can_show: checkRole([_UserRole.AGENCY]),
                     },
                     {
-                        title: t('menu.profit_by_platform', { defaultValue: 'Lợi nhuận theo nền tảng' }),
+                        title: t('menu.profit_by_platform', {
+                            defaultValue: 'Lợi nhuận theo nền tảng',
+                        }),
                         url: profit_by_platform().url,
                         active: isActive(profit_by_platform()),
-                        can_show: checkRole([_UserRole.ADMIN, _UserRole.AGENCY]),
+                        can_show: checkRole([
+                            _UserRole.ADMIN,
+                            _UserRole.AGENCY,
+                        ]),
                     },
                     {
-                        title: t('menu.profit_over_time', { defaultValue: 'Lợi nhuận tổng theo thời gian' }),
+                        title: t('menu.profit_over_time', {
+                            defaultValue: 'Lợi nhuận tổng theo thời gian',
+                        }),
                         url: profit_over_time().url,
                         active: isActive(profit_over_time()),
-                        can_show: checkRole([_UserRole.ADMIN, _UserRole.AGENCY]),
+                        can_show: checkRole([
+                            _UserRole.ADMIN,
+                            _UserRole.AGENCY,
+                        ]),
                     },
                     {
-                        title: t('menu.profit_by_bm_mcc', { defaultValue: 'Lợi nhuận theo BM/MCC' }),
+                        title: t('menu.profit_by_bm_mcc', {
+                            defaultValue: 'Lợi nhuận theo BM/MCC',
+                        }),
                         url: profit_by_bm_mcc().url,
                         active: isActive(profit_by_bm_mcc()),
                         can_show: checkRole([_UserRole.ADMIN]),
                     },
                 ],
             },
-
-
         ];
     }, [checkRole, t, isActive]);
 

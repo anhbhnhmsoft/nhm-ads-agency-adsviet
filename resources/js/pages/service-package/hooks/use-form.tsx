@@ -4,19 +4,20 @@ import {
     MonthlySpendingFeeItem,
     ServicePackageItem,
 } from '@/pages/service-package/types/type';
+import { service_packages_create, service_packages_update } from '@/routes';
 import { useForm } from '@inertiajs/react';
 import React from 'react';
-import { service_packages_create, service_packages_update } from '@/routes';
 
-export const DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE: MonthlySpendingFeeItem[] = [
-    { range: '$10,000 – $50,000', fee_percent: '1%' },
-    { range: '$50,000 – $100,000', fee_percent: '1.5%' },
-    { range: '$100,000 – $300,000', fee_percent: '2%' },
-    { range: '$300,000 – $500,000', fee_percent: '2.5%' },
-    { range: '$500,000 – $1,000,000', fee_percent: '3%' },
-    { range: '$1,000,000 – $2,000,000', fee_percent: '3.5%' },
-    { range: '$2,000,000 – $10,000,000', fee_percent: '4%' },
-];
+export const DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE: MonthlySpendingFeeItem[] =
+    [
+        { range: '$10,000 – $50,000', fee_percent: '1%' },
+        { range: '$50,000 – $100,000', fee_percent: '1.5%' },
+        { range: '$100,000 – $300,000', fee_percent: '2%' },
+        { range: '$300,000 – $500,000', fee_percent: '2.5%' },
+        { range: '$500,000 – $1,000,000', fee_percent: '3%' },
+        { range: '$1,000,000 – $2,000,000', fee_percent: '3.5%' },
+        { range: '$2,000,000 – $10,000,000', fee_percent: '4%' },
+    ];
 
 export const useFormCreateServicePackage = () => {
     const form = useForm<CreateServicePackageForm>({
@@ -38,7 +39,7 @@ export const useFormCreateServicePackage = () => {
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        form.post(service_packages_create().url)
+        form.post(service_packages_create().url);
     };
 
     return {
@@ -47,7 +48,10 @@ export const useFormCreateServicePackage = () => {
     };
 };
 
-export const useFormEditServicePackage = (id: string, item: ServicePackageItem) => {
+export const useFormEditServicePackage = (
+    id: string,
+    item: ServicePackageItem,
+) => {
     const form = useForm<CreateServicePackageForm>({
         name: item.name,
         description: item.description,
@@ -63,10 +67,10 @@ export const useFormEditServicePackage = (id: string, item: ServicePackageItem) 
         set_up_time: item.set_up_time.toString(),
         disabled: item.disabled,
         monthly_spending_fee_structure:
-            (item.monthly_spending_fee_structure &&
-                item.monthly_spending_fee_structure.length > 0
+            item.monthly_spending_fee_structure &&
+            item.monthly_spending_fee_structure.length > 0
                 ? item.monthly_spending_fee_structure
-                : DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE),
+                : DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
     });
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -78,4 +82,4 @@ export const useFormEditServicePackage = (id: string, item: ServicePackageItem) 
         form,
         submit,
     };
-}
+};

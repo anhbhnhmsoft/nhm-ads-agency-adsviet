@@ -1,27 +1,31 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getTransactionDescription } from '@/lib/types/wallet-transaction-description';
+import { cn } from '@/lib/utils';
 import {
+    TRANSACTION_STATUS,
+    TRANSACTION_STATUS_MAP,
+    TRANSACTION_TYPE,
+    TRANSACTION_TYPE_MAP,
+} from '@/pages/wallet/types/constants';
+import type { WalletTransaction } from '@/pages/wallet/types/type';
+import {
+    AlertTriangle,
     ArrowDownCircle,
     ArrowUpCircle,
+    Ban,
+    CheckCircle2,
     Clock,
     ExternalLink,
     Gift,
     Loader2,
     Percent,
     RefreshCcw,
-    Wallet as WalletIcon,
-    Ban,
-    CheckCircle2,
-    XCircle,
     ShoppingCart,
-    AlertTriangle,
+    Wallet as WalletIcon,
+    XCircle,
 } from 'lucide-react';
-import type { WalletTransaction } from '@/pages/wallet/types/type';
-import { cn } from '@/lib/utils';
-import { TRANSACTION_TYPE, TRANSACTION_STATUS, TRANSACTION_TYPE_MAP, TRANSACTION_STATUS_MAP } from '@/pages/wallet/types/constants';
-import { getTransactionDescription } from '@/lib/types/wallet-transaction-description';
 
 type Props = {
     t: (key: string, opts?: Record<string, any>) => string;
@@ -34,7 +38,8 @@ const formatter = new Intl.NumberFormat('vi-VN', {
 });
 
 const WalletTransactionsCard = ({ t, transactions }: Props) => {
-    const underpaidDescription = 'wallet.transaction_description.deposit_underpaid';
+    const underpaidDescription =
+        'wallet.transaction_description.deposit_underpaid';
 
     const getTransactionIcon = (type?: number | null) => {
         switch (type) {
@@ -76,7 +81,9 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
             case TRANSACTION_STATUS.COMPLETED:
                 return <CheckCircle2 className="h-4 w-4 text-green-500" />;
             case TRANSACTION_STATUS.PENDING:
-                return <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />;
+                return (
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                );
             case TRANSACTION_STATUS.REJECTED:
             case TRANSACTION_STATUS.CANCELLED:
                 return <XCircle className="h-4 w-4 text-red-500" />;
@@ -115,7 +122,10 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
         return TRANSACTION_STATUS_MAP[status] || 'unknown';
     };
 
-    const getExplorerUrl = (network?: string | null, txHash?: string | null) => {
+    const getExplorerUrl = (
+        network?: string | null,
+        txHash?: string | null,
+    ) => {
         if (!network || !txHash) return null;
         switch (network.toUpperCase()) {
             case 'BEP20':
@@ -147,24 +157,39 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                     <div className="space-y-3">
                         {[...transactions]
                             .sort((a, b) => {
-                                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                                const dateA = a.createdAt
+                                    ? new Date(a.createdAt).getTime()
+                                    : 0;
+                                const dateB = b.createdAt
+                                    ? new Date(b.createdAt).getTime()
+                                    : 0;
                                 return dateB - dateA;
                             })
                             .map((tx) => {
-                                const isUnderpaid = tx.description === underpaidDescription;
+                                const isUnderpaid =
+                                    tx.description === underpaidDescription;
                                 const statusClass = isUnderpaid
                                     ? 'bg-yellow-500 text-white'
                                     : getStatusColor(tx.status);
                                 const statusLabel = isUnderpaid
-                                    ? t('wallet.transaction_status.underpaid', { defaultValue: 'Thanh toán thiếu' })
-                                    : t(`wallet.transaction_status.${getStatusKey(tx.status)}`, {
-                                        defaultValue: String(tx.status),
-                                    });
-                                const statusIcon = isUnderpaid
-                                    ? <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                                    : getStatusIcon(tx.status);
-                                const explorerUrl = getExplorerUrl(tx.network, tx.txHash);
+                                    ? t('wallet.transaction_status.underpaid', {
+                                          defaultValue: 'Thanh toán thiếu',
+                                      })
+                                    : t(
+                                          `wallet.transaction_status.${getStatusKey(tx.status)}`,
+                                          {
+                                              defaultValue: String(tx.status),
+                                          },
+                                      );
+                                const statusIcon = isUnderpaid ? (
+                                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                                ) : (
+                                    getStatusIcon(tx.status)
+                                );
+                                const explorerUrl = getExplorerUrl(
+                                    tx.network,
+                                    tx.txHash,
+                                );
 
                                 return (
                                     <div
@@ -176,50 +201,82 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                             <div className="space-y-1">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <span className="font-medium">
-                                                        {t(`wallet.transaction_type.${getTypeKey(tx.type)}`, {
-                                                            defaultValue: String(tx.type),
-                                                        })}
+                                                        {t(
+                                                            `wallet.transaction_type.${getTypeKey(tx.type)}`,
+                                                            {
+                                                                defaultValue:
+                                                                    String(
+                                                                        tx.type,
+                                                                    ),
+                                                            },
+                                                        )}
                                                     </span>
-                                                    <Badge className={cn(statusClass, 'text-xs')}>
+                                                    <Badge
+                                                        className={cn(
+                                                            statusClass,
+                                                            'text-xs',
+                                                        )}
+                                                    >
                                                         {statusLabel}
                                                     </Badge>
                                                 </div>
                                                 {tx.description && (
                                                     <p className="text-sm text-muted-foreground">
-                                                        {getTransactionDescription(tx.description, t)}
+                                                        {getTransactionDescription(
+                                                            tx.description,
+                                                            t,
+                                                        )}
                                                     </p>
                                                 )}
-                                                <div className="hidden mt-1 sm:flex items-center gap-2 text-xs text-muted-foreground">
+                                                <div className="mt-1 hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
                                                     {statusIcon}
                                                     {tx.createdAt && (
-                                                        <span>{getTimeSince(tx.createdAt)}</span>
+                                                        <span>
+                                                            {getTimeSince(
+                                                                tx.createdAt,
+                                                            )}
+                                                        </span>
                                                     )}
                                                     {tx.network && (
-                                                        <span className="ml-2">• {tx.network}</span>
+                                                        <span className="ml-2">
+                                                            • {tx.network}
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex sm:flex-col flex-row items-start gap-2 md:items-end">
+                                        <div className="flex flex-row items-start gap-2 sm:flex-col md:items-end">
                                             <div
                                                 className={cn(
                                                     'text-base font-semibold',
-                                                    tx.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                                                    tx.amount >= 0
+                                                        ? 'text-green-600'
+                                                        : 'text-red-600',
                                                 )}
                                             >
                                                 {formatUSDT(tx.amount)}
                                             </div>
-                                            <div className="sm:hidden ms-4 mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                                                    {statusIcon}
-                                                    {tx.createdAt && (
-                                                        <span>{getTimeSince(tx.createdAt)}</span>
-                                                    )}
-                                                    {tx.network && (
-                                                        <span className="ml-2">• {tx.network}</span>
-                                                    )}
-                                                </div>
-                                            <div className="sm:flex hidden items-center gap-2 text-xs text-muted-foreground">
-                                                {tx.network && <span className="uppercase">{tx.network}</span>}
+                                            <div className="ms-4 mt-1 flex items-center gap-2 text-xs text-muted-foreground sm:hidden">
+                                                {statusIcon}
+                                                {tx.createdAt && (
+                                                    <span>
+                                                        {getTimeSince(
+                                                            tx.createdAt,
+                                                        )}
+                                                    </span>
+                                                )}
+                                                {tx.network && (
+                                                    <span className="ml-2">
+                                                        • {tx.network}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
+                                                {tx.network && (
+                                                    <span className="uppercase">
+                                                        {tx.network}
+                                                    </span>
+                                                )}
                                                 {explorerUrl && (
                                                     <Button
                                                         size="sm"
@@ -231,7 +288,9 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
                                                             href={explorerUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            aria-label={t('wallet.view_on_explorer')}
+                                                            aria-label={t(
+                                                                'wallet.view_on_explorer',
+                                                            )}
                                                         >
                                                             <ExternalLink className="h-4 w-4" />
                                                         </a>
@@ -250,4 +309,3 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
 };
 
 export default WalletTransactionsCard;
-

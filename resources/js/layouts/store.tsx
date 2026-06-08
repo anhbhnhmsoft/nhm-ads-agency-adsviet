@@ -1,7 +1,6 @@
 import { create } from 'zustand/react';
 
-
-interface ISystemStore  {
+interface ISystemStore {
     loading: boolean;
     setLoading: (loading: boolean) => void;
 }
@@ -9,7 +8,6 @@ interface ISystemStore  {
 const systemStore = create<ISystemStore>((set) => ({
     loading: false,
     setLoading: (v) => set({ loading: v }),
-}))
+}));
 
 export default systemStore;
-

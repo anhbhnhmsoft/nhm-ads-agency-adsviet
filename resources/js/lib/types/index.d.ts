@@ -24,4 +24,6 @@ declare module '@inertiajs/core' {
 // ------------------------------------------------------------
 // 2. Định nghĩa kiểu cho Page Props tổng thể (bao gồm cả Page-Specific Props)
 // Tận dụng cấu trúc Generic của PageProps<T>
-export type InertiaPageProps<T extends Record<string, unknown> = Record<string, unknown>> = PageProps<T>;
+export type InertiaPageProps<
+    T extends Record<string, unknown> = Record<string, unknown>,
+> = PageProps<T>;

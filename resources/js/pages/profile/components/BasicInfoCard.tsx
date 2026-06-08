@@ -1,12 +1,17 @@
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { profile_resend_email, profile_update } from '@/routes';
+import { router, useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm } from '@inertiajs/react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { profile_update, profile_resend_email } from '@/routes';
-import { router } from '@inertiajs/react';
 import type { ProfileUser } from '../types/type';
 import EmailOtpForm from './EmailOtpForm';
 
@@ -42,7 +47,9 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
         <Card>
             <CardHeader>
                 <CardTitle>{t('profile.basic_info')}</CardTitle>
-                <CardDescription>{t('profile.basic_info_description')}</CardDescription>
+                <CardDescription>
+                    {t('profile.basic_info_description')}
+                </CardDescription>
             </CardHeader>
             <CardContent>
                 <form className="space-y-6" onSubmit={handleSubmit}>
@@ -52,16 +59,22 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
                             <Input
                                 id="name"
                                 value={form.data.name}
-                                onChange={(event) => form.setData('name', event.target.value)}
+                                onChange={(event) =>
+                                    form.setData('name', event.target.value)
+                                }
                                 disabled={form.processing}
                                 aria-invalid={!!form.errors.name}
                             />
                             {form.errors.name && (
-                                <p className="text-xs text-destructive">{form.errors.name}</p>
+                                <p className="text-xs text-destructive">
+                                    {form.errors.name}
+                                </p>
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="username">{t('common.username')}</Label>
+                            <Label htmlFor="username">
+                                {t('common.username')}
+                            </Label>
                             <Input
                                 id="username"
                                 value={form.data.username}
@@ -77,12 +90,16 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
                                 id="email"
                                 type="email"
                                 value={form.data.email}
-                                onChange={(event) => form.setData('email', event.target.value)}
+                                onChange={(event) =>
+                                    form.setData('email', event.target.value)
+                                }
                                 disabled={form.processing}
                                 aria-invalid={!!form.errors.email}
                             />
                             {form.errors.email && (
-                                <p className="text-xs text-destructive">{form.errors.email}</p>
+                                <p className="text-xs text-destructive">
+                                    {form.errors.email}
+                                </p>
                             )}
                             {user.email && !user.email_verified_at && (
                                 <Button
@@ -102,18 +119,24 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
                             <Input
                                 id="phone"
                                 value={form.data.phone ?? ''}
-                                onChange={(event) => form.setData('phone', event.target.value)}
+                                onChange={(event) =>
+                                    form.setData('phone', event.target.value)
+                                }
                                 disabled={form.processing}
                                 aria-invalid={!!form.errors.phone}
                             />
                             {form.errors.phone && (
-                                <p className="text-xs text-destructive">{form.errors.phone}</p>
+                                <p className="text-xs text-destructive">
+                                    {form.errors.phone}
+                                </p>
                             )}
                         </div>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                            <Label htmlFor="referral_code">{t('profile.referral_code')}</Label>
+                            <Label htmlFor="referral_code">
+                                {t('profile.referral_code')}
+                            </Label>
                             <Input
                                 id="referral_code"
                                 value={user.referral_code ?? ''}
@@ -130,7 +153,10 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
                     </div>
                 </form>
                 {user.email && !user.email_verified_at && emailOtpSent && (
-                    <EmailOtpForm user={user} onVerified={() => onOtpSentChange(false)} />
+                    <EmailOtpForm
+                        user={user}
+                        onVerified={() => onOtpSentChange(false)}
+                    />
                 )}
             </CardContent>
         </Card>
@@ -138,4 +164,3 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
 };
 
 export default BasicInfoCard;
-

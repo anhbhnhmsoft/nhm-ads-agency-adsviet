@@ -1,16 +1,16 @@
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import CustomerRoleCard from '@/pages/auth/components/CustomerRoleCard';
 import { useFormRegister } from '@/pages/auth/hooks/use-form';
 import { TelegramUser } from '@/pages/auth/types/types';
 import { Head } from '@inertiajs/react';
+import { Eye, EyeOff } from 'lucide-react';
 import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Label } from '@/components/ui/label';
-import InputError from '@/components/input-error';
-import { Input } from '@/components/ui/input';
-import { Spinner } from '@/components/ui/spinner';
-import { Button } from '@/components/ui/button';
-import { Eye, EyeOff } from 'lucide-react';
 
 type Props = {
     social_data: {
@@ -26,13 +26,17 @@ const RegisterNewUser = ({ social_data }: Props) => {
 
     const { data, setData, processing, errors } = form;
     const [showPassword, setShowPassword] = useState(false);
-    const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
+    const [showPasswordConfirmation, setShowPasswordConfirmation] =
+        useState(false);
 
     useEffect(() => {
         if (social_data.type === 'telegram') {
             const user = social_data.data as TelegramUser;
             setData('type', 'telegram');
-            setData('name', `${user.first_name} ${user.last_name ?? ''}`.trim());
+            setData(
+                'name',
+                `${user.first_name} ${user.last_name ?? ''}`.trim(),
+            );
         }
         if (social_data.type === 'gmail') {
             const gmailData = social_data.data as { email?: string };
@@ -55,9 +59,7 @@ const RegisterNewUser = ({ social_data }: Props) => {
                         <Input
                             id="name"
                             value={data.name}
-                            onChange={(e) =>
-                                setData('name', e.target.value)
-                            }
+                            onChange={(e) => setData('name', e.target.value)}
                             type="text"
                             name="name"
                             autoComplete={'name'}
@@ -93,9 +95,7 @@ const RegisterNewUser = ({ social_data }: Props) => {
 
                     {data.type === 'gmail' && (
                         <div className="grid gap-2">
-                            <Label htmlFor="email">
-                                {t('common.email')}
-                            </Label>
+                            <Label htmlFor="email">{t('common.email')}</Label>
                             <Input
                                 id="email"
                                 value={data.email}
@@ -131,9 +131,13 @@ const RegisterNewUser = ({ social_data }: Props) => {
                             <button
                                 type="button"
                                 tabIndex={-1}
-                                className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center text-gray-400 hover:text-gray-700"
+                                className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center text-gray-400 hover:text-gray-700"
                                 onClick={() => setShowPassword((prev) => !prev)}
-                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                aria-label={
+                                    showPassword
+                                        ? 'Hide password'
+                                        : 'Show password'
+                                }
                             >
                                 {showPassword ? (
                                     <EyeOff className="h-5 w-5" />
@@ -157,9 +161,16 @@ const RegisterNewUser = ({ social_data }: Props) => {
                                 id="password_confirmation"
                                 value={data.password_confirmation}
                                 onChange={(e) =>
-                                    setData('password_confirmation', e.target.value)
+                                    setData(
+                                        'password_confirmation',
+                                        e.target.value,
+                                    )
                                 }
-                                type={showPasswordConfirmation ? 'text' : 'password'}
+                                type={
+                                    showPasswordConfirmation
+                                        ? 'text'
+                                        : 'password'
+                                }
                                 name="password_confirmation"
                                 required
                                 tabIndex={3}
@@ -170,9 +181,15 @@ const RegisterNewUser = ({ social_data }: Props) => {
                             <button
                                 type="button"
                                 tabIndex={-1}
-                                className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center text-gray-400 hover:text-gray-700"
-                                onClick={() => setShowPasswordConfirmation((prev) => !prev)}
-                                aria-label={showPasswordConfirmation ? 'Hide password' : 'Show password'}
+                                className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center text-gray-400 hover:text-gray-700"
+                                onClick={() =>
+                                    setShowPasswordConfirmation((prev) => !prev)
+                                }
+                                aria-label={
+                                    showPasswordConfirmation
+                                        ? 'Hide password'
+                                        : 'Show password'
+                                }
                             >
                                 {showPasswordConfirmation ? (
                                     <EyeOff className="h-5 w-5" />

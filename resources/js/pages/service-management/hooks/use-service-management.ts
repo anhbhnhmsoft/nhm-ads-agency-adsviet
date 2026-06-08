@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import type {
+    MetaAccount,
+    MetaCampaign,
+    ServiceManagementHook,
+} from '@/pages/service-management/types/types';
 import type { ServiceOrder } from '@/pages/service-order/types/type';
 import axios from 'axios';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MetaAccount, MetaCampaign, ServiceManagementHook } from '@/pages/service-management/types/types';
 
 const extractData = (payload: any) => {
     if (!payload) return [];
@@ -15,17 +19,27 @@ const extractData = (payload: any) => {
     return [];
 };
 
-export const useServiceManagement = (services: ServiceOrder[]): ServiceManagementHook => {
+export const useServiceManagement = (
+    services: ServiceOrder[],
+): ServiceManagementHook => {
     const { t } = useTranslation();
-    const [selectedService, setSelectedService] = useState<ServiceOrder | null>(null);
+    const [selectedService, setSelectedService] = useState<ServiceOrder | null>(
+        null,
+    );
     const [accounts, setAccounts] = useState<MetaAccount[]>([]);
     const [accountsLoading, setAccountsLoading] = useState(false);
     const [accountsError, setAccountsError] = useState<string | null>(null);
 
-    const [campaignsByAccount, setCampaignsByAccount] = useState<Record<string, MetaCampaign[]>>({});
-    const [campaignLoadingId, setCampaignLoadingId] = useState<string | null>(null);
+    const [campaignsByAccount, setCampaignsByAccount] = useState<
+        Record<string, MetaCampaign[]>
+    >({});
+    const [campaignLoadingId, setCampaignLoadingId] = useState<string | null>(
+        null,
+    );
     const [campaignError, setCampaignError] = useState<string | null>(null);
-    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+        null,
+    );
 
     const closeDialog = () => {
         setSelectedService(null);
@@ -40,11 +54,16 @@ export const useServiceManagement = (services: ServiceOrder[]): ServiceManagemen
         setAccountsLoading(true);
         setAccountsError(null);
         try {
-            const response = await axios.get(`/meta/${serviceId}/accounts`, { params: { per_page: 20 } });
+            const response = await axios.get(`/meta/${serviceId}/accounts`, {
+                params: { per_page: 20 },
+            });
             const items = extractData(response.data?.data);
             setAccounts(items as MetaAccount[]);
         } catch (error: any) {
-            setAccountsError(error?.response?.data?.message || t('service_management.accounts_error'));
+            setAccountsError(
+                error?.response?.data?.message ||
+                    t('service_management.accounts_error'),
+            );
         } finally {
             setAccountsLoading(false);
         }
@@ -64,16 +83,22 @@ export const useServiceManagement = (services: ServiceOrder[]): ServiceManagemen
         setCampaignError(null);
         setCampaignLoadingId(account.id);
         try {
-            const response = await axios.get(`/meta/${selectedService.id}/${account.id}/campaigns`, {
-                params: { per_page: 25 },
-            });
+            const response = await axios.get(
+                `/meta/${selectedService.id}/${account.id}/campaigns`,
+                {
+                    params: { per_page: 25 },
+                },
+            );
             const items = extractData(response.data?.data);
             setCampaignsByAccount((prev) => ({
                 ...prev,
                 [account.id]: items as MetaCampaign[],
             }));
         } catch (error: any) {
-            setCampaignError(error?.response?.data?.message || t('service_management.campaigns_error'));
+            setCampaignError(
+                error?.response?.data?.message ||
+                    t('service_management.campaigns_error'),
+            );
         } finally {
             setCampaignLoadingId(null);
         }
@@ -94,4 +119,3 @@ export const useServiceManagement = (services: ServiceOrder[]): ServiceManagemen
         closeDialog,
     };
 };
-

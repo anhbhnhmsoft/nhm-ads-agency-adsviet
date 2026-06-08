@@ -7,7 +7,6 @@ export type ServicePackageOption = {
     label: string;
 };
 
-
 // TypeScript/JavaScript (Dùng cho Frontend hoặc Node.js)
 export type MonthlySpendingFeeItem = {
     range: string;

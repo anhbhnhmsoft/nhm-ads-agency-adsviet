@@ -1,5 +1,5 @@
-import type { WalletTransaction } from '@/pages/wallet/types/type';
 import { LaravelPaginator } from '@/lib/types/type';
+import type { WalletTransaction } from '@/pages/wallet/types/type';
 
 export type Transaction = WalletTransaction;
 
@@ -18,4 +18,3 @@ export interface TransactionsIndexProps {
     };
     canApprove: boolean;
 }
-

@@ -1,19 +1,30 @@
-import { useCallback, useState, useRef, useEffect } from 'react';
-import { useForm } from '@inertiajs/react';
-import type { ServiceOrder, ServiceOrderConfigAccount, AccountConfig } from '@/pages/service-order/types/type';
-import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
-import { service_orders_approve, business_managers_get_child_bms } from '@/routes';
 import { _PlatformType } from '@/lib/types/constants';
-import axios from 'axios';
 import type { ChildBusinessManager } from '@/pages/business-manager/types/type';
+import type {
+    AccountConfig,
+    ServiceOrder,
+    ServiceOrderConfigAccount,
+} from '@/pages/service-order/types/type';
+import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
+import {
+    business_managers_get_child_bms,
+    service_orders_approve,
+} from '@/routes';
+import { useForm } from '@inertiajs/react';
+import axios from 'axios';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const useServiceOrderAdminDialog = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
+    const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(
+        null,
+    );
     const [accounts, setAccounts] = useState<AccountFormData[]>([]);
     const [useAccountsStructure, setUseAccountsStructure] = useState(false);
     const accountsRef = useRef<AccountFormData[]>([]);
-    const [childBusinessManagers, setChildBusinessManagers] = useState<ChildBusinessManager[]>([]);
+    const [childBusinessManagers, setChildBusinessManagers] = useState<
+        ChildBusinessManager[]
+    >([]);
     const [selectedChildBmId, setSelectedChildBmId] = useState<string>('none');
     const [loadingChildBMs, setLoadingChildBMs] = useState(false);
 
@@ -34,98 +45,124 @@ export const useServiceOrderAdminDialog = () => {
     }, [accounts]);
 
     // Fetch child business managers when BM ID changes
-    const fetchChildBusinessManagers = useCallback(async (parentBmId: string) => {
-        if (!parentBmId || parentBmId.trim() === '') {
+    const fetchChildBusinessManagers = useCallback(
+        async (parentBmId: string) => {
+            if (!parentBmId || parentBmId.trim() === '') {
+                setChildBusinessManagers([]);
+                setSelectedChildBmId('none');
+                return;
+            }
+
+            setLoadingChildBMs(true);
+            try {
+                const response = await axios.get(
+                    business_managers_get_child_bms({ parentBmId }).url,
+                );
+                if (
+                    response.data.success &&
+                    Array.isArray(response.data.data)
+                ) {
+                    setChildBusinessManagers(response.data.data);
+                } else {
+                    setChildBusinessManagers([]);
+                }
+            } catch (error) {
+                console.error('Error fetching child business managers:', error);
+                setChildBusinessManagers([]);
+            } finally {
+                setLoadingChildBMs(false);
+            }
+        },
+        [],
+    );
+
+    const openDialogForOrder = useCallback(
+        (order: ServiceOrder) => {
+            form.reset();
+            form.clearErrors();
+
+            setAccounts([]);
+            setUseAccountsStructure(false);
+            accountsRef.current = [];
             setChildBusinessManagers([]);
             setSelectedChildBmId('none');
-            return;
-        }
 
-        setLoadingChildBMs(true);
-        try {
-            const response = await axios.get(business_managers_get_child_bms({ parentBmId }).url);
-            if (response.data.success && Array.isArray(response.data.data)) {
-                setChildBusinessManagers(response.data.data);
+            const config = order.config_account || {};
+            setSelectedOrder(order);
+            const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
+            const packagePaymentType =
+                order.package?.payment_type === 'postpay'
+                    ? 'postpay'
+                    : 'prepay';
+            const configAccounts = config.accounts;
+
+            if (Array.isArray(configAccounts) && configAccounts.length > 0) {
+                setUseAccountsStructure(true);
+                const cleanedAccounts = configAccounts.map(
+                    (acc: AccountConfig) => ({
+                        ...acc,
+                        bm_ids:
+                            acc.bm_ids?.filter((id: string) => id?.trim()) ||
+                            [],
+                        fanpages:
+                            acc.fanpages?.filter((fp: string) => fp?.trim()) ||
+                            [],
+                        websites:
+                            acc.websites?.filter((ws: string) => ws?.trim()) ||
+                            [],
+                    }),
+                );
+                setAccounts(cleanedAccounts);
+                accountsRef.current = cleanedAccounts;
+                form.setData({
+                    meta_email: '',
+                    display_name: '',
+                    bm_id: '',
+                    info_fanpage: '',
+                    info_website: '',
+                    payment_type: packagePaymentType,
+                    asset_access: 'full_asset',
+                    timezone_bm: '',
+                    accounts: cleanedAccounts,
+                });
             } else {
-                setChildBusinessManagers([]);
+                setUseAccountsStructure(false);
+                setAccounts([]);
+                accountsRef.current = [];
+                const typedConfig: ServiceOrderConfigAccount = config;
+                const bmIdValue = typedConfig.bm_id || '';
+                const childBmIdValue = typedConfig.child_bm_id || '';
+
+                form.setData({
+                    meta_email: typedConfig.meta_email || '',
+                    display_name: typedConfig.display_name || '',
+                    bm_id: bmIdValue,
+                    info_fanpage: isGoogle
+                        ? ''
+                        : typedConfig.info_fanpage || '',
+                    info_website: isGoogle
+                        ? ''
+                        : typedConfig.info_website || '',
+                    payment_type: packagePaymentType,
+                    asset_access: typedConfig.asset_access || 'full_asset',
+                    timezone_bm: typedConfig.timezone_bm || '',
+                    accounts: [],
+                });
+
+                if (childBmIdValue) {
+                    setSelectedChildBmId(childBmIdValue);
+                } else {
+                    setSelectedChildBmId('none');
+                }
+
+                if (bmIdValue && !isGoogle) {
+                    fetchChildBusinessManagers(bmIdValue);
+                }
             }
-        } catch (error) {
-            console.error('Error fetching child business managers:', error);
-            setChildBusinessManagers([]);
-        } finally {
-            setLoadingChildBMs(false);
-        }
-    }, []);
-
-    const openDialogForOrder = useCallback((order: ServiceOrder) => {
-        form.reset();
-        form.clearErrors();
-
-        setAccounts([]);
-        setUseAccountsStructure(false);
-        accountsRef.current = [];
-        setChildBusinessManagers([]);
-        setSelectedChildBmId('none');
-
-        const config = order.config_account || {};
-        setSelectedOrder(order);
-        const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
-        const packagePaymentType = order.package?.payment_type === 'postpay' ? 'postpay' : 'prepay';
-        const configAccounts = config.accounts;
-
-        if (Array.isArray(configAccounts) && configAccounts.length > 0) {
-            setUseAccountsStructure(true);
-            const cleanedAccounts = configAccounts.map((acc: AccountConfig) => ({
-                ...acc,
-                bm_ids: acc.bm_ids?.filter((id: string) => id?.trim()) || [],
-                fanpages: acc.fanpages?.filter((fp: string) => fp?.trim()) || [],
-                websites: acc.websites?.filter((ws: string) => ws?.trim()) || [],
-            }));
-            setAccounts(cleanedAccounts);
-            accountsRef.current = cleanedAccounts;
-            form.setData({
-                meta_email: '',
-                display_name: '',
-                bm_id: '',
-                info_fanpage: '',
-                info_website: '',
-                payment_type: packagePaymentType,
-                asset_access: 'full_asset',
-                timezone_bm: '',
-                accounts: cleanedAccounts,
-            });
-        } else {
-            setUseAccountsStructure(false);
-            setAccounts([]);
-            accountsRef.current = [];
-            const typedConfig: ServiceOrderConfigAccount = config;
-            const bmIdValue = typedConfig.bm_id || '';
-            const childBmIdValue = typedConfig.child_bm_id || '';
-
-            form.setData({
-                meta_email: typedConfig.meta_email || '',
-                display_name: typedConfig.display_name || '',
-                bm_id: bmIdValue,
-                info_fanpage: isGoogle ? '' : typedConfig.info_fanpage || '',
-                info_website: isGoogle ? '' : typedConfig.info_website || '',
-                payment_type: packagePaymentType,
-                asset_access: typedConfig.asset_access || 'full_asset',
-                timezone_bm: typedConfig.timezone_bm || '',
-                accounts: [],
-            });
-
-            if (childBmIdValue) {
-                setSelectedChildBmId(childBmIdValue);
-            } else {
-                setSelectedChildBmId('none');
-            }
-
-            if (bmIdValue && !isGoogle) {
-                fetchChildBusinessManagers(bmIdValue);
-            }
-        }
-        setDialogOpen(true);
-    }, [form, fetchChildBusinessManagers]);
+            setDialogOpen(true);
+        },
+        [form, fetchChildBusinessManagers],
+    );
 
     const handleSubmitApprove = useCallback(() => {
         if (!selectedOrder) return;
@@ -137,63 +174,78 @@ export const useServiceOrderAdminDialog = () => {
         if (useAccountsStructure && currentAccounts.length > 0) {
             accountsToSubmit = currentAccounts.map((acc) => ({
                 ...acc,
-                bm_ids: (acc.bm_ids || []).filter((id: string) => id != null && String(id).trim() !== ''),
-                fanpages: (acc.fanpages || []).filter((fp: string) => fp && String(fp).trim() !== ''),
-                websites: (acc.websites || []).filter((ws: string) => ws && String(ws).trim() !== ''),
+                bm_ids: (acc.bm_ids || []).filter(
+                    (id: string) => id != null && String(id).trim() !== '',
+                ),
+                fanpages: (acc.fanpages || []).filter(
+                    (fp: string) => fp && String(fp).trim() !== '',
+                ),
+                websites: (acc.websites || []).filter(
+                    (ws: string) => ws && String(ws).trim() !== '',
+                ),
             }));
         }
 
         form.transform(() => ({
             ...form.data,
             bm_id: form.data.bm_id,
-            child_bm_id: (selectedChildBmId === 'none' || !selectedChildBmId) ? null : selectedChildBmId,
+            child_bm_id:
+                selectedChildBmId === 'none' || !selectedChildBmId
+                    ? null
+                    : selectedChildBmId,
             accounts: accountsToSubmit,
-            payment_type: selectedOrder.package?.payment_type === 'postpay' ? 'postpay' : 'prepay',
+            payment_type:
+                selectedOrder.package?.payment_type === 'postpay'
+                    ? 'postpay'
+                    : 'prepay',
         }));
 
-        form.post(
-            service_orders_approve({ id: selectedOrder.id }).url,
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setDialogOpen(false);
-                    setSelectedOrder(null);
-                    setAccounts([]);
-                    accountsRef.current = [];
-                    setUseAccountsStructure(false);
-                    setChildBusinessManagers([]);
-                    setSelectedChildBmId('none');
-                    form.reset();
-                    form.clearErrors();
-                },
-                onError: (errors: any) => {
-                    console.error('Approve error:', errors);
-                },
+        form.post(service_orders_approve({ id: selectedOrder.id }).url, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setDialogOpen(false);
+                setSelectedOrder(null);
+                setAccounts([]);
+                accountsRef.current = [];
+                setUseAccountsStructure(false);
+                setChildBusinessManagers([]);
+                setSelectedChildBmId('none');
+                form.reset();
+                form.clearErrors();
             },
-        );
+            onError: (errors: any) => {
+                console.error('Approve error:', errors);
+            },
+        });
     }, [form, selectedOrder, useAccountsStructure, selectedChildBmId]);
 
-    const handleDialogOpenChange = useCallback((open: boolean) => {
-        setDialogOpen(open);
-        if (!open) {
-            setSelectedOrder(null);
-            setAccounts([]);
-            setUseAccountsStructure(false);
-            setChildBusinessManagers([]);
+    const handleDialogOpenChange = useCallback(
+        (open: boolean) => {
+            setDialogOpen(open);
+            if (!open) {
+                setSelectedOrder(null);
+                setAccounts([]);
+                setUseAccountsStructure(false);
+                setChildBusinessManagers([]);
+                setSelectedChildBmId('none');
+                form.reset();
+                form.clearErrors();
+            }
+        },
+        [form],
+    );
+
+    const handleBmIdChange = useCallback(
+        (value: string) => {
+            form.setData('bm_id', value);
             setSelectedChildBmId('none');
-            form.reset();
-            form.clearErrors();
-        }
-    }, [form]);
 
-    const handleBmIdChange = useCallback((value: string) => {
-        form.setData('bm_id', value);
-        setSelectedChildBmId('none');
-
-        if (selectedOrder?.package?.platform === _PlatformType.META) {
-            fetchChildBusinessManagers(value);
-        }
-    }, [form, selectedOrder, fetchChildBusinessManagers]);
+            if (selectedOrder?.package?.platform === _PlatformType.META) {
+                fetchChildBusinessManagers(value);
+            }
+        },
+        [form, selectedOrder, fetchChildBusinessManagers],
+    );
 
     return {
         dialogOpen,

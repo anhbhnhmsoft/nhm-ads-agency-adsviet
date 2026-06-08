@@ -1,18 +1,31 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import {
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { LaravelPaginator } from '@/lib/types/type';
 import { router } from '@inertiajs/react';
 import { useCallback } from 'react';
-import { LaravelPaginator } from '@/lib/types/type';
 import { useTranslation } from 'react-i18next';
 
 interface DataTablePaginationProps<TData> {
     paginator: LaravelPaginator<TData>;
 }
 
-export function DataTablePagination<TData>({ paginator }: DataTablePaginationProps<TData>) {
-    const {t} = useTranslation();
+export function DataTablePagination<TData>({
+    paginator,
+}: DataTablePaginationProps<TData>) {
+    const { t } = useTranslation();
     // Hàm chung để điều hướng Inertia
     const navigate = useCallback((url: string | null) => {
         if (url) {
@@ -32,24 +45,36 @@ export function DataTablePagination<TData>({ paginator }: DataTablePaginationPro
         // 2. Reset về trang 1
         url.searchParams.set('page', '1');
         // Gửi request Inertia
-        router.visit(url.toString(), { preserveScroll: true, preserveState: true });
+        router.visit(url.toString(), {
+            preserveScroll: true,
+            preserveState: true,
+        });
     }, []);
 
     // Chỉ giữ lại các link là số trang (loại bỏ "Previous" / "Next" bất kể ngôn ngữ / label)
     const pageLinks = paginator.meta.links.filter((link) => {
         if (link.page === null) return false;
         const label = (link.label || '').toString().toLowerCase();
-        if (label.includes('pagination.previous') || label.includes('pagination.next')) return false;
+        if (
+            label.includes('pagination.previous') ||
+            label.includes('pagination.next')
+        )
+            return false;
         if (label.includes('previous') || label.includes('next')) return false;
         return true;
     });
-    const firstPageUrl = paginator.meta.links.find((link) => link.page === 1)?.url || paginator.links.first;
-    const lastPageUrl = paginator.meta.links.find((link) => link.page === paginator.meta.last_page)?.url || paginator.links.last;
+    const firstPageUrl =
+        paginator.meta.links.find((link) => link.page === 1)?.url ||
+        paginator.links.first;
+    const lastPageUrl =
+        paginator.meta.links.find(
+            (link) => link.page === paginator.meta.last_page,
+        )?.url || paginator.links.last;
 
     return (
         <div className="flex items-center justify-between px-2 py-3">
             {/* THÔNG TIN HÀNG ĐƯỢC CHỌN VÀ THỐNG KÊ */}
-            <div className="hidden md:block flex-1 text-sm text-muted-foreground">
+            <div className="hidden flex-1 text-sm text-muted-foreground md:block">
                 {/* Chỉ hiển thị thông tin thống kê của Laravel Paginator */}
                 {/* Thay thế thông tin thống kê bằng translation */}
                 {t('common.pagination', {
@@ -61,18 +86,25 @@ export function DataTablePagination<TData>({ paginator }: DataTablePaginationPro
 
             <div className="flex items-center space-x-6 lg:space-x-8">
                 {/* SỐ HÀNG MỖI TRANG (PER PAGE) */}
-                <div className="hidden md:flex items-center space-x-2">
-                    <p className="text-sm font-medium">{t('common.per_page')}</p>
+                <div className="hidden items-center space-x-2 md:flex">
+                    <p className="text-sm font-medium">
+                        {t('common.per_page')}
+                    </p>
                     <Select
                         value={paginator.meta.per_page.toString()}
                         onValueChange={handlePerPageChange}
                     >
                         <SelectTrigger className="h-8 w-[70px]">
-                            <SelectValue placeholder={paginator.meta.per_page} />
+                            <SelectValue
+                                placeholder={paginator.meta.per_page}
+                            />
                         </SelectTrigger>
                         <SelectContent side="top">
                             {[10, 20, 30, 40, 50].map((pageSize) => (
-                                <SelectItem key={pageSize} value={`${pageSize}`}>
+                                <SelectItem
+                                    key={pageSize}
+                                    value={`${pageSize}`}
+                                >
                                     {pageSize}
                                 </SelectItem>
                             ))}
@@ -81,7 +113,7 @@ export function DataTablePagination<TData>({ paginator }: DataTablePaginationPro
                 </div>
 
                 {/* SỐ TRANG HIỆN TẠI */}
-                <div className="hidden md:flex w-[100px] items-center justify-center text-sm font-medium">
+                <div className="hidden w-[100px] items-center justify-center text-sm font-medium md:flex">
                     {/* Thay thế thông tin trang hiện tại bằng translation */}
                     {t('common.current_page_to', {
                         current_page: paginator.meta.current_page,
@@ -99,7 +131,7 @@ export function DataTablePagination<TData>({ paginator }: DataTablePaginationPro
                         onClick={() => navigate(firstPageUrl)}
                         disabled={paginator.meta.current_page === 1}
                     >
-                        <ChevronsLeft className='size-4' />
+                        <ChevronsLeft className="size-4" />
                     </Button>
 
                     {/* Trang trước (Previous Page) */}
@@ -110,11 +142,11 @@ export function DataTablePagination<TData>({ paginator }: DataTablePaginationPro
                         onClick={() => navigate(paginator.links.prev)}
                         disabled={!paginator.links.prev}
                     >
-                        <ChevronLeft className='size-4' />
+                        <ChevronLeft className="size-4" />
                     </Button>
 
                     {/*Các trang */}
-                    {pageLinks.map(link => (
+                    {pageLinks.map((link) => (
                         <Button
                             key={link.label}
                             variant={link.active ? 'default' : 'outline'}
@@ -122,7 +154,9 @@ export function DataTablePagination<TData>({ paginator }: DataTablePaginationPro
                             onClick={() => navigate(link.url)}
                             disabled={!link.url}
                         >
-                             <span dangerouslySetInnerHTML={{ __html: link.label }} />
+                            <span
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                            />
                         </Button>
                     ))}
 
@@ -134,7 +168,7 @@ export function DataTablePagination<TData>({ paginator }: DataTablePaginationPro
                         onClick={() => navigate(paginator.links.next)}
                         disabled={!paginator.links.next}
                     >
-                        <ChevronRight className='size-4' />
+                        <ChevronRight className="size-4" />
                     </Button>
 
                     {/* Trang cuối (Last Page) */}
@@ -143,9 +177,12 @@ export function DataTablePagination<TData>({ paginator }: DataTablePaginationPro
                         size="icon"
                         className="hidden size-8 lg:flex"
                         onClick={() => navigate(lastPageUrl)}
-                        disabled={paginator.meta.current_page === paginator.meta.last_page}
+                        disabled={
+                            paginator.meta.current_page ===
+                            paginator.meta.last_page
+                        }
                     >
-                        <ChevronsRight className='size-4' />
+                        <ChevronsRight className="size-4" />
                     </Button>
                 </div>
             </div>

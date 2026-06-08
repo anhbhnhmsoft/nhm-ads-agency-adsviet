@@ -18,7 +18,9 @@ export const TransferTabs = ({ activeTab, onTabChange }: TransferTabsProps) => {
                         : 'text-muted-foreground'
                 }`}
             >
-                {t('ticket.transfer.create_request', { defaultValue: 'Tạo yêu cầu' })}
+                {t('ticket.transfer.create_request', {
+                    defaultValue: 'Tạo yêu cầu',
+                })}
             </button>
             <button
                 onClick={() => onTabChange('list')}
@@ -28,9 +30,10 @@ export const TransferTabs = ({ activeTab, onTabChange }: TransferTabsProps) => {
                         : 'text-muted-foreground'
                 }`}
             >
-                {t('ticket.transfer.in_progress', { defaultValue: 'Đang thực hiện' })}
+                {t('ticket.transfer.in_progress', {
+                    defaultValue: 'Đang thực hiện',
+                })}
             </button>
         </div>
     );
 };
-

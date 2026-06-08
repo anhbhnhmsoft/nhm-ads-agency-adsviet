@@ -1,6 +1,6 @@
 import useNestedState from '@/hooks/use-nested-state';
-import { router } from '@inertiajs/react';
 import { ticket_index } from '@/routes';
+import { router } from '@inertiajs/react';
 
 export type TicketListQuery = {
     filter?: {
@@ -23,11 +23,11 @@ export const useSearchTicketList = () => {
         if (query.keyword) {
             filterPayload.keyword = query.keyword;
         }
-        
+
         if (query.status !== undefined && query.status !== null) {
             filterPayload.status = query.status;
         }
-        
+
         if (query.status_not_in && query.status_not_in.length > 0) {
             filterPayload.status_not_in = query.status_not_in;
         }
@@ -51,4 +51,3 @@ export const useSearchTicketList = () => {
         handleSearch,
     };
 };
-

@@ -1,4 +1,3 @@
-import type { LaravelPaginator } from '@/lib/types/type';
 import type { ServicePackageFeatureValue } from '@/pages/service-package/types/type';
 
 export type MonthlySpendingFee = {
@@ -24,9 +23,11 @@ export type ServicePackage = {
     monthly_spending_fee_structure?: MonthlySpendingFee[];
 };
 
-export type PackagesProp = ServicePackage[] | {
-    data?: ServicePackage[];
-};
+export type PackagesProp =
+    | ServicePackage[]
+    | {
+          data?: ServicePackage[];
+      };
 
 export type TimezoneOption = {
     value: string;

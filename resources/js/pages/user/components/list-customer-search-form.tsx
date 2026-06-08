@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardAction,
@@ -6,14 +7,19 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { useSearchCustomerList } from '@/pages/user/hooks/use-search';
-import { Search } from 'lucide-react';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { useTranslation } from 'react-i18next';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { useSearchCustomerList } from '@/pages/user/hooks/use-search';
 import type { CustomerListQuery, UserOption } from '@/pages/user/types/type';
+import { Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     managers: UserOption[];
@@ -31,13 +37,18 @@ const ListCustomerSearchForm = ({
     showEmployeeSelect = false,
 }: Props) => {
     const { t } = useTranslation();
-    const { query, setQuery, handleSearch } = useSearchCustomerList(initialFilter);
+    const { query, setQuery, handleSearch } =
+        useSearchCustomerList(initialFilter);
 
     const EMPTY_OPTION = 'all';
     const managerValue =
-        query.manager_id && query.manager_id !== 'all' ? String(query.manager_id) : EMPTY_OPTION;
+        query.manager_id && query.manager_id !== 'all'
+            ? String(query.manager_id)
+            : EMPTY_OPTION;
     const employeeValue =
-        query.employee_id && query.employee_id !== 'all' ? String(query.employee_id) : EMPTY_OPTION;
+        query.employee_id && query.employee_id !== 'all'
+            ? String(query.employee_id)
+            : EMPTY_OPTION;
 
     return (
         <Card>
@@ -47,7 +58,9 @@ const ListCustomerSearchForm = ({
             <CardContent>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Field>
-                        <FieldLabel htmlFor="name">{t('common.keyword')}</FieldLabel>
+                        <FieldLabel htmlFor="name">
+                            {t('common.keyword')}
+                        </FieldLabel>
                         <Input
                             id="keyword"
                             autoComplete="off"
@@ -65,18 +78,30 @@ const ListCustomerSearchForm = ({
                                 value={managerValue}
                                 onValueChange={(value) => {
                                     setQuery({
-                                        manager_id: value === EMPTY_OPTION ? null : value,
+                                        manager_id:
+                                            value === EMPTY_OPTION
+                                                ? null
+                                                : value,
                                         employee_id: null,
                                     });
                                 }}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder={t('user.select_manager_placeholder')} />
+                                    <SelectValue
+                                        placeholder={t(
+                                            'user.select_manager_placeholder',
+                                        )}
+                                    />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value={EMPTY_OPTION}>{t('common.all')}</SelectItem>
+                                    <SelectItem value={EMPTY_OPTION}>
+                                        {t('common.all')}
+                                    </SelectItem>
                                     {managers.map((manager) => (
-                                        <SelectItem key={manager.id} value={String(manager.id)}>
+                                        <SelectItem
+                                            key={manager.id}
+                                            value={String(manager.id)}
+                                        >
                                             {manager.username}
                                         </SelectItem>
                                     ))}
@@ -91,18 +116,30 @@ const ListCustomerSearchForm = ({
                                 value={employeeValue}
                                 onValueChange={(value) => {
                                     setQuery({
-                                        employee_id: value === EMPTY_OPTION ? null : value,
+                                        employee_id:
+                                            value === EMPTY_OPTION
+                                                ? null
+                                                : value,
                                     });
                                 }}
                                 disabled={!employees.length}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder={t('user.select_employee_placeholder')} />
+                                    <SelectValue
+                                        placeholder={t(
+                                            'user.select_employee_placeholder',
+                                        )}
+                                    />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value={EMPTY_OPTION}>{t('common.all')}</SelectItem>
+                                    <SelectItem value={EMPTY_OPTION}>
+                                        {t('common.all')}
+                                    </SelectItem>
                                     {employees.map((employee) => (
-                                        <SelectItem key={employee.id} value={String(employee.id)}>
+                                        <SelectItem
+                                            key={employee.id}
+                                            value={String(employee.id)}
+                                        >
                                             {employee.username}
                                         </SelectItem>
                                     ))}
@@ -114,7 +151,10 @@ const ListCustomerSearchForm = ({
             </CardContent>
             <CardFooter>
                 <CardAction className="space-y-2 space-x-2">
-                    <Button className="cursor-pointer" onClick={() => handleSearch()}>
+                    <Button
+                        className="cursor-pointer"
+                        onClick={() => handleSearch()}
+                    >
                         <Search />
                         {t('common.search')}
                     </Button>

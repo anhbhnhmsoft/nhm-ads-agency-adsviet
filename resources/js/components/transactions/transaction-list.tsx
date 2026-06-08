@@ -1,39 +1,39 @@
-import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { getTransactionDescription } from '@/lib/types/wallet-transaction-description';
 import { cn } from '@/lib/utils';
-import {
-    ArrowDownCircle,
-    ArrowUpCircle,
-    Ban,
-    CheckCircle2,
-    Eye,
-    ExternalLink,
-    Gift,
-    Loader2,
-    Percent,
-    ReceiptText,
-    RefreshCcw,
-    Wallet as WalletIcon,
-    X,
-    XCircle,
-} from 'lucide-react';
-import type { WalletTransaction } from '@/pages/wallet/types/type';
 import {
     TRANSACTION_STATUS,
     TRANSACTION_STATUS_MAP,
     TRANSACTION_TYPE,
     TRANSACTION_TYPE_MAP,
 } from '@/pages/wallet/types/constants';
-import { getTransactionDescription } from '@/lib/types/wallet-transaction-description';
+import type { WalletTransaction } from '@/pages/wallet/types/type';
+import {
+    ArrowDownCircle,
+    ArrowUpCircle,
+    Ban,
+    CheckCircle2,
+    ExternalLink,
+    Eye,
+    Gift,
+    Loader2,
+    Percent,
+    RefreshCcw,
+    Wallet as WalletIcon,
+    X,
+    XCircle,
+} from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const amountFormatter = new Intl.NumberFormat('vi-VN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
 });
 
-const formatUSDT = (amount: number) => `${amountFormatter.format(Math.abs(amount))} USDT`;
+const formatUSDT = (amount: number) =>
+    `${amountFormatter.format(Math.abs(amount))} USDT`;
 
 const getTransactionIcon = (type?: number | null) => {
     switch (type) {
@@ -73,7 +73,7 @@ const getStatusIcon = (status?: number | null) => {
         case TRANSACTION_STATUS.COMPLETED:
             return <CheckCircle2 className="h-4 w-4 text-green-500" />;
         case TRANSACTION_STATUS.PENDING:
-            return <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />;
+            return <Loader2 className="h-4 w-4 animate-spin text-amber-500" />;
         case TRANSACTION_STATUS.REJECTED:
         case TRANSACTION_STATUS.CANCELLED:
             return <XCircle className="h-4 w-4 text-red-500" />;
@@ -113,7 +113,9 @@ type TransactionListProps = {
     onCancel?: (id: string) => void;
     approveLoadingId?: string | null;
     cancelLoadingId?: string | null;
-    onViewWithdrawInfo?: (info: WalletTransaction['withdraw_info'] | null) => void;
+    onViewWithdrawInfo?: (
+        info: WalletTransaction['withdraw_info'] | null,
+    ) => void;
     showExplorerLink?: boolean;
     emptyMessage?: string;
 };
@@ -136,7 +138,10 @@ export function TransactionList({
             <div className="py-8 text-center">
                 <WalletIcon className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                 <p className="text-gray-500">
-                    {emptyMessage || t('transactions.no_transactions', { defaultValue: 'Không có giao dịch nào' })}
+                    {emptyMessage ||
+                        t('transactions.no_transactions', {
+                            defaultValue: 'Không có giao dịch nào',
+                        })}
                 </p>
             </div>
         );
@@ -146,7 +151,9 @@ export function TransactionList({
         <div className="space-y-3">
             {transactions.map((tx) => {
                 const statusClass = getStatusColor(tx.status);
-                const explorerUrl = showExplorerLink ? getExplorerUrl(tx.network, tx.txHash) : null;
+                const explorerUrl = showExplorerLink
+                    ? getExplorerUrl(tx.network, tx.txHash)
+                    : null;
                 const isPending = tx.status === TRANSACTION_STATUS.PENDING;
                 const isWithdraw = tx.type === TRANSACTION_TYPE.WITHDRAW;
                 const hasWithdrawInfo = isWithdraw && tx.withdraw_info;
@@ -154,57 +161,106 @@ export function TransactionList({
                 const cancelling = cancelLoadingId === tx.id;
 
                 return (
-                    <Card key={tx.id} className="rounded-lg border transition-colors hover:bg-gray-50">
-                        <CardContent className="sm:flex items-center justify-between p-4">
-                            <div className="flex items-center gap-3 flex-1">
+                    <Card
+                        key={tx.id}
+                        className="rounded-lg border transition-colors hover:bg-gray-50"
+                    >
+                        <CardContent className="items-center justify-between p-4 sm:flex">
+                            <div className="flex flex-1 items-center gap-3">
                                 {getTransactionIcon(tx.type)}
                                 <div className="flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-medium">
-                                            {t(`wallet.transaction_type.${TRANSACTION_TYPE_MAP[tx.type] ?? 'unknown'}`, {
-                                                defaultValue: String(tx.type),
-                                            })}
+                                            {t(
+                                                `wallet.transaction_type.${TRANSACTION_TYPE_MAP[tx.type] ?? 'unknown'}`,
+                                                {
+                                                    defaultValue: String(
+                                                        tx.type,
+                                                    ),
+                                                },
+                                            )}
                                         </span>
-                                        <Badge className={cn(statusClass, 'text-xs')}>
-                                            {t(`wallet.transaction_status.${TRANSACTION_STATUS_MAP[tx.status] ?? 'unknown'}`, {
-                                                defaultValue: String(tx.status),
-                                            })}
+                                        <Badge
+                                            className={cn(
+                                                statusClass,
+                                                'text-xs',
+                                            )}
+                                        >
+                                            {t(
+                                                `wallet.transaction_status.${TRANSACTION_STATUS_MAP[tx.status] ?? 'unknown'}`,
+                                                {
+                                                    defaultValue: String(
+                                                        tx.status,
+                                                    ),
+                                                },
+                                            )}
                                         </Badge>
                                         {isPending && canApprove && (
                                             <>
                                                 <Button
                                                     size="sm"
                                                     variant="default"
-                                                    onClick={() => onApprove?.(tx.id)}
-                                                    disabled={approving || cancelling}
+                                                    onClick={() =>
+                                                        onApprove?.(tx.id)
+                                                    }
+                                                    disabled={
+                                                        approving || cancelling
+                                                    }
                                                 >
-                                                    {approving ? t('common.processing') : t('transactions.approve')}
+                                                    {approving
+                                                        ? t('common.processing')
+                                                        : t(
+                                                              'transactions.approve',
+                                                          )}
                                                 </Button>
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
-                                                    onClick={() => onCancel?.(tx.id)}
-                                                    disabled={approving || cancelling}
+                                                    onClick={() =>
+                                                        onCancel?.(tx.id)
+                                                    }
+                                                    disabled={
+                                                        approving || cancelling
+                                                    }
                                                 >
                                                     <X className="mr-1 h-3 w-3" />
-                                                    {cancelling ? t('common.processing') : t('transactions.cancel')}
+                                                    {cancelling
+                                                        ? t('common.processing')
+                                                        : t(
+                                                              'transactions.cancel',
+                                                          )}
                                                 </Button>
                                             </>
                                         )}
-                                        {hasWithdrawInfo && onViewWithdrawInfo && (
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => onViewWithdrawInfo(tx.withdraw_info || null)}
-                                            >
-                                                <Eye className="mr-1 h-3 w-3" />
-                                                {t('transactions.view_info', { defaultValue: 'Xem thông tin' })}
-                                            </Button>
-                                        )}
+                                        {hasWithdrawInfo &&
+                                            onViewWithdrawInfo && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        onViewWithdrawInfo(
+                                                            tx.withdraw_info ||
+                                                                null,
+                                                        )
+                                                    }
+                                                >
+                                                    <Eye className="mr-1 h-3 w-3" />
+                                                    {t(
+                                                        'transactions.view_info',
+                                                        {
+                                                            defaultValue:
+                                                                'Xem thông tin',
+                                                        },
+                                                    )}
+                                                </Button>
+                                            )}
                                     </div>
                                     {tx.description && (
                                         <p className="text-sm text-gray-600">
-                                            {getTransactionDescription(tx.description, t)}
+                                            {getTransactionDescription(
+                                                tx.description,
+                                                t,
+                                            )}
                                         </p>
                                     )}
                                     {tx.user && (
@@ -212,20 +268,39 @@ export function TransactionList({
                                             {tx.user.name} (ID: {tx.user.id})
                                         </p>
                                     )}
-                                    <div className="hidden sm:flex mt-1 items-center gap-2 text-xs text-gray-400">
+                                    <div className="mt-1 hidden items-center gap-2 text-xs text-gray-400 sm:flex">
                                         {getStatusIcon(tx.status)}
-                                        {tx.createdAt && <span>{getTimeLabel(tx.createdAt)}</span>}
-                                        {tx.network && <span className="ml-2">• {tx.network}</span>}
+                                        {tx.createdAt && (
+                                            <span>
+                                                {getTimeLabel(tx.createdAt)}
+                                            </span>
+                                        )}
+                                        {tx.network && (
+                                            <span className="ml-2">
+                                                • {tx.network}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
-                            <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-gray-400">
+                            <div className="mt-1 flex items-center gap-2 text-xs text-gray-400 sm:hidden">
                                 {getStatusIcon(tx.status)}
-                                {tx.createdAt && <span>{getTimeLabel(tx.createdAt)}</span>}
-                                {tx.network && <span className="ml-2">• {tx.network}</span>}
+                                {tx.createdAt && (
+                                    <span>{getTimeLabel(tx.createdAt)}</span>
+                                )}
+                                {tx.network && (
+                                    <span className="ml-2">• {tx.network}</span>
+                                )}
                             </div>
                             <div className="text-right">
-                                <div className={cn('font-bold', tx.amount > 0 ? 'text-green-600' : 'text-red-600')}>
+                                <div
+                                    className={cn(
+                                        'font-bold',
+                                        tx.amount > 0
+                                            ? 'text-green-600'
+                                            : 'text-red-600',
+                                    )}
+                                >
                                     {tx.amount > 0 ? '+' : '-'}
                                     {formatUSDT(tx.amount)}
                                 </div>
@@ -237,7 +312,9 @@ export function TransactionList({
                                         className="mt-1 inline-flex items-center gap-1 text-xs text-[#4285f4] hover:underline"
                                     >
                                         <ExternalLink className="h-3 w-3" />
-                                        {t('transactions.view_on_explorer', { defaultValue: 'Xem trên explorer' })}
+                                        {t('transactions.view_on_explorer', {
+                                            defaultValue: 'Xem trên explorer',
+                                        })}
                                     </a>
                                 )}
                             </div>
@@ -248,4 +325,3 @@ export function TransactionList({
         </div>
     );
 }
-

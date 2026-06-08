@@ -1,3 +1,4 @@
+import { TimezoneSelect } from '@/components/timezone-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,12 +9,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { TimezoneSelect } from '@/components/timezone-select';
-import { X, Plus } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { _PlatformType } from '@/lib/types/constants';
 import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
+import { Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type AccountFormEditProps = {
     account: AccountFormData;
@@ -39,9 +39,15 @@ export const AccountFormEdit = ({
     const { t } = useTranslation();
     const isMeta = platform === _PlatformType.META;
 
-    const [localBmIds, setLocalBmIds] = useState<string[]>(account.bm_ids || []);
-    const [localFanpages, setLocalFanpages] = useState<string[]>(account.fanpages || []);
-    const [localWebsites, setLocalWebsites] = useState<string[]>(account.websites || []);
+    const [localBmIds, setLocalBmIds] = useState<string[]>(
+        account.bm_ids || [],
+    );
+    const [localFanpages, setLocalFanpages] = useState<string[]>(
+        account.fanpages || [],
+    );
+    const [localWebsites, setLocalWebsites] = useState<string[]>(
+        account.websites || [],
+    );
 
     useEffect(() => {
         setLocalBmIds(account.bm_ids || []);
@@ -49,7 +55,10 @@ export const AccountFormEdit = ({
         setLocalWebsites(account.websites || []);
     }, [account.bm_ids, account.fanpages, account.websites, accountIndex]);
 
-    const updateField = <K extends keyof AccountFormData>(field: K, value: AccountFormData[K]) => {
+    const updateField = <K extends keyof AccountFormData>(
+        field: K,
+        value: AccountFormData[K],
+    ) => {
         const updatedAccount = { ...account, [field]: value };
         onUpdate(accountIndex, updatedAccount);
     };
@@ -72,7 +81,9 @@ export const AccountFormEdit = ({
     const removeBmId = (index: number) => {
         setLocalBmIds((prev) => {
             const next = prev.filter((_, i) => i !== index);
-            const cleaned = next.map((id) => id?.trim()).filter((id): id is string => !!id);
+            const cleaned = next
+                .map((id) => id?.trim())
+                .filter((id): id is string => !!id);
             updateField('bm_ids', cleaned);
             return next;
         });
@@ -105,7 +116,9 @@ export const AccountFormEdit = ({
     const removeFanpage = (index: number) => {
         setLocalFanpages((prev) => {
             const next = prev.filter((_, i) => i !== index);
-            const cleaned = next.map((fp) => fp?.trim()).filter((fp): fp is string => !!fp);
+            const cleaned = next
+                .map((fp) => fp?.trim())
+                .filter((fp): fp is string => !!fp);
             updateField('fanpages', cleaned);
             return next;
         });
@@ -138,7 +151,9 @@ export const AccountFormEdit = ({
     const removeWebsite = (index: number) => {
         setLocalWebsites((prev) => {
             const next = prev.filter((_, i) => i !== index);
-            const cleaned = next.map((ws) => ws?.trim()).filter((ws): ws is string => !!ws);
+            const cleaned = next
+                .map((ws) => ws?.trim())
+                .filter((ws): ws is string => !!ws);
             updateField('websites', cleaned);
             return next;
         });
@@ -154,10 +169,13 @@ export const AccountFormEdit = ({
     };
 
     return (
-        <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+        <div className="space-y-4 rounded-lg border bg-gray-50 p-4">
             <div className="flex items-center justify-between">
-                <h4 className="font-medium text-sm">
-                    {t('service_purchase.account_number', { number: accountIndex + 1, defaultValue: `Tài khoản ${accountIndex + 1}` })}
+                <h4 className="text-sm font-medium">
+                    {t('service_purchase.account_number', {
+                        number: accountIndex + 1,
+                        defaultValue: `Tài khoản ${accountIndex + 1}`,
+                    })}
                 </h4>
                 {canRemove && (
                     <Button
@@ -165,7 +183,7 @@ export const AccountFormEdit = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => onRemove(accountIndex)}
-                        className="text-red-600 hover:text-red-700 h-7"
+                        className="h-7 text-red-600 hover:text-red-700"
                     >
                         <X className="h-4 w-4" />
                     </Button>
@@ -194,7 +212,9 @@ export const AccountFormEdit = ({
                     type="text"
                     placeholder="abc"
                     value={account.display_name || ''}
-                    onChange={(e) => updateField('display_name', e.target.value)}
+                    onChange={(e) =>
+                        updateField('display_name', e.target.value)
+                    }
                 />
             </div>
 
@@ -202,8 +222,13 @@ export const AccountFormEdit = ({
                 <div className="flex items-center justify-between">
                     <Label>
                         {isMeta
-                            ? t('service_purchase.id_bm', { defaultValue: 'ID BM' })
-                            : t('service_purchase.id_mcc', { defaultValue: 'ID MCC' })}:
+                            ? t('service_purchase.id_bm', {
+                                  defaultValue: 'ID BM',
+                              })
+                            : t('service_purchase.id_mcc', {
+                                  defaultValue: 'ID MCC',
+                              })}
+                        :
                     </Label>
                     {(localBmIds?.length || 0) < 3 && (
                         <Button
@@ -213,39 +238,50 @@ export const AccountFormEdit = ({
                             onClick={addBmId}
                             className="h-7 text-xs"
                         >
-                            <Plus className="h-3 w-3 mr-1" />
-                            {t('service_purchase.add_bm_mcc', { defaultValue: 'Thêm BM/MCC' })}
+                            <Plus className="mr-1 h-3 w-3" />
+                            {t('service_purchase.add_bm_mcc', {
+                                defaultValue: 'Thêm BM/MCC',
+                            })}
                         </Button>
                     )}
                 </div>
-                {(localBmIds && localBmIds.length > 0 ? localBmIds : ['']).map((bmId, idx) => (
-                    <div key={idx} className="flex gap-2">
-                        <Input
-                            type="text"
-                            placeholder="1234567890"
-                            value={bmId}
-                            onChange={(e) => updateBmId(idx, e.target.value)}
-                            onBlur={commitBmIds}
-                        />
-                        {localBmIds.length > 1 && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeBmId(idx)}
-                                className="text-red-600 h-9"
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </div>
-                ))}
+                {(localBmIds && localBmIds.length > 0 ? localBmIds : ['']).map(
+                    (bmId, idx) => (
+                        <div key={idx} className="flex gap-2">
+                            <Input
+                                type="text"
+                                placeholder="1234567890"
+                                value={bmId}
+                                onChange={(e) =>
+                                    updateBmId(idx, e.target.value)
+                                }
+                                onBlur={commitBmIds}
+                            />
+                            {localBmIds.length > 1 && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeBmId(idx)}
+                                    className="h-9 text-red-600"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                    ),
+                )}
             </div>
 
             {isMeta && (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                        <Label>{t('service_purchase.info_fanpage', { defaultValue: 'Thông tin fanpage' })}:</Label>
+                        <Label>
+                            {t('service_purchase.info_fanpage', {
+                                defaultValue: 'Thông tin fanpage',
+                            })}
+                            :
+                        </Label>
                         {(localFanpages?.length || 0) < 3 && (
                             <Button
                                 type="button"
@@ -254,19 +290,32 @@ export const AccountFormEdit = ({
                                 onClick={addFanpage}
                                 className="h-7 text-xs"
                             >
-                                <Plus className="h-3 w-3 mr-1" />
-                                {t('service_purchase.add_fanpage', { defaultValue: 'Thêm fanpage' })}
+                                <Plus className="mr-1 h-3 w-3" />
+                                {t('service_purchase.add_fanpage', {
+                                    defaultValue: 'Thêm fanpage',
+                                })}
                             </Button>
                         )}
                     </div>
                     <div className="space-y-2">
-                        {(localFanpages && localFanpages.length > 0 ? localFanpages : ['']).map((fanpage, idx) => (
+                        {(localFanpages && localFanpages.length > 0
+                            ? localFanpages
+                            : ['']
+                        ).map((fanpage, idx) => (
                             <div key={idx} className="flex gap-2">
                                 <Input
                                     type="text"
-                                    placeholder={t('service_purchase.info_fanpage_placeholder', { defaultValue: 'Link hoặc tên fanpage' })}
+                                    placeholder={t(
+                                        'service_purchase.info_fanpage_placeholder',
+                                        {
+                                            defaultValue:
+                                                'Link hoặc tên fanpage',
+                                        },
+                                    )}
                                     value={fanpage}
-                                    onChange={(e) => updateFanpage(idx, e.target.value)}
+                                    onChange={(e) =>
+                                        updateFanpage(idx, e.target.value)
+                                    }
                                     onBlur={commitFanpages}
                                 />
                                 {localFanpages.length > 1 && (
@@ -275,7 +324,7 @@ export const AccountFormEdit = ({
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => removeFanpage(idx)}
-                                        className="text-red-600 h-9"
+                                        className="h-9 text-red-600"
                                     >
                                         <X className="h-4 w-4" />
                                     </Button>
@@ -288,7 +337,12 @@ export const AccountFormEdit = ({
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                    <Label>{t('service_purchase.info_website', { defaultValue: 'Thông tin website' })}:</Label>
+                    <Label>
+                        {t('service_purchase.info_website', {
+                            defaultValue: 'Thông tin website',
+                        })}
+                        :
+                    </Label>
                     {(localWebsites?.length || 0) < 3 && (
                         <Button
                             type="button"
@@ -297,19 +351,29 @@ export const AccountFormEdit = ({
                             onClick={addWebsite}
                             className="h-7 text-xs"
                         >
-                            <Plus className="h-3 w-3 mr-1" />
-                            {t('service_purchase.add_website', { defaultValue: 'Thêm website' })}
+                            <Plus className="mr-1 h-3 w-3" />
+                            {t('service_purchase.add_website', {
+                                defaultValue: 'Thêm website',
+                            })}
                         </Button>
                     )}
                 </div>
                 <div className="space-y-2">
-                    {(localWebsites && localWebsites.length > 0 ? localWebsites : ['']).map((website, idx) => (
+                    {(localWebsites && localWebsites.length > 0
+                        ? localWebsites
+                        : ['']
+                    ).map((website, idx) => (
                         <div key={idx} className="flex gap-2">
                             <Input
                                 type="text"
-                                placeholder={t('service_purchase.info_website_placeholder', { defaultValue: 'Link website' })}
+                                placeholder={t(
+                                    'service_purchase.info_website_placeholder',
+                                    { defaultValue: 'Link website' },
+                                )}
                                 value={website}
-                                onChange={(e) => updateWebsite(idx, e.target.value)}
+                                onChange={(e) =>
+                                    updateWebsite(idx, e.target.value)
+                                }
                                 onBlur={commitWebsites}
                             />
                             {localWebsites.length > 1 && (
@@ -318,7 +382,7 @@ export const AccountFormEdit = ({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => removeWebsite(idx)}
-                                    className="text-red-600 h-9"
+                                    className="h-9 text-red-600"
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
@@ -330,21 +394,34 @@ export const AccountFormEdit = ({
 
             <div className="space-y-2">
                 <Label htmlFor={`edit_asset_access_${accountIndex}`}>
-                    {t('service_purchase.asset_access_label', { defaultValue: 'Chia sẻ quyền truy cập' })}
+                    {t('service_purchase.asset_access_label', {
+                        defaultValue: 'Chia sẻ quyền truy cập',
+                    })}
                 </Label>
                 <Select
                     value={account.asset_access || 'full_asset'}
-                    onValueChange={(value: 'full_asset' | 'basic_asset') => updateField('asset_access', value)}
+                    onValueChange={(value: 'full_asset' | 'basic_asset') =>
+                        updateField('asset_access', value)
+                    }
                 >
                     <SelectTrigger id={`edit_asset_access_${accountIndex}`}>
-                        <SelectValue placeholder={t('service_purchase.asset_access_placeholder', { defaultValue: 'Chọn quyền' })} />
+                        <SelectValue
+                            placeholder={t(
+                                'service_purchase.asset_access_placeholder',
+                                { defaultValue: 'Chọn quyền' },
+                            )}
+                        />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="full_asset">
-                            {t('service_purchase.asset_access_full', { defaultValue: 'Full access' })}
+                            {t('service_purchase.asset_access_full', {
+                                defaultValue: 'Full access',
+                            })}
                         </SelectItem>
                         <SelectItem value="basic_asset">
-                            {t('service_purchase.asset_access_basic', { defaultValue: 'Basic access' })}
+                            {t('service_purchase.asset_access_basic', {
+                                defaultValue: 'Basic access',
+                            })}
                         </SelectItem>
                     </SelectContent>
                 </Select>
@@ -353,18 +430,23 @@ export const AccountFormEdit = ({
             <div className="space-y-2">
                 <Label htmlFor={`edit_timezone_bm_${accountIndex}`}>
                     {isMeta
-                        ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
-                        : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                        ? t('service_purchase.timezone_bm_label', {
+                              defaultValue: 'Múi giờ BM',
+                          })
+                        : t('service_purchase.timezone_mcc_label', {
+                              defaultValue: 'Múi giờ MCC',
+                          })}
                 </Label>
                 <TimezoneSelect
                     id={`edit_timezone_bm_${accountIndex}`}
                     value={account.timezone_bm || ''}
                     onValueChange={(value) => updateField('timezone_bm', value)}
                     options={isMeta ? metaTimezones : googleTimezones}
-                    placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
+                    placeholder={t('service_purchase.timezone_bm_placeholder', {
+                        defaultValue: 'Chọn múi giờ',
+                    })}
                 />
             </div>
         </div>
     );
 };
-

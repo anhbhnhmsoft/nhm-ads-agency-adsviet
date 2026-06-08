@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
-import { useTranslation } from 'react-i18next';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import type { RefundPageProps } from './refund/types/type';
-import { RefundTabs } from './refund/components/RefundTabs';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RefundForm } from './refund/components/RefundForm';
 import { RefundList } from './refund/components/RefundList';
+import { RefundTabs } from './refund/components/RefundTabs';
+import type { RefundPageProps } from './refund/types/type';
 
 const RefundIndex = ({ tickets, accounts, error }: RefundPageProps) => {
     const { t } = useTranslation();
@@ -15,11 +15,17 @@ const RefundIndex = ({ tickets, accounts, error }: RefundPageProps) => {
 
     return (
         <div>
-            <Head title={t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' })} />
-            
+            <Head
+                title={t('ticket.refund.title', {
+                    defaultValue: 'Thanh lý tài khoản',
+                })}
+            />
+
             <div className="mb-4">
                 <h1 className="text-2xl font-semibold">
-                    {t('ticket.refund.title', { defaultValue: 'Thanh lý tài khoản' })}
+                    {t('ticket.refund.title', {
+                        defaultValue: 'Thanh lý tài khoản',
+                    })}
                 </h1>
             </div>
 
@@ -39,8 +45,10 @@ const RefundIndex = ({ tickets, accounts, error }: RefundPageProps) => {
 };
 
 RefundIndex.layout = (page: React.ReactNode) => (
-    <AppLayout breadcrumbs={[{ title: 'ticket.refund.title' }]} children={page} />
+    <AppLayout
+        breadcrumbs={[{ title: 'ticket.refund.title' }]}
+        children={page}
+    />
 );
 
 export default RefundIndex;
-

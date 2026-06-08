@@ -1,14 +1,14 @@
 import { _UserRole } from '@/lib/types/constants';
-import { useCallback } from 'react';
 import { IUser } from '@/lib/types/type';
+import { useCallback } from 'react';
 
 const useCheckRole = (user: IUser | null) => {
     return useCallback(
         (roles: _UserRole[]) => {
-           if (user) {
-               return roles.includes(user.role);
-           }
-           return false;
+            if (user) {
+                return roles.includes(user.role);
+            }
+            return false;
         },
         [user],
     );

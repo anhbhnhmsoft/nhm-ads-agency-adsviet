@@ -1,11 +1,24 @@
-
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable, RowSelectionState, OnChangeFn } from '@tanstack/react-table';
+import {
+    ColumnDef,
+    flexRender,
+    getCoreRowModel,
+    OnChangeFn,
+    RowSelectionState,
+    useReactTable,
+} from '@tanstack/react-table';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { LaravelPaginator } from '@/lib/types/type';
 import { DataTablePagination } from '@/components/table/pagination';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { LaravelPaginator } from '@/lib/types/type';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 declare module '@tanstack/react-table' {
@@ -25,20 +38,24 @@ interface DataTableProps<TData, TValue> {
     renderFooterRows?: (columnCount: number) => ReactNode;
 }
 
-export function DataTable<TData, TValue>({ 
-    columns, 
-    paginator, 
+export function DataTable<TData, TValue>({
+    columns,
+    paginator,
     onRowClick,
     rowSelection,
     onRowSelectionChange,
     renderFooterRows,
 }: DataTableProps<TData, TValue>) {
     const { t } = useTranslation();
-    const [internalRowSelection, setInternalRowSelection] = useState<RowSelectionState>({});
-    
-    const selectionState = rowSelection !== undefined ? rowSelection : internalRowSelection;
+    const [internalRowSelection, setInternalRowSelection] =
+        useState<RowSelectionState>({});
 
-    const handleRowSelectionChange: OnChangeFn<RowSelectionState> = (updaterOrValue) => {
+    const selectionState =
+        rowSelection !== undefined ? rowSelection : internalRowSelection;
+
+    const handleRowSelectionChange: OnChangeFn<RowSelectionState> = (
+        updaterOrValue,
+    ) => {
         if (onRowSelectionChange) {
             onRowSelectionChange(updaterOrValue);
             return;
@@ -46,7 +63,11 @@ export function DataTable<TData, TValue>({
 
         setInternalRowSelection((prev) =>
             typeof updaterOrValue === 'function'
-                ? (updaterOrValue as (old: RowSelectionState) => RowSelectionState)(prev)
+                ? (
+                      updaterOrValue as (
+                          old: RowSelectionState,
+                      ) => RowSelectionState
+                  )(prev)
                 : updaterOrValue,
         );
     };
@@ -63,61 +84,83 @@ export function DataTable<TData, TValue>({
     });
 
     return (
-       <div>
-           <div className="overflow-x-auto rounded-md border mb-4 bg-white">
-               <Table className="min-w-full">
-                   <TableHeader>
-                       {table.getHeaderGroups().map((headerGroup) => (
-                           <TableRow key={headerGroup.id}>
-                               {headerGroup.headers.map((header) => {
-                                   return (
-                                       <TableHead 
-                                           key={header.id}
-                                           className={cn(
-                                               header.isPlaceholder 
-                                                   ? '' 
-                                                   : header.column.columnDef.meta?.headerClassName
-                                           )}
-                                       >
-                                           {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                                       </TableHead>
-                                   );
-                               })}
-                           </TableRow>
-                       ))}
-                   </TableHeader>
-                   <TableBody>
-                       {table.getRowModel().rows?.length ? (
-                           table.getRowModel().rows.map((row) => (
-                               <TableRow 
-                                   key={row.id} 
-                                   data-state={row.getIsSelected() && 'selected'}
-                                   className={onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''}
-                                   onClick={() => onRowClick?.(row.original)}
-                               >
-                                   {row.getVisibleCells().map((cell) => (
-                                       <TableCell 
-                                           key={cell.id}
-                                           className={cn(cell.column.columnDef.meta?.cellClassName)}
-                                       >
-                                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                       </TableCell>
-                                   ))}
-                               </TableRow>
-                           ))
-                       ) : (
-                               <TableRow>
-                                   <TableCell colSpan={columns.length} className="h-24 text-center">
-                                       {t('common.no_data_display')}
-                                   </TableCell>
-                               </TableRow>
-                           )}
-                       {renderFooterRows?.(table.getAllLeafColumns().length)}
-                   </TableBody>
-               </Table>
-           </div>
-           <DataTablePagination paginator={paginator}  />
-       </div>
-
+        <div>
+            <div className="mb-4 overflow-x-auto rounded-md border bg-white">
+                <Table className="min-w-full">
+                    <TableHeader>
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => {
+                                    return (
+                                        <TableHead
+                                            key={header.id}
+                                            className={cn(
+                                                header.isPlaceholder
+                                                    ? ''
+                                                    : header.column.columnDef
+                                                          .meta
+                                                          ?.headerClassName,
+                                            )}
+                                        >
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                      header.column.columnDef
+                                                          .header,
+                                                      header.getContext(),
+                                                  )}
+                                        </TableHead>
+                                    );
+                                })}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody>
+                        {table.getRowModel().rows?.length ? (
+                            table.getRowModel().rows.map((row) => (
+                                <TableRow
+                                    key={row.id}
+                                    data-state={
+                                        row.getIsSelected() && 'selected'
+                                    }
+                                    className={
+                                        onRowClick
+                                            ? 'cursor-pointer hover:bg-muted/50'
+                                            : ''
+                                    }
+                                    onClick={() => onRowClick?.(row.original)}
+                                >
+                                    {row.getVisibleCells().map((cell) => (
+                                        <TableCell
+                                            key={cell.id}
+                                            className={cn(
+                                                cell.column.columnDef.meta
+                                                    ?.cellClassName,
+                                            )}
+                                        >
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext(),
+                                            )}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={columns.length}
+                                    className="h-24 text-center"
+                                >
+                                    {t('common.no_data_display')}
+                                </TableCell>
+                            </TableRow>
+                        )}
+                        {renderFooterRows?.(table.getAllLeafColumns().length)}
+                    </TableBody>
+                </Table>
+            </div>
+            <DataTablePagination paginator={paginator} />
+        </div>
     );
 }

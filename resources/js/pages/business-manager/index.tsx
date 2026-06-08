@@ -1,22 +1,29 @@
-import { ReactNode, useMemo, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { useTranslation } from 'react-i18next';
-import { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/table/data-table';
-import BusinessManagerSearchForm from '@/pages/business-manager/components/search-form';
-import type { BusinessManagerItem, BusinessManagerPagination, BusinessManagerStats, BusinessManagerAccount } from '@/pages/business-manager/types/type';
-import { _PlatformType } from '@/lib/types/constants';
 import { Button } from '@/components/ui/button';
-import { Eye, EyeOff, RotateCcw } from 'lucide-react';
-import { router } from '@inertiajs/react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import { _UserRole } from '@/lib/types/constants';
-import { usePage } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    business_managers_index,
-} from '@/routes';
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import AppLayout from '@/layouts/app-layout';
+import { _PlatformType, _UserRole } from '@/lib/types/constants';
+import BusinessManagerSearchForm from '@/pages/business-manager/components/search-form';
+import type {
+    BusinessManagerAccount,
+    BusinessManagerItem,
+    BusinessManagerPagination,
+    BusinessManagerStats,
+} from '@/pages/business-manager/types/type';
+import { business_managers_index } from '@/routes';
+import { router, usePage } from '@inertiajs/react';
+import { ColumnDef } from '@tanstack/react-table';
+import { Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { ReactNode, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { useSearchBusinessManager } from './hooks/use-search';
 type ChildManagerOption = {
     id: string;
@@ -34,13 +41,20 @@ type Props = {
     };
 };
 
-const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], childManagers }: Props) => {
+const BusinessManagerIndex = ({
+    paginator,
+    stats,
+    hiddenBusinessManagers = [],
+    childManagers,
+}: Props) => {
     const { t } = useTranslation();
     const [selectedBM] = useState<BusinessManagerItem | null>(null);
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
     const [accounts] = useState<BusinessManagerAccount[]>([]);
     const [loadingAccounts] = useState(false);
-    const [selectedPlatform, setSelectedPlatform] = useState<'all' | _PlatformType | 'hidden'>('all');
+    const [selectedPlatform, setSelectedPlatform] = useState<
+        'all' | _PlatformType | 'hidden'
+    >('all');
 
     type AuthUser = {
         id: string;
@@ -66,14 +80,19 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
     const handleHideBusinessManager = (item: BusinessManagerItem) => {
         const primaryBmId = item.bm_ids?.[0] || item.parent_bm_id;
         if (!primaryBmId || item.platform !== _PlatformType.META) {
-            toast.error(t('business_manager.bm_not_found', { defaultValue: 'Không tìm thấy BM/MCC' }));
+            toast.error(
+                t('business_manager.bm_not_found', {
+                    defaultValue: 'Không tìm thấy BM/MCC',
+                }),
+            );
             return;
         }
 
         const displayName = item.bm_name || item.name || primaryBmId;
         const confirmed = window.confirm(
             t('business_manager.hide_confirm', {
-                defaultValue: 'Ẩn BM/MCC {{name}} khỏi tool? Tool sẽ không lấy và không hiển thị dữ liệu của BM này nữa. Bạn có thể khôi phục ở tab BM đã ẩn.',
+                defaultValue:
+                    'Ẩn BM/MCC {{name}} khỏi tool? Tool sẽ không lấy và không hiển thị dữ liệu của BM này nữa. Bạn có thể khôi phục ở tab BM đã ẩn.',
                 name: displayName,
             }),
         );
@@ -85,10 +104,18 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
             {
                 preserveState: false,
                 onSuccess: () => {
-                    toast.success(t('business_manager.hide_success', { defaultValue: 'Đã ẩn BM/MCC' }));
+                    toast.success(
+                        t('business_manager.hide_success', {
+                            defaultValue: 'Đã ẩn BM/MCC',
+                        }),
+                    );
                 },
                 onError: () => {
-                    toast.error(t('business_manager.hide_error', { defaultValue: 'Không thể ẩn BM/MCC' }));
+                    toast.error(
+                        t('business_manager.hide_error', {
+                            defaultValue: 'Không thể ẩn BM/MCC',
+                        }),
+                    );
                 },
             },
         );
@@ -97,14 +124,19 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
     const handleRestoreBusinessManager = (item: BusinessManagerItem) => {
         const primaryBmId = item.bm_ids?.[0] || item.id;
         if (!primaryBmId) {
-            toast.error(t('business_manager.bm_not_found', { defaultValue: 'Không tìm thấy BM/MCC' }));
+            toast.error(
+                t('business_manager.bm_not_found', {
+                    defaultValue: 'Không tìm thấy BM/MCC',
+                }),
+            );
             return;
         }
 
         const displayName = item.bm_name || item.name || primaryBmId;
         const confirmed = window.confirm(
             t('business_manager.restore_confirm', {
-                defaultValue: 'Khôi phục BM/MCC {{name}}? Tool sẽ hiển thị và lấy dữ liệu BM này trở lại.',
+                defaultValue:
+                    'Khôi phục BM/MCC {{name}}? Tool sẽ hiển thị và lấy dữ liệu BM này trở lại.',
                 name: displayName,
             }),
         );
@@ -116,10 +148,18 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
             {
                 preserveState: false,
                 onSuccess: () => {
-                    toast.success(t('business_manager.restore_success', { defaultValue: 'Đã khôi phục BM/MCC' }));
+                    toast.success(
+                        t('business_manager.restore_success', {
+                            defaultValue: 'Đã khôi phục BM/MCC',
+                        }),
+                    );
                 },
                 onError: () => {
-                    toast.error(t('business_manager.restore_error', { defaultValue: 'Không thể khôi phục BM/MCC' }));
+                    toast.error(
+                        t('business_manager.restore_error', {
+                            defaultValue: 'Không thể khôi phục BM/MCC',
+                        }),
+                    );
                 },
             },
         );
@@ -129,7 +169,9 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
         () => [
             {
                 accessorKey: 'bm_name',
-                header: t('business_manager.table.bm_name', { defaultValue: 'Tên BM/MCC' }),
+                header: t('business_manager.table.bm_name', {
+                    defaultValue: 'Tên BM/MCC',
+                }),
                 cell: ({ row }) => {
                     const displayName =
                         row.original.bm_name ||
@@ -140,12 +182,14 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
             },
             {
                 id: 'bm_ids',
-                header: t('business_manager.table.bm_id', { defaultValue: 'ID BM/MCC' }),
+                header: t('business_manager.table.bm_id', {
+                    defaultValue: 'ID BM/MCC',
+                }),
                 cell: ({ row }) => {
                     const bmIds = row.original.bm_ids;
                     const parentBmId = row.original.parent_bm_id;
                     const platform = row.original.platform;
-                    
+
                     return (
                         <div className="flex flex-col gap-1">
                             <span className="text-xs text-muted-foreground">
@@ -154,9 +198,13 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                             {parentBmId && (
                                 <span className="text-xs text-blue-600 dark:text-blue-400">
                                     {platform === _PlatformType.GOOGLE
-                                        ? t('business_manager.table.child_mcc', { defaultValue: 'MCC thuộc' })
-                                        : t('business_manager.table.child_bm', { defaultValue: 'BM thuộc' })}
-                                    {' '}
+                                        ? t(
+                                              'business_manager.table.child_mcc',
+                                              { defaultValue: 'MCC thuộc' },
+                                          )
+                                        : t('business_manager.table.child_bm', {
+                                              defaultValue: 'BM thuộc',
+                                          })}{' '}
                                     ({parentBmId})
                                 </span>
                             )}
@@ -170,7 +218,9 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                     headerClassName: 'text-center',
                     cellClassName: 'text-center',
                 },
-                header: t('business_manager.table.total_accounts', { defaultValue: 'Số tài khoản' }),
+                header: t('business_manager.table.total_accounts', {
+                    defaultValue: 'Số tài khoản',
+                }),
                 cell: ({ row }) => {
                     const count = row.original.total_accounts ?? 0;
                     return <span className="font-medium">{count}</span>;
@@ -178,30 +228,38 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
             },
             {
                 accessorKey: 'total_spend',
-                header: t('business_manager.table.spend', { defaultValue: 'Chi tiêu' }),
+                header: t('business_manager.table.spend', {
+                    defaultValue: 'Chi tiêu',
+                }),
                 cell: ({ row }) => {
                     const spend = parseFloat(row.original.total_spend || '0');
                     return (
                         <span className="font-medium">
                             {spend.toLocaleString('vi-VN', {
                                 minimumFractionDigits: 0,
-                                maximumFractionDigits: 2
-                            })} {row.original.accounts?.[0]?.currency || 'USD'}
+                                maximumFractionDigits: 2,
+                            })}{' '}
+                            {row.original.accounts?.[0]?.currency || 'USD'}
                         </span>
                     );
                 },
             },
             {
                 accessorKey: 'total_balance',
-                header: t('business_manager.table.balance', { defaultValue: 'Số dư' }),
+                header: t('business_manager.table.balance', {
+                    defaultValue: 'Số dư',
+                }),
                 cell: ({ row }) => {
-                    const balance = parseFloat(row.original.total_balance || '0');
+                    const balance = parseFloat(
+                        row.original.total_balance || '0',
+                    );
                     return (
                         <span className="font-medium">
                             {balance.toLocaleString('vi-VN', {
                                 minimumFractionDigits: 0,
-                                maximumFractionDigits: 2
-                            })} {row.original.accounts?.[0]?.currency || 'USD'}
+                                maximumFractionDigits: 2,
+                            })}{' '}
+                            {row.original.accounts?.[0]?.currency || 'USD'}
                         </span>
                     );
                 },
@@ -217,71 +275,104 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                                 size="sm"
                                 onClick={() => {
                                     const primaryBmId =
-                                        (row.original.bm_ids && row.original.bm_ids[0]) ||
+                                        (row.original.bm_ids &&
+                                            row.original.bm_ids[0]) ||
                                         row.original.parent_bm_id;
                                     if (!primaryBmId) {
                                         toast.error(
                                             t('business_manager.bm_not_found', {
-                                                defaultValue: 'Không tìm thấy BM/MCC',
+                                                defaultValue:
+                                                    'Không tìm thấy BM/MCC',
                                             }),
                                         );
                                         return;
                                     }
-                                    router.get('/service-management', {
-                                        filter: {
-                                            manager_id: primaryBmId,
-                                            platform: row.original.platform,
-                                            child_manager_id: primaryBmId,
+                                    router.get(
+                                        '/service-management',
+                                        {
+                                            filter: {
+                                                manager_id: primaryBmId,
+                                                platform: row.original.platform,
+                                                child_manager_id: primaryBmId,
+                                            },
                                         },
-                                    }, {
-                                        replace: true,
-                                        preserveState: false,
-                                    });
+                                        {
+                                            replace: true,
+                                            preserveState: false,
+                                        },
+                                    );
                                 }}
                             >
-                                <Eye className="h-4 w-4 mr-1" />
-                                {t('common.view_account', { defaultValue: 'Xem tài khoản' })}
+                                <Eye className="mr-1 h-4 w-4" />
+                                {t('common.view_account', {
+                                    defaultValue: 'Xem tài khoản',
+                                })}
                             </Button>
-                            {isAdmin && row.original.platform === _PlatformType.META && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleHideBusinessManager(row.original)}
-                                    title={t('business_manager.hide_tooltip', {
-                                        defaultValue: 'Ẩn BM này khỏi dữ liệu đồng bộ và danh sách hiển thị',
-                                    })}
-                                >
-                                    <EyeOff className="h-4 w-4 mr-1" />
-                                    {t('business_manager.hide_from_tool', { defaultValue: 'Ẩn khỏi tool' })}
-                                </Button>
-                            )}
+                            {isAdmin &&
+                                row.original.platform ===
+                                    _PlatformType.META && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            handleHideBusinessManager(
+                                                row.original,
+                                            )
+                                        }
+                                        title={t(
+                                            'business_manager.hide_tooltip',
+                                            {
+                                                defaultValue:
+                                                    'Ẩn BM này khỏi dữ liệu đồng bộ và danh sách hiển thị',
+                                            },
+                                        )}
+                                    >
+                                        <EyeOff className="mr-1 h-4 w-4" />
+                                        {t('business_manager.hide_from_tool', {
+                                            defaultValue: 'Ẩn hiển thị',
+                                        })}
+                                    </Button>
+                                )}
                         </div>
                     );
                 },
             },
         ],
-        [t, isAdmin]
+        [t, isAdmin],
     );
 
     const hiddenColumns: ColumnDef<BusinessManagerItem>[] = useMemo(
         () => [
             {
                 accessorKey: 'bm_name',
-                header: t('business_manager.table.bm_name', { defaultValue: 'Tên BM/MCC' }),
-                cell: ({ row }) => <span className="font-medium">{row.original.bm_name || row.original.name || '-'}</span>,
+                header: t('business_manager.table.bm_name', {
+                    defaultValue: 'Tên BM/MCC',
+                }),
+                cell: ({ row }) => (
+                    <span className="font-medium">
+                        {row.original.bm_name || row.original.name || '-'}
+                    </span>
+                ),
             },
             {
                 id: 'bm_ids',
-                header: t('business_manager.table.bm_id', { defaultValue: 'ID BM/MCC' }),
-                cell: ({ row }) => row.original.bm_ids?.join(', ') || row.original.id || '-',
+                header: t('business_manager.table.bm_id', {
+                    defaultValue: 'ID BM/MCC',
+                }),
+                cell: ({ row }) =>
+                    row.original.bm_ids?.join(', ') || row.original.id || '-',
             },
             {
                 accessorKey: 'hidden_at',
-                header: t('business_manager.hidden_at', { defaultValue: 'Ngày ẩn' }),
+                header: t('business_manager.hidden_at', {
+                    defaultValue: 'Ngày ẩn',
+                }),
                 cell: ({ row }) => {
                     if (!row.original.hidden_at) return '-';
                     const date = new Date(row.original.hidden_at);
-                    return Number.isNaN(date.getTime()) ? row.original.hidden_at : date.toLocaleString('vi-VN');
+                    return Number.isNaN(date.getTime())
+                        ? row.original.hidden_at
+                        : date.toLocaleString('vi-VN');
                 },
             },
             {
@@ -291,10 +382,14 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleRestoreBusinessManager(row.original)}
+                        onClick={() =>
+                            handleRestoreBusinessManager(row.original)
+                        }
                     >
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        {t('business_manager.restore', { defaultValue: 'Khôi phục' })}
+                        <RotateCcw className="mr-1 h-4 w-4" />
+                        {t('business_manager.restore', {
+                            defaultValue: 'Khôi phục',
+                        })}
                     </Button>
                 ),
             },
@@ -306,26 +401,34 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
         () => [
             {
                 accessorKey: 'account_name',
-                header: t('business_manager.detail.acc_name', { defaultValue: 'Acc name' }),
+                header: t('business_manager.detail.acc_name', {
+                    defaultValue: 'Acc name',
+                }),
             },
             {
                 accessorKey: 'spend_cap',
-                header: t('business_manager.detail.limit', { defaultValue: 'Limit' }),
+                header: t('business_manager.detail.limit', {
+                    defaultValue: 'Limit',
+                }),
                 cell: ({ row }) => {
                     const limit = row.original.spend_cap;
-                    return limit ? parseFloat(limit).toLocaleString('vi-VN') : '-';
+                    return limit
+                        ? parseFloat(limit).toLocaleString('vi-VN')
+                        : '-';
                 },
             },
             {
                 accessorKey: 'amount_spent',
-                header: t('business_manager.detail.spend', { defaultValue: 'Spend' }),
+                header: t('business_manager.detail.spend', {
+                    defaultValue: 'Spend',
+                }),
                 cell: ({ row }) => {
                     const spend = parseFloat(row.original.amount_spent || '0');
                     return (
                         <span className="font-medium">
                             {spend.toLocaleString('vi-VN', {
                                 minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
+                                maximumFractionDigits: 2,
                             })}
                         </span>
                     );
@@ -333,19 +436,29 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
             },
             {
                 accessorKey: 'total_campaigns',
-                header: t('business_manager.detail.total_campaign', { defaultValue: 'Total campaign' }),
+                header: t('business_manager.detail.total_campaign', {
+                    defaultValue: 'Total campaign',
+                }),
                 cell: ({ row }) => {
                     return row.original.total_campaigns || 0;
                 },
             },
         ],
-        [t]
+        [t],
     );
 
     const platformTabs = [
         { key: 'all' as const, label: 'All', value: undefined },
-        { key: _PlatformType.META, label: 'Facebook', value: _PlatformType.META },
-        { key: _PlatformType.GOOGLE, label: 'Google', value: _PlatformType.GOOGLE },
+        {
+            key: _PlatformType.META,
+            label: 'Facebook',
+            value: _PlatformType.META,
+        },
+        {
+            key: _PlatformType.GOOGLE,
+            label: 'Google',
+            value: _PlatformType.GOOGLE,
+        },
         ...(isAdmin
             ? [
                   {
@@ -359,7 +472,11 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
 
     const currentStats = useMemo(() => {
         if (!stats) {
-            return { total_accounts: 0, active_accounts: 0, disabled_accounts: 0 };
+            return {
+                total_accounts: 0,
+                active_accounts: 0,
+                disabled_accounts: 0,
+            };
         }
         if (selectedPlatform === 'all' || selectedPlatform === 'hidden') {
             return {
@@ -368,26 +485,36 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                 disabled_accounts: stats.disabled_accounts,
             };
         }
-        const st = stats.by_platform?.[selectedPlatform] || { total_accounts: 0, active_accounts: 0, disabled_accounts: 0 };
+        const st = stats.by_platform?.[selectedPlatform] || {
+            total_accounts: 0,
+            active_accounts: 0,
+            disabled_accounts: 0,
+        };
         return st;
     }, [stats, selectedPlatform]);
 
-    const handleSelectPlatform = (platformKey: 'all' | _PlatformType | 'hidden') => {
+    const handleSelectPlatform = (
+        platformKey: 'all' | _PlatformType | 'hidden',
+    ) => {
         setSelectedPlatform(platformKey);
         if (platformKey === 'hidden') {
             return;
         }
 
         const platformValue = platformKey === 'all' ? undefined : platformKey;
-        router.get(business_managers_index().url, {
-            filter: {
-                platform: platformValue,
+        router.get(
+            business_managers_index().url,
+            {
+                filter: {
+                    platform: platformValue,
+                },
             },
-        }, {
-            replace: true,
-            preserveState: true,
-            only: ['paginator', 'stats'],
-        });
+            {
+                replace: true,
+                preserveState: true,
+                only: ['paginator', 'stats'],
+            },
+        );
     };
 
     const { query, setQuery, handleSearch, handleReset } =
@@ -395,15 +522,19 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
 
     return (
         <div>
-            <h1 className="text-xl font-semibold mb-4">
-                {t('business_manager.title', { defaultValue: 'Quản lý Business Manager / MCC' })}
+            <h1 className="mb-4 text-xl font-semibold">
+                {t('business_manager.title', {
+                    defaultValue: 'Quản lý Business Manager / MCC',
+                })}
             </h1>
 
             <div className="mb-4 flex flex-wrap gap-2">
                 {platformTabs.map((tab) => (
                     <Button
                         key={tab.key}
-                        variant={selectedPlatform === tab.key ? 'default' : 'outline'}
+                        variant={
+                            selectedPlatform === tab.key ? 'default' : 'outline'
+                        }
                         size="sm"
                         onClick={() => handleSelectPlatform(tab.key)}
                     >
@@ -425,8 +556,13 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                 <CardHeader>
                     <CardTitle>
                         {selectedPlatform === 'hidden'
-                            ? t('business_manager.hidden_table_title', { defaultValue: 'Danh sách BM/MCC đã ẩn' })
-                            : t('business_manager.table_title', { defaultValue: 'Danh sách Business Manager / MCC' })}
+                            ? t('business_manager.hidden_table_title', {
+                                  defaultValue: 'Danh sách BM/MCC đã ẩn',
+                              })
+                            : t('business_manager.table_title', {
+                                  defaultValue:
+                                      'Danh sách Business Manager / MCC',
+                              })}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -435,13 +571,19 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                             columns={hiddenColumns}
                             paginator={{
                                 data: hiddenBusinessManagers,
-                                links: { first: null, last: null, prev: null, next: null },
+                                links: {
+                                    first: null,
+                                    last: null,
+                                    prev: null,
+                                    next: null,
+                                },
                                 meta: {
                                     links: [],
                                     current_page: 1,
                                     from: hiddenBusinessManagers.length ? 1 : 0,
                                     last_page: 1,
-                                    per_page: hiddenBusinessManagers.length || 1,
+                                    per_page:
+                                        hiddenBusinessManagers.length || 1,
                                     to: hiddenBusinessManagers.length,
                                     total: hiddenBusinessManagers.length,
                                 },
@@ -455,25 +597,34 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
 
             {/* Dialog chi tiết BM/BCC */}
             <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
-                            {t('business_manager.detail.title', { defaultValue: 'Chi tiết BM/BCC' })}: {selectedBM?.name}
+                            {t('business_manager.detail.title', {
+                                defaultValue: 'Chi tiết BM/BCC',
+                            })}
+                            : {selectedBM?.name}
                         </DialogTitle>
                         <DialogDescription>
-                            {t('business_manager.detail.description', { defaultValue: 'Danh sách tài khoản quảng cáo' })}
+                            {t('business_manager.detail.description', {
+                                defaultValue: 'Danh sách tài khoản quảng cáo',
+                            })}
                         </DialogDescription>
                     </DialogHeader>
 
                     {loadingAccounts ? (
-                        <div className="text-center py-8">
-                            {t('common.loading', { defaultValue: 'Đang tải...' })}
+                        <div className="py-8 text-center">
+                            {t('common.loading', {
+                                defaultValue: 'Đang tải...',
+                            })}
                         </div>
                     ) : (
                         <div className="mt-4">
                             {accounts.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    {t('business_manager.detail.no_accounts', { defaultValue: 'Chưa có tài khoản nào' })}
+                                <div className="py-8 text-center text-muted-foreground">
+                                    {t('business_manager.detail.no_accounts', {
+                                        defaultValue: 'Chưa có tài khoản nào',
+                                    })}
                                 </div>
                             ) : (
                                 <DataTable
@@ -502,13 +653,15 @@ const BusinessManagerIndex = ({ paginator, stats, hiddenBusinessManagers = [], c
                     )}
                 </DialogContent>
             </Dialog>
-
         </div>
     );
 };
 
 BusinessManagerIndex.layout = (page: ReactNode) => (
-    <AppLayout breadcrumbs={[{ title: 'business_manager.title' }]} children={page} />
+    <AppLayout
+        breadcrumbs={[{ title: 'business_manager.title' }]}
+        children={page}
+    />
 );
 
 export default BusinessManagerIndex;

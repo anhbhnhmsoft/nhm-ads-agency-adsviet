@@ -1,11 +1,11 @@
 import { _UserRole } from '@/lib/types/constants';
-import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { ShieldCheck, User } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
-    role: _UserRole.CUSTOMER | _UserRole.AGENCY,
-    setRole: (role: _UserRole.CUSTOMER | _UserRole.AGENCY) => void
+    role: _UserRole.CUSTOMER | _UserRole.AGENCY;
+    setRole: (role: _UserRole.CUSTOMER | _UserRole.AGENCY) => void;
 };
 const CustomerRoleCard = ({ role, setRole }: Props) => {
     const { t } = useTranslation();
@@ -14,32 +14,50 @@ const CustomerRoleCard = ({ role, setRole }: Props) => {
         <div className="grid grid-cols-2 gap-2">
             <div
                 onClick={() => setRole(_UserRole.CUSTOMER)}
-                className={cn('rounded-lg border text-card-foreground shadow-sm transition-all duration-200 cursor-pointer hover:bg-green-200 hover:border-green-300 bg-green-50 border-green-200', {
-                    'bg-green-200 border-green-300': role === _UserRole.CUSTOMER
-                })}>
+                className={cn(
+                    'cursor-pointer rounded-lg border border-green-200 bg-green-50 text-card-foreground shadow-sm transition-all duration-200 hover:border-green-300 hover:bg-green-200',
+                    {
+                        'border-green-300 bg-green-200':
+                            role === _UserRole.CUSTOMER,
+                    },
+                )}
+            >
                 <div className="p-4">
                     <div className="text-center">
-                        <User className="h-8 w-8 text-green-600 mx-auto mb-2"/>
-                        <h3 className="font-bold text-green-800">{t('auth.components.customer')}</h3>
-                        <p className="hidden sm:block text-xs text-green-600 mt-1">{t('auth.components.customer_desc')}</p>
+                        <User className="mx-auto mb-2 h-8 w-8 text-green-600" />
+                        <h3 className="font-bold text-green-800">
+                            {t('auth.components.customer')}
+                        </h3>
+                        <p className="mt-1 hidden text-xs text-green-600 sm:block">
+                            {t('auth.components.customer_desc')}
+                        </p>
                     </div>
                 </div>
             </div>
             <div
                 onClick={() => setRole(_UserRole.AGENCY)}
-                className={cn('rounded-lg border text-card-foreground shadow-sm transition-all duration-200 cursor-pointer hover:bg-orange-200 hover:border-orange-300 bg-orange-50 border-orange-200', {
-                    'bg-orange-200 border-orange-300': role === _UserRole.AGENCY
-                })}>
+                className={cn(
+                    'cursor-pointer rounded-lg border border-orange-200 bg-orange-50 text-card-foreground shadow-sm transition-all duration-200 hover:border-orange-300 hover:bg-orange-200',
+                    {
+                        'border-orange-300 bg-orange-200':
+                            role === _UserRole.AGENCY,
+                    },
+                )}
+            >
                 <div className="p-4">
                     <div className="text-center">
-                        <ShieldCheck className="h-8 w-8 text-[#eb4e23] mx-auto mb-2"/>
-                        <h3 className="font-bold text-[#eb4e23]">{t('auth.components.agency')}</h3>
-                        <p className="hidden sm:block text-xs text-[#eb4e23] mt-1">{t('auth.components.agency_desc')}</p>
+                        <ShieldCheck className="mx-auto mb-2 h-8 w-8 text-[#eb4e23]" />
+                        <h3 className="font-bold text-[#eb4e23]">
+                            {t('auth.components.agency')}
+                        </h3>
+                        <p className="mt-1 hidden text-xs text-[#eb4e23] sm:block">
+                            {t('auth.components.agency_desc')}
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
     );
-}
+};
 
 export default CustomerRoleCard;

@@ -1,6 +1,3 @@
-import React from 'react';
-import QRCode from 'react-qr-code';
-import { Button } from '@/components/ui/button';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -11,9 +8,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useCancelDeposit } from '../hooks/use-cancel-deposit';
-import type { PendingDeposit } from '@/pages/wallet/types/type';
+import { Button } from '@/components/ui/button';
 import { getTransactionDescription } from '@/lib/types/wallet-transaction-description';
+import type { PendingDeposit } from '@/pages/wallet/types/type';
+import React from 'react';
+import QRCode from 'react-qr-code';
+import { useCancelDeposit } from '../hooks/use-cancel-deposit';
 
 type Props = {
     t: (key: string, opts?: Record<string, any>) => string;
@@ -33,7 +33,9 @@ const PendingDepositCard = ({ t, pending }: Props) => {
         '';
     const { cancelDeposit, loading } = useCancelDeposit();
     const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
-    const description = pending.description ? getTransactionDescription(pending.description, t) : null;
+    const description = pending.description
+        ? getTransactionDescription(pending.description, t)
+        : null;
 
     const handleCancel = () => {
         setShowConfirmDialog(true);
@@ -51,47 +53,66 @@ const PendingDepositCard = ({ t, pending }: Props) => {
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-3">
                         <div className="mb-2 font-semibold">
-                            {t('wallet.pending_deposit', { defaultValue: 'Thông tin lệnh nạp đang chờ' })}
+                            {t('wallet.pending_deposit', {
+                                defaultValue: 'Thông tin lệnh nạp đang chờ',
+                            })}
                         </div>
                         <div>
                             <div className="text-sm">{t('wallet.amount')}</div>
-                            <div className="font-semibold">{pending.amount} USDT</div>
+                            <div className="font-semibold">
+                                {pending.amount} USDT
+                            </div>
                         </div>
                         {description && (
                             <div className="rounded-md border border-yellow-300 bg-yellow-100 px-3 py-2 text-sm font-medium text-yellow-900 dark:border-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-100">
                                 {description}
                             </div>
                         )}
-                        {(pending.pay_address || (!isHostedGateway && pending.deposit_address)) && (
+                        {(pending.pay_address ||
+                            (!isHostedGateway && pending.deposit_address)) && (
                             <div>
                                 <div className="text-sm">
-                                    {t('wallet.deposit_address', { defaultValue: 'Địa chỉ ví' })}
+                                    {t('wallet.deposit_address', {
+                                        defaultValue: 'Địa chỉ ví',
+                                    })}
                                 </div>
-                                <div className="font-mono break-all text-sm">
-                                    {pending.pay_address ?? pending.deposit_address}
+                                <div className="font-mono text-sm break-all">
+                                    {pending.pay_address ??
+                                        pending.deposit_address}
                                 </div>
                             </div>
                         )}
                         {invoiceUrl && (
                             <div>
                                 <div className="text-sm">
-                                    {t('wallet.payment_invoice', { defaultValue: 'Hóa đơn thanh toán' })}
+                                    {t('wallet.payment_invoice', {
+                                        defaultValue: 'Hóa đơn thanh toán',
+                                    })}
                                 </div>
                                 <Button type="button" variant="outline" asChild>
-                                    <a href={invoiceUrl} target="_blank" rel="noreferrer">
-                                        {t('wallet.open_payment_invoice', { defaultValue: 'Mở hóa đơn thanh toán' })}
+                                    <a
+                                        href={invoiceUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        {t('wallet.open_payment_invoice', {
+                                            defaultValue:
+                                                'Mở hóa đơn thanh toán',
+                                        })}
                                     </a>
                                 </Button>
                             </div>
                         )}
                         <div className="pt-2">
-                            <Button 
-                                type="button" 
-                                variant="secondary" 
+                            <Button
+                                type="button"
+                                variant="secondary"
                                 onClick={handleCancel}
                                 disabled={loading}
                             >
-                                {t('wallet.back_cancel', { defaultValue: 'Hủy lệnh' })}
+                                {t('wallet.back_cancel', {
+                                    defaultValue: 'Hủy lệnh',
+                                })}
                             </Button>
                         </div>
                     </div>
@@ -111,15 +132,21 @@ const PendingDepositCard = ({ t, pending }: Props) => {
                 </div>
             </div>
 
-            <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+            <AlertDialog
+                open={showConfirmDialog}
+                onOpenChange={setShowConfirmDialog}
+            >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            {t('wallet.confirm_cancel_deposit', { defaultValue: 'Xác nhận hủy lệnh nạp' })}
+                            {t('wallet.confirm_cancel_deposit', {
+                                defaultValue: 'Xác nhận hủy lệnh nạp',
+                            })}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {t('wallet.confirm_cancel_deposit_message', { 
-                                defaultValue: 'Bạn có chắc chắn muốn hủy lệnh nạp này không?' 
+                            {t('wallet.confirm_cancel_deposit_message', {
+                                defaultValue:
+                                    'Bạn có chắc chắn muốn hủy lệnh nạp này không?',
                             })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -127,7 +154,7 @@ const PendingDepositCard = ({ t, pending }: Props) => {
                         <AlertDialogCancel disabled={loading}>
                             {t('common.cancel', { defaultValue: 'Hủy' })}
                         </AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                             onClick={handleConfirmCancel}
                             disabled={loading}
                         >

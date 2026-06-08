@@ -1,24 +1,28 @@
-import { type ReactNode, useEffect } from 'react';
-import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppContent } from '@/components/app-content';
-import { AppSidebarHeader } from '@/components/layout/app-sidebar-header';
 import { AppShell } from '@/components/layout/app-shell';
-import { ThemeProvider } from '@/components/theme-provider';
-import { usePage } from '@inertiajs/react';
-import { toast } from 'sonner';
-import { Toaster } from '@/components/ui/sonner';
+import { AppSidebar } from '@/components/layout/app-sidebar';
+import { AppSidebarHeader } from '@/components/layout/app-sidebar-header';
 import LoadingGlobal from '@/components/loading-global';
-import { IBreadcrumbItem } from '@/lib/types/type';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import i18n from '@/i18n';
+import { IBreadcrumbItem } from '@/lib/types/type';
+import { usePage } from '@inertiajs/react';
+import { type ReactNode, useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface AppLayoutProps {
     children: ReactNode;
     breadcrumbs?: IBreadcrumbItem[];
 }
 
-export default ({ children, breadcrumbs}: AppLayoutProps) => {
-    const { flash, logo_path, locale } = usePage().props as { flash: any; logo_path?: string; locale?: string };
+export default ({ children, breadcrumbs }: AppLayoutProps) => {
+    const { flash, logo_path, locale } = usePage().props as {
+        flash: any;
+        logo_path?: string;
+        locale?: string;
+    };
 
     // Đồng bộ i18next với locale từ backend mỗi lần props thay đổi
     useEffect(() => {
@@ -41,14 +45,16 @@ export default ({ children, breadcrumbs}: AppLayoutProps) => {
         }
     }, [flash]);
 
-    return(
-        <ThemeProvider defaultTheme={"light"}>
+    return (
+        <ThemeProvider defaultTheme={'light'}>
             <TooltipProvider>
                 <AppShell variant="sidebar">
                     <AppSidebar />
                     <AppContent variant="sidebar" className="overflow-x-hidden">
                         <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                        <main className="flex flex-1 flex-col gap-4 p-4">{children}</main>
+                        <main className="flex flex-1 flex-col gap-4 p-4">
+                            {children}
+                        </main>
                     </AppContent>
                 </AppShell>
             </TooltipProvider>
@@ -56,4 +62,4 @@ export default ({ children, breadcrumbs}: AppLayoutProps) => {
             <LoadingGlobal />
         </ThemeProvider>
     );
-}
+};

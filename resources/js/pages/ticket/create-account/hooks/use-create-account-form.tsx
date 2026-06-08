@@ -1,6 +1,6 @@
+import { ticket_create_account_store } from '@/routes';
 import { useForm } from '@inertiajs/react';
 import React from 'react';
-import { ticket_create_account_store } from '@/routes';
 import type { CreateAccountFormData } from '../types/type';
 
 export const useCreateAccountForm = () => {
@@ -34,7 +34,7 @@ export const useCreateAccountForm = () => {
             budget?: string;
         },
         notes?: string,
-        onSuccess?: () => void
+        onSuccess?: () => void,
     ) => {
         if (form.processing) {
             return;
@@ -47,12 +47,17 @@ export const useCreateAccountForm = () => {
 
         if (accounts && accounts.length > 0) {
             const filteredAccounts = accounts
-                .filter(acc => acc.meta_email || acc.display_name || (acc.bm_ids && acc.bm_ids.length > 0))
-                .map(acc => ({
+                .filter(
+                    (acc) =>
+                        acc.meta_email ||
+                        acc.display_name ||
+                        (acc.bm_ids && acc.bm_ids.length > 0),
+                )
+                .map((acc) => ({
                     ...acc,
-                    bm_ids: acc.bm_ids?.filter(bm => bm?.trim()) || [],
-                    fanpages: acc.fanpages?.filter(fp => fp?.trim()) || [],
-                    websites: acc.websites?.filter(ws => ws?.trim()) || [],
+                    bm_ids: acc.bm_ids?.filter((bm) => bm?.trim()) || [],
+                    fanpages: acc.fanpages?.filter((fp) => fp?.trim()) || [],
+                    websites: acc.websites?.filter((ws) => ws?.trim()) || [],
                 }));
 
             if (filteredAccounts.length > 0) {

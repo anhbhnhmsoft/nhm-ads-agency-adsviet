@@ -14,13 +14,21 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { _PlatformType } from '@/lib/types/constants';
 import UserMultiSelect from '@/pages/service-package/components/user-multi-select';
-import { DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE, useFormEditServicePackage } from '@/pages/service-package/hooks/use-form';
-import { ServicePackageItem, ServicePackageOption, SupplierOption, UserOption } from '@/pages/service-package/types/type';
+import {
+    DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
+    useFormEditServicePackage,
+} from '@/pages/service-package/hooks/use-form';
+import {
+    ServicePackageItem,
+    ServicePackageOption,
+    SupplierOption,
+    UserOption,
+} from '@/pages/service-package/types/type';
 import { service_packages_index } from '@/routes';
 import axios from 'axios';
+import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 
 type Props = {
     meta_features: ServicePackageOption[];
@@ -43,9 +51,18 @@ type InventoryItem = {
     last_error?: string | null;
 };
 
-const Edit = ({ meta_features, google_features, service_package, suppliers = [], all_users = [] }: Props) => {
+const Edit = ({
+    meta_features,
+    google_features,
+    service_package,
+    suppliers = [],
+    all_users = [],
+}: Props) => {
     const { t } = useTranslation();
-    const { form, submit } = useFormEditServicePackage(service_package.id, service_package);
+    const { form, submit } = useFormEditServicePackage(
+        service_package.id,
+        service_package,
+    );
 
     const { data, setData, processing, errors } = form;
     const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -126,7 +143,11 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
     };
 
     const handleDeleteInventory = async (inventoryId: string) => {
-        if (!confirm(t('common.confirm_delete', { defaultValue: 'Xác nhận xoá?' }))) {
+        if (
+            !confirm(
+                t('common.confirm_delete', { defaultValue: 'Xác nhận xoá?' }),
+            )
+        ) {
             return;
         }
 
@@ -201,8 +222,13 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
         setData('monthly_spending_fee_structure', next);
     };
 
-    const parseMonthlyRangeToMinMax = (range: string): { min: string; max: string } => {
-        const cleaned = (range || '').replace(/\$/g, '').replace(/,/g, '').trim();
+    const parseMonthlyRangeToMinMax = (
+        range: string,
+    ): { min: string; max: string } => {
+        const cleaned = (range || '')
+            .replace(/\$/g, '')
+            .replace(/,/g, '')
+            .trim();
         if (!cleaned) return { min: '', max: '' };
 
         const parts = cleaned.split(/[-–]/);
@@ -215,7 +241,10 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
 
         if (cleaned.endsWith('+')) {
             return {
-                min: cleaned.slice(0, -1).trim().replace(/[^\d.]/g, ''),
+                min: cleaned
+                    .slice(0, -1)
+                    .trim()
+                    .replace(/[^\d.]/g, ''),
                 max: '',
             };
         }
@@ -345,7 +374,11 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
 
                 {/* Supplier */}
                 <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.supplier', { defaultValue: 'Nhà cung cấp' })}</Label>
+                    <Label>
+                        {t('service_packages.supplier', {
+                            defaultValue: 'Nhà cung cấp',
+                        })}
+                    </Label>
                     <Select
                         value={data.supplier_id || undefined}
                         onValueChange={(value) => {
@@ -354,12 +387,18 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                     >
                         <SelectTrigger>
                             <SelectValue
-                                placeholder={t('service_packages.supplier_placeholder', { defaultValue: 'Chọn nhà cung cấp' })}
+                                placeholder={t(
+                                    'service_packages.supplier_placeholder',
+                                    { defaultValue: 'Chọn nhà cung cấp' },
+                                )}
                             />
                         </SelectTrigger>
                         <SelectContent>
                             {suppliers.map((supplier) => (
-                                <SelectItem key={supplier.id} value={supplier.id}>
+                                <SelectItem
+                                    key={supplier.id}
+                                    value={supplier.id}
+                                >
                                     {supplier.name}
                                 </SelectItem>
                             ))}
@@ -387,7 +426,9 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                         required
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder={t('service_packages.payment_type')} />
+                            <SelectValue
+                                placeholder={t('service_packages.payment_type')}
+                            />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectGroup>
@@ -409,7 +450,9 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
 
                 {data.payment_type === 'prepay' && (
                     <div className="flex flex-col gap-2 md:col-span-2">
-                        <Label>{t('service_packages.allowed_users_label')}</Label>
+                        <Label>
+                            {t('service_packages.allowed_users_label')}
+                        </Label>
                         <p className="text-sm text-muted-foreground">
                             {t('service_packages.allowed_users_description')}
                         </p>
@@ -443,7 +486,7 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                 </div>
 
                 {/* Monthly spending & fee structure */}
-                <div className="md:col-span-2 space-y-3 rounded-lg border p-4">
+                <div className="space-y-3 rounded-lg border p-4 md:col-span-2">
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                         <div>
                             <p className="font-medium">
@@ -481,66 +524,97 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                     <div className="grid grid-cols-1 gap-3">
                         <div className="hidden md:grid md:grid-cols-[1fr_1fr_1fr_auto] md:gap-3">
                             <Label className="text-muted-foreground">
-                                {t('service_packages.monthly_spending_min_label', { defaultValue: 'Min' })}
+                                {t(
+                                    'service_packages.monthly_spending_min_label',
+                                    { defaultValue: 'Min' },
+                                )}
                             </Label>
                             <Label className="text-muted-foreground">
-                                {t('service_packages.monthly_spending_max_label', { defaultValue: 'Max' })}
+                                {t(
+                                    'service_packages.monthly_spending_max_label',
+                                    { defaultValue: 'Max' },
+                                )}
                             </Label>
                             <Label className="text-muted-foreground">
-                                {t('service_packages.monthly_spending_fee_label')}
+                                {t(
+                                    'service_packages.monthly_spending_fee_label',
+                                )}
                             </Label>
                             <span />
                         </div>
-                        {data.monthly_spending_fee_structure.map((tier, index) => {
-                            const { min, max } = parseMonthlyRangeToMinMax(tier.range);
-                            return (
-                                <div
-                                    key={`monthly-tier-${index}`}
-                                    className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto]"
-                                >
-                                    <Input
-                                        placeholder={t('service_packages.monthly_spending_min_label', { defaultValue: 'Min' })}
-                                        type="number"
-                                        value={min}
-                                        onChange={(e) => handleMonthlyMinChange(index, e.target.value)}
-                                    />
-                                    <Input
-                                        placeholder={t('service_packages.monthly_spending_max_label', { defaultValue: 'Max' })}
-                                        type="number"
-                                        value={max}
-                                        onChange={(e) => handleMonthlyMaxChange(index, e.target.value)}
-                                    />
-                                    <Input
-                                        placeholder={t('service_packages.monthly_spending_fee_label')}
-                                        value={tier.fee_percent}
-                                        onChange={(e) =>
-                                            handleMonthlySpendingChange(
-                                                index,
-                                                'fee_percent',
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        className="justify-self-start md:justify-self-end"
-                                        size="icon"
-                                        onClick={() =>
-                                            handleRemoveMonthlySpendingRow(
-                                                index,
-                                            )
-                                        }
-                                        disabled={
-                                            data.monthly_spending_fee_structure
-                                                .length === 1
-                                        }
+                        {data.monthly_spending_fee_structure.map(
+                            (tier, index) => {
+                                const { min, max } = parseMonthlyRangeToMinMax(
+                                    tier.range,
+                                );
+                                return (
+                                    <div
+                                        key={`monthly-tier-${index}`}
+                                        className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto]"
                                     >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            );
-                        })}
+                                        <Input
+                                            placeholder={t(
+                                                'service_packages.monthly_spending_min_label',
+                                                { defaultValue: 'Min' },
+                                            )}
+                                            type="number"
+                                            value={min}
+                                            onChange={(e) =>
+                                                handleMonthlyMinChange(
+                                                    index,
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <Input
+                                            placeholder={t(
+                                                'service_packages.monthly_spending_max_label',
+                                                { defaultValue: 'Max' },
+                                            )}
+                                            type="number"
+                                            value={max}
+                                            onChange={(e) =>
+                                                handleMonthlyMaxChange(
+                                                    index,
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <Input
+                                            placeholder={t(
+                                                'service_packages.monthly_spending_fee_label',
+                                            )}
+                                            value={tier.fee_percent}
+                                            onChange={(e) =>
+                                                handleMonthlySpendingChange(
+                                                    index,
+                                                    'fee_percent',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            className="justify-self-start md:justify-self-end"
+                                            size="icon"
+                                            onClick={() =>
+                                                handleRemoveMonthlySpendingRow(
+                                                    index,
+                                                )
+                                            }
+                                            disabled={
+                                                data
+                                                    .monthly_spending_fee_structure
+                                                    .length === 1
+                                            }
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                );
+                            },
+                        )}
                     </div>
                     {monthlySpendingError && (
                         <span className="text-sm text-red-500">
@@ -666,8 +740,9 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                     ? t('service_packages.meta_features')
                     : t('service_packages.google_features')}
             </h1>
-            
-            {(data.platform === _PlatformType.META || data.platform === _PlatformType.GOOGLE) ? (
+
+            {data.platform === _PlatformType.META ||
+            data.platform === _PlatformType.GOOGLE ? (
                 <div className="space-y-3 rounded-lg border p-4">
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                         <div>
@@ -678,8 +753,17 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                             </p>
                             <p className="text-sm text-muted-foreground">
                                 {data.platform === _PlatformType.META
-                                    ? t('service_packages.meta_features_desc', { defaultValue: 'Nhập các rule Meta Ads. Mỗi dòng là một rule với tiêu đề và mô tả.' })
-                                    : t('service_packages.google_features_desc', { defaultValue: 'Nhập các rule Google Ads. Mỗi dòng là một rule với tiêu đề và mô tả.' })}
+                                    ? t('service_packages.meta_features_desc', {
+                                          defaultValue:
+                                              'Nhập các rule Meta Ads. Mỗi dòng là một rule với tiêu đề và mô tả.',
+                                      })
+                                    : t(
+                                          'service_packages.google_features_desc',
+                                          {
+                                              defaultValue:
+                                                  'Nhập các rule Google Ads. Mỗi dòng là một rule với tiêu đề và mô tả.',
+                                          },
+                                      )}
                             </p>
                         </div>
                         <Button
@@ -687,21 +771,31 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                                const newFeatures = [...data.features, { key: '', value: '' }];
+                                const newFeatures = [
+                                    ...data.features,
+                                    { key: '', value: '' },
+                                ];
                                 setData('features', newFeatures);
                             }}
                         >
                             <Plus className="mr-2 h-4 w-4" />
-                            {t('service_packages.meta_features_add_rule', { defaultValue: '+ Thêm rule' })}
+                            {t('service_packages.meta_features_add_rule', {
+                                defaultValue: '+ Thêm rule',
+                            })}
                         </Button>
                     </div>
                     <div className="grid grid-cols-1 gap-3">
                         <div className="hidden md:grid md:grid-cols-[1fr_1fr_auto] md:gap-3">
                             <Label className="text-muted-foreground">
-                                {t('service_packages.meta_features_key_label', { defaultValue: 'Tiêu đề' })}
+                                {t('service_packages.meta_features_key_label', {
+                                    defaultValue: 'Tiêu đề',
+                                })}
                             </Label>
                             <Label className="text-muted-foreground">
-                                {t('service_packages.meta_features_value_label', { defaultValue: 'Mô tả' })}
+                                {t(
+                                    'service_packages.meta_features_value_label',
+                                    { defaultValue: 'Mô tả' },
+                                )}
                             </Label>
                             <span />
                         </div>
@@ -711,7 +805,10 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                                 className="grid gap-2 md:grid-cols-[1fr_1fr_auto]"
                             >
                                 <Input
-                                    placeholder={t('service_packages.meta_features_key_placeholder', { defaultValue: 'Nhập tiêu đề' })}
+                                    placeholder={t(
+                                        'service_packages.meta_features_key_placeholder',
+                                        { defaultValue: 'Nhập tiêu đề' },
+                                    )}
                                     value={feature.key || ''}
                                     onChange={(e) => {
                                         const newFeatures = [...data.features];
@@ -723,8 +820,15 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                                     }}
                                 />
                                 <Input
-                                    placeholder={t('service_packages.meta_features_value_placeholder', { defaultValue: 'Nhập mô tả' })}
-                                    value={typeof feature.value === 'string' ? feature.value : (feature.value?.toString() || '')}
+                                    placeholder={t(
+                                        'service_packages.meta_features_value_placeholder',
+                                        { defaultValue: 'Nhập mô tả' },
+                                    )}
+                                    value={
+                                        typeof feature.value === 'string'
+                                            ? feature.value
+                                            : feature.value?.toString() || ''
+                                    }
                                     onChange={(e) => {
                                         const newFeatures = [...data.features];
                                         // Lưu value dạng text để admin nhập tự do
@@ -735,20 +839,21 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                                         setData('features', newFeatures);
                                     }}
                                 />
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        className="justify-self-start md:justify-self-end"
-                                        size="icon"
-                                        onClick={() => {
-                                            const newFeatures = data.features.filter(
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="justify-self-start md:justify-self-end"
+                                    size="icon"
+                                    onClick={() => {
+                                        const newFeatures =
+                                            data.features.filter(
                                                 (_, idx) => idx !== index,
                                             );
-                                            setData('features', newFeatures);
-                                        }}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                        setData('features', newFeatures);
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
                         ))}
                     </div>
@@ -763,7 +868,10 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                     {availableFeatures.map((feature) => {
                         if (feature.type === 'boolean') {
                             return (
-                                <div key={feature.key} className={'flex flex-col gap-2'}>
+                                <div
+                                    key={feature.key}
+                                    className={'flex flex-col gap-2'}
+                                >
                                     <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 hover:bg-accent/50 has-aria-checked:border-[#4285f4] has-aria-checked:bg-orange-50">
                                         <Checkbox
                                             id={feature.key}
@@ -788,17 +896,22 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                                                 {feature.label}
                                             </p>
                                             <p className="text-sm text-muted-foreground">
-                                                {t('service_packages.toggle_desc')}
+                                                {t(
+                                                    'service_packages.toggle_desc',
+                                                )}
                                             </p>
                                         </div>
                                     </Label>
                                 </div>
-                            )
+                            );
                         }
 
                         if (feature.type === 'number') {
                             return (
-                                <div key={feature.key} className={'flex flex-col gap-2'}>
+                                <div
+                                    key={feature.key}
+                                    className={'flex flex-col gap-2'}
+                                >
                                     <Label htmlFor={feature.key}>
                                         {feature.label}
                                     </Label>
@@ -819,11 +932,13 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                                         }
                                     />
                                 </div>
-                            )
+                            );
                         }
                     })}
                     {errors.features && (
-                        <p className="text-sm text-red-500">{errors.features}</p>
+                        <p className="text-sm text-red-500">
+                            {errors.features}
+                        </p>
                     )}
                 </div>
             )}
@@ -837,10 +952,13 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                             })}
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                            {t('service_packages.account_inventory_description', {
-                                defaultValue:
-                                    'Mỗi dòng: account_id, tên tài khoản, BM/MCC, ghi chú. Khi khách mua gói này, hệ thống tự lấy account còn trống để giao.',
-                            })}
+                            {t(
+                                'service_packages.account_inventory_description',
+                                {
+                                    defaultValue:
+                                        'Mỗi dòng: account_id, tên tài khoản, BM/MCC, ghi chú. Khi khách mua gói này, hệ thống tự lấy account còn trống để giao.',
+                                },
+                            )}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2 text-sm">
@@ -872,10 +990,14 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                     <Button
                         type="button"
                         onClick={handleImportInventory}
-                        disabled={inventorySubmitting || !inventoryImportText.trim()}
+                        disabled={
+                            inventorySubmitting || !inventoryImportText.trim()
+                        }
                     >
                         {inventorySubmitting
-                            ? t('common.loading', { defaultValue: 'Đang tải...' })
+                            ? t('common.loading', {
+                                  defaultValue: 'Đang tải...',
+                              })
                             : t('service_packages.account_inventory_import', {
                                   defaultValue: 'Import kho',
                               })}
@@ -896,13 +1018,21 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                         <tbody>
                             {inventoryLoading ? (
                                 <tr>
-                                    <td className="p-4 text-center text-muted-foreground" colSpan={5}>
-                                        {t('common.loading', { defaultValue: 'Đang tải...' })}
+                                    <td
+                                        className="p-4 text-center text-muted-foreground"
+                                        colSpan={5}
+                                    >
+                                        {t('common.loading', {
+                                            defaultValue: 'Đang tải...',
+                                        })}
                                     </td>
                                 </tr>
                             ) : inventoryItems.length === 0 ? (
                                 <tr>
-                                    <td className="p-4 text-center text-muted-foreground" colSpan={5}>
+                                    <td
+                                        className="p-4 text-center text-muted-foreground"
+                                        colSpan={5}
+                                    >
                                         {t('common.no_data_display')}
                                     </td>
                                 </tr>
@@ -911,7 +1041,8 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                                     <tr key={item.id} className="border-t">
                                         <td className="p-2">
                                             <div className="font-medium">
-                                                {item.account_name || item.account_id}
+                                                {item.account_name ||
+                                                    item.account_id}
                                             </div>
                                             <div className="text-xs text-muted-foreground">
                                                 {item.account_id}
@@ -942,8 +1073,14 @@ const Edit = ({ meta_features, google_features, service_package, suppliers = [],
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => handleDeleteInventory(item.id)}
-                                                disabled={item.status === 'assigned'}
+                                                onClick={() =>
+                                                    handleDeleteInventory(
+                                                        item.id,
+                                                    )
+                                                }
+                                                disabled={
+                                                    item.status === 'assigned'
+                                                }
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

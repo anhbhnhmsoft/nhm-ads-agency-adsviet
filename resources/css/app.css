@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-@import "tw-animate-css";
+@import 'tw-animate-css';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -8,8 +8,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-    --font-sans:
-        'Inter', sans-serif;
+    --font-sans: 'Inter', sans-serif;
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -169,21 +168,21 @@
     }
 
     /* Đảm bảo text và icon trắng khi sidebar button active hoặc hover */
-    [data-sidebar="menu-button"][data-active="true"],
-    [data-sidebar="menu-button"][data-active="true"]>span,
-    [data-sidebar="menu-button"][data-active="true"]>svg,
-    [data-sidebar="menu-button"]:hover,
-    [data-sidebar="menu-button"]:hover>span,
-    [data-sidebar="menu-button"]:hover>svg {
+    [data-sidebar='menu-button'][data-active='true'],
+    [data-sidebar='menu-button'][data-active='true'] > span,
+    [data-sidebar='menu-button'][data-active='true'] > svg,
+    [data-sidebar='menu-button']:hover,
+    [data-sidebar='menu-button']:hover > span,
+    [data-sidebar='menu-button']:hover > svg {
         color: var(--sidebar-accent-foreground) !important;
     }
 
-    [data-sidebar="menu-sub-button"][data-active="true"],
-    [data-sidebar="menu-sub-button"][data-active="true"]>span,
-    [data-sidebar="menu-sub-button"][data-active="true"]>svg,
-    [data-sidebar="menu-sub-button"]:hover,
-    [data-sidebar="menu-sub-button"]:hover>span,
-    [data-sidebar="menu-sub-button"]:hover>svg {
+    [data-sidebar='menu-sub-button'][data-active='true'],
+    [data-sidebar='menu-sub-button'][data-active='true'] > span,
+    [data-sidebar='menu-sub-button'][data-active='true'] > svg,
+    [data-sidebar='menu-sub-button']:hover,
+    [data-sidebar='menu-sub-button']:hover > span,
+    [data-sidebar='menu-sub-button']:hover > svg {
         color: var(--sidebar-accent-foreground) !important;
     }
 }

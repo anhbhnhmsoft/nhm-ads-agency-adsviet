@@ -7,13 +7,13 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import RoleSystemCard from '@/pages/auth/components/RoleSystemCard';
+import TelegramButton from '@/pages/auth/components/TelegramButton';
 import { useFormLogin } from '@/pages/auth/hooks/use-form';
+import { register } from '@/routes';
 import { Head } from '@inertiajs/react';
+import { Eye, EyeOff } from 'lucide-react';
 import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import TelegramButton from '@/pages/auth/components/TelegramButton';
-import { register } from '@/routes';
-import { Eye, EyeOff } from 'lucide-react';
 
 type Props = {
     bot_username: string;
@@ -31,7 +31,10 @@ const Login = ({ bot_username }: Props) => {
             <Head title={t('auth.login.title')} />
 
             <div className={'flex flex-col gap-2'}>
-                <RoleSystemCard role={data.role} setRole={(role) => setData('role', role)} />
+                <RoleSystemCard
+                    role={data.role}
+                    setRole={(role) => setData('role', role)}
+                />
                 <InputError message={errors.role} />
 
                 <form onSubmit={handleSubmit} className="grid gap-4">
@@ -67,7 +70,7 @@ const Login = ({ bot_username }: Props) => {
                                 onChange={(e) =>
                                     setData('password', e.target.value)
                                 }
-                                type={showPassword ? "text" : "password"}
+                                type={showPassword ? 'text' : 'password'}
                                 name="password"
                                 required
                                 tabIndex={2}
@@ -77,14 +80,18 @@ const Login = ({ bot_username }: Props) => {
                             <button
                                 type="button"
                                 tabIndex={-1}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 flex items-center"
+                                className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center text-gray-400 hover:text-gray-700"
                                 onClick={() => setShowPassword((prev) => !prev)}
-                                aria-label={showPassword ? t('common.hide_password') : t('common.show_password')}
+                                aria-label={
+                                    showPassword
+                                        ? t('common.hide_password')
+                                        : t('common.show_password')
+                                }
                             >
                                 {showPassword ? (
-                                    <EyeOff className="w-5 h-5" />
+                                    <EyeOff className="h-5 w-5" />
                                 ) : (
-                                    <Eye className="w-5 h-5" />
+                                    <Eye className="h-5 w-5" />
                                 )}
                             </button>
                         </div>
@@ -96,7 +103,6 @@ const Login = ({ bot_username }: Props) => {
                         className="mt-4 w-full"
                         tabIndex={4}
                         disabled={processing}
-
                     >
                         {processing && <Spinner />}
                         {t('auth.login.login')}

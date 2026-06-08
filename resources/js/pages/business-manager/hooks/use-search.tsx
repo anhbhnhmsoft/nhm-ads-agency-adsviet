@@ -1,11 +1,13 @@
 import useNestedState from '@/hooks/use-nested-state';
-import { router } from '@inertiajs/react';
 import { BusinessManagerListQuery } from '@/pages/business-manager/types/type';
 import { business_managers_index } from '@/routes';
+import { router } from '@inertiajs/react';
 
 export const useSearchBusinessManager = () => {
-    const [query, setQuery] = useNestedState<BusinessManagerListQuery['filter']>({
-        keyword: "",
+    const [query, setQuery] = useNestedState<
+        BusinessManagerListQuery['filter']
+    >({
+        keyword: '',
         platform: undefined,
         start_date: undefined,
         end_date: undefined,
@@ -22,7 +24,7 @@ export const useSearchBusinessManager = () => {
                 replace: true,
                 preserveState: true,
                 only: ['paginator', 'stats', 'childManagers'],
-            }
+            },
         );
     };
 
@@ -43,7 +45,7 @@ export const useSearchBusinessManager = () => {
                 replace: true,
                 preserveState: true,
                 only: ['paginator', 'stats', 'childManagers'],
-            }
+            },
         );
     };
 
@@ -52,5 +54,5 @@ export const useSearchBusinessManager = () => {
         setQuery,
         handleSearch,
         handleReset,
-    }
-}
+    };
+};

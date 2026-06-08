@@ -33,8 +33,10 @@ export const TRANSACTION_TYPE_MAP: Record<number, string> = {
     [TRANSACTION_TYPE.FEE]: 'fee',
     [TRANSACTION_TYPE.CASHBACK]: 'cashback',
     [TRANSACTION_TYPE.SERVICE_PURCHASE]: 'service_purchase',
-    [TRANSACTION_TYPE.CAMPAIGN_BUDGET_UPDATE_GOOGLE]: 'campaign_budget_update_google',
-    [TRANSACTION_TYPE.CAMPAIGN_BUDGET_UPDATE_META]: 'campaign_budget_update_meta',
+    [TRANSACTION_TYPE.CAMPAIGN_BUDGET_UPDATE_GOOGLE]:
+        'campaign_budget_update_google',
+    [TRANSACTION_TYPE.CAMPAIGN_BUDGET_UPDATE_META]:
+        'campaign_budget_update_meta',
     [TRANSACTION_TYPE.CAMPAIGN_PAUSE_GOOGLE]: 'campaign_pause_google',
     [TRANSACTION_TYPE.CAMPAIGN_PAUSE_META]: 'campaign_pause_meta',
     [TRANSACTION_TYPE.CAMPAIGN_END_GOOGLE]: 'campaign_end_google',

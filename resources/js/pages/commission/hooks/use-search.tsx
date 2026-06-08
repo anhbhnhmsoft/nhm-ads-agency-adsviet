@@ -1,7 +1,7 @@
 import useNestedState from '@/hooks/use-nested-state';
-import { router } from '@inertiajs/react';
-import { commissions_report_index } from '@/routes';
 import { CommissionReportQuery } from '@/pages/commission/types/type';
+import { commissions_report_index } from '@/routes';
+import { router } from '@inertiajs/react';
 
 export const useSearchCommissionReport = () => {
     const [query, setQuery] = useNestedState<CommissionReportQuery['filter']>({
@@ -25,7 +25,7 @@ export const useSearchCommissionReport = () => {
                 replace: true,
                 preserveState: true,
                 only: ['paginator', 'summary_by_employee'],
-            }
+            },
         );
     };
 
@@ -35,4 +35,3 @@ export const useSearchCommissionReport = () => {
         handleSearch,
     };
 };
-

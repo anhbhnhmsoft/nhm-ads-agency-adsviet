@@ -1,13 +1,18 @@
-import { useCallback, useState } from 'react';
-import { router } from '@inertiajs/react';
-import type { ServiceOrder, AccountConfig } from '@/pages/service-order/types/type';
+import { _PlatformType } from '@/lib/types/constants';
+import type {
+    AccountConfig,
+    ServiceOrder,
+} from '@/pages/service-order/types/type';
 import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
 import { service_orders_update_config } from '@/routes';
-import { _PlatformType } from '@/lib/types/constants';
+import { router } from '@inertiajs/react';
+import { useCallback, useState } from 'react';
 
 export const useServiceOrderEditConfigDialog = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
+    const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(
+        null,
+    );
     const [accounts, setAccounts] = useState<AccountFormData[]>([]);
     const [useAccountsStructure, setUseAccountsStructure] = useState(false);
     const [metaEmail, setMetaEmail] = useState('');
@@ -16,7 +21,9 @@ export const useServiceOrderEditConfigDialog = () => {
     const [infoFanpage, setInfoFanpage] = useState('');
     const [infoWebsite, setInfoWebsite] = useState('');
     const [paymentType, setPaymentType] = useState('');
-    const [assetAccess, setAssetAccess] = useState<'full_asset' | 'basic_asset'>('full_asset');
+    const [assetAccess, setAssetAccess] = useState<
+        'full_asset' | 'basic_asset'
+    >('full_asset');
     const [timezoneBm, setTimezoneBm] = useState('');
 
     const resetFormState = useCallback(() => {
@@ -32,41 +39,60 @@ export const useServiceOrderEditConfigDialog = () => {
         setTimezoneBm('');
     }, []);
 
-    const cleanAccountData = useCallback((account: AccountConfig): AccountFormData => {
-        return {
-            ...account,
-            bm_ids: account.bm_ids?.filter((id: string) => id?.trim()) || [],
-            fanpages: account.fanpages?.filter((fp: string) => fp?.trim()) || [],
-            websites: account.websites?.filter((ws: string) => ws?.trim()) || [],
-        };
-    }, []);
+    const cleanAccountData = useCallback(
+        (account: AccountConfig): AccountFormData => {
+            return {
+                ...account,
+                bm_ids:
+                    account.bm_ids?.filter((id: string) => id?.trim()) || [],
+                fanpages:
+                    account.fanpages?.filter((fp: string) => fp?.trim()) || [],
+                websites:
+                    account.websites?.filter((ws: string) => ws?.trim()) || [],
+            };
+        },
+        [],
+    );
 
-    const openDialogForOrder = useCallback((order: ServiceOrder) => {
-        resetFormState();
-        
-        const config = order.config_account || {};
-        const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
-        const packagePaymentType = order.package?.payment_type === 'postpay' ? 'postpay' : 'prepay';
-        setSelectedOrder(order);
+    const openDialogForOrder = useCallback(
+        (order: ServiceOrder) => {
+            resetFormState();
 
-        const configAccounts = config.accounts;
-        if (Array.isArray(configAccounts) && configAccounts.length > 0) {
-            setUseAccountsStructure(true);
-            setAccounts(configAccounts.map(cleanAccountData));
-            setPaymentType(packagePaymentType);
-        } else {
-            setUseAccountsStructure(false);
-            setMetaEmail((config.meta_email as string) || '');
-            setDisplayName((config.display_name as string) || '');
-            setBmId((config.bm_id as string) || '');
-            setInfoFanpage(isGoogle ? '' : (config.info_fanpage as string) || '');
-            setInfoWebsite(isGoogle ? '' : (config.info_website as string) || '');
-            setPaymentType(packagePaymentType);
-            setAssetAccess(((config.asset_access as 'full_asset' | 'basic_asset') || 'full_asset'));
-            setTimezoneBm((config.timezone_bm as string) || '');
-        }
-        setDialogOpen(true);
-    }, [resetFormState, cleanAccountData]);
+            const config = order.config_account || {};
+            const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
+            const packagePaymentType =
+                order.package?.payment_type === 'postpay'
+                    ? 'postpay'
+                    : 'prepay';
+            setSelectedOrder(order);
+
+            const configAccounts = config.accounts;
+            if (Array.isArray(configAccounts) && configAccounts.length > 0) {
+                setUseAccountsStructure(true);
+                setAccounts(configAccounts.map(cleanAccountData));
+                setPaymentType(packagePaymentType);
+            } else {
+                setUseAccountsStructure(false);
+                setMetaEmail((config.meta_email as string) || '');
+                setDisplayName((config.display_name as string) || '');
+                setBmId((config.bm_id as string) || '');
+                setInfoFanpage(
+                    isGoogle ? '' : (config.info_fanpage as string) || '',
+                );
+                setInfoWebsite(
+                    isGoogle ? '' : (config.info_website as string) || '',
+                );
+                setPaymentType(packagePaymentType);
+                setAssetAccess(
+                    (config.asset_access as 'full_asset' | 'basic_asset') ||
+                        'full_asset',
+                );
+                setTimezoneBm((config.timezone_bm as string) || '');
+            }
+            setDialogOpen(true);
+        },
+        [resetFormState, cleanAccountData],
+    );
 
     const handleSubmitUpdate = useCallback(() => {
         if (!selectedOrder) return;
@@ -84,7 +110,10 @@ export const useServiceOrderEditConfigDialog = () => {
         };
 
         const payload: UpdateConfigPayload = {
-            payment_type: selectedOrder.package?.payment_type === 'postpay' ? 'postpay' : 'prepay',
+            payment_type:
+                selectedOrder.package?.payment_type === 'postpay'
+                    ? 'postpay'
+                    : 'prepay',
         };
 
         if (useAccountsStructure && accounts.length > 0) {
@@ -114,15 +143,32 @@ export const useServiceOrderEditConfigDialog = () => {
                 },
             },
         );
-    }, [bmId, displayName, metaEmail, infoFanpage, infoWebsite, paymentType, assetAccess, timezoneBm, selectedOrder, useAccountsStructure, accounts, cleanAccountData, resetFormState]);
+    }, [
+        bmId,
+        displayName,
+        metaEmail,
+        infoFanpage,
+        infoWebsite,
+        paymentType,
+        assetAccess,
+        timezoneBm,
+        selectedOrder,
+        useAccountsStructure,
+        accounts,
+        cleanAccountData,
+        resetFormState,
+    ]);
 
-    const handleDialogOpenChange = useCallback((open: boolean) => {
-        setDialogOpen(open);
-        if (!open) {
-            setSelectedOrder(null);
-            resetFormState();
-        }
-    }, [resetFormState]);
+    const handleDialogOpenChange = useCallback(
+        (open: boolean) => {
+            setDialogOpen(open);
+            if (!open) {
+                setSelectedOrder(null);
+                resetFormState();
+            }
+        },
+        [resetFormState],
+    );
 
     return {
         dialogOpen,

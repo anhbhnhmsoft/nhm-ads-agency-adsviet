@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
-import { useTranslation } from 'react-i18next';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import type { SharePageProps } from './share/types/type';
-import { ShareTabs } from './share/components/ShareTabs';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ShareForm } from './share/components/ShareForm';
 import { ShareList } from './share/components/ShareList';
+import { ShareTabs } from './share/components/ShareTabs';
+import type { SharePageProps } from './share/types/type';
 
 const ShareIndex = ({ tickets, accounts, error }: SharePageProps) => {
     const { t } = useTranslation();
@@ -15,8 +15,12 @@ const ShareIndex = ({ tickets, accounts, error }: SharePageProps) => {
 
     return (
         <div>
-            <Head title={t('ticket.share.title', { defaultValue: 'Share BM/MCC' })} />
-            
+            <Head
+                title={t('ticket.share.title', {
+                    defaultValue: 'Share BM/MCC',
+                })}
+            />
+
             <div className="mb-4">
                 <h1 className="text-2xl font-semibold">
                     {t('ticket.share.title', { defaultValue: 'Share BM/MCC' })}
@@ -39,8 +43,10 @@ const ShareIndex = ({ tickets, accounts, error }: SharePageProps) => {
 };
 
 ShareIndex.layout = (page: React.ReactNode) => (
-    <AppLayout breadcrumbs={[{ title: 'ticket.share.title' }]} children={page} />
+    <AppLayout
+        breadcrumbs={[{ title: 'ticket.share.title' }]}
+        children={page}
+    />
 );
 
 export default ShareIndex;
-

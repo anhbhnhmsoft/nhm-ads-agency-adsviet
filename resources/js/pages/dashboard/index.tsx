@@ -1,20 +1,45 @@
+import { TransactionList } from '@/components/transactions/transaction-list';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { TransactionList } from '@/components/transactions/transaction-list';
-import { DateRange } from 'react-day-picker';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import useCheckRole from '@/hooks/use-check-role';
 import AppLayout from '@/layouts/app-layout';
-import { _UserRole, userRolesLabel, _MetaAdsAccountStatus, _GoogleCustomerStatus } from '@/lib/types/constants';
+import {
+    _GoogleCustomerStatus,
+    _MetaAdsAccountStatus,
+    _UserRole,
+    userRolesLabel,
+} from '@/lib/types/constants';
 import { IBreadcrumbItem, type IUser } from '@/lib/types/type';
+import { formatDateForQuery, formatMoney } from '@/lib/utils';
+import type { WalletTransaction } from '@/pages/wallet/types/type';
 import { dashboard, wallet_index } from '@/routes';
-import { Head, Link, usePage, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertCircle,
     AlertTriangle,
@@ -28,10 +53,15 @@ import {
     Wallet,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
-import type { WalletTransaction } from '@/pages/wallet/types/type';
-import type { AdminDashboardData, AdminPendingTransaction, AdminPendingTransactions, DashboardData, PlatformBalance } from './types';
-import { formatDateForQuery, formatMoney } from '@/lib/utils';
+import type {
+    AdminDashboardData,
+    AdminPendingTransaction,
+    AdminPendingTransactions,
+    DashboardData,
+    PlatformBalance,
+} from './types';
 
 const breadcrumbs: IBreadcrumbItem[] = [
     {
@@ -58,11 +88,22 @@ type Props = {
     profitByPlatform?: ProfitByPlatformData[] | null;
 };
 
-export default function Index({ dashboardData, adminDashboardData, adminPendingTransactions, dashboardError, selectedPlatform = 'meta', profitByPlatform }: Props) {
+export default function Index({
+    dashboardData,
+    adminDashboardData,
+    adminPendingTransactions,
+    dashboardError,
+    selectedPlatform = 'meta',
+    profitByPlatform,
+}: Props) {
     const { t, i18n } = useTranslation();
     const { props } = usePage();
     const authUser = useMemo(() => {
-        const authProp = props.auth as { user?: IUser | null } | IUser | null | undefined;
+        const authProp = props.auth as
+            | { user?: IUser | null }
+            | IUser
+            | null
+            | undefined;
         if (authProp && typeof authProp === 'object' && 'user' in authProp) {
             return authProp.user ?? null;
         }
@@ -71,24 +112,35 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
     const checkRole = useCheckRole(authUser);
     const [showBalance, setShowBalance] = useState(true);
     const [platform, setPlatform] = useState<string>(selectedPlatform);
-    const [approveLoadingId, setApproveLoadingId] = useState<string | null>(null);
-    
+    const [approveLoadingId, setApproveLoadingId] = useState<string | null>(
+        null,
+    );
+
     // Ranking state
     const [rankingPlatform, setRankingPlatform] = useState<string>(
-        adminDashboardData?.spending_ranking?.platform || 'meta'
+        adminDashboardData?.spending_ranking?.platform || 'meta',
     );
-    const [rankingDateRange, setRankingDateRange] = useState<DateRange | undefined>(() => {
-        if (adminDashboardData?.spending_ranking?.start_date && adminDashboardData?.spending_ranking?.end_date) {
+    const [rankingDateRange, setRankingDateRange] = useState<
+        DateRange | undefined
+    >(() => {
+        if (
+            adminDashboardData?.spending_ranking?.start_date &&
+            adminDashboardData?.spending_ranking?.end_date
+        ) {
             return {
                 from: new Date(adminDashboardData.spending_ranking.start_date),
                 to: new Date(adminDashboardData.spending_ranking.end_date),
             };
         }
         const endDate = new Date();
-        const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+        const startDate = new Date(
+            endDate.getFullYear(),
+            endDate.getMonth(),
+            1,
+        );
         return { from: startDate, to: endDate };
     });
-    
+
     // Đồng bộ platform state với props khi selectedPlatform thay đổi
     useEffect(() => {
         setPlatform(selectedPlatform);
@@ -108,12 +160,19 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
         return formatMoney(value, 'USD', i18n.language);
     };
 
-    const formatAccountCurrency = (value: string | number, currency?: string | null) => {
+    const formatAccountCurrency = (
+        value: string | number,
+        currency?: string | null,
+    ) => {
         return formatMoney(value, currency || 'USD', i18n.language);
     };
 
     const handleViewWithdrawInfo = (
-        info?: { bank_name?: string; account_holder?: string; account_number?: string } | null
+        info?: {
+            bank_name?: string;
+            account_holder?: string;
+            account_number?: string;
+        } | null,
     ) => {
         setSelectedWithdrawInfo(info ?? null);
         setShowWithdrawInfo(true);
@@ -122,21 +181,37 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
     const handlePlatformChange = (value: string) => {
         setPlatform(value);
         // Reload dashboard với platform mới
-        router.get(dashboard().url, { platform: value }, {
-            preserveState: true,
-            preserveScroll: true,
-        });
+        router.get(
+            dashboard().url,
+            { platform: value },
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
     };
 
-    const isAgencyOrCustomer = checkRole([_UserRole.AGENCY, _UserRole.CUSTOMER]);
-    const isAdminOrStaff = checkRole([_UserRole.ADMIN, _UserRole.MANAGER, _UserRole.EMPLOYEE]);
+    const isAgencyOrCustomer = checkRole([
+        _UserRole.AGENCY,
+        _UserRole.CUSTOMER,
+    ]);
+    const isAdminOrStaff = checkRole([
+        _UserRole.ADMIN,
+        _UserRole.MANAGER,
+        _UserRole.EMPLOYEE,
+    ]);
     const currentUser = authUser;
 
     if (isAdminOrStaff && adminDashboardData) {
-        const roleLabelKey = currentUser ? userRolesLabel[currentUser.role] : undefined;
+        const roleLabelKey = currentUser
+            ? userRolesLabel[currentUser.role]
+            : undefined;
         const roleLabel = roleLabelKey ? t(roleLabelKey) : '';
-        const pendingPagination: AdminPendingTransactions | null = adminPendingTransactions ?? null;
-        const pendingTransactionsForList: WalletTransaction[] = (pendingPagination?.data ?? []).map((tx: AdminPendingTransaction) => ({
+        const pendingPagination: AdminPendingTransactions | null =
+            adminPendingTransactions ?? null;
+        const pendingTransactionsForList: WalletTransaction[] = (
+            pendingPagination?.data ?? []
+        ).map((tx: AdminPendingTransaction) => ({
             id: tx.id,
             amount: tx.amount,
             type: tx.type,
@@ -148,9 +223,11 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
             user:
                 tx.customer_name || tx.customer_email || tx.customer_id
                     ? {
-                          id: tx.customer_id !== undefined && tx.customer_id !== null
-                              ? String(tx.customer_id)
-                              : tx.customer_email || tx.id,
+                          id:
+                              tx.customer_id !== undefined &&
+                              tx.customer_id !== null
+                                  ? String(tx.customer_id)
+                                  : tx.customer_email || tx.id,
                           name: tx.customer_name || tx.customer_email || '',
                       }
                     : undefined,
@@ -159,7 +236,13 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
         const canApproveTransactions = true;
 
         const handleApprove = (transactionId: string) => {
-            if (!window.confirm(t('transactions.confirm_approve', { defaultValue: 'Xác nhận duyệt giao dịch này?' }))) {
+            if (
+                !window.confirm(
+                    t('transactions.confirm_approve', {
+                        defaultValue: 'Xác nhận duyệt giao dịch này?',
+                    }),
+                )
+            ) {
                 return;
             }
             setApproveLoadingId(transactionId);
@@ -172,14 +255,25 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         setApproveLoadingId(null);
                     },
                     onSuccess: () => {
-                        router.reload({ only: ['adminDashboardData', 'adminPendingTransactions'] });
+                        router.reload({
+                            only: [
+                                'adminDashboardData',
+                                'adminPendingTransactions',
+                            ],
+                        });
                     },
-                }
+                },
             );
         };
 
         const handleCancel = (transactionId: string) => {
-            if (!window.confirm(t('transactions.confirm_cancel', { defaultValue: 'Xác nhận hủy giao dịch này?' }))) {
+            if (
+                !window.confirm(
+                    t('transactions.confirm_cancel', {
+                        defaultValue: 'Xác nhận hủy giao dịch này?',
+                    }),
+                )
+            ) {
                 return;
             }
             setCancelLoadingId(transactionId);
@@ -192,9 +286,14 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         setCancelLoadingId(null);
                     },
                     onSuccess: () => {
-                        router.reload({ only: ['adminDashboardData', 'adminPendingTransactions'] });
+                        router.reload({
+                            only: [
+                                'adminDashboardData',
+                                'adminPendingTransactions',
+                            ],
+                        });
                     },
-                }
+                },
             );
         };
 
@@ -203,7 +302,9 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                 <Head title={t('dashboard.admin_title')} />
                 <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4 md:p-6">
                     <div>
-                        <h1 className="text-2xl font-bold">{t('dashboard.admin_title')}</h1>
+                        <h1 className="text-2xl font-bold">
+                            {t('dashboard.admin_title')}
+                        </h1>
                         <p className="text-muted-foreground">
                             {t('dashboard.admin_subtitle', {
                                 name: currentUser?.name || 'Admin',
@@ -221,7 +322,9 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         <AdminStatCard
                             label={t('dashboard.admin_active_customers')}
                             value={adminDashboardData.active_customers}
-                            icon={<UserCheck className="h-5 w-5 text-green-600" />}
+                            icon={
+                                <UserCheck className="h-5 w-5 text-green-600" />
+                            }
                         />
                         <AdminStatCard
                             label={t('dashboard.admin_pending_transactions')}
@@ -235,10 +338,21 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         <div className="grid gap-4 md:grid-cols-2">
                             <PlatformAccountCard
                                 platform="meta"
-                                activeAccounts={adminDashboardData.platform_accounts.meta.active_accounts}
-                                totalBalance={adminDashboardData.platform_accounts.meta.total_balance}
-                                balancesByCurrency={adminDashboardData.platform_accounts.meta.balances_by_currency}
-                                profitData={profitByPlatform?.find(p => p.platform === 1)} // PlatformType::META = 1
+                                activeAccounts={
+                                    adminDashboardData.platform_accounts.meta
+                                        .active_accounts
+                                }
+                                totalBalance={
+                                    adminDashboardData.platform_accounts.meta
+                                        .total_balance
+                                }
+                                balancesByCurrency={
+                                    adminDashboardData.platform_accounts.meta
+                                        .balances_by_currency
+                                }
+                                profitData={profitByPlatform?.find(
+                                    (p) => p.platform === 1,
+                                )} // PlatformType::META = 1
                                 language={i18n.language}
                                 t={t}
                                 formatCurrency={formatCurrency}
@@ -246,10 +360,21 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                             />
                             <PlatformAccountCard
                                 platform="google"
-                                activeAccounts={adminDashboardData.platform_accounts.google.active_accounts}
-                                totalBalance={adminDashboardData.platform_accounts.google.total_balance}
-                                balancesByCurrency={adminDashboardData.platform_accounts.google.balances_by_currency}
-                                profitData={profitByPlatform?.find(p => p.platform === 2)} // PlatformType::GOOGLE = 2
+                                activeAccounts={
+                                    adminDashboardData.platform_accounts.google
+                                        .active_accounts
+                                }
+                                totalBalance={
+                                    adminDashboardData.platform_accounts.google
+                                        .total_balance
+                                }
+                                balancesByCurrency={
+                                    adminDashboardData.platform_accounts.google
+                                        .balances_by_currency
+                                }
+                                profitData={profitByPlatform?.find(
+                                    (p) => p.platform === 2,
+                                )} // PlatformType::GOOGLE = 2
                                 language={i18n.language}
                                 t={t}
                                 formatCurrency={formatCurrency}
@@ -270,23 +395,47 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                 <div className="grid gap-4 md:grid-cols-5">
                                     <PendingTicketCard
                                         label={t('ticket.type.transfer_budget')}
-                                        value={adminDashboardData.pending_tickets_by_type.transfer_budget}
+                                        value={
+                                            adminDashboardData
+                                                .pending_tickets_by_type
+                                                .transfer_budget
+                                        }
                                     />
                                     <PendingTicketCard
-                                        label={t('ticket.type.account_liquidation')}
-                                        value={adminDashboardData.pending_tickets_by_type.account_liquidation}
+                                        label={t(
+                                            'ticket.type.account_liquidation',
+                                        )}
+                                        value={
+                                            adminDashboardData
+                                                .pending_tickets_by_type
+                                                .account_liquidation
+                                        }
                                     />
                                     <PendingTicketCard
                                         label={t('ticket.type.account_appeal')}
-                                        value={adminDashboardData.pending_tickets_by_type.account_appeal}
+                                        value={
+                                            adminDashboardData
+                                                .pending_tickets_by_type
+                                                .account_appeal
+                                        }
                                     />
                                     <PendingTicketCard
                                         label={t('ticket.type.share_bm')}
-                                        value={adminDashboardData.pending_tickets_by_type.share_bm}
+                                        value={
+                                            adminDashboardData
+                                                .pending_tickets_by_type
+                                                .share_bm
+                                        }
                                     />
                                     <PendingTicketCard
-                                        label={t('ticket.type.wallet_withdraw_app')}
-                                        value={adminDashboardData.pending_tickets_by_type.wallet_withdraw_app}
+                                        label={t(
+                                            'ticket.type.wallet_withdraw_app',
+                                        )}
+                                        value={
+                                            adminDashboardData
+                                                .pending_tickets_by_type
+                                                .wallet_withdraw_app
+                                        }
                                     />
                                 </div>
                             </CardContent>
@@ -310,15 +459,28 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                                 value={rankingPlatform}
                                                 onValueChange={(value) => {
                                                     setRankingPlatform(value);
-                                                    if (rankingDateRange?.from && rankingDateRange?.to) {
+                                                    if (
+                                                        rankingDateRange?.from &&
+                                                        rankingDateRange?.to
+                                                    ) {
                                                         router.get(
                                                             dashboard().url,
                                                             {
-                                                                ranking_platform: value,
-                                                                ranking_start_date: formatDateForQuery(rankingDateRange.from),
-                                                                ranking_end_date: formatDateForQuery(rankingDateRange.to),
+                                                                ranking_platform:
+                                                                    value,
+                                                                ranking_start_date:
+                                                                    formatDateForQuery(
+                                                                        rankingDateRange.from,
+                                                                    ),
+                                                                ranking_end_date:
+                                                                    formatDateForQuery(
+                                                                        rankingDateRange.to,
+                                                                    ),
                                                             },
-                                                            { preserveState: true, preserveScroll: true }
+                                                            {
+                                                                preserveState: true,
+                                                                preserveScroll: true,
+                                                            },
                                                         );
                                                     }
                                                 }}
@@ -328,10 +490,14 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="meta">
-                                                        {t('dashboard.platform_meta')}
+                                                        {t(
+                                                            'dashboard.platform_meta',
+                                                        )}
                                                     </SelectItem>
                                                     <SelectItem value="google_ads">
-                                                        {t('dashboard.platform_google_ads')}
+                                                        {t(
+                                                            'dashboard.platform_google_ads',
+                                                        )}
                                                     </SelectItem>
                                                 </SelectContent>
                                             </Select>
@@ -344,15 +510,28 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                                 date={rankingDateRange}
                                                 onDateChange={(date) => {
                                                     setRankingDateRange(date);
-                                                    if (date?.from && date?.to) {
+                                                    if (
+                                                        date?.from &&
+                                                        date?.to
+                                                    ) {
                                                         router.get(
                                                             dashboard().url,
                                                             {
-                                                                ranking_platform: rankingPlatform,
-                                                                ranking_start_date: formatDateForQuery(date.from),
-                                                                ranking_end_date: formatDateForQuery(date.to),
+                                                                ranking_platform:
+                                                                    rankingPlatform,
+                                                                ranking_start_date:
+                                                                    formatDateForQuery(
+                                                                        date.from,
+                                                                    ),
+                                                                ranking_end_date:
+                                                                    formatDateForQuery(
+                                                                        date.to,
+                                                                    ),
                                                             },
-                                                            { preserveState: true, preserveScroll: true }
+                                                            {
+                                                                preserveState: true,
+                                                                preserveScroll: true,
+                                                            },
                                                         );
                                                     }
                                                 }}
@@ -362,112 +541,233 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                {adminDashboardData.spending_ranking.data && adminDashboardData.spending_ranking.data.length > 0 ? (
+                                {adminDashboardData.spending_ranking.data &&
+                                adminDashboardData.spending_ranking.data
+                                    .length > 0 ? (
                                     <div className="overflow-x-auto">
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead className="w-[80px]">
-                                                        {t('spend_report.ranking.rank')}
+                                                        {t(
+                                                            'spend_report.ranking.rank',
+                                                        )}
                                                     </TableHead>
                                                     <TableHead>
-                                                        {t('spend_report.ranking.account')}
+                                                        {t(
+                                                            'spend_report.ranking.account',
+                                                        )}
                                                     </TableHead>
                                                     <TableHead>
-                                                        {t('spend_report.ranking.status')}
+                                                        {t(
+                                                            'spend_report.ranking.status',
+                                                        )}
                                                     </TableHead>
                                                     <TableHead className="text-right">
-                                                        {t('spend_report.ranking.amount')}
+                                                        {t(
+                                                            'spend_report.ranking.amount',
+                                                        )}
                                                     </TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {adminDashboardData.spending_ranking.data.map((item) => {
-                                                    const getStatusBadgeVariant = (status: number, platform: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
-                                                        if (platform === 'meta') {
-                                                            const statusMap: Record<_MetaAdsAccountStatus, 'default' | 'destructive'> = {
-                                                                [_MetaAdsAccountStatus.ACTIVE]: 'default',
-                                                                [_MetaAdsAccountStatus.DISABLED]: 'destructive',
-                                                                [_MetaAdsAccountStatus.UNSETTLED]: 'destructive',
-                                                                [_MetaAdsAccountStatus.PENDING_RISK_REVIEW]: 'destructive',
-                                                                [_MetaAdsAccountStatus.PENDING_SETTLEMENT]: 'destructive',
-                                                                [_MetaAdsAccountStatus.IN_GRACE_PERIOD]: 'destructive',
-                                                                [_MetaAdsAccountStatus.PENDING_CLOSURE]: 'destructive',
-                                                                [_MetaAdsAccountStatus.CLOSED]: 'destructive',
-                                                                [_MetaAdsAccountStatus.ANY_ACTIVE]: 'default',
-                                                                [_MetaAdsAccountStatus.ANY_CLOSED]: 'destructive',
+                                                {adminDashboardData.spending_ranking.data.map(
+                                                    (item) => {
+                                                        const getStatusBadgeVariant =
+                                                            (
+                                                                status: number,
+                                                                platform: string,
+                                                            ):
+                                                                | 'default'
+                                                                | 'secondary'
+                                                                | 'destructive'
+                                                                | 'outline' => {
+                                                                if (
+                                                                    platform ===
+                                                                    'meta'
+                                                                ) {
+                                                                    const statusMap: Record<
+                                                                        _MetaAdsAccountStatus,
+                                                                        | 'default'
+                                                                        | 'destructive'
+                                                                    > = {
+                                                                        [_MetaAdsAccountStatus.ACTIVE]:
+                                                                            'default',
+                                                                        [_MetaAdsAccountStatus.DISABLED]:
+                                                                            'destructive',
+                                                                        [_MetaAdsAccountStatus.UNSETTLED]:
+                                                                            'destructive',
+                                                                        [_MetaAdsAccountStatus.PENDING_RISK_REVIEW]:
+                                                                            'destructive',
+                                                                        [_MetaAdsAccountStatus.PENDING_SETTLEMENT]:
+                                                                            'destructive',
+                                                                        [_MetaAdsAccountStatus.IN_GRACE_PERIOD]:
+                                                                            'destructive',
+                                                                        [_MetaAdsAccountStatus.PENDING_CLOSURE]:
+                                                                            'destructive',
+                                                                        [_MetaAdsAccountStatus.CLOSED]:
+                                                                            'destructive',
+                                                                        [_MetaAdsAccountStatus.ANY_ACTIVE]:
+                                                                            'default',
+                                                                        [_MetaAdsAccountStatus.ANY_CLOSED]:
+                                                                            'destructive',
+                                                                    };
+                                                                    return (
+                                                                        statusMap[
+                                                                            status as _MetaAdsAccountStatus
+                                                                        ] ??
+                                                                        'destructive'
+                                                                    );
+                                                                } else {
+                                                                    const statusMap: Record<
+                                                                        _GoogleCustomerStatus,
+                                                                        | 'default'
+                                                                        | 'destructive'
+                                                                    > = {
+                                                                        [_GoogleCustomerStatus.UNSPECIFIED]:
+                                                                            'destructive',
+                                                                        [_GoogleCustomerStatus.UNKNOWN]:
+                                                                            'destructive',
+                                                                        [_GoogleCustomerStatus.ENABLED]:
+                                                                            'default',
+                                                                        [_GoogleCustomerStatus.CANCELED]:
+                                                                            'destructive',
+                                                                        [_GoogleCustomerStatus.SUSPENDED]:
+                                                                            'destructive',
+                                                                        [_GoogleCustomerStatus.CLOSED]:
+                                                                            'destructive',
+                                                                    };
+                                                                    return (
+                                                                        statusMap[
+                                                                            status as _GoogleCustomerStatus
+                                                                        ] ??
+                                                                        'destructive'
+                                                                    );
+                                                                }
                                                             };
-                                                            return statusMap[status as _MetaAdsAccountStatus] ?? 'destructive';
-                                                        } else {
-                                                            const statusMap: Record<_GoogleCustomerStatus, 'default' | 'destructive'> = {
-                                                                [_GoogleCustomerStatus.UNSPECIFIED]: 'destructive',
-                                                                [_GoogleCustomerStatus.UNKNOWN]: 'destructive',
-                                                                [_GoogleCustomerStatus.ENABLED]: 'default',
-                                                                [_GoogleCustomerStatus.CANCELED]: 'destructive',
-                                                                [_GoogleCustomerStatus.SUSPENDED]: 'destructive',
-                                                                [_GoogleCustomerStatus.CLOSED]: 'destructive',
+                                                        const getStatusBadgeClassName =
+                                                            (
+                                                                status: number,
+                                                                platform: string,
+                                                            ): string => {
+                                                                if (
+                                                                    platform ===
+                                                                    'meta'
+                                                                ) {
+                                                                    const statusMap: Record<
+                                                                        _MetaAdsAccountStatus,
+                                                                        string
+                                                                    > = {
+                                                                        [_MetaAdsAccountStatus.ACTIVE]:
+                                                                            'bg-green-500 text-white',
+                                                                        [_MetaAdsAccountStatus.DISABLED]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_MetaAdsAccountStatus.UNSETTLED]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_MetaAdsAccountStatus.PENDING_RISK_REVIEW]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_MetaAdsAccountStatus.PENDING_SETTLEMENT]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_MetaAdsAccountStatus.IN_GRACE_PERIOD]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_MetaAdsAccountStatus.PENDING_CLOSURE]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_MetaAdsAccountStatus.CLOSED]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_MetaAdsAccountStatus.ANY_ACTIVE]:
+                                                                            'bg-green-500 text-white',
+                                                                        [_MetaAdsAccountStatus.ANY_CLOSED]:
+                                                                            'bg-red-500 text-white',
+                                                                    };
+                                                                    return (
+                                                                        statusMap[
+                                                                            status as _MetaAdsAccountStatus
+                                                                        ] ??
+                                                                        'bg-red-500 text-white'
+                                                                    );
+                                                                } else {
+                                                                    const statusMap: Record<
+                                                                        _GoogleCustomerStatus,
+                                                                        string
+                                                                    > = {
+                                                                        [_GoogleCustomerStatus.UNSPECIFIED]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_GoogleCustomerStatus.UNKNOWN]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_GoogleCustomerStatus.ENABLED]:
+                                                                            'bg-green-500 text-white',
+                                                                        [_GoogleCustomerStatus.CANCELED]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_GoogleCustomerStatus.SUSPENDED]:
+                                                                            'bg-red-500 text-white',
+                                                                        [_GoogleCustomerStatus.CLOSED]:
+                                                                            'bg-red-500 text-white',
+                                                                    };
+                                                                    return (
+                                                                        statusMap[
+                                                                            status as _GoogleCustomerStatus
+                                                                        ] ??
+                                                                        'bg-red-500 text-white'
+                                                                    );
+                                                                }
                                                             };
-                                                            return statusMap[status as _GoogleCustomerStatus] ?? 'destructive';
-                                                        }
-                                                    };
-                                                    const getStatusBadgeClassName = (status: number, platform: string): string => {
-                                                        if (platform === 'meta') {
-                                                            const statusMap: Record<_MetaAdsAccountStatus, string> = {
-                                                                [_MetaAdsAccountStatus.ACTIVE]: 'bg-green-500 text-white',
-                                                                [_MetaAdsAccountStatus.DISABLED]: 'bg-red-500 text-white',
-                                                                [_MetaAdsAccountStatus.UNSETTLED]: 'bg-red-500 text-white',
-                                                                [_MetaAdsAccountStatus.PENDING_RISK_REVIEW]: 'bg-red-500 text-white',
-                                                                [_MetaAdsAccountStatus.PENDING_SETTLEMENT]: 'bg-red-500 text-white',
-                                                                [_MetaAdsAccountStatus.IN_GRACE_PERIOD]: 'bg-red-500 text-white',
-                                                                [_MetaAdsAccountStatus.PENDING_CLOSURE]: 'bg-red-500 text-white',
-                                                                [_MetaAdsAccountStatus.CLOSED]: 'bg-red-500 text-white',
-                                                                [_MetaAdsAccountStatus.ANY_ACTIVE]: 'bg-green-500 text-white',
-                                                                [_MetaAdsAccountStatus.ANY_CLOSED]: 'bg-red-500 text-white',
-                                                            };
-                                                            return statusMap[status as _MetaAdsAccountStatus] ?? 'bg-red-500 text-white';
-                                                        } else {
-                                                            const statusMap: Record<_GoogleCustomerStatus, string> = {
-                                                                [_GoogleCustomerStatus.UNSPECIFIED]: 'bg-red-500 text-white',
-                                                                [_GoogleCustomerStatus.UNKNOWN]: 'bg-red-500 text-white',
-                                                                [_GoogleCustomerStatus.ENABLED]: 'bg-green-500 text-white',
-                                                                [_GoogleCustomerStatus.CANCELED]: 'bg-red-500 text-white',
-                                                                [_GoogleCustomerStatus.SUSPENDED]: 'bg-red-500 text-white',
-                                                                [_GoogleCustomerStatus.CLOSED]: 'bg-red-500 text-white',
-                                                            };
-                                                            return statusMap[status as _GoogleCustomerStatus] ?? 'bg-red-500 text-white';
-                                                        }
-                                                    };
-                                                    return (
-                                                        <TableRow key={item.account_id}>
-                                                            <TableCell className="font-medium">{item.rank}</TableCell>
-                                                            <TableCell>
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-medium">{item.account_name}</span>
-                                                                    <span className="text-sm text-muted-foreground">
-                                                                        {item.account_id_display}
-                                                                    </span>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge
-                                                                    className={getStatusBadgeClassName(item.account_status, rankingPlatform)}
-                                                                    variant={getStatusBadgeVariant(item.account_status, rankingPlatform)}
-                                                                >
-                                                                    {item.status_label}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell className="text-right font-semibold text-orange-500">
-                                                                {formatAccountCurrency(item.total_spend, item.currency)}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    );
-                                                })}
+                                                        return (
+                                                            <TableRow
+                                                                key={
+                                                                    item.account_id
+                                                                }
+                                                            >
+                                                                <TableCell className="font-medium">
+                                                                    {item.rank}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-medium">
+                                                                            {
+                                                                                item.account_name
+                                                                            }
+                                                                        </span>
+                                                                        <span className="text-sm text-muted-foreground">
+                                                                            {
+                                                                                item.account_id_display
+                                                                            }
+                                                                        </span>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Badge
+                                                                        className={getStatusBadgeClassName(
+                                                                            item.account_status,
+                                                                            rankingPlatform,
+                                                                        )}
+                                                                        variant={getStatusBadgeVariant(
+                                                                            item.account_status,
+                                                                            rankingPlatform,
+                                                                        )}
+                                                                    >
+                                                                        {
+                                                                            item.status_label
+                                                                        }
+                                                                    </Badge>
+                                                                </TableCell>
+                                                                <TableCell className="text-right font-semibold text-orange-500">
+                                                                    {formatAccountCurrency(
+                                                                        item.total_spend,
+                                                                        item.currency,
+                                                                    )}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    },
+                                                )}
                                             </TableBody>
                                         </Table>
                                     </div>
                                 ) : (
                                     <div className="py-8 text-center text-muted-foreground">
-                                        {t('spend_report.ranking.no_data', { defaultValue: 'Không có dữ liệu' })}
+                                        {t('spend_report.ranking.no_data', {
+                                            defaultValue: 'Không có dữ liệu',
+                                        })}
                                     </div>
                                 )}
                             </CardContent>
@@ -477,10 +777,13 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                     <Card>
                         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <CardTitle className="text-base font-semibold">
-                                {t('dashboard.admin_pending_transactions_title')}
+                                {t(
+                                    'dashboard.admin_pending_transactions_title',
+                                )}
                             </CardTitle>
                             <div className="text-sm text-muted-foreground">
-                                {adminDashboardData.pending_transactions} {t('transactions.items')}
+                                {adminDashboardData.pending_transactions}{' '}
+                                {t('transactions.items')}
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -492,14 +795,17 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                 approveLoadingId={approveLoadingId}
                                 cancelLoadingId={cancelLoadingId}
                                 showExplorerLink={false}
-                                emptyMessage={t('dashboard.admin_no_transactions')}
+                                emptyMessage={t(
+                                    'dashboard.admin_no_transactions',
+                                )}
                                 onViewWithdrawInfo={handleViewWithdrawInfo}
                             />
                             {pendingMeta && pendingMeta.last_page > 1 && (
                                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="text-sm text-gray-600">
                                         {t('common.showing', {
-                                            defaultValue: 'Hiển thị {{from}} đến {{to}} trong tổng số {{total}}',
+                                            defaultValue:
+                                                'Hiển thị {{from}} đến {{to}} trong tổng số {{total}}',
                                             from: pendingMeta.from ?? 0,
                                             to: pendingMeta.to ?? 0,
                                             total: pendingMeta.total,
@@ -509,30 +815,53 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            disabled={pendingMeta.current_page === 1}
+                                            disabled={
+                                                pendingMeta.current_page === 1
+                                            }
                                             onClick={() =>
                                                 router.get(
                                                     dashboard().url,
-                                                    { pending_page: pendingMeta.current_page - 1 },
-                                                    { preserveScroll: true, preserveState: true }
+                                                    {
+                                                        pending_page:
+                                                            pendingMeta.current_page -
+                                                            1,
+                                                    },
+                                                    {
+                                                        preserveScroll: true,
+                                                        preserveState: true,
+                                                    },
                                                 )
                                             }
                                         >
-                                            {t('common.previous', { defaultValue: 'Trước' })}
+                                            {t('common.previous', {
+                                                defaultValue: 'Trước',
+                                            })}
                                         </Button>
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            disabled={pendingMeta.current_page === pendingMeta.last_page}
+                                            disabled={
+                                                pendingMeta.current_page ===
+                                                pendingMeta.last_page
+                                            }
                                             onClick={() =>
                                                 router.get(
                                                     dashboard().url,
-                                                    { pending_page: pendingMeta.current_page + 1 },
-                                                    { preserveScroll: true, preserveState: true }
+                                                    {
+                                                        pending_page:
+                                                            pendingMeta.current_page +
+                                                            1,
+                                                    },
+                                                    {
+                                                        preserveScroll: true,
+                                                        preserveState: true,
+                                                    },
                                                 )
                                             }
                                         >
-                                            {t('common.next', { defaultValue: 'Sau' })}
+                                            {t('common.next', {
+                                                defaultValue: 'Sau',
+                                            })}
                                         </Button>
                                     </div>
                                 </div>
@@ -540,36 +869,63 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         </CardContent>
                     </Card>
 
-                    <Dialog open={showWithdrawInfo} onOpenChange={setShowWithdrawInfo}>
+                    <Dialog
+                        open={showWithdrawInfo}
+                        onOpenChange={setShowWithdrawInfo}
+                    >
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>
-                                    {t('transactions.withdraw_info_title', { defaultValue: 'Thông tin rút tiền' })}
+                                    {t('transactions.withdraw_info_title', {
+                                        defaultValue: 'Thông tin rút tiền',
+                                    })}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    {t('transactions.withdraw_info_description', {
-                                        defaultValue: 'Thông tin tài khoản người dùng đã nhập',
-                                    })}
+                                    {t(
+                                        'transactions.withdraw_info_description',
+                                        {
+                                            defaultValue:
+                                                'Thông tin tài khoản người dùng đã nhập',
+                                        },
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
                             {selectedWithdrawInfo && (
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label>{t('service_user.bank_name', { defaultValue: 'Tên Ngân hàng/Ví điện tử' })}</Label>
+                                        <Label>
+                                            {t('service_user.bank_name', {
+                                                defaultValue:
+                                                    'Tên Ngân hàng/Ví điện tử',
+                                            })}
+                                        </Label>
                                         <div className="rounded-md border p-2 text-sm">
-                                            {selectedWithdrawInfo.bank_name || '-'}
+                                            {selectedWithdrawInfo.bank_name ||
+                                                '-'}
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>{t('service_user.account_holder', { defaultValue: 'Tên Chủ tài khoản/Ví' })}</Label>
+                                        <Label>
+                                            {t('service_user.account_holder', {
+                                                defaultValue:
+                                                    'Tên Chủ tài khoản/Ví',
+                                            })}
+                                        </Label>
                                         <div className="rounded-md border p-2 text-sm">
-                                            {selectedWithdrawInfo.account_holder || '-'}
+                                            {selectedWithdrawInfo.account_holder ||
+                                                '-'}
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>{t('service_user.account_number', { defaultValue: 'Số Tài khoản/Số điện thoại ví' })}</Label>
+                                        <Label>
+                                            {t('service_user.account_number', {
+                                                defaultValue:
+                                                    'Số Tài khoản/Số điện thoại ví',
+                                            })}
+                                        </Label>
                                         <div className="rounded-md border p-2 text-sm">
-                                            {selectedWithdrawInfo.account_number || '-'}
+                                            {selectedWithdrawInfo.account_number ||
+                                                '-'}
                                         </div>
                                     </div>
                                 </div>
@@ -597,7 +953,7 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
             <AppLayout breadcrumbs={breadcrumbs}>
                 <Head title={t('dashboard.title')} />
                 <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                    <div className="text-center text-muted-foreground py-12">
+                    <div className="py-12 text-center text-muted-foreground">
                         {t('dashboard.coming_soon')}
                     </div>
                 </div>
@@ -605,7 +961,9 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
         );
     }
 
-    const walletBalance = showBalance ? formatCurrency(dashboardData.wallet.balance) : '••••••';
+    const walletBalance = showBalance
+        ? formatCurrency(dashboardData.wallet.balance)
+        : '••••••';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -617,67 +975,98 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Wallet className="h-5 w-5 text-muted-foreground" />
-                                <CardTitle className="sm:text-lg text-base">{t('dashboard.wallet_balance')}</CardTitle>
+                                <CardTitle className="text-base sm:text-lg">
+                                    {t('dashboard.wallet_balance')}
+                                </CardTitle>
                             </div>
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setShowBalance(!showBalance)}
                             >
-                                {showBalance ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                {showBalance ? (
+                                    <Eye className="h-4 w-4" />
+                                ) : (
+                                    <EyeOff className="h-4 w-4" />
+                                )}
                             </Button>
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="sm:flex items-center justify-between">
-                            <div className="text-3xl font-bold">{walletBalance}</div>
-                            <div className="flex sm:mt-0 mt-4 gap-2">
+                        <div className="items-center justify-between sm:flex">
+                            <div className="text-3xl font-bold">
+                                {walletBalance}
+                            </div>
+                            <div className="mt-4 flex gap-2 sm:mt-0">
                                 <Button asChild size="sm">
-                                    <Link href={wallet_index().url}>{t('service_user.title')}</Link>
+                                    <Link href={wallet_index().url}>
+                                        {t('service_user.title')}
+                                    </Link>
                                 </Button>
                                 <Button asChild variant="outline" size="sm">
-                                    <Link href="/transactions">{t('dashboard.transactions')}</Link>
+                                    <Link href="/transactions">
+                                        {t('dashboard.transactions')}
+                                    </Link>
                                 </Button>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-{isAgencyOrCustomer && (
-                            <div className="mt-4 pt-4 border-t">
-                                <Label className="text-sm text-muted-foreground mb-2 block">
-                                    {t('dashboard.select_platform', { defaultValue: 'Chọn nền tảng' })}
-                                </Label>
-                                <Select value={platform} onValueChange={handlePlatformChange}>
-                                    <SelectTrigger className="w-full sm:w-[200px]">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="meta">
-                                            {t('dashboard.platform_meta', { defaultValue: 'Meta Ads' })}
-                                        </SelectItem>
-                                        <SelectItem value="google_ads">
-                                            {t('dashboard.platform_google_ads', { defaultValue: 'Google Ads' })}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
+                {isAgencyOrCustomer && (
+                    <div className="mt-4 border-t pt-4">
+                        <Label className="mb-2 block text-sm text-muted-foreground">
+                            {t('dashboard.select_platform', {
+                                defaultValue: 'Chọn nền tảng',
+                            })}
+                        </Label>
+                        <Select
+                            value={platform}
+                            onValueChange={handlePlatformChange}
+                        >
+                            <SelectTrigger className="w-full sm:w-[200px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="meta">
+                                    {t('dashboard.platform_meta', {
+                                        defaultValue: 'Meta Ads',
+                                    })}
+                                </SelectItem>
+                                <SelectItem value="google_ads">
+                                    {t('dashboard.platform_google_ads', {
+                                        defaultValue: 'Google Ads',
+                                    })}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {/* Tất cả tài khoản */}
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-base font-medium">{t('dashboard.all_accounts')}</CardTitle>
+                            <CardTitle className="text-base font-medium">
+                                {t('dashboard.all_accounts')}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{dashboardData.overview.total_accounts}</div>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                            <div className="text-2xl font-bold">
+                                {dashboardData.overview.total_accounts}
+                            </div>
+                            <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                     <div className="h-2 w-2 rounded-full bg-green-500" />
-                                    <span>{dashboardData.overview.active_accounts} {t('dashboard.active')}</span>
+                                    <span>
+                                        {dashboardData.overview.active_accounts}{' '}
+                                        {t('dashboard.active')}
+                                    </span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <div className="h-2 w-2 rounded-full bg-red-500" />
-                                    <span>{dashboardData.overview.paused_accounts} {t('dashboard.paused')}</span>
+                                    <span>
+                                        {dashboardData.overview.paused_accounts}{' '}
+                                        {t('dashboard.paused')}
+                                    </span>
                                 </div>
                             </div>
                         </CardContent>
@@ -686,12 +1075,21 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                     {/* Tổng chỉ tiêu */}
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-base font-medium">{t('dashboard.total_spend')}</CardTitle>
+                            <CardTitle className="text-base font-medium">
+                                {t('dashboard.total_spend')}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{formatCurrency(dashboardData.overview.total_spend)}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                                {t('dashboard.today_spend_label')}: {formatCurrency(dashboardData.overview.today_spend)}
+                            <div className="text-2xl font-bold">
+                                {formatCurrency(
+                                    dashboardData.overview.total_spend,
+                                )}
+                            </div>
+                            <div className="mt-1 text-sm text-muted-foreground">
+                                {t('dashboard.today_spend_label')}:{' '}
+                                {formatCurrency(
+                                    dashboardData.overview.today_spend,
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -699,11 +1097,15 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                     {/* Dịch vụ */}
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-base font-medium">{t('dashboard.services')}</CardTitle>
+                            <CardTitle className="text-base font-medium">
+                                {t('dashboard.services')}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{dashboardData.overview.total_services}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
+                            <div className="text-2xl font-bold">
+                                {dashboardData.overview.total_services}
+                            </div>
+                            <div className="mt-1 text-sm text-muted-foreground">
                                 {t('dashboard.available_services')}
                             </div>
                         </CardContent>
@@ -712,12 +1114,17 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                     {/* Cảnh báo nghiêm trọng */}
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-base font-medium">{t('dashboard.critical_alerts')}</CardTitle>
+                            <CardTitle className="text-base font-medium">
+                                {t('dashboard.critical_alerts')}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-red-600">{dashboardData.overview.critical_alerts}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                                {dashboardData.overview.accounts_with_errors} {t('dashboard.total_errors')}
+                            <div className="text-2xl font-bold text-red-600">
+                                {dashboardData.overview.critical_alerts}
+                            </div>
+                            <div className="mt-1 text-sm text-muted-foreground">
+                                {dashboardData.overview.accounts_with_errors}{' '}
+                                {t('dashboard.total_errors')}
                             </div>
                         </CardContent>
                     </Card>
@@ -725,42 +1132,71 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
 
                 {/* Metrics thời gian thực */}
                 <div>
-                    <h2 className="text-xl font-semibold mb-4">{t('dashboard.real_time_metrics')}</h2>
+                    <h2 className="mb-4 text-xl font-semibold">
+                        {t('dashboard.real_time_metrics')}
+                    </h2>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <MetricCard
                             title={t('dashboard.total_spend')}
-                            value={formatCurrency(dashboardData.metrics.total_spend.value)}
+                            value={formatCurrency(
+                                dashboardData.metrics.total_spend.value,
+                            )}
                         />
                         <MetricCard
                             title={t('dashboard.today_spend')}
-                            value={formatCurrency(dashboardData.metrics.today_spend.value)}
-                            percentChange={dashboardData.metrics.today_spend.percent_change}
+                            value={formatCurrency(
+                                dashboardData.metrics.today_spend.value,
+                            )}
+                            percentChange={
+                                dashboardData.metrics.today_spend.percent_change
+                            }
                         />
                         <MetricCard
                             title={t('dashboard.total_impressions')}
-                            value={dashboardData.metrics.total_impressions.value}
-                            percentChange={dashboardData.metrics.total_impressions.percent_change}
+                            value={
+                                dashboardData.metrics.total_impressions.value
+                            }
+                            percentChange={
+                                dashboardData.metrics.total_impressions
+                                    .percent_change
+                            }
                         />
                         <MetricCard
                             title={t('dashboard.total_clicks')}
                             value={dashboardData.metrics.total_clicks.value}
-                            percentChange={dashboardData.metrics.total_clicks.percent_change}
+                            percentChange={
+                                dashboardData.metrics.total_clicks
+                                    .percent_change
+                            }
                         />
                         <MetricCard
                             title={t('dashboard.total_conversions')}
                             value={dashboardData.metrics.total_conversions.value.toString()}
-                            percentChange={dashboardData.metrics.total_conversions.percent_change}
+                            percentChange={
+                                dashboardData.metrics.total_conversions
+                                    .percent_change
+                            }
                         />
                         <Card>
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium">{t('dashboard.active_accounts')}</CardTitle>
+                                <CardTitle className="text-sm font-medium">
+                                    {t('dashboard.active_accounts')}
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">
-                                    {dashboardData.metrics.active_accounts.active}
+                                    {
+                                        dashboardData.metrics.active_accounts
+                                            .active
+                                    }
                                 </div>
-                                <div className="text-sm text-muted-foreground mt-1">
-                                    / {dashboardData.metrics.active_accounts.total} {t('dashboard.total')}
+                                <div className="mt-1 text-sm text-muted-foreground">
+                                    /{' '}
+                                    {
+                                        dashboardData.metrics.active_accounts
+                                            .total
+                                    }{' '}
+                                    {t('dashboard.total')}
                                 </div>
                             </CardContent>
                         </Card>
@@ -772,20 +1208,36 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                     {/* Hiệu suất trung bình */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>{t('dashboard.average_performance')}</CardTitle>
+                            <CardTitle>
+                                {t('dashboard.average_performance')}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <div className="text-sm text-muted-foreground mb-1">{t('dashboard.available_services')}</div>
-                                <div className="text-2xl font-bold">{dashboardData.performance.conversion_rate}%</div>
+                                <div className="mb-1 text-sm text-muted-foreground">
+                                    {t('dashboard.available_services')}
+                                </div>
+                                <div className="text-2xl font-bold">
+                                    {dashboardData.performance.conversion_rate}%
+                                </div>
                             </div>
                             <div>
-                                <div className="text-sm text-muted-foreground mb-1">{t('dashboard.avg_cpc')}</div>
-                                <div className="text-2xl font-bold">{formatCurrency(dashboardData.performance.avg_cpc)}</div>
+                                <div className="mb-1 text-sm text-muted-foreground">
+                                    {t('dashboard.avg_cpc')}
+                                </div>
+                                <div className="text-2xl font-bold">
+                                    {formatCurrency(
+                                        dashboardData.performance.avg_cpc,
+                                    )}
+                                </div>
                             </div>
                             <div>
-                                <div className="text-sm text-muted-foreground mb-1">{t('dashboard.avg_roas')}</div>
-                                <div className="text-2xl font-bold">{dashboardData.performance.avg_roas}x</div>
+                                <div className="mb-1 text-sm text-muted-foreground">
+                                    {t('dashboard.avg_roas')}
+                                </div>
+                                <div className="text-2xl font-bold">
+                                    {dashboardData.performance.avg_roas}x
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -797,13 +1249,16 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         </CardHeader>
                         <CardContent>
                             {(() => {
-                                const budget = dashboardData.budget as DashboardData['budget'];
+                                const budget =
+                                    dashboardData.budget as DashboardData['budget'];
                                 const isPostpay = Boolean(budget.is_postpay);
                                 if (isPostpay) {
                                     return (
                                         <div className="space-y-2">
                                             <div className="text-sm text-muted-foreground">
-                                                {t('dashboard.budget_postpay_hint')}
+                                                {t(
+                                                    'dashboard.budget_postpay_hint',
+                                                )}
                                             </div>
                                             <div className="text-2xl font-bold">
                                                 {formatCurrency(budget.used)}
@@ -814,18 +1269,30 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                                 return (
                                     <>
                                         <div className="mb-4">
-                                            <div className="text-sm text-muted-foreground mb-1">{t('dashboard.today_spend')}</div>
+                                            <div className="mb-1 text-sm text-muted-foreground">
+                                                {t('dashboard.today_spend')}
+                                            </div>
                                             <div className="text-2xl font-bold">
-                                                {formatCurrency(budget.used)} / {formatCurrency(budget.total)}
+                                                {formatCurrency(budget.used)} /{' '}
+                                                {formatCurrency(budget.total)}
                                             </div>
                                         </div>
-                                        <Progress value={parseFloat(budget.usage_percent)} className="mb-2" />
+                                        <Progress
+                                            value={parseFloat(
+                                                budget.usage_percent,
+                                            )}
+                                            className="mb-2"
+                                        />
                                         <div className="flex w-full items-center justify-between text-sm">
                                             <span className="text-muted-foreground">
-                                                {budget.usage_percent}% {t('dashboard.used')}
+                                                {budget.usage_percent}%{' '}
+                                                {t('dashboard.used')}
                                             </span>
                                             <span className="text-muted-foreground">
-                                                {formatCurrency(budget.remaining)} {t('dashboard.remaining')}
+                                                {formatCurrency(
+                                                    budget.remaining,
+                                                )}{' '}
+                                                {t('dashboard.remaining')}
                                             </span>
                                         </div>
                                     </>
@@ -840,18 +1307,31 @@ export default function Index({ dashboardData, adminDashboardData, adminPendingT
                         <CardHeader>
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="h-5 w-5 text-red-600" />
-                                <CardTitle className="text-red-600">{t('dashboard.critical_issues')}</CardTitle>
+                                <CardTitle className="text-red-600">
+                                    {t('dashboard.critical_issues')}
+                                </CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                    <div className="text-sm text-muted-foreground mb-1">{t('dashboard.critical_errors')}</div>
-                                    <div className="text-2xl font-bold text-red-600">{dashboardData.alerts.critical_errors}</div>
+                                    <div className="mb-1 text-sm text-muted-foreground">
+                                        {t('dashboard.critical_errors')}
+                                    </div>
+                                    <div className="text-2xl font-bold text-red-600">
+                                        {dashboardData.alerts.critical_errors}
+                                    </div>
                                 </div>
                                 <div>
-                                    <div className="text-sm text-muted-foreground mb-1">{t('dashboard.accounts_with_errors')}</div>
-                                    <div className="text-2xl font-bold text-red-600">{dashboardData.alerts.accounts_with_errors}</div>
+                                    <div className="mb-1 text-sm text-muted-foreground">
+                                        {t('dashboard.accounts_with_errors')}
+                                    </div>
+                                    <div className="text-2xl font-bold text-red-600">
+                                        {
+                                            dashboardData.alerts
+                                                .accounts_with_errors
+                                        }
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
@@ -913,9 +1393,14 @@ function MetricCard({ title, value, percentChange }: MetricCardProps) {
             <CardContent>
                 <div className="text-2xl font-bold">{value}</div>
                 {showTrend && (
-                    <div className={`flex items-center gap-1 mt-1 text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                    <div
+                        className={`mt-1 flex items-center gap-1 text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}
+                    >
                         <Icon className="h-4 w-4" />
-                        <span>{safePercent >= 0 ? '+' : ''}{safePercent.toFixed(1)}%</span>
+                        <span>
+                            {safePercent >= 0 ? '+' : ''}
+                            {safePercent.toFixed(1)}%
+                        </span>
                     </div>
                 )}
             </CardContent>
@@ -932,45 +1417,75 @@ type PlatformAccountCardProps = {
     language: string;
     t: (key: string, options?: Record<string, unknown>) => string;
     formatCurrency: (value: string | number) => string;
-    formatAccountCurrency: (value: string | number, currency?: string | null) => string;
+    formatAccountCurrency: (
+        value: string | number,
+        currency?: string | null,
+    ) => string;
 };
 
-function PlatformAccountCard({ platform, activeAccounts, totalBalance, balancesByCurrency, profitData, language, t, formatCurrency, formatAccountCurrency }: PlatformAccountCardProps) {
-    const platformLabel = platform === 'meta' 
-        ? t('dashboard.platform_meta')
-        : t('dashboard.platform_google_ads');
+function PlatformAccountCard({
+    platform,
+    activeAccounts,
+    totalBalance,
+    balancesByCurrency,
+    profitData,
+    language,
+    t,
+    formatCurrency,
+    formatAccountCurrency,
+}: PlatformAccountCardProps) {
+    const platformLabel =
+        platform === 'meta'
+            ? t('dashboard.platform_meta')
+            : t('dashboard.platform_google_ads');
     const balances = balancesByCurrency?.length
         ? balancesByCurrency
         : [{ amount: totalBalance, currency: 'USD' }];
     const visibleBalances = balances.filter((balance) => {
-        const amount = typeof balance.amount === 'string' ? parseFloat(balance.amount) : balance.amount;
+        const amount =
+            typeof balance.amount === 'string'
+                ? parseFloat(balance.amount)
+                : balance.amount;
         return Number.isFinite(amount) && amount !== 0;
     });
-    const fallbackCurrency = language.toLowerCase().startsWith('vi') ? 'VND' : 'USD';
+    const fallbackCurrency = language.toLowerCase().startsWith('vi')
+        ? 'VND'
+        : 'USD';
     const displayBalances = visibleBalances.length
         ? visibleBalances
         : [{ amount: '0', currency: fallbackCurrency }];
-    
+
     return (
         <Card>
             <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold text-[#4285f4]">{platformLabel}</CardTitle>
+                <CardTitle className="text-base font-semibold text-[#4285f4]">
+                    {platformLabel}
+                </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
                 <div>
                     <div className="mb-1 text-sm text-muted-foreground">
-                        {t('dashboard.platform_active_accounts', { defaultValue: 'Số lượng tài khoản Active' })}
+                        {t('dashboard.platform_active_accounts', {
+                            defaultValue: 'Số lượng tài khoản Active',
+                        })}
                     </div>
-                    <div className="text-2xl font-semibold leading-none text-[#4285f4]">{activeAccounts}</div>
+                    <div className="text-2xl leading-none font-semibold text-[#4285f4]">
+                        {activeAccounts}
+                    </div>
                 </div>
                 <div>
                     <div className="mb-2 text-sm text-muted-foreground">
-                        {t('dashboard.platform_total_balance', { defaultValue: 'Số dư khả dụng của các tài khoản' })}
+                        {t('dashboard.platform_total_balance', {
+                            defaultValue: 'Số dư khả dụng của các tài khoản',
+                        })}
                     </div>
-                    <div className="space-y-1.5 text-2xl font-semibold leading-tight text-orange-500">
+                    <div className="space-y-1.5 text-2xl leading-tight font-semibold text-orange-500">
                         {displayBalances.map((balance) => (
                             <div key={balance.currency}>
-                                {formatAccountCurrency(balance.amount, balance.currency)}
+                                {formatAccountCurrency(
+                                    balance.amount,
+                                    balance.currency,
+                                )}
                             </div>
                         ))}
                     </div>
@@ -978,20 +1493,36 @@ function PlatformAccountCard({ platform, activeAccounts, totalBalance, balancesB
                 {profitData && (
                     <div className="border-t pt-4">
                         <div className="mb-1 text-sm text-muted-foreground">
-                            {t('profit.profit', { defaultValue: 'Lợi nhuận' })} (30 ngày)
+                            {t('profit.profit', { defaultValue: 'Lợi nhuận' })}{' '}
+                            (30 ngày)
                         </div>
-                        <div className={`text-xl font-semibold leading-tight ${parseFloat(profitData.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <div
+                            className={`text-xl leading-tight font-semibold ${parseFloat(profitData.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                        >
                             {parseFloat(profitData.profit) >= 0 ? '+' : ''}
                             {formatCurrency(profitData.profit)}
                         </div>
                         <div className="mt-2 text-xs leading-5 text-muted-foreground">
                             <div>
-                                {t('profit.revenue', { defaultValue: 'Doanh thu' })}: {formatCurrency(profitData.revenue)} | {' '}
-                                {t('profit.cost', { defaultValue: 'Chi phí' })}: {formatCurrency(profitData.cost)}
+                                {t('profit.revenue', {
+                                    defaultValue: 'Doanh thu',
+                                })}
+                                : {formatCurrency(profitData.revenue)} |{' '}
+                                {t('profit.cost', { defaultValue: 'Chi phí' })}:{' '}
+                                {formatCurrency(profitData.cost)}
                             </div>
                             <div>
-                                {t('profit.profit_margin', { defaultValue: 'Tỷ suất' })}: {parseFloat(profitData.profit_margin) >= 0 ? '+' : ''}
-                                {parseFloat(profitData.profit_margin).toFixed(2)}%
+                                {t('profit.profit_margin', {
+                                    defaultValue: 'Tỷ suất',
+                                })}
+                                :{' '}
+                                {parseFloat(profitData.profit_margin) >= 0
+                                    ? '+'
+                                    : ''}
+                                {parseFloat(profitData.profit_margin).toFixed(
+                                    2,
+                                )}
+                                %
                             </div>
                         </div>
                     </div>
@@ -1009,11 +1540,11 @@ type PendingTicketCardProps = {
 function PendingTicketCard({ label, value }: PendingTicketCardProps) {
     return (
         <div className="flex flex-col">
-            <div className="text-sm font-semibold mb-2 text-center min-h-10 flex items-center justify-center">
+            <div className="mb-2 flex min-h-10 items-center justify-center text-center text-sm font-semibold">
                 {label}
             </div>
-            <div className="h-px bg-[#4285f4] mb-3"></div>
-            <div className="text-3xl font-bold text-center">{value}</div>
+            <div className="mb-3 h-px bg-[#4285f4]"></div>
+            <div className="text-center text-3xl font-bold">{value}</div>
         </div>
     );
 }

@@ -1,31 +1,4 @@
-import { ReactNode, useMemo, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Button } from '@/components/ui/button';
-import {
-    Empty,
-    EmptyContent,
-    EmptyDescription,
-    EmptyHeader,
-    EmptyMedia,
-    EmptyTitle,
-} from '@/components/ui/empty';
-import { useTranslation } from 'react-i18next';
-import { Edit, MoreHorizontal, Plus, Trash, Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { router } from '@inertiajs/react';
-import { commissions_create_view, commissions_destroy, commissions_edit_view } from '@/routes';
-import { EmployeeCommissionItem, CommissionPagination } from '@/pages/commission/types/type';
-import { ColumnDef } from '@tanstack/react-table';
-import { Separator } from '@/components/ui/separator';
 import { DataTable } from '@/components/table/data-table';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -36,6 +9,44 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/components/ui/empty';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import AppLayout from '@/layouts/app-layout';
+import {
+    CommissionPagination,
+    EmployeeCommissionItem,
+} from '@/pages/commission/types/type';
+import {
+    commissions_create_view,
+    commissions_destroy,
+    commissions_edit_view,
+} from '@/routes';
+import { router } from '@inertiajs/react';
+import { ColumnDef } from '@tanstack/react-table';
+import { Edit, Info, MoreHorizontal, Plus, Trash } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     paginator: CommissionPagination;
@@ -44,7 +55,8 @@ type Props = {
 const Index = ({ paginator }: Props) => {
     const { t } = useTranslation();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [itemToDelete, setItemToDelete] = useState<EmployeeCommissionItem | null>(null);
+    const [itemToDelete, setItemToDelete] =
+        useState<EmployeeCommissionItem | null>(null);
 
     const handleDelete = () => {
         if (itemToDelete) {
@@ -59,11 +71,17 @@ const Index = ({ paginator }: Props) => {
     const getTypeLabel = (type: string) => {
         switch (type) {
             case 'service':
-                return t('commission.type_service', { defaultValue: 'Hoa hồng dịch vụ' });
+                return t('commission.type_service', {
+                    defaultValue: 'Hoa hồng dịch vụ',
+                });
             case 'spending':
-                return t('commission.type_spending', { defaultValue: 'Hoa hồng theo spending' });
+                return t('commission.type_spending', {
+                    defaultValue: 'Hoa hồng theo spending',
+                });
             case 'account':
-                return t('commission.type_account', { defaultValue: 'Hoa hồng theo bán account' });
+                return t('commission.type_account', {
+                    defaultValue: 'Hoa hồng theo bán account',
+                });
             default:
                 return type;
         }
@@ -73,7 +91,9 @@ const Index = ({ paginator }: Props) => {
         () => [
             {
                 accessorKey: 'service_package.name',
-                header: t('commission.service_package', { defaultValue: 'Gói dịch vụ' }),
+                header: t('commission.service_package', {
+                    defaultValue: 'Gói dịch vụ',
+                }),
                 cell: ({ row }) => {
                     const servicePackage = row.original.service_package;
                     return servicePackage ? servicePackage.name : '-';
@@ -95,31 +115,45 @@ const Index = ({ paginator }: Props) => {
                 header: t('commission.rate', { defaultValue: 'Tỷ lệ (%)' }),
                 cell: ({ row }) => {
                     const rate = Number(row.original.rate);
-                    return Number.isFinite(rate) ? `${rate.toFixed(2)}%` : row.original.rate;
+                    return Number.isFinite(rate)
+                        ? `${rate.toFixed(2)}%`
+                        : row.original.rate;
                 },
             },
             {
                 accessorKey: 'min_amount',
-                header: t('commission.min_amount', { defaultValue: 'Số tiền tối thiểu' }),
+                header: t('commission.min_amount', {
+                    defaultValue: 'Số tiền tối thiểu',
+                }),
                 cell: ({ row }) => {
                     const amount = row.original.min_amount;
                     if (!amount) {
-                        return t('commission.no_limit', { defaultValue: 'Không giới hạn' });
+                        return t('commission.no_limit', {
+                            defaultValue: 'Không giới hạn',
+                        });
                     }
                     const num = Number(amount);
-                    return Number.isFinite(num) ? `${num.toLocaleString('vi-VN')} USD` : amount;
+                    return Number.isFinite(num)
+                        ? `${num.toLocaleString('vi-VN')} USD`
+                        : amount;
                 },
             },
             {
                 accessorKey: 'max_amount',
-                header: t('commission.max_amount', { defaultValue: 'Số tiền tối đa' }),
+                header: t('commission.max_amount', {
+                    defaultValue: 'Số tiền tối đa',
+                }),
                 cell: ({ row }) => {
                     const amount = row.original.max_amount;
                     if (!amount) {
-                        return t('commission.no_limit', { defaultValue: 'Không giới hạn' });
+                        return t('commission.no_limit', {
+                            defaultValue: 'Không giới hạn',
+                        });
                     }
                     const num = Number(amount);
-                    return Number.isFinite(num) ? `${num.toLocaleString('vi-VN')} USD` : amount;
+                    return Number.isFinite(num)
+                        ? `${num.toLocaleString('vi-VN')} USD`
+                        : amount;
                 },
             },
             {
@@ -129,7 +163,9 @@ const Index = ({ paginator }: Props) => {
                     const isActive = cell.row.original.is_active;
                     return (
                         <Badge variant={isActive ? 'default' : 'destructive'}>
-                            {isActive ? t('common.active') : t('common.inactive')}
+                            {isActive
+                                ? t('common.active')
+                                : t('common.inactive')}
                         </Badge>
                     );
                 },
@@ -150,7 +186,9 @@ const Index = ({ paginator }: Props) => {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem
                                     onClick={() =>
-                                        router.visit(commissions_edit_view(item.id).url)
+                                        router.visit(
+                                            commissions_edit_view(item.id).url,
+                                        )
                                     }
                                 >
                                     <Edit className="mr-2 h-4 w-4" />
@@ -180,30 +218,43 @@ const Index = ({ paginator }: Props) => {
         <AppLayout>
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-semibold flex items-center gap-2">
-                        {t('commission.index_title', { defaultValue: 'Quản lý hoa hồng' })}
+                    <h1 className="flex items-center gap-2 text-2xl font-semibold">
+                        {t('commission.index_title', {
+                            defaultValue: 'Quản lý hoa hồng',
+                        })}
                         <TooltipProvider delayDuration={0}>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Info className="h-5 w-5 text-muted-foreground hover:text-primary cursor-help transition-colors" />
+                                    <Info className="h-5 w-5 cursor-help text-muted-foreground transition-colors hover:text-primary" />
                                 </TooltipTrigger>
-                                <TooltipContent className="max-w-[350px] p-3 text-sm shadow-md bg-popover text-popover-foreground border" side="bottom" align="start">
+                                <TooltipContent
+                                    className="max-w-[350px] border bg-popover p-3 text-sm text-popover-foreground shadow-md"
+                                    side="bottom"
+                                    align="start"
+                                >
                                     <div className="space-y-3">
                                         <div>
-                                            <div className="font-semibold text-primary mb-1">Hoa hồng Dịch vụ:</div>
-                                            <div className="text-muted-foreground leading-relaxed">
+                                            <div className="mb-1 font-semibold text-primary">
+                                                Hoa hồng Dịch vụ:
+                                            </div>
+                                            <div className="leading-relaxed text-muted-foreground">
                                                 Số tiền bán dịch vụ * Tỷ lệ %
                                             </div>
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-primary mb-1">Hoa hồng Bán Account:</div>
-                                            <div className="text-muted-foreground leading-relaxed">
-                                                (Phí mở TK * Số lượng TK) * Tỷ lệ %
+                                            <div className="mb-1 font-semibold text-primary">
+                                                Hoa hồng Bán Account:
+                                            </div>
+                                            <div className="leading-relaxed text-muted-foreground">
+                                                (Phí mở TK * Số lượng TK) * Tỷ
+                                                lệ %
                                             </div>
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-primary mb-1">Hoa hồng Spending:</div>
-                                            <div className="text-muted-foreground leading-relaxed">
+                                            <div className="mb-1 font-semibold text-primary">
+                                                Hoa hồng Spending:
+                                            </div>
+                                            <div className="leading-relaxed text-muted-foreground">
                                                 Số tiền KH nạp * Tỷ lệ %
                                             </div>
                                         </div>
@@ -218,7 +269,9 @@ const Index = ({ paginator }: Props) => {
                         }}
                     >
                         <Plus className="mr-2 h-4 w-4" />
-                        {t('commission.create_btn', { defaultValue: 'Tạo cấu hình hoa hồng' })}
+                        {t('commission.create_btn', {
+                            defaultValue: 'Tạo cấu hình hoa hồng',
+                        })}
                     </Button>
                 </div>
 
@@ -233,10 +286,16 @@ const Index = ({ paginator }: Props) => {
                         </EmptyMedia>
                         <EmptyHeader>
                             <EmptyTitle>
-                                {t('commission.empty_title', { defaultValue: 'Chưa có cấu hình hoa hồng nào' })}
+                                {t('commission.empty_title', {
+                                    defaultValue:
+                                        'Chưa có cấu hình hoa hồng nào',
+                                })}
                             </EmptyTitle>
                             <EmptyDescription>
-                                {t('commission.empty_description', { defaultValue: 'Tạo cấu hình hoa hồng mới để bắt đầu' })}
+                                {t('commission.empty_description', {
+                                    defaultValue:
+                                        'Tạo cấu hình hoa hồng mới để bắt đầu',
+                                })}
                             </EmptyDescription>
                         </EmptyHeader>
                         <EmptyContent>
@@ -246,13 +305,18 @@ const Index = ({ paginator }: Props) => {
                                 }}
                             >
                                 <Plus className="mr-2 h-4 w-4" />
-                                {t('commission.create_btn', { defaultValue: 'Tạo cấu hình hoa hồng' })}
+                                {t('commission.create_btn', {
+                                    defaultValue: 'Tạo cấu hình hoa hồng',
+                                })}
                             </Button>
                         </EmptyContent>
                     </Empty>
                 )}
 
-                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialog
+                    open={showDeleteDialog}
+                    onOpenChange={setShowDeleteDialog}
+                >
                     <AlertDialogContent>
                         <AlertDialogHeader>
                             <AlertDialogTitle>
@@ -260,7 +324,8 @@ const Index = ({ paginator }: Props) => {
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                                 {t('commission.delete_confirmation', {
-                                    defaultValue: 'Bạn có chắc chắn muốn xóa cấu hình hoa hồng này? Hành động này không thể hoàn tác.',
+                                    defaultValue:
+                                        'Bạn có chắc chắn muốn xóa cấu hình hoa hồng này? Hành động này không thể hoàn tác.',
                                 })}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -280,4 +345,3 @@ const Index = ({ paginator }: Props) => {
 };
 
 export default Index;
-

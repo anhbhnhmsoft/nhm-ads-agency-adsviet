@@ -1,14 +1,19 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useTranslation } from 'react-i18next';
-import { CustomerListItem } from '@/pages/user/types/type';
-import { userRolesLabel, _WalletStatus } from '@/lib/types/constants';
-import { Check, OctagonX } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
-import { router, usePage } from '@inertiajs/react';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { _WalletStatus, userRolesLabel } from '@/lib/types/constants';
 import { useWallet } from '@/pages/user/hooks/use-wallet';
-import { wallet_lock, wallet_unlock, wallet_reset_password } from '@/routes';
+import { CustomerListItem } from '@/pages/user/types/type';
+import { wallet_lock, wallet_reset_password, wallet_unlock } from '@/routes';
+import { router, usePage } from '@inertiajs/react';
+import { Check, OctagonX } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     open: boolean;
@@ -19,12 +24,15 @@ type Props = {
 export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
     const { t } = useTranslation();
     const { props } = usePage();
-    const globalWarningThreshold = (props as any)?.globalWarningThreshold?.value ?? '0';
+    const globalWarningThreshold =
+        (props as any)?.globalWarningThreshold?.value ?? '0';
     const [walletPassword, setWalletPassword] = useState('');
-    const { wallet, loading: walletLoading, error: walletError, refetch: refetchWallet } = useWallet(
-        user?.id,
-        open
-    );
+    const {
+        wallet,
+        loading: walletLoading,
+        error: walletError,
+        refetch: refetchWallet,
+    } = useWallet(user?.id, open);
 
     useEffect(() => {
         if (!open) {
@@ -39,62 +47,91 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
         const raw = wallet?.balance ?? '0.00';
         const num = Number(raw);
         if (Number.isNaN(num)) return '0.00';
-        return num.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return num.toLocaleString('vi-VN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
     })();
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl w-full">
+            <DialogContent className="w-full max-w-5xl">
                 <DialogHeader>
                     <DialogTitle>{t('user.customer_info')}</DialogTitle>
                 </DialogHeader>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.name')}</label>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.name')}
+                        </label>
                         <div className="text-sm">{user.name}</div>
                     </div>
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.username')}</label>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.username')}
+                        </label>
                         <div className="text-sm">{user.username}</div>
                     </div>
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.email')}</label>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.email')}
+                        </label>
                         <div className="text-sm">{user.email || '-'}</div>
                     </div>
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.telegram_id')}</label>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.telegram_id')}
+                        </label>
                         <div className="text-sm">{user.telegram_id || '-'}</div>
                     </div>
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.phone')}</label>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.phone')}
+                        </label>
                         <div className="text-sm">{user.phone || '-'}</div>
                     </div>
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.role')}</label>
-                        <div className="text-sm">{t(userRolesLabel[user.role])}</div>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.role')}
+                        </label>
+                        <div className="text-sm">
+                            {t(userRolesLabel[user.role])}
+                        </div>
                     </div>
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.account_active')}</label>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.account_active')}
+                        </label>
                         <div className="flex items-center gap-2">
                             {!user.disabled ? (
                                 <>
                                     <Check className="size-4 text-green-500" />
-                                    <span className="text-sm">{t('common.active')}</span>
+                                    <span className="text-sm">
+                                        {t('common.active')}
+                                    </span>
                                 </>
                             ) : (
                                 <>
                                     <OctagonX className="size-4 text-red-500" />
-                                    <span className="text-sm">{t('common.disabled')}</span>
+                                    <span className="text-sm">
+                                        {t('common.disabled')}
+                                    </span>
                                 </>
                             )}
                         </div>
                     </div>
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.referral_code')}</label>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.referral_code')}
+                        </label>
                         <div className="text-sm">{user.referral_code}</div>
                     </div>
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.warning_threshold', { default: 'Ngưỡng cảnh báo (USD)' })}</label>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.warning_threshold', {
+                                default: 'Ngưỡng cảnh báo (USD)',
+                            })}
+                        </label>
                         <div className="flex gap-2">
                             <Input
                                 placeholder={`${t('common.warning_threshold_placeholder', { default: 'Mặc định:' })} ${globalWarningThreshold}`}
@@ -103,72 +140,112 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                                 step="any"
                                 defaultValue={user.warning_threshold ?? ''}
                                 onBlur={(e) => {
-                                    if (e.target.value !== (user.warning_threshold?.toString() || '')) {
-                                        router.post(`/customer/${user.id}/warning-threshold`, {
-                                            warning_threshold: e.target.value !== '' ? Number(e.target.value) : null
-                                        }, { preserveScroll: true });
+                                    if (
+                                        e.target.value !==
+                                        (user.warning_threshold?.toString() ||
+                                            '')
+                                    ) {
+                                        router.post(
+                                            `/customer/${user.id}/warning-threshold`,
+                                            {
+                                                warning_threshold:
+                                                    e.target.value !== ''
+                                                        ? Number(e.target.value)
+                                                        : null,
+                                            },
+                                            { preserveScroll: true },
+                                        );
                                     }
                                 }}
                             />
                         </div>
                     </div>
                     <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">{t('common.social_authentication')}</label>
+                        <label className="text-sm font-medium text-gray-500">
+                            {t('common.social_authentication')}
+                        </label>
                         <div className="flex flex-col gap-1">
                             {user.email_verified_at && (
-                                <div className="text-sm">{t('common.using_email')}</div>
+                                <div className="text-sm">
+                                    {t('common.using_email')}
+                                </div>
                             )}
                             {user.using_telegram && (
-                                <div className="text-sm">{t('common.using_telegram')}</div>
+                                <div className="text-sm">
+                                    {t('common.using_telegram')}
+                                </div>
                             )}
-                            {!user.email_verified_at && !user.using_telegram && (
-                                <div className="text-sm text-gray-400">-</div>
-                            )}
+                            {!user.email_verified_at &&
+                                !user.using_telegram && (
+                                    <div className="text-sm text-gray-400">
+                                        -
+                                    </div>
+                                )}
                         </div>
                     </div>
-                    <div className="col-span-full border-t pt-4 mt-2">
-                        <div className="text-base font-medium mb-2">{t('common.internal_wallet')}</div>
+                    <div className="col-span-full mt-2 border-t pt-4">
+                        <div className="mb-2 text-base font-medium">
+                            {t('common.internal_wallet')}
+                        </div>
                         {walletLoading ? (
-                            <div className="text-sm text-gray-500">{t('wallet.loading')}</div>
+                            <div className="text-sm text-gray-500">
+                                {t('wallet.loading')}
+                            </div>
                         ) : walletError ? (
-                            <div className="text-sm text-red-500">{t('wallet.error')}: {walletError}</div>
+                            <div className="text-sm text-red-500">
+                                {t('wallet.error')}: {walletError}
+                            </div>
                         ) : (
                             <>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="grid gap-1">
-                                        <label className="text-sm font-medium text-gray-500">{t('wallet.balance')}</label>
-                                        <div className="text-sm">{walletBalanceDisplay} USDT</div>
+                                        <label className="text-sm font-medium text-gray-500">
+                                            {t('wallet.balance')}
+                                        </label>
+                                        <div className="text-sm">
+                                            {walletBalanceDisplay} USDT
+                                        </div>
                                     </div>
                                     <div className="grid gap-1">
-                                        <label className="text-sm font-medium text-gray-500">{t('wallet.status')}</label>
+                                        <label className="text-sm font-medium text-gray-500">
+                                            {t('wallet.status')}
+                                        </label>
                                         <div className="flex items-center gap-2">
-                                            {walletStatus === _WalletStatus.LOCKED ? (
+                                            {walletStatus ===
+                                            _WalletStatus.LOCKED ? (
                                                 <>
                                                     <OctagonX className="size-4 text-red-500" />
-                                                    <span className="text-sm">{t('wallet.locked')}</span>
+                                                    <span className="text-sm">
+                                                        {t('wallet.locked')}
+                                                    </span>
                                                 </>
                                             ) : (
                                                 <>
                                                     <Check className="size-4 text-green-500" />
-                                                    <span className="text-sm">{t('wallet.active')}</span>
+                                                    <span className="text-sm">
+                                                        {t('wallet.active')}
+                                                    </span>
                                                 </>
                                             )}
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 mt-4">
+                                <div className="mt-4 flex items-center gap-2">
                                     {walletStatus === _WalletStatus.LOCKED ? (
                                         <Button
                                             type="button"
                                             variant="secondary"
                                             onClick={() => {
                                                 router.post(
-                                                    wallet_unlock({ userId: user.id }).url,
+                                                    wallet_unlock({
+                                                        userId: user.id,
+                                                    }).url,
                                                     {},
                                                     {
                                                         preserveScroll: true,
-                                                        onSuccess: () => refetchWallet(),
-                                                    }
+                                                        onSuccess: () =>
+                                                            refetchWallet(),
+                                                    },
                                                 );
                                             }}
                                         >
@@ -180,12 +257,15 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                                             variant="secondary"
                                             onClick={() => {
                                                 router.post(
-                                                    wallet_lock({ userId: user.id }).url,
+                                                    wallet_lock({
+                                                        userId: user.id,
+                                                    }).url,
                                                     {},
                                                     {
                                                         preserveScroll: true,
-                                                        onSuccess: () => refetchWallet(),
-                                                    }
+                                                        onSuccess: () =>
+                                                            refetchWallet(),
+                                                    },
                                                 );
                                             }}
                                         >
@@ -196,7 +276,9 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                                         placeholder={t('wallet.new_password')}
                                         type="password"
                                         value={walletPassword}
-                                        onChange={(e) => setWalletPassword(e.target.value)}
+                                        onChange={(e) =>
+                                            setWalletPassword(e.target.value)
+                                        }
                                         className="flex-1"
                                     />
                                     <Button
@@ -205,15 +287,22 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                                         onClick={() => {
                                             if (walletPassword) {
                                                 router.post(
-                                                    wallet_reset_password({ userId: user.id }).url,
-                                                    { password: walletPassword },
+                                                    wallet_reset_password({
+                                                        userId: user.id,
+                                                    }).url,
+                                                    {
+                                                        password:
+                                                            walletPassword,
+                                                    },
                                                     {
                                                         preserveScroll: true,
                                                         onSuccess: () => {
-                                                            setWalletPassword('');
+                                                            setWalletPassword(
+                                                                '',
+                                                            );
                                                             refetchWallet();
                                                         },
-                                                    }
+                                                    },
                                                 );
                                             }
                                         }}

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import type { WalletData } from '@/pages/wallet/types/type';
@@ -13,7 +12,8 @@ const WalletInfoCard = ({ t, wallet }: Props) => {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
-    const statusLabel = wallet?.status === 1 ? t('wallet.active') : t('wallet.locked');
+    const statusLabel =
+        wallet?.status === 1 ? t('wallet.active') : t('wallet.locked');
 
     return (
         <Card>
@@ -25,7 +25,9 @@ const WalletInfoCard = ({ t, wallet }: Props) => {
                     <Label className="text-muted-foreground">
                         {t('wallet.balance')}
                     </Label>
-                    <div className="mt-1 text-2xl font-semibold">{balanceDisplay} {t('service_user.currency')}</div>
+                    <div className="mt-1 text-2xl font-semibold">
+                        {balanceDisplay} {t('service_user.currency')}
+                    </div>
                 </div>
                 <div>
                     <Label className="text-muted-foreground">
@@ -49,5 +51,3 @@ const WalletInfoCard = ({ t, wallet }: Props) => {
 };
 
 export default WalletInfoCard;
-
-

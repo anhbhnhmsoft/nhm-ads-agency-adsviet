@@ -1,16 +1,23 @@
-import { useTranslation } from 'react-i18next';
-import { useSearchServicePackage } from '@/pages/service-package/hooks/use-search';
-import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardAction,
+    CardContent,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Plus, Search } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { useSearchServicePackage } from '@/pages/service-package/hooks/use-search';
 import { service_packages_create_view } from '@/routes';
+import { router } from '@inertiajs/react';
+import { Plus, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const ServicePackageListSearchForm = () => {
     const { t } = useTranslation();
-    const { query, setQuery, handleSearch } = useSearchServicePackage()
+    const { query, setQuery, handleSearch } = useSearchServicePackage();
 
     return (
         <Card>
@@ -49,12 +56,10 @@ const ServicePackageListSearchForm = () => {
                         {t('common.search', { defaultValue: 'Search' })}
                     </Button>
                     <Button
-                        variant={"outline"}
+                        variant={'outline'}
                         className={'cursor-pointer'}
                         onClick={() => {
-                            router.visit(
-                                service_packages_create_view().url,
-                            );
+                            router.visit(service_packages_create_view().url);
                         }}
                     >
                         <Plus />
@@ -64,6 +69,6 @@ const ServicePackageListSearchForm = () => {
             </CardFooter>
         </Card>
     );
-}
+};
 
 export default ServicePackageListSearchForm;

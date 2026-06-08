@@ -15,16 +15,20 @@ export function AppSidebar() {
             {/*Header sidebar*/}
             <SidebarHeader>
                 <div className="flex items-center justify-center">
-                    <img src={`${logo_path}`} alt="logo" className="w-[185px] h-[185px]" />
+                    <img
+                        src={`${logo_path}`}
+                        alt="logo"
+                        className="h-[185px] w-[185px]"
+                    />
                 </div>
-                <div className="px-3 py-3 text-lg font-bold tracking-wide text-center">
+                <div className="px-3 py-3 text-center text-lg font-bold tracking-wide">
                     ADVIET AGENCY
                 </div>
             </SidebarHeader>
 
             {/*Menu sidebar*/}
             <SidebarContent>
-                <NavMain  />
+                <NavMain />
             </SidebarContent>
 
             {/*Footer sidebar*/}

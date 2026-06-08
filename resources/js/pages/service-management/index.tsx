@@ -125,6 +125,10 @@ const ServiceManagementIndex = ({
     const isAgencyOrCustomer =
         currentUserRole === _UserRole.AGENCY ||
         currentUserRole === _UserRole.CUSTOMER;
+    const isStaff =
+        currentUserRole === _UserRole.ADMIN ||
+        currentUserRole === _UserRole.MANAGER ||
+        currentUserRole === _UserRole.EMPLOYEE;
     const { query, setQuery, handleSearch, handleReset } =
         useSearchServiceManagement();
 
@@ -304,14 +308,13 @@ const ServiceManagementIndex = ({
             setCampaignDetail(null);
 
             try {
-                const apiPath =
-                    !account.service_user_id
-                        ? account.platform === _PlatformType.GOOGLE
-                            ? `/google-ads/platform-accounts/${account.id}/campaigns`
-                            : `/meta/platform-accounts/${account.id}/campaigns`
-                        : account.platform === _PlatformType.GOOGLE
-                          ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
-                          : `/meta/${account.service_user_id}/${account.id}/campaigns`;
+                const apiPath = !account.service_user_id
+                    ? account.platform === _PlatformType.GOOGLE
+                        ? `/google-ads/platform-accounts/${account.id}/campaigns`
+                        : `/meta/platform-accounts/${account.id}/campaigns`
+                    : account.platform === _PlatformType.GOOGLE
+                      ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
+                      : `/meta/${account.service_user_id}/${account.id}/campaigns`;
 
                 const dateRange =
                     dateRangeArg === undefined
@@ -736,7 +739,7 @@ const ServiceManagementIndex = ({
                         account.platform === _PlatformType.GOOGLE;
                     return (
                         <div className="flex items-center gap-2">
-                            {isAgencyOrCustomer && (
+                            {(isAgencyOrCustomer || isStaff) && !!account.service_user_id && (
                                 <Button
                                     size="sm"
                                     variant="outline"
@@ -786,7 +789,7 @@ const ServiceManagementIndex = ({
                 },
             },
         ],
-        [t, isAgencyOrCustomer, loadCampaigns, openAccountTopUpDialog],
+        [t, isAgencyOrCustomer, isStaff, loadCampaigns, openAccountTopUpDialog],
     );
 
     const campaignColumns: ColumnDef<Campaign>[] = useMemo(
@@ -1475,7 +1478,8 @@ const ServiceManagementIndex = ({
                                                                 );
                                                                 if (
                                                                     isAgencyOrCustomer &&
-                                                                    walletBalance === null
+                                                                    walletBalance ===
+                                                                        null
                                                                 ) {
                                                                     await fetchWalletBalance();
                                                                 }
@@ -1686,10 +1690,13 @@ const ServiceManagementIndex = ({
                             })}
                         </DialogTitle>
                         <DialogDescription>
-                            {t('service_management.account_top_up_description', {
-                                defaultValue:
-                                    'Tạo yêu cầu để admin nạp tiền vào tài khoản quảng cáo đã chọn.',
-                            })}
+                            {t(
+                                'service_management.account_top_up_description',
+                                {
+                                    defaultValue:
+                                        'Tạo yêu cầu để admin nạp tiền vào tài khoản quảng cáo đã chọn.',
+                                },
+                            )}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -1725,9 +1732,12 @@ const ServiceManagementIndex = ({
                         )}
                         <div className="space-y-2">
                             <Label htmlFor="account-top-up-amount">
-                                {t('service_management.account_top_up_amount_label', {
-                                    defaultValue: 'Số tiền nạp (USDT)',
-                                })}
+                                {t(
+                                    'service_management.account_top_up_amount_label',
+                                    {
+                                        defaultValue: 'Số tiền nạp (USDT)',
+                                    },
+                                )}
                             </Label>
                             <Input
                                 id="account-top-up-amount"
@@ -1791,31 +1801,37 @@ const ServiceManagementIndex = ({
 
                                 if (!selectedAccountForTopUp?.platform) {
                                     toast.error(
-                                        t('service_management.unsupported_platform', {
-                                            defaultValue:
-                                                'Nền tảng không được hỗ trợ',
-                                        }),
+                                        t(
+                                            'service_management.unsupported_platform',
+                                            {
+                                                defaultValue:
+                                                    'Nền tảng không được hỗ trợ',
+                                            },
+                                        ),
                                     );
                                     return;
                                 }
 
                                 setAccountTopUpSubmitting(true);
                                 try {
-                                    await axios.post('/wallets/account-top-up', {
-                                        amount,
-                                        wallet_password:
-                                            accountTopUpWalletPassword,
-                                        platform_type:
-                                            selectedAccountForTopUp.platform,
-                                        service_user_id:
-                                            selectedAccountForTopUp.service_user_id,
-                                        account_id:
-                                            selectedAccountForTopUp.account_id ||
-                                            selectedAccountForTopUp.id,
-                                        account_name:
-                                            selectedAccountForTopUp.account_name ||
-                                            selectedAccountForTopUp.id,
-                                    });
+                                    await axios.post(
+                                        '/wallets/account-top-up',
+                                        {
+                                            amount,
+                                            wallet_password:
+                                                accountTopUpWalletPassword,
+                                            platform_type:
+                                                selectedAccountForTopUp.platform,
+                                            service_user_id:
+                                                selectedAccountForTopUp.service_user_id,
+                                            account_id:
+                                                selectedAccountForTopUp.account_id ||
+                                                selectedAccountForTopUp.id,
+                                            account_name:
+                                                selectedAccountForTopUp.account_name ||
+                                                selectedAccountForTopUp.id,
+                                        },
+                                    );
 
                                     toast.success(
                                         t(

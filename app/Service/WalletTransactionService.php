@@ -393,13 +393,28 @@ class WalletTransactionService
     ): ServiceReturn
     {
         try {
-            return DB::transaction(function () use ($userId, $amount, $walletPassword, $platformType, $serviceUserId, $accountId, $accountName) {
-                $wallet = $this->walletRepository->findByUserId($userId);
+            $currentUser = Auth::user();
+            $isStaff = $currentUser && in_array((int)$currentUser->role, [
+                \App\Common\Constants\User\UserRole::ADMIN->value,
+                \App\Common\Constants\User\UserRole::MANAGER->value,
+                \App\Common\Constants\User\UserRole::EMPLOYEE->value,
+            ], true);
+
+            $targetUserId = $userId;
+            if ($isStaff && !empty($serviceUserId)) {
+                $serviceUser = \App\Models\ServiceUser::find($serviceUserId);
+                if ($serviceUser && !empty($serviceUser->user_id)) {
+                    $targetUserId = (int) $serviceUser->user_id;
+                }
+            }
+
+            return DB::transaction(function () use ($targetUserId, $amount, $walletPassword, $platformType, $serviceUserId, $accountId, $accountName, $isStaff) {
+                $wallet = $this->walletRepository->findByUserId($targetUserId);
                 if (!$wallet) {
                     return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
                 }
 
-                if (!empty($wallet->password)) {
+                if (!$isStaff && !empty($wallet->password)) {
                     if (empty($walletPassword) || !Hash::check($walletPassword, $wallet->password)) {
                         return ServiceReturn::error(message: __('wallet.error.wallet_password_invalid'));
                     }

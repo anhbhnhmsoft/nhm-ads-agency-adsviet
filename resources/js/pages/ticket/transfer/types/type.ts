@@ -8,4 +8,3 @@ export type TransferAccount = {
 export type TransferFormProps = {
     accounts: TransferAccount[];
 };
-

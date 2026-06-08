@@ -1,5 +1,5 @@
-import { useForm } from '@inertiajs/react';
 import { ticket_refund_store } from '@/routes';
+import { useForm } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 
 export const useRefundForm = () => {
@@ -18,19 +18,31 @@ export const useRefundForm = () => {
         if (form.processing) {
             return;
         }
-        
+
         if (!form.data.account_ids || form.data.account_ids.length === 0) {
-            form.setError('account_ids', t('ticket.refund.account_ids_required', { defaultValue: 'Vui lòng chọn ít nhất một tài khoản' }));
+            form.setError(
+                'account_ids',
+                t('ticket.refund.account_ids_required', {
+                    defaultValue: 'Vui lòng chọn ít nhất một tài khoản',
+                }),
+            );
             return;
         }
 
         if (!form.data.notes || form.data.notes.trim() === '') {
-            form.setError('notes', t('ticket.refund.notes_required', { defaultValue: 'Vui lòng nhập ghi chú' }));
+            form.setError(
+                'notes',
+                t('ticket.refund.notes_required', {
+                    defaultValue: 'Vui lòng nhập ghi chú',
+                }),
+            );
             return;
         }
 
-        const platformValue = form.data.platform ? parseInt(form.data.platform) : null;
-        
+        const platformValue = form.data.platform
+            ? parseInt(form.data.platform)
+            : null;
+
         const submitData = {
             platform: platformValue,
             account_ids: form.data.account_ids,
@@ -46,7 +58,10 @@ export const useRefundForm = () => {
             },
             onError: (errors: Record<string, string>) => {
                 Object.keys(errors).forEach((key) => {
-                    form.setError(key as keyof typeof form.data, errors[key] as string);
+                    form.setError(
+                        key as keyof typeof form.data,
+                        errors[key] as string,
+                    );
                 });
             },
         });

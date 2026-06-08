@@ -12,7 +12,9 @@ export const useFormLogin = () => {
         role: _RoleSystemRequest.USER,
         device: 'web',
     });
-    const handleSubmit = (e: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement>) => {
+    const handleSubmit = (
+        e: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement>,
+    ) => {
         e.preventDefault();
         form.post(auth_login().url);
     };

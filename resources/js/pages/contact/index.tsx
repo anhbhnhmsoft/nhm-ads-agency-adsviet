@@ -1,10 +1,22 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
+import {
+    CheckCircle2,
+    ExternalLink,
+    MessageCircle,
+    Phone,
+    XCircle,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Phone, MessageCircle, ExternalLink, CheckCircle2, XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 interface ContactPageProps {
     contactInfo: {
@@ -21,15 +33,25 @@ interface ContactPageProps {
     userTelegramId: string | null;
 }
 
-export default function ContactPage({ contactInfo, telegramUserInfo, userTelegramId }: ContactPageProps) {
+export default function ContactPage({
+    contactInfo,
+    telegramUserInfo,
+    userTelegramId,
+}: ContactPageProps) {
     const { t } = useTranslation();
 
     const openTelegram = () => {
-        window.open(`https://t.me/${contactInfo.telegram.replace('@', '')}`, '_blank');
+        window.open(
+            `https://t.me/${contactInfo.telegram.replace('@', '')}`,
+            '_blank',
+        );
     };
 
     const openWhatsApp = () => {
-        window.open(`https://wa.me/${contactInfo.whatsapp.replace(/[^0-9]/g, '')}`, '_blank');
+        window.open(
+            `https://wa.me/${contactInfo.whatsapp.replace(/[^0-9]/g, '')}`,
+            '_blank',
+        );
     };
 
     const openChannel = () => {
@@ -39,11 +61,16 @@ export default function ContactPage({ contactInfo, telegramUserInfo, userTelegra
     return (
         <AppLayout>
             <Head title={t('contact.title', { defaultValue: 'Liên hệ' })} />
-            <div className="container mx-auto py-6 space-y-6">
+            <div className="container mx-auto space-y-6 py-6">
                 <div>
-                    <h1 className="text-3xl font-bold">{t('contact.title', { defaultValue: 'Liên hệ' })}</h1>
-                    <p className="text-muted-foreground mt-2">
-                        {t('contact.description', { defaultValue: 'Liên hệ với chúng tôi qua các kênh sau' })}
+                    <h1 className="text-3xl font-bold">
+                        {t('contact.title', { defaultValue: 'Liên hệ' })}
+                    </h1>
+                    <p className="mt-2 text-muted-foreground">
+                        {t('contact.description', {
+                            defaultValue:
+                                'Liên hệ với chúng tôi qua các kênh sau',
+                        })}
                     </p>
                 </div>
 
@@ -53,15 +80,21 @@ export default function ContactPage({ contactInfo, telegramUserInfo, userTelegra
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <MessageCircle className="h-5 w-5" />
-                                {t('contact.telegram', { defaultValue: 'Telegram' })}
+                                {t('contact.telegram', {
+                                    defaultValue: 'Telegram',
+                                })}
                             </CardTitle>
                             <CardDescription>
-                                {t('contact.telegram_description', { defaultValue: 'Liên hệ qua Telegram' })}
+                                {t('contact.telegram_description', {
+                                    defaultValue: 'Liên hệ qua Telegram',
+                                })}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="font-medium">{contactInfo.telegram}</span>
+                                <span className="font-medium">
+                                    {contactInfo.telegram}
+                                </span>
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -80,15 +113,21 @@ export default function ContactPage({ contactInfo, telegramUserInfo, userTelegra
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Phone className="h-5 w-5" />
-                                {t('contact.whatsapp', { defaultValue: 'WhatsApp' })}
+                                {t('contact.whatsapp', {
+                                    defaultValue: 'WhatsApp',
+                                })}
                             </CardTitle>
                             <CardDescription>
-                                {t('contact.whatsapp_description', { defaultValue: 'Liên hệ qua WhatsApp' })}
+                                {t('contact.whatsapp_description', {
+                                    defaultValue: 'Liên hệ qua WhatsApp',
+                                })}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="font-medium">{contactInfo.whatsapp}</span>
+                                <span className="font-medium">
+                                    {contactInfo.whatsapp}
+                                </span>
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -107,15 +146,19 @@ export default function ContactPage({ contactInfo, telegramUserInfo, userTelegra
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <MessageCircle className="h-5 w-5" />
-                                {t('contact.channel', { defaultValue: 'Kênh cập nhật' })}
+                                {t('contact.channel', {
+                                    defaultValue: 'Kênh cập nhật',
+                                })}
                             </CardTitle>
                             <CardDescription>
-                                {t('contact.channel_description', { defaultValue: 'Theo dõi cập nhật mới' })}
+                                {t('contact.channel_description', {
+                                    defaultValue: 'Theo dõi cập nhật mới',
+                                })}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                                <span className="max-w-[200px] truncate text-sm text-muted-foreground">
                                     {contactInfo.channel}
                                 </span>
                                 <Button
@@ -142,10 +185,15 @@ export default function ContactPage({ contactInfo, telegramUserInfo, userTelegra
                                 ) : (
                                     <XCircle className="h-5 w-5 text-gray-400" />
                                 )}
-                                {t('contact.your_telegram', { defaultValue: 'Telegram của bạn' })}
+                                {t('contact.your_telegram', {
+                                    defaultValue: 'Telegram của bạn',
+                                })}
                             </CardTitle>
                             <CardDescription>
-                                {t('contact.your_telegram_description', { defaultValue: 'Thông tin Telegram đã kết nối' })}
+                                {t('contact.your_telegram_description', {
+                                    defaultValue:
+                                        'Thông tin Telegram đã kết nối',
+                                })}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -154,32 +202,50 @@ export default function ContactPage({ contactInfo, telegramUserInfo, userTelegra
                                     {telegramUserInfo.username && (
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-muted-foreground">
-                                                {t('contact.username', { defaultValue: 'Username' })}:
+                                                {t('contact.username', {
+                                                    defaultValue: 'Username',
+                                                })}
+                                                :
                                             </span>
-                                            <Badge variant="outline">@{telegramUserInfo.username}</Badge>
+                                            <Badge variant="outline">
+                                                @{telegramUserInfo.username}
+                                            </Badge>
                                         </div>
                                     )}
                                     {telegramUserInfo.full_name && (
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-muted-foreground">
-                                                {t('contact.name', { defaultValue: 'Tên' })}:
+                                                {t('contact.name', {
+                                                    defaultValue: 'Tên',
+                                                })}
+                                                :
                                             </span>
-                                            <span className="font-medium">{telegramUserInfo.full_name}</span>
+                                            <span className="font-medium">
+                                                {telegramUserInfo.full_name}
+                                            </span>
                                         </div>
                                     )}
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm text-muted-foreground">
-                                            {t('contact.telegram_id', { defaultValue: 'Telegram ID' })}:
+                                            {t('contact.telegram_id', {
+                                                defaultValue: 'Telegram ID',
+                                            })}
+                                            :
                                         </span>
-                                        <span className="font-mono text-sm">{userTelegramId}</span>
+                                        <span className="font-mono text-sm">
+                                            {userTelegramId}
+                                        </span>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="text-sm text-muted-foreground">
-                                    {t('contact.telegram_info_unavailable', { 
-                                        defaultValue: 'Không thể lấy thông tin từ Telegram. Telegram ID: ' 
+                                    {t('contact.telegram_info_unavailable', {
+                                        defaultValue:
+                                            'Không thể lấy thông tin từ Telegram. Telegram ID: ',
                                     })}
-                                    <span className="font-mono">{userTelegramId}</span>
+                                    <span className="font-mono">
+                                        {userTelegramId}
+                                    </span>
                                 </div>
                             )}
                         </CardContent>
@@ -189,4 +255,3 @@ export default function ContactPage({ contactInfo, telegramUserInfo, userTelegra
         </AppLayout>
     );
 }
-

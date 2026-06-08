@@ -1084,7 +1084,7 @@
             "end_date": "Đến ngày"
         },
         "hide": "Ẩn",
-        "hide_from_tool": "Ẩn khỏi tool",
+        "hide_from_tool": "Ẩn hiển thị",
         "hide_tooltip": "Ẩn BM này khỏi dữ liệu đồng bộ và danh sách hiển thị",
         "hide_confirm": "Ẩn BM/MCC {{name}} khỏi tool? Tool sẽ không lấy và không hiển thị dữ liệu của BM này nữa. Bạn có thể khôi phục ở tab BM đã ẩn.",
         "hide_success": "Đã ẩn BM/MCC",

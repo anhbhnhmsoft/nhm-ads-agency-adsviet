@@ -1,12 +1,19 @@
-import { useTranslation } from 'react-i18next';
-import { useSearchSupplier } from '@/pages/supplier/hooks/use-search';
-import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardAction,
+    CardContent,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Plus, Search } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { useSearchSupplier } from '@/pages/supplier/hooks/use-search';
 import { suppliers_create_view } from '@/routes';
+import { router } from '@inertiajs/react';
+import { Plus, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const SupplierListSearchForm = () => {
     const { t } = useTranslation();
@@ -52,7 +59,9 @@ const SupplierListSearchForm = () => {
                         }}
                     >
                         <Plus />
-                        {t('supplier.create_btn', { defaultValue: 'Tạo nhà cung cấp' })}
+                        {t('supplier.create_btn', {
+                            defaultValue: 'Tạo nhà cung cấp',
+                        })}
                     </Button>
                 </CardAction>
             </CardFooter>
@@ -61,4 +70,3 @@ const SupplierListSearchForm = () => {
 };
 
 export default SupplierListSearchForm;
-

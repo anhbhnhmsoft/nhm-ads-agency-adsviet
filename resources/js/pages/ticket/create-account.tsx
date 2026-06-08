@@ -2,6 +2,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import FacebookIcon from '@/images/facebook_icon.png';
 import GoogleIcon from '@/images/google_icon.png';
@@ -10,21 +17,12 @@ import { _PlatformType } from '@/lib/types/constants';
 import { AccountForm } from '@/pages/service-purchase/components/AccountForm';
 import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
 import { useCreateAccountForm } from '@/pages/ticket/create-account/hooks/use-create-account-form';
-import type { CreateAccountPageProps, ServicePackage } from '@/pages/ticket/create-account/types/type';
+import type {
+    CreateAccountPageProps,
+    ServicePackage,
+} from '@/pages/ticket/create-account/types/type';
 import { Head } from '@inertiajs/react';
-import {
-    AlertTriangle,
-    CheckCircle,
-    Plus,
-    Search,
-} from 'lucide-react';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { AlertTriangle, CheckCircle, Plus, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -33,13 +31,20 @@ const formatDisplayRange = (range: string) => {
     return range.replace(/(\$)?([\d,.]+)/g, (match, symbol, numStr) => {
         const clean = numStr.replace(/,/g, '');
         const n = parseFloat(clean);
-        return isNaN(n) ? match : '$' + new Intl.NumberFormat('en-US').format(n);
+        return isNaN(n)
+            ? match
+            : '$' + new Intl.NumberFormat('en-US').format(n);
     });
 };
 
-export default function CreateAccountPage({ packages, meta_timezones = [], google_timezones = [] }: CreateAccountPageProps) {
+export default function CreateAccountPage({
+    packages,
+    meta_timezones = [],
+    google_timezones = [],
+}: CreateAccountPageProps) {
     const { t } = useTranslation();
-    const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
+    const [selectedPackage, setSelectedPackage] =
+        useState<ServicePackage | null>(null);
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [platformFilter, setPlatformFilter] = useState<string>('all');
     const [touchedFields, setTouchedFields] = useState<{}>({});
@@ -60,27 +65,40 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
         if (Array.isArray(packages)) {
             return packages;
         }
-        if (packages && Array.isArray((packages as { data?: ServicePackage[] }).data)) {
+        if (
+            packages &&
+            Array.isArray((packages as { data?: ServicePackage[] }).data)
+        ) {
             return (packages as { data?: ServicePackage[] }).data || [];
         }
         return [];
     }, [packages]);
 
     const { form, submit } = useCreateAccountForm();
-    const canSelectPrepay = selectedPackage ? selectedPackage.payment_type !== 'postpay' : true;
+    const canSelectPrepay = selectedPackage
+        ? selectedPackage.payment_type !== 'postpay'
+        : true;
     const canSelectPostpay = selectedPackage
-        ? selectedPackage.payment_type === 'postpay' || selectedPackage.can_use_postpay === true
+        ? selectedPackage.payment_type === 'postpay' ||
+          selectedPackage.can_use_postpay === true
         : form.data.payment_type === 'postpay';
-    const defaultPaymentType: 'prepay' | 'postpay' = selectedPackage?.payment_type === 'postpay' ? 'postpay' : 'prepay';
-    const requestedPaymentType = (form.data.payment_type as 'prepay' | 'postpay') || defaultPaymentType;
+    const defaultPaymentType: 'prepay' | 'postpay' =
+        selectedPackage?.payment_type === 'postpay' ? 'postpay' : 'prepay';
+    const requestedPaymentType =
+        (form.data.payment_type as 'prepay' | 'postpay') || defaultPaymentType;
     const paymentType: 'prepay' | 'postpay' = selectedPackage
-        ? (requestedPaymentType === 'postpay' && canSelectPostpay ? 'postpay' : defaultPaymentType)
+        ? requestedPaymentType === 'postpay' && canSelectPostpay
+            ? 'postpay'
+            : defaultPaymentType
         : requestedPaymentType;
     const topUpAmount = form.data.top_up_amount || '';
 
     useEffect(() => {
         if (selectedPackage) {
-            const nextPaymentType = selectedPackage.payment_type === 'postpay' ? 'postpay' : 'prepay';
+            const nextPaymentType =
+                selectedPackage.payment_type === 'postpay'
+                    ? 'postpay'
+                    : 'prepay';
             form.setData('payment_type', nextPaymentType);
             if (nextPaymentType === 'postpay') {
                 form.setData('top_up_amount', '0');
@@ -88,51 +106,73 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
         }
     }, [selectedPackage?.id]);
 
-    const getInitialAccount = useCallback((platform?: number): AccountFormData => ({
-        meta_email: '',
-        display_name: '',
-        bm_ids: [],
-        fanpages: platform === _PlatformType.META ? [] : [],
-        websites: [],
-        timezone_bm: '',
-        asset_access: 'full_asset',
-    }), []);
+    const getInitialAccount = useCallback(
+        (platform?: number): AccountFormData => ({
+            meta_email: '',
+            display_name: '',
+            bm_ids: [],
+            fanpages: platform === _PlatformType.META ? [] : [],
+            websites: [],
+            timezone_bm: '',
+            asset_access: 'full_asset',
+        }),
+        [],
+    );
 
-    const handlePackageSelect = useCallback((pkg: ServicePackage) => {
-        const currentPlatform = selectedPackage?.platform;
-        const newPlatform = pkg.platform;
+    const handlePackageSelect = useCallback(
+        (pkg: ServicePackage) => {
+            const currentPlatform = selectedPackage?.platform;
+            const newPlatform = pkg.platform;
 
-        if (currentPlatform !== newPlatform) {
-            setAccounts([getInitialAccount(newPlatform)]);
-        }
-
-        setSelectedPackage(pkg);
-    }, [selectedPackage?.platform, getInitialAccount]);
-
-    const handleAccountUpdate = useCallback((index: number, updater: AccountFormData | ((prev: AccountFormData) => AccountFormData)) => {
-        setAccounts((prevAccounts) => {
-            const newAccounts = [...prevAccounts];
-            const currentAccount = newAccounts[index] || getInitialAccount(selectedPackage?.platform);
-            if (typeof updater === 'function') {
-                newAccounts[index] = updater(currentAccount);
-            } else {
-                newAccounts[index] = updater;
+            if (currentPlatform !== newPlatform) {
+                setAccounts([getInitialAccount(newPlatform)]);
             }
-            return newAccounts;
-        });
-    }, [getInitialAccount, selectedPackage?.platform]);
+
+            setSelectedPackage(pkg);
+        },
+        [selectedPackage?.platform, getInitialAccount],
+    );
+
+    const handleAccountUpdate = useCallback(
+        (
+            index: number,
+            updater:
+                | AccountFormData
+                | ((prev: AccountFormData) => AccountFormData),
+        ) => {
+            setAccounts((prevAccounts) => {
+                const newAccounts = [...prevAccounts];
+                const currentAccount =
+                    newAccounts[index] ||
+                    getInitialAccount(selectedPackage?.platform);
+                if (typeof updater === 'function') {
+                    newAccounts[index] = updater(currentAccount);
+                } else {
+                    newAccounts[index] = updater;
+                }
+                return newAccounts;
+            });
+        },
+        [getInitialAccount, selectedPackage?.platform],
+    );
 
     const handleAccountRemove = useCallback((index: number) => {
-        setAccounts((prevAccounts) => prevAccounts.filter((_, i) => i !== index));
+        setAccounts((prevAccounts) =>
+            prevAccounts.filter((_, i) => i !== index),
+        );
     }, []);
 
     const filteredPackages = useMemo(() => {
-        let filtered: ServicePackage[] = Array.isArray(packageList) ? packageList : [];
+        let filtered: ServicePackage[] = Array.isArray(packageList)
+            ? packageList
+            : [];
 
         if (platformFilter !== 'all') {
             const platformNum = parseInt(platformFilter, 10);
             if (!isNaN(platformNum)) {
-                filtered = filtered.filter((pkg) => pkg.platform === platformNum);
+                filtered = filtered.filter(
+                    (pkg) => pkg.platform === platformNum,
+                );
             }
         }
 
@@ -141,13 +181,12 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
             filtered = filtered.filter(
                 (pkg) =>
                     pkg.name?.toLowerCase().includes(query) ||
-                    pkg.description?.toLowerCase().includes(query)
+                    pkg.description?.toLowerCase().includes(query),
             );
         }
 
         return filtered;
     }, [packageList, platformFilter, searchQuery]);
-
 
     const handleSubmit = () => {
         if (!selectedPackage) return;
@@ -155,7 +194,10 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
         setTouchedFields({});
 
         const hasAccounts = accounts.some(
-            acc => acc.meta_email || acc.display_name || (acc.bm_ids && acc.bm_ids.length > 0)
+            (acc) =>
+                acc.meta_email ||
+                acc.display_name ||
+                (acc.bm_ids && acc.bm_ids.length > 0),
         );
 
         submit(
@@ -185,7 +227,7 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                 form.setData('payment_type', 'prepay');
                 form.setData('top_up_amount', '');
                 form.setData('budget', '0');
-            }
+            },
         );
     };
 
@@ -193,26 +235,41 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
         if (!selectedPackage) return null;
 
         const isMeta = selectedPackage.platform === _PlatformType.META;
-        const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
+        const monthlySpendingTiers =
+            selectedPackage.monthly_spending_fee_structure || [];
         return (
             <Card className="mt-6">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         {isMeta && (
-                            <img src={FacebookIcon} alt="Facebook" className="h-6 w-6" />
+                            <img
+                                src={FacebookIcon}
+                                alt="Facebook"
+                                className="h-6 w-6"
+                            />
                         )}
                         {!isMeta && (
-                            <img src={GoogleIcon} alt="Google" className="h-6 w-6" />
+                            <img
+                                src={GoogleIcon}
+                                alt="Google"
+                                className="h-6 w-6"
+                            />
                         )}
                         {isMeta
-                            ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
-                            : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' })}
+                            ? t('service_purchase.meta_account_info', {
+                                  defaultValue: 'Thông tin tài khoản Meta',
+                              })
+                            : t('service_purchase.google_account_info', {
+                                  defaultValue: 'Thông tin tài khoản Google',
+                              })}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                         <Label className="text-base font-semibold">
-                            {t('service_purchase.account_info', { defaultValue: 'Thông tin tài khoản' })}
+                            {t('service_purchase.account_info', {
+                                defaultValue: 'Thông tin tài khoản',
+                            })}
                         </Label>
                         {accounts.length < 3 && (
                             <Button
@@ -234,8 +291,10 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                                     ]);
                                 }}
                             >
-                                <Plus className="h-4 w-4 mr-2" />
-                                {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
+                                <Plus className="mr-2 h-4 w-4" />
+                                {t('service_purchase.add_account', {
+                                    defaultValue: 'Thêm tài khoản',
+                                })}
                             </Button>
                         )}
                     </div>
@@ -260,19 +319,27 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                         <div className="space-y-3">
                             <div>
                                 <p className="font-medium text-gray-800">
-                                    {t('service_purchase.monthly_spending_title')}
+                                    {t(
+                                        'service_purchase.monthly_spending_title',
+                                    )}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    {t('service_purchase.monthly_spending_description')}
+                                    {t(
+                                        'service_purchase.monthly_spending_description',
+                                    )}
                                 </p>
                             </div>
-                            <div className="rounded-lg border overflow-hidden">
+                            <div className="overflow-hidden rounded-lg border">
                                 <div className="grid grid-cols-[2fr_1fr] bg-gray-50 px-4 py-2 text-sm font-medium text-gray-600">
                                     <span>
-                                        {t('service_purchase.monthly_spending_spending_label')}
+                                        {t(
+                                            'service_purchase.monthly_spending_spending_label',
+                                        )}
                                     </span>
                                     <span>
-                                        {t('service_purchase.monthly_spending_fee_label')}
+                                        {t(
+                                            'service_purchase.monthly_spending_fee_label',
+                                        )}
                                     </span>
                                 </div>
                                 <div className="divide-y">
@@ -281,8 +348,12 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                                             key={`monthly-tier-display-${index}`}
                                             className="grid grid-cols-[2fr_1fr] px-4 py-2 text-sm text-gray-700"
                                         >
-                                            <span>{formatDisplayRange(tier.range)}</span>
-                                            <span className="font-medium">{tier.fee_percent}</span>
+                                            <span>
+                                                {formatDisplayRange(tier.range)}
+                                            </span>
+                                            <span className="font-medium">
+                                                {tier.fee_percent}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
@@ -291,11 +362,19 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                     )}
 
                     <div className="space-y-2">
-                        <Label>{t('service_purchase.payment_type', { defaultValue: 'Hình thức thanh toán' })}</Label>
+                        <Label>
+                            {t('service_purchase.payment_type', {
+                                defaultValue: 'Hình thức thanh toán',
+                            })}
+                        </Label>
                         <div className="flex gap-2">
                             <Button
                                 type="button"
-                                variant={paymentType === 'prepay' ? 'default' : 'outline'}
+                                variant={
+                                    paymentType === 'prepay'
+                                        ? 'default'
+                                        : 'outline'
+                                }
                                 size="sm"
                                 disabled={!canSelectPrepay}
                                 onClick={() => {
@@ -305,11 +384,17 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                                     form.setData('payment_type', 'prepay');
                                 }}
                             >
-                                {t('service_purchase.payment_prepay', { defaultValue: 'Thanh toán trả trước' })}
+                                {t('service_purchase.payment_prepay', {
+                                    defaultValue: 'Thanh toán trả trước',
+                                })}
                             </Button>
                             <Button
                                 type="button"
-                                variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                variant={
+                                    paymentType === 'postpay'
+                                        ? 'default'
+                                        : 'outline'
+                                }
                                 size="sm"
                                 disabled={!canSelectPostpay}
                                 onClick={() => {
@@ -320,14 +405,18 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                                     form.setData('top_up_amount', '0');
                                 }}
                             >
-                                {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
+                                {t('service_purchase.payment_postpay', {
+                                    defaultValue: 'Thanh toán trả sau',
+                                })}
                             </Button>
                         </div>
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="top_up_amount">
-                            {t('service_purchase.top_up_amount', { defaultValue: 'Số tiền nạp' })}
+                            {t('service_purchase.top_up_amount', {
+                                defaultValue: 'Số tiền nạp',
+                            })}
                         </Label>
                         <Input
                             id="top_up_amount"
@@ -336,16 +425,27 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                             step="0.01"
                             value={topUpAmount}
                             disabled={paymentType === 'postpay'}
-                            placeholder={t('service_purchase.top_up_amount', { defaultValue: 'Số tiền nạp' })}
-                            onChange={(e) => form.setData('top_up_amount', e.target.value)}
+                            placeholder={t('service_purchase.top_up_amount', {
+                                defaultValue: 'Số tiền nạp',
+                            })}
+                            onChange={(e) =>
+                                form.setData('top_up_amount', e.target.value)
+                            }
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="notes">{t('ticket.create_account.notes', { defaultValue: 'Ghi chú' })}</Label>
+                        <Label htmlFor="notes">
+                            {t('ticket.create_account.notes', {
+                                defaultValue: 'Ghi chú',
+                            })}
+                        </Label>
                         <Textarea
                             id="notes"
-                            placeholder={t('ticket.create_account.notes_placeholder', { defaultValue: 'Nhập ghi chú (nếu có)' })}
+                            placeholder={t(
+                                'ticket.create_account.notes_placeholder',
+                                { defaultValue: 'Nhập ghi chú (nếu có)' },
+                            )}
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             rows={4}
@@ -359,8 +459,12 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                         className="w-full"
                     >
                         {form.processing
-                            ? t('common.processing', { defaultValue: 'Đang xử lý...' })
-                            : t('ticket.create_account.submit', { defaultValue: 'Gửi yêu cầu' })}
+                            ? t('common.processing', {
+                                  defaultValue: 'Đang xử lý...',
+                              })
+                            : t('ticket.create_account.submit', {
+                                  defaultValue: 'Gửi yêu cầu',
+                              })}
                     </Button>
                 </CardContent>
             </Card>
@@ -369,88 +473,160 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
 
     return (
         <AppLayout>
-            <Head title={t('ticket.create_account.title', { defaultValue: 'Tạo tài khoản' })} />
-            <div className="container mx-auto py-6 space-y-6">
+            <Head
+                title={t('ticket.create_account.title', {
+                    defaultValue: 'Tạo tài khoản',
+                })}
+            />
+            <div className="container mx-auto space-y-6 py-6">
                 <div>
                     <h1 className="text-2xl font-bold">
-                        {t('ticket.create_account.title', { defaultValue: 'Tạo tài khoản' })}
+                        {t('ticket.create_account.title', {
+                            defaultValue: 'Tạo tài khoản',
+                        })}
                     </h1>
-                    <p className="text-muted-foreground mt-2">
-                        {t('ticket.create_account.description', { defaultValue: 'Điền thông tin để tạo yêu cầu tạo tài khoản mới' })}
+                    <p className="mt-2 text-muted-foreground">
+                        {t('ticket.create_account.description', {
+                            defaultValue:
+                                'Điền thông tin để tạo yêu cầu tạo tài khoản mới',
+                        })}
                     </p>
                 </div>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>{t('service_purchase.select_package', { defaultValue: 'Chọn gói dịch vụ' })}</CardTitle>
+                        <CardTitle>
+                            {t('service_purchase.select_package', {
+                                defaultValue: 'Chọn gói dịch vụ',
+                            })}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex gap-4">
                             <div className="flex-1">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
                                     <Input
                                         type="text"
-                                        placeholder={t('service_purchase.search_package', { defaultValue: 'Tìm kiếm gói dịch vụ...' })}
+                                        placeholder={t(
+                                            'service_purchase.search_package',
+                                            {
+                                                defaultValue:
+                                                    'Tìm kiếm gói dịch vụ...',
+                                            },
+                                        )}
                                         value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onChange={(e) =>
+                                            setSearchQuery(e.target.value)
+                                        }
                                         className="pl-10"
                                     />
                                 </div>
                             </div>
-                            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                            <Select
+                                value={platformFilter}
+                                onValueChange={setPlatformFilter}
+                            >
                                 <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder={t('service_purchase.filter_platform', { defaultValue: 'Lọc theo nền tảng' })} />
+                                    <SelectValue
+                                        placeholder={t(
+                                            'service_purchase.filter_platform',
+                                            {
+                                                defaultValue:
+                                                    'Lọc theo nền tảng',
+                                            },
+                                        )}
+                                    />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">{t('common.all', { defaultValue: 'Tất cả' })}</SelectItem>
-                                    <SelectItem value={_PlatformType.META.toString()}>
-                                        {t('platform.meta', { defaultValue: 'Meta' })}
+                                    <SelectItem value="all">
+                                        {t('common.all', {
+                                            defaultValue: 'Tất cả',
+                                        })}
                                     </SelectItem>
-                                    <SelectItem value={_PlatformType.GOOGLE.toString()}>
-                                        {t('platform.google', { defaultValue: 'Google' })}
+                                    <SelectItem
+                                        value={_PlatformType.META.toString()}
+                                    >
+                                        {t('platform.meta', {
+                                            defaultValue: 'Meta',
+                                        })}
+                                    </SelectItem>
+                                    <SelectItem
+                                        value={_PlatformType.GOOGLE.toString()}
+                                    >
+                                        {t('platform.google', {
+                                            defaultValue: 'Google',
+                                        })}
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {filteredPackages.map((pkg) => {
-                                const isSelected = selectedPackage?.id === pkg.id;
-                                const isMeta = pkg.platform === _PlatformType.META;
-                                const isGoogle = pkg.platform === _PlatformType.GOOGLE;
+                                const isSelected =
+                                    selectedPackage?.id === pkg.id;
+                                const isMeta =
+                                    pkg.platform === _PlatformType.META;
+                                const isGoogle =
+                                    pkg.platform === _PlatformType.GOOGLE;
 
                                 return (
                                     <Card
                                         key={pkg.id}
-                                        className={`cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary' : 'hover:shadow-md'
-                                            }`}
+                                        className={`cursor-pointer transition-all ${
+                                            isSelected
+                                                ? 'ring-2 ring-primary'
+                                                : 'hover:shadow-md'
+                                        }`}
                                         onClick={() => handlePackageSelect(pkg)}
                                     >
                                         <CardContent className="p-4">
-                                            <div className="flex items-start justify-between mb-2">
+                                            <div className="mb-2 flex items-start justify-between">
                                                 <div className="flex items-center gap-2">
                                                     {isMeta && (
-                                                        <img src={FacebookIcon} alt="Facebook" className="h-5 w-5" />
+                                                        <img
+                                                            src={FacebookIcon}
+                                                            alt="Facebook"
+                                                            className="h-5 w-5"
+                                                        />
                                                     )}
                                                     {isGoogle && (
-                                                        <img src={GoogleIcon} alt="Google" className="h-5 w-5" />
+                                                        <img
+                                                            src={GoogleIcon}
+                                                            alt="Google"
+                                                            className="h-5 w-5"
+                                                        />
                                                     )}
-                                                    <h3 className="font-semibold">{pkg.name}</h3>
+                                                    <h3 className="font-semibold">
+                                                        {pkg.name}
+                                                    </h3>
                                                 </div>
                                                 {isSelected && (
                                                     <CheckCircle className="h-5 w-5 text-primary" />
                                                 )}
                                             </div>
-                                            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                                            <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
                                                 {pkg.description}
                                             </p>
                                             <div className="space-y-1 text-sm">
                                                 <div className="flex justify-between">
                                                     <span className="text-muted-foreground">
-                                                        {t('service_purchase.open_fee', { defaultValue: 'Phí mở tài khoản' })}:
+                                                        {t(
+                                                            'service_purchase.open_fee',
+                                                            {
+                                                                defaultValue:
+                                                                    'Phí mở tài khoản',
+                                                            },
+                                                        )}
+                                                        :
                                                     </span>
-                                                    <span className="font-medium">{parseFloat(pkg.open_fee || '0').toLocaleString()} USD</span>
+                                                    <span className="font-medium">
+                                                        {parseFloat(
+                                                            pkg.open_fee || '0',
+                                                        ).toLocaleString()}{' '}
+                                                        USD
+                                                    </span>
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -460,8 +636,11 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                         </div>
 
                         {filteredPackages.length === 0 && (
-                            <div className="text-center py-8 text-muted-foreground">
-                                {t('service_purchase.no_package_found', { defaultValue: 'Không tìm thấy gói dịch vụ nào' })}
+                            <div className="py-8 text-center text-muted-foreground">
+                                {t('service_purchase.no_package_found', {
+                                    defaultValue:
+                                        'Không tìm thấy gói dịch vụ nào',
+                                })}
                             </div>
                         )}
                     </CardContent>
@@ -473,15 +652,21 @@ export default function CreateAccountPage({ packages, meta_timezones = [], googl
                     <Card className="border-red-200 bg-red-50">
                         <CardContent className="pt-6">
                             <div className="flex items-start gap-2">
-                                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                                <AlertTriangle className="mt-0.5 h-5 w-5 text-red-600" />
                                 <div className="flex-1">
-                                    <h4 className="font-semibold text-red-900 mb-2">
-                                        {t('common.error', { defaultValue: 'Có lỗi xảy ra' })}
+                                    <h4 className="mb-2 font-semibold text-red-900">
+                                        {t('common.error', {
+                                            defaultValue: 'Có lỗi xảy ra',
+                                        })}
                                     </h4>
-                                    <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                                        {Object.entries(form.errors).map(([key, value]) => (
-                                            <li key={key}>{String(value)}</li>
-                                        ))}
+                                    <ul className="list-inside list-disc space-y-1 text-sm text-red-700">
+                                        {Object.entries(form.errors).map(
+                                            ([key, value]) => (
+                                                <li key={key}>
+                                                    {String(value)}
+                                                </li>
+                                            ),
+                                        )}
                                     </ul>
                                 </div>
                             </div>

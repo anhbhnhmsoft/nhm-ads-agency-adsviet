@@ -23,12 +23,9 @@ const UserMultiSelect = ({ users, value, onChange }: Props) => {
         }
 
         return users.filter((user) => {
-            const text = [
-                user.name,
-                user.username,
-                user.email,
-                user.label,
-            ].join(' ').toLowerCase();
+            const text = [user.name, user.username, user.email, user.label]
+                .join(' ')
+                .toLowerCase();
 
             return text.includes(search);
         });
@@ -59,7 +56,11 @@ const UserMultiSelect = ({ users, value, onChange }: Props) => {
                 ) : (
                     filteredUsers.map((user) => {
                         const checked = selectedSet.has(user.id);
-                        const label = user.label || user.name || user.username || user.email;
+                        const label =
+                            user.label ||
+                            user.name ||
+                            user.username ||
+                            user.email;
 
                         return (
                             <Label
@@ -74,7 +75,7 @@ const UserMultiSelect = ({ users, value, onChange }: Props) => {
                                     className="data-[state=checked]:border-[#4285f4] data-[state=checked]:bg-[#4285f4] data-[state=checked]:text-white"
                                 />
                                 <span className="grid gap-1 font-normal">
-                                    <span className="text-sm font-medium leading-none">
+                                    <span className="text-sm leading-none font-medium">
                                         {label}
                                     </span>
                                     {user.email && (

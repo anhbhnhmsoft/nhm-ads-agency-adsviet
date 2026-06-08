@@ -1,17 +1,20 @@
-import React, { ReactNode, useState, useEffect, useRef } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { toast } from 'sonner';
-import { useTranslation } from 'react-i18next';
-import { useForm, router, usePage } from '@inertiajs/react';
-import { Head } from '@inertiajs/react';
-import { wallet_my_top_up, wallet_my_withdraw, wallet_change_password } from '@/routes';
 import useCheckRole from '@/hooks/use-check-role';
+import AppLayout from '@/layouts/app-layout';
 import { _UserRole } from '@/lib/types/constants';
 import type { WalletIndexProps } from '@/pages/wallet/types/type';
-import WalletInfoCard from './components/WalletInfoCard';
-import WalletActionsTabs from './components/WalletActionsTabs';
-import WalletTransactionsCard from './components/WalletTransactionsCard';
+import {
+    wallet_change_password,
+    wallet_my_top_up,
+    wallet_my_withdraw,
+} from '@/routes';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import React, { ReactNode, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import PendingDepositCard from './components/PendingDepositCard';
+import WalletActionsTabs from './components/WalletActionsTabs';
+import WalletInfoCard from './components/WalletInfoCard';
+import WalletTransactionsCard from './components/WalletTransactionsCard';
 
 const WalletIndex = ({
     wallet,
@@ -23,10 +26,14 @@ const WalletIndex = ({
     const { props } = usePage();
     const checkRole = useCheckRole(props.auth);
     const isAdmin = checkRole([_UserRole.ADMIN]);
-    const [activeTab, setActiveTab] = useState<'topup' | 'withdraw' | 'password'>('topup');
+    const [activeTab, setActiveTab] = useState<
+        'topup' | 'withdraw' | 'password'
+    >('topup');
 
     const topUpForm = useForm({
-        network: (networks[0]?.key as 'BEP20' | 'TRC20' | 'PAYMENTO' | undefined) || undefined,
+        network:
+            (networks[0]?.key as 'BEP20' | 'TRC20' | 'PAYMENTO' | undefined) ||
+            undefined,
         amount: '',
     });
 
@@ -59,10 +66,10 @@ const WalletIndex = ({
 
     const handleWithdraw = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Gửi dữ liệu theo withdraw_type
         const withdrawType = withdrawForm.data.withdraw_type || 'bank';
-        
+
         const submitData: Record<string, any> = {
             amount: withdrawForm.data.amount,
             withdraw_type: withdrawType,
@@ -86,17 +93,27 @@ const WalletIndex = ({
             onSuccess: () => {
                 withdrawForm.reset();
                 router.reload({ only: ['wallet'] });
-                toast.success(t('wallet.withdraw_created', { defaultValue: 'Tạo lệnh rút tiền thành công' }));
+                toast.success(
+                    t('wallet.withdraw_created', {
+                        defaultValue: 'Tạo lệnh rút tiền thành công',
+                    }),
+                );
             },
             onError: (errors) => {
                 Object.keys(errors).forEach((key) => {
                     withdrawForm.setError(key as any, errors[key] as string);
                 });
-                const firstError = Object.values(errors)[0] as string | undefined;
+                const firstError = Object.values(errors)[0] as
+                    | string
+                    | undefined;
                 if (firstError) {
                     toast.error(firstError);
                 } else {
-                    toast.error(t('common.error', { defaultValue: 'Đã xảy ra lỗi. Vui lòng thử lại.' }));
+                    toast.error(
+                        t('common.error', {
+                            defaultValue: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+                        }),
+                    );
                 }
             },
         });
@@ -104,8 +121,16 @@ const WalletIndex = ({
 
     const handleChangePassword = (e: React.FormEvent) => {
         e.preventDefault();
-        if (passwordForm.data.new_password !== passwordForm.data.confirm_password) {
-            passwordForm.setError('confirm_password', t('wallet.password_not_match', { defaultValue: 'Mật khẩu xác nhận không khớp' }));
+        if (
+            passwordForm.data.new_password !==
+            passwordForm.data.confirm_password
+        ) {
+            passwordForm.setError(
+                'confirm_password',
+                t('wallet.password_not_match', {
+                    defaultValue: 'Mật khẩu xác nhận không khớp',
+                }),
+            );
             return;
         }
         // Chỉ gửi current_password và new_password, không gửi confirm_password
@@ -128,7 +153,7 @@ const WalletIndex = ({
         // Chỉ polling khi có pending_deposit và không phải admin
         if (pending_deposit && !isAdmin) {
             pollingIntervalRef.current = setInterval(() => {
-                router.reload({ 
+                router.reload({
                     only: ['pending_deposit', 'wallet'],
                 });
             }, 5000); // Poll mỗi 5 giây
@@ -149,19 +174,19 @@ const WalletIndex = ({
     return (
         <div>
             <Head title={t('menu.my_wallet')} />
-            <h1 className="text-xl font-semibold">
-                {t('menu.my_wallet')}
-            </h1>
+            <h1 className="text-xl font-semibold">{t('menu.my_wallet')}</h1>
 
             {walletError && (
                 <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
                     {walletError}
                 </div>
             )}
-            
+
             {!walletError && !wallet && (
-                <div className="mt-4 rounded-lg border bg-yellow-50 p-4 text-yellow-800 text-sm">
-                    {t('wallet.not_found', { defaultValue: 'Chưa có ví. Vui lòng liên hệ admin.' })}
+                <div className="mt-4 rounded-lg border bg-yellow-50 p-4 text-sm text-yellow-800">
+                    {t('wallet.not_found', {
+                        defaultValue: 'Chưa có ví. Vui lòng liên hệ admin.',
+                    })}
                 </div>
             )}
 
@@ -170,7 +195,10 @@ const WalletIndex = ({
                     <div className="mt-4 space-y-4">
                         <WalletInfoCard t={t} wallet={wallet} />
                         {pending_deposit && (
-                            <PendingDepositCard t={t} pending={pending_deposit} />
+                            <PendingDepositCard
+                                t={t}
+                                pending={pending_deposit}
+                            />
                         )}
                         <WalletActionsTabs
                             t={t}
@@ -198,7 +226,7 @@ const WalletIndex = ({
             )}
         </div>
     );
-}
+};
 
 WalletIndex.layout = (page: ReactNode) => (
     <AppLayout breadcrumbs={[{ title: 'menu.my_wallet' }]} children={page} />

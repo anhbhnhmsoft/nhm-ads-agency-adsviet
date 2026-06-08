@@ -1,7 +1,6 @@
-import { useForm } from '@inertiajs/react';
-import { usePage } from '@inertiajs/react';
-import React from 'react';
 import { service_purchase_purchase } from '@/routes';
+import { useForm, usePage } from '@inertiajs/react';
+import React from 'react';
 
 export type AccountFormData = {
     meta_email?: string;
@@ -55,7 +54,7 @@ export const useServicePurchaseForm = () => {
             asset_access?: 'full_asset' | 'basic_asset';
         },
         accounts?: AccountFormData[],
-        onSuccess?: () => void
+        onSuccess?: () => void,
     ) => {
         const payload: ServicePurchaseFormData = {
             package_id: packageId,
@@ -65,14 +64,19 @@ export const useServicePurchaseForm = () => {
 
         if (accounts && accounts.length > 0) {
             const filteredAccounts = accounts
-                .filter(acc => acc.meta_email || acc.display_name || (acc.bm_ids && acc.bm_ids.length > 0))
-                .map(acc => ({
+                .filter(
+                    (acc) =>
+                        acc.meta_email ||
+                        acc.display_name ||
+                        (acc.bm_ids && acc.bm_ids.length > 0),
+                )
+                .map((acc) => ({
                     ...acc,
-                    bm_ids: acc.bm_ids?.filter(bm => bm?.trim()) || [],
-                    fanpages: acc.fanpages?.filter(fp => fp?.trim()) || [],
-                    websites: acc.websites?.filter(ws => ws?.trim()) || [],
+                    bm_ids: acc.bm_ids?.filter((bm) => bm?.trim()) || [],
+                    fanpages: acc.fanpages?.filter((fp) => fp?.trim()) || [],
+                    websites: acc.websites?.filter((ws) => ws?.trim()) || [],
                 }));
-            
+
             if (filteredAccounts.length > 0) {
                 payload.accounts = filteredAccounts;
             }
@@ -91,7 +95,7 @@ export const useServicePurchaseForm = () => {
         }
 
         form.transform(() => payload);
-        
+
         // Log để debug
         const currentLocale = (page.props as any)?.locale || 'unknown';
         console.log('[Frontend] ServicePurchaseForm submit - Locale Debug', {
@@ -99,7 +103,7 @@ export const useServicePurchaseForm = () => {
             payload: payload,
             url: service_purchase_purchase().url,
         });
-        
+
         form.post(service_purchase_purchase().url, {
             onSuccess: () => {
                 form.reset();
@@ -111,7 +115,8 @@ export const useServicePurchaseForm = () => {
                     errors: errors,
                     current_locale: currentLocale,
                     error_keys: Object.keys(errors),
-                    meta_email_error: errors.meta_email || errors['accounts.0.meta_email'],
+                    meta_email_error:
+                        errors.meta_email || errors['accounts.0.meta_email'],
                 });
             },
         });
@@ -127,4 +132,3 @@ export const useServicePurchaseForm = () => {
         handleSubmit,
     };
 };
-

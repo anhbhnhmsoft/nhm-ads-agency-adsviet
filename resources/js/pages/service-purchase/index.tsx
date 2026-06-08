@@ -3,13 +3,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import FacebookIcon from '@/images/facebook_icon.png';
 import GoogleIcon from '@/images/google_icon.png';
 import AppLayout from '@/layouts/app-layout';
 import { _PlatformType } from '@/lib/types/constants';
-import { useServicePurchaseForm, type AccountFormData } from '@/pages/service-purchase/hooks/use-form';
 import { AccountForm } from '@/pages/service-purchase/components/AccountForm';
-import type { ServicePackage, ServicePurchasePageProps } from '@/pages/service-purchase/types/type';
+import {
+    useServicePurchaseForm,
+    type AccountFormData,
+} from '@/pages/service-purchase/hooks/use-form';
+import type {
+    ServicePackage,
+    ServicePurchasePageProps,
+} from '@/pages/service-purchase/types/type';
 import { Head, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
@@ -22,13 +35,6 @@ import {
     ShoppingCart,
     Wallet,
 } from 'lucide-react';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -44,15 +50,26 @@ const parseCurrencyInput = (value: string): number => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, meta_timezones = [], google_timezones = [] }: ServicePurchasePageProps) => {
+const ServicePurchaseIndex = ({
+    packages,
+    wallet_balance,
+    postpay_min_balance,
+    meta_timezones = [],
+    google_timezones = [],
+}: ServicePurchasePageProps) => {
     const { t } = useTranslation();
     const page = usePage();
-    const postpayMinBalance = typeof postpay_min_balance === 'number' ? postpay_min_balance : 200;
-    const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
+    const postpayMinBalance =
+        typeof postpay_min_balance === 'number' ? postpay_min_balance : 200;
+    const [selectedPackage, setSelectedPackage] =
+        useState<ServicePackage | null>(null);
     const [showCalculator, setShowCalculator] = useState(false);
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [platformFilter, setPlatformFilter] = useState<string>('all');
-    const [touchedFields, setTouchedFields] = useState<{ topUpAmount?: boolean; budget?: boolean }>({});
+    const [touchedFields, setTouchedFields] = useState<{
+        topUpAmount?: boolean;
+        budget?: boolean;
+    }>({});
     const [accounts, setAccounts] = useState<AccountFormData[]>([
         {
             meta_email: '',
@@ -69,21 +86,31 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         if (Array.isArray(packages)) {
             return packages as ServicePackage[];
         }
-        if (packages && Array.isArray((packages as { data?: ServicePackage[] }).data)) {
-            return (packages as { data?: ServicePackage[] }).data as ServicePackage[];
+        if (
+            packages &&
+            Array.isArray((packages as { data?: ServicePackage[] }).data)
+        ) {
+            return (packages as { data?: ServicePackage[] })
+                .data as ServicePackage[];
         }
         return [];
     }, [packages]);
 
-    const { form: purchaseForm, submit: submitPurchase } = useServicePurchaseForm();
+    const { form: purchaseForm, submit: submitPurchase } =
+        useServicePurchaseForm();
 
     useEffect(() => {
         const currentLocale = (page.props as any)?.locale || 'unknown';
         console.log('[Frontend] ServicePurchaseIndex render - Locale Debug', {
             current_locale: currentLocale,
             form_errors: purchaseForm.errors,
-            has_meta_email_error: !!(purchaseForm.errors.meta_email || purchaseForm.errors['accounts.0.meta_email']),
-            meta_email_error_value: purchaseForm.errors.meta_email || purchaseForm.errors['accounts.0.meta_email'],
+            has_meta_email_error: !!(
+                purchaseForm.errors.meta_email ||
+                purchaseForm.errors['accounts.0.meta_email']
+            ),
+            meta_email_error_value:
+                purchaseForm.errors.meta_email ||
+                purchaseForm.errors['accounts.0.meta_email'],
         });
     }, [purchaseForm.errors, page.props]);
 
@@ -99,14 +126,21 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         asset_access,
     } = purchaseForm.data;
 
-    const canSelectPrepay = selectedPackage ? selectedPackage.payment_type !== 'postpay' : true;
+    const canSelectPrepay = selectedPackage
+        ? selectedPackage.payment_type !== 'postpay'
+        : true;
     const canSelectPostpay = selectedPackage
-        ? selectedPackage.payment_type === 'postpay' || selectedPackage.can_use_postpay === true
+        ? selectedPackage.payment_type === 'postpay' ||
+          selectedPackage.can_use_postpay === true
         : payment_type === 'postpay';
-    const defaultPaymentType: 'prepay' | 'postpay' = selectedPackage?.payment_type === 'postpay' ? 'postpay' : 'prepay';
-    const requestedPaymentType = (payment_type as 'prepay' | 'postpay') || defaultPaymentType;
+    const defaultPaymentType: 'prepay' | 'postpay' =
+        selectedPackage?.payment_type === 'postpay' ? 'postpay' : 'prepay';
+    const requestedPaymentType =
+        (payment_type as 'prepay' | 'postpay') || defaultPaymentType;
     const paymentType: 'prepay' | 'postpay' = selectedPackage
-        ? (requestedPaymentType === 'postpay' && canSelectPostpay ? 'postpay' : defaultPaymentType)
+        ? requestedPaymentType === 'postpay' && canSelectPostpay
+            ? 'postpay'
+            : defaultPaymentType
         : requestedPaymentType;
     const topUpAmount = top_up_amount || '';
     const budgetValue = budget || '';
@@ -143,7 +177,10 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
     useEffect(() => {
         if (selectedPackage) {
-            const nextPaymentType = selectedPackage.payment_type === 'postpay' ? 'postpay' : 'prepay';
+            const nextPaymentType =
+                selectedPackage.payment_type === 'postpay'
+                    ? 'postpay'
+                    : 'prepay';
             purchaseForm.setData('payment_type', nextPaymentType);
             if (nextPaymentType === 'postpay') {
                 purchaseForm.setData('top_up_amount', '');
@@ -168,7 +205,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             filtered = filtered.filter(
                 (pkg) =>
                     pkg.name.toLowerCase().includes(query) ||
-                    pkg.description.toLowerCase().includes(query)
+                    pkg.description.toLowerCase().includes(query),
             );
         }
 
@@ -225,15 +262,19 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         return range.replace(/(\$)?([\d,.]+)/g, (match, symbol, numStr) => {
             const clean = numStr.replace(/,/g, '');
             const n = parseFloat(clean);
-            return isNaN(n) ? match : '$' + new Intl.NumberFormat('en-US').format(n);
+            return isNaN(n)
+                ? match
+                : '$' + new Intl.NumberFormat('en-US').format(n);
         });
     };
 
     const formatUSDT = (amount: number) => {
-        return new Intl.NumberFormat('vi-VN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(amount) + ' USDT';
+        return (
+            new Intl.NumberFormat('vi-VN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(amount) + ' USDT'
+        );
     };
 
     // Calculate service fee
@@ -261,9 +302,13 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         const isPrepay = paymentType === 'prepay';
         const topUpNum = isPrepay ? parseCurrencyInput(topUpAmountStr) : 0;
         const openFee = parseFloat(pkg.open_fee);
-        const normalizedAccountsCount = Number.isFinite(accountsCount) && accountsCount > 0 ? accountsCount : 1;
+        const normalizedAccountsCount =
+            Number.isFinite(accountsCount) && accountsCount > 0
+                ? accountsCount
+                : 1;
         const chargeOpenFee = openFee * normalizedAccountsCount;
-        const serviceFee = topUpNum > 0 ? calculateServiceFee(topUpNum, pkg.top_up_fee) : 0;
+        const serviceFee =
+            topUpNum > 0 ? calculateServiceFee(topUpNum, pkg.top_up_fee) : 0;
         const totalCost = chargeOpenFee + topUpNum + serviceFee;
         return { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum };
     };
@@ -279,26 +324,37 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
             if (wallet_balance < postpayMinBalance) {
                 alert(
                     t('service_purchase.postpay_min_wallet', {
-                        defaultValue: 'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau.',
+                        defaultValue:
+                            'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau.',
                         amount: postpayMinBalance,
-                    })
+                    }),
                 );
                 return;
             }
         }
 
         const isPrepay = paymentType === 'prepay';
-        const sanitizedTopUp = isPrepay ? normalizeCurrencyInput(topUpAmount) : '';
+        const sanitizedTopUp = isPrepay
+            ? normalizeCurrencyInput(topUpAmount)
+            : '';
         const payloadTopUp = sanitizedTopUp ? sanitizedTopUp : '0';
         const accountsCountForFee = accounts.length > 0 ? accounts.length : 1;
         const filteredAccounts = accounts.filter(
             (acc) =>
                 acc.meta_email ||
                 acc.display_name ||
-                (acc.bm_ids && acc.bm_ids.some((id) => id != null && String(id).trim() !== '')),
+                (acc.bm_ids &&
+                    acc.bm_ids.some(
+                        (id) => id != null && String(id).trim() !== '',
+                    )),
         );
 
-        const { totalCost } = calculateTotalCost(selectedPackage, topUpAmount, paymentType, accountsCountForFee);
+        const { totalCost } = calculateTotalCost(
+            selectedPackage,
+            topUpAmount,
+            paymentType,
+            accountsCountForFee,
+        );
 
         if (wallet_balance < totalCost) {
             alert(t('service_purchase.insufficient_balance'));
@@ -355,22 +411,36 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                     asset_access: 'full_asset',
                 });
                 setPostpayDays(7); // Reset về mặc định
-            }
+            },
         );
     };
 
-    const featureLabelMap = useMemo<Record<string, string>>(() => ({
-        meta_new_bm: t('service_purchase.feature_labels.meta_new_bm'),
-        meta_multibrand_support: t('service_purchase.feature_labels.meta_multibrand_support'),
-        meta_fanpage_attached: t('service_purchase.feature_labels.meta_fanpage_attached'),
-        meta_timezone_id: t('service_purchase.feature_labels.meta_timezone_id'),
-        new_account: t('service_purchase.feature_labels.new_account'),
-        guarantee: t('service_purchase.feature_labels.guarantee'),
-        support_247: t('service_purchase.feature_labels.support_247'),
-        google_trust_score_high: t('service_purchase.feature_labels.google_trust_score_high'),
-    }), [t]);
+    const featureLabelMap = useMemo<Record<string, string>>(
+        () => ({
+            meta_new_bm: t('service_purchase.feature_labels.meta_new_bm'),
+            meta_multibrand_support: t(
+                'service_purchase.feature_labels.meta_multibrand_support',
+            ),
+            meta_fanpage_attached: t(
+                'service_purchase.feature_labels.meta_fanpage_attached',
+            ),
+            meta_timezone_id: t(
+                'service_purchase.feature_labels.meta_timezone_id',
+            ),
+            new_account: t('service_purchase.feature_labels.new_account'),
+            guarantee: t('service_purchase.feature_labels.guarantee'),
+            support_247: t('service_purchase.feature_labels.support_247'),
+            google_trust_score_high: t(
+                'service_purchase.feature_labels.google_trust_score_high',
+            ),
+        }),
+        [t],
+    );
 
-    const renderFeatureText = (feature: { key: string; value: boolean | number }) => {
+    const renderFeatureText = (feature: {
+        key: string;
+        value: boolean | number;
+    }) => {
         const label = featureLabelMap[feature.key] || feature.key;
         if (typeof feature.value === 'boolean') {
             return feature.value ? label : null;
@@ -378,9 +448,13 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
         switch (feature.key) {
             case 'guarantee':
-                return t('service_purchase.feature_values.guarantee', { value: feature.value });
+                return t('service_purchase.feature_values.guarantee', {
+                    value: feature.value,
+                });
             case 'meta_timezone_id':
-                return t('service_purchase.feature_values.meta_timezone_id', { value: feature.value });
+                return t('service_purchase.feature_values.meta_timezone_id', {
+                    value: feature.value,
+                });
             default:
                 return `${label}: ${feature.value}`;
         }
@@ -392,7 +466,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         const features = pkg.features || [];
 
         return (
-            <Card key={pkg.id} className="hover:shadow-lg transition-shadow">
+            <Card key={pkg.id} className="transition-shadow hover:shadow-lg">
                 <CardHeader>
                     <div className="flex items-start justify-between">
                         <div className="flex min-w-0 items-start gap-3">
@@ -404,7 +478,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                     {pkg.name}
                                 </CardTitle>
                                 <Badge
-                                    className={`${platformInfo.color} text-white text-xs mt-1`}
+                                    className={`${platformInfo.color} mt-1 text-xs text-white`}
                                 >
                                     {platformInfo.name}
                                 </Badge>
@@ -419,11 +493,11 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                 </CardHeader>
 
                 <CardContent className="space-y-4">
-                    <p className="text-gray-600 text-sm">{pkg.description}</p>
+                    <p className="text-sm text-gray-600">{pkg.description}</p>
 
                     {/* Pricing Info */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="text-center p-3 bg-orange-50 rounded-lg">
+                        <div className="rounded-lg bg-orange-50 p-3 text-center">
                             <div className="text-xl font-bold text-[#4285f4]">
                                 {formatUSDT(parseFloat(pkg.open_fee))}
                             </div>
@@ -431,8 +505,8 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                 {t('service_purchase.account_opening_fee')}
                             </div>
                         </div>
-                        <div className="text-center p-3 bg-green-50 rounded-lg">
-                            <div className="sm:text-xl text-base font-bold text-green-600">
+                        <div className="rounded-lg bg-green-50 p-3 text-center">
+                            <div className="text-base font-bold text-green-600 sm:text-xl">
                                 {pkg.top_up_fee}%
                             </div>
                             <div className="text-xs text-gray-600">
@@ -441,50 +515,68 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                         </div>
                     </div>
 
-	                    {/* Limits */}
-	                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    {/* Limits */}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <span className="text-gray-500">{t('service_purchase.min_top_up')}:</span>
-                            <span className="font-medium ml-2">{formatUSD(pkg.range_min_top_up)}</span>
+                            <span className="text-gray-500">
+                                {t('service_purchase.min_top_up')}:
+                            </span>
+                            <span className="ml-2 font-medium">
+                                {formatUSD(pkg.range_min_top_up)}
+                            </span>
                         </div>
                         <div>
-                            <span className="text-gray-500">{t('service_purchase.setup_time')}:</span>
-                            <span className="font-medium ml-2">{pkg.set_up_time} {t('service_purchase.hours')}</span>
+                            <span className="text-gray-500">
+                                {t('service_purchase.setup_time')}:
+                            </span>
+                            <span className="ml-2 font-medium">
+                                {pkg.set_up_time} {t('service_purchase.hours')}
+                            </span>
                         </div>
-	                    </div>
+                    </div>
 
-	                    {(pkg.inventory_total_count || 0) > 0 && (
-	                        <div className="rounded-md border bg-muted/30 p-3 text-sm">
-	                            <div className="font-medium">
-	                                {t('service_purchase.account_inventory_ready', {
-	                                    defaultValue: 'Kho tài khoản tự động',
-	                                })}
-	                            </div>
-	                            <div className="text-muted-foreground">
-	                                {t('service_purchase.account_inventory_available', {
-	                                    defaultValue:
-	                                        '{{available}} / {{total}} tài khoản sẵn sàng giao',
-	                                    available: pkg.inventory_available_count || 0,
-	                                    total: pkg.inventory_total_count || 0,
-	                                })}
-	                            </div>
-	                        </div>
-	                    )}
+                    {(pkg.inventory_total_count || 0) > 0 && (
+                        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                            <div className="font-medium">
+                                {t('service_purchase.account_inventory_ready', {
+                                    defaultValue: 'Kho tài khoản tự động',
+                                })}
+                            </div>
+                            <div className="text-muted-foreground">
+                                {t(
+                                    'service_purchase.account_inventory_available',
+                                    {
+                                        defaultValue:
+                                            '{{available}} / {{total}} tài khoản sẵn sàng giao',
+                                        available:
+                                            pkg.inventory_available_count || 0,
+                                        total: pkg.inventory_total_count || 0,
+                                    },
+                                )}
+                            </div>
+                        </div>
+                    )}
 
-	                    {/* Features */}
+                    {/* Features */}
                     {features.length > 0 && (
                         <div className="min-h-48">
-                            <div className="text-sm font-medium text-gray-700 mb-2">
+                            <div className="mb-2 text-sm font-medium text-gray-700">
                                 {t('service_purchase.features')}:
                             </div>
                             <div className="space-y-1">
                                 {features.map((feature, index) => {
-                                    const displayText = renderFeatureText(feature);
+                                    const displayText =
+                                        renderFeatureText(feature);
                                     if (!displayText) return null;
                                     return (
-                                        <div key={index} className="flex items-center gap-2 text-sm">
+                                        <div
+                                            key={index}
+                                            className="flex items-center gap-2 text-sm"
+                                        >
                                             <CheckCircle className="h-3 w-3 text-green-500" />
-                                            <span className="text-gray-600">{displayText}</span>
+                                            <span className="text-gray-600">
+                                                {displayText}
+                                            </span>
                                         </div>
                                     );
                                 })}
@@ -497,7 +589,7 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                         onClick={() => setSelectedPackage(pkg)}
                         disabled={pkg.disabled}
                     >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        <ShoppingCart className="mr-2 h-4 w-4" />
                         {t('service_purchase.select_service')}
                     </Button>
                 </CardContent>
@@ -510,37 +602,52 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         if (!selectedPackage) return null;
 
         const platformInfo = getPlatformInfo(selectedPackage.platform);
-        const topUpError = touchedFields.topUpAmount && topUpAmount ? validateTopUpAmount(topUpAmount) : null;
+        const topUpError =
+            touchedFields.topUpAmount && topUpAmount
+                ? validateTopUpAmount(topUpAmount)
+                : null;
 
         const previewAccountsCount = accounts.length > 0 ? accounts.length : 1;
 
-        const { serviceFee, totalCost, chargeOpenFee, topUpNum } = calculateTotalCost(
-            selectedPackage,
-            topUpAmount,
-            paymentType,
-            previewAccountsCount,
-        );
+        const { serviceFee, totalCost, chargeOpenFee, topUpNum } =
+            calculateTotalCost(
+                selectedPackage,
+                topUpAmount,
+                paymentType,
+                previewAccountsCount,
+            );
         const minTopUpAmount = Number(selectedPackage.range_min_top_up || '0');
         const hasInsufficientBalance = wallet_balance < totalCost;
         const showAccountInfo =
-            selectedPackage.platform === _PlatformType.META || selectedPackage.platform === _PlatformType.GOOGLE;
+            selectedPackage.platform === _PlatformType.META ||
+            selectedPackage.platform === _PlatformType.GOOGLE;
         const accountInfoTitle =
             selectedPackage.platform === _PlatformType.META
-                ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
-                : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' });
-        const monthlySpendingTiers = selectedPackage.monthly_spending_fee_structure || [];
+                ? t('service_purchase.meta_account_info', {
+                      defaultValue: 'Thông tin tài khoản Meta',
+                  })
+                : t('service_purchase.google_account_info', {
+                      defaultValue: 'Thông tin tài khoản Google',
+                  });
+        const monthlySpendingTiers =
+            selectedPackage.monthly_spending_fee_structure || [];
 
         return (
-            <Card className="max-w-2xl mx-auto">
+            <Card className="mx-auto max-w-2xl">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle className="flex min-w-0 items-center gap-2">
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center">
                                 {platformInfo.icon}
                             </span>
-                            {t('service_purchase.order_summary')}: {selectedPackage.name}
+                            {t('service_purchase.order_summary')}:{' '}
+                            {selectedPackage.name}
                         </CardTitle>
-                        <Button className="hidden sm:block" variant="outline" onClick={() => setSelectedPackage(null)}>
+                        <Button
+                            className="hidden sm:block"
+                            variant="outline"
+                            onClick={() => setSelectedPackage(null)}
+                        >
                             {t('service_purchase.back_to_services')}
                         </Button>
                     </div>
@@ -548,13 +655,15 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                 <CardContent className="space-y-6">
                     {/* Wallet Balance */}
-                    <div className="p-4 bg-linear-to-r from-green-50 to-orange-50 rounded-lg">
+                    <div className="rounded-lg bg-linear-to-r from-green-50 to-orange-50 p-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Wallet className="h-5 w-5 text-green-600" />
-                                <span className="font-medium">{t('service_purchase.wallet_balance')}:</span>
+                                <span className="font-medium">
+                                    {t('service_purchase.wallet_balance')}:
+                                </span>
                             </div>
-                            <div className="sm:text-xl text-base font-bold text-green-600">
+                            <div className="text-base font-bold text-green-600 sm:text-xl">
                                 {formatUSDT(wallet_balance)}
                             </div>
                         </div>
@@ -562,25 +671,41 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                     {/* Service Details */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                            <div className="text-sm text-gray-600">{t('service_purchase.account_opening_fee')}</div>
-                            <div className="sm:text-lg text-base font-bold">{formatUSDT(chargeOpenFee)}</div>
+                        <div className="rounded-lg bg-gray-50 p-3">
+                            <div className="text-sm text-gray-600">
+                                {t('service_purchase.account_opening_fee')}
+                            </div>
+                            <div className="text-base font-bold sm:text-lg">
+                                {formatUSDT(chargeOpenFee)}
+                            </div>
                             {paymentType === 'postpay' && (
                                 <div className="text-xs text-amber-600">
-                                    {t('service_purchase.postpay_open_fee_hint', { defaultValue: 'Phí mở tài khoản thu ngay khi mua' })}
+                                    {t(
+                                        'service_purchase.postpay_open_fee_hint',
+                                        {
+                                            defaultValue:
+                                                'Phí mở tài khoản thu ngay khi mua',
+                                        },
+                                    )}
                                 </div>
                             )}
                         </div>
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                            <div className="text-sm text-gray-600">{t('service_purchase.service_fee_pct')}</div>
-                            <div className="sm:text-lg text-base font-bold">{selectedPackage.top_up_fee}%</div>
+                        <div className="rounded-lg bg-gray-50 p-3">
+                            <div className="text-sm text-gray-600">
+                                {t('service_purchase.service_fee_pct')}
+                            </div>
+                            <div className="text-base font-bold sm:text-lg">
+                                {selectedPackage.top_up_fee}%
+                            </div>
                         </div>
                     </div>
 
                     {showAccountInfo && (
-                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                        <div className="space-y-4 rounded-lg bg-gray-50 p-4">
                             <div className="flex items-center justify-between">
-                                <div className="font-medium text-gray-800">{accountInfoTitle}</div>
+                                <div className="font-medium text-gray-800">
+                                    {accountInfoTitle}
+                                </div>
                                 {accounts.length < 3 && (
                                     <Button
                                         type="button"
@@ -593,7 +718,11 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                                     meta_email: '',
                                                     display_name: '',
                                                     bm_ids: [],
-                                                    fanpages: selectedPackage.platform === _PlatformType.META ? [] : [],
+                                                    fanpages:
+                                                        selectedPackage.platform ===
+                                                        _PlatformType.META
+                                                            ? []
+                                                            : [],
                                                     websites: [],
                                                     timezone_bm: '',
                                                     asset_access: 'full_asset',
@@ -601,8 +730,10 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                             ]);
                                         }}
                                     >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        {t('service_purchase.add_account', {
+                                            defaultValue: 'Thêm tài khoản',
+                                        })}
                                     </Button>
                                 )}
                             </div>
@@ -610,8 +741,9 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             {/* Render accounts using AccountForm component */}
                             <div className="space-y-4">
                                 {accounts.map((account, idx) => {
-                                    const metaEmailError =
-                                        (purchaseForm.errors as any)?.[`accounts.${idx}.meta_email`];
+                                    const metaEmailError = (
+                                        purchaseForm.errors as any
+                                    )?.[`accounts.${idx}.meta_email`];
 
                                     return (
                                         <AccountForm
@@ -624,26 +756,41 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                             metaEmailError={metaEmailError}
                                             onUpdate={(index, updater) => {
                                                 setAccounts((prevAccounts) => {
-                                                    const newAccounts = [...prevAccounts];
-                                                    const currentAccount = newAccounts[index] || {
-                                                        meta_email: '',
-                                                        display_name: '',
-                                                        bm_ids: [],
-                                                        fanpages: [],
-                                                        websites: [],
-                                                        timezone_bm: '',
-                                                        asset_access: 'full_asset',
-                                                    };
-                                                    if (typeof updater === 'function') {
-                                                        newAccounts[index] = updater(currentAccount);
+                                                    const newAccounts = [
+                                                        ...prevAccounts,
+                                                    ];
+                                                    const currentAccount =
+                                                        newAccounts[index] || {
+                                                            meta_email: '',
+                                                            display_name: '',
+                                                            bm_ids: [],
+                                                            fanpages: [],
+                                                            websites: [],
+                                                            timezone_bm: '',
+                                                            asset_access:
+                                                                'full_asset',
+                                                        };
+                                                    if (
+                                                        typeof updater ===
+                                                        'function'
+                                                    ) {
+                                                        newAccounts[index] =
+                                                            updater(
+                                                                currentAccount,
+                                                            );
                                                     } else {
-                                                        newAccounts[index] = updater;
+                                                        newAccounts[index] =
+                                                            updater;
                                                     }
                                                     return newAccounts;
                                                 });
                                             }}
                                             onRemove={(index) => {
-                                                setAccounts(accounts.filter((_, i) => i !== index));
+                                                setAccounts(
+                                                    accounts.filter(
+                                                        (_, i) => i !== index,
+                                                    ),
+                                                );
                                             }}
                                             canRemove={accounts.length > 1}
                                         />
@@ -658,19 +805,27 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                         <div className="space-y-3">
                             <div>
                                 <p className="font-medium text-gray-800">
-                                    {t('service_purchase.monthly_spending_title')}
+                                    {t(
+                                        'service_purchase.monthly_spending_title',
+                                    )}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    {t('service_purchase.monthly_spending_description')}
+                                    {t(
+                                        'service_purchase.monthly_spending_description',
+                                    )}
                                 </p>
                             </div>
-                            <div className="rounded-lg border overflow-hidden">
+                            <div className="overflow-hidden rounded-lg border">
                                 <div className="grid grid-cols-[2fr_1fr] bg-gray-50 px-4 py-2 text-sm font-medium text-gray-600">
                                     <span>
-                                        {t('service_purchase.monthly_spending_spending_label')}
+                                        {t(
+                                            'service_purchase.monthly_spending_spending_label',
+                                        )}
                                     </span>
                                     <span>
-                                        {t('service_purchase.monthly_spending_fee_label')}
+                                        {t(
+                                            'service_purchase.monthly_spending_fee_label',
+                                        )}
                                     </span>
                                 </div>
                                 <div className="divide-y">
@@ -679,8 +834,12 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                             key={`monthly-tier-display-${index}`}
                                             className="grid grid-cols-[2fr_1fr] px-4 py-2 text-sm text-gray-700"
                                         >
-                                            <span>{formatDisplayRange(tier.range)}</span>
-                                            <span className="font-medium">{tier.fee_percent}</span>
+                                            <span>
+                                                {formatDisplayRange(tier.range)}
+                                            </span>
+                                            <span className="font-medium">
+                                                {tier.fee_percent}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
@@ -690,105 +849,188 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                     {/* Payment type */}
                     <div className="space-y-2">
-                        <Label>{t('service_purchase.payment_type', { defaultValue: 'Hình thức thanh toán' })}</Label>
+                        <Label>
+                            {t('service_purchase.payment_type', {
+                                defaultValue: 'Hình thức thanh toán',
+                            })}
+                        </Label>
                         <div className="flex gap-2">
                             <Button
                                 type="button"
-                                variant={paymentType === 'prepay' ? 'default' : 'outline'}
+                                variant={
+                                    paymentType === 'prepay'
+                                        ? 'default'
+                                        : 'outline'
+                                }
                                 size="sm"
                                 disabled={!canSelectPrepay}
                                 onClick={() => {
                                     if (!canSelectPrepay) {
                                         return;
                                     }
-                                    purchaseForm.setData('payment_type', 'prepay');
+                                    purchaseForm.setData(
+                                        'payment_type',
+                                        'prepay',
+                                    );
                                 }}
                             >
-                                {t('service_purchase.payment_prepay', { defaultValue: 'Thanh toán trả trước' })}
+                                {t('service_purchase.payment_prepay', {
+                                    defaultValue: 'Thanh toán trả trước',
+                                })}
                             </Button>
                             <Button
                                 type="button"
-                                variant={paymentType === 'postpay' ? 'default' : 'outline'}
+                                variant={
+                                    paymentType === 'postpay'
+                                        ? 'default'
+                                        : 'outline'
+                                }
                                 disabled={!canSelectPostpay}
                                 onClick={() => {
                                     if (!canSelectPostpay) {
                                         return;
                                     }
-                                    purchaseForm.setData('payment_type', 'postpay');
+                                    purchaseForm.setData(
+                                        'payment_type',
+                                        'postpay',
+                                    );
                                     purchaseForm.setData('top_up_amount', '');
                                 }}
                                 size="sm"
                             >
-                                {t('service_purchase.payment_postpay', { defaultValue: 'Thanh toán trả sau' })}
+                                {t('service_purchase.payment_postpay', {
+                                    defaultValue: 'Thanh toán trả sau',
+                                })}
                             </Button>
                         </div>
                         {paymentType === 'postpay' && (
                             <div className="space-y-3">
                                 {/* Chọn số ngày trả sau */}
                                 <div className="space-y-2">
-                                    <Label>{t('service_purchase.postpay_days_label', { defaultValue: 'Chọn số ngày trả sau' })}</Label>
+                                    <Label>
+                                        {t(
+                                            'service_purchase.postpay_days_label',
+                                            {
+                                                defaultValue:
+                                                    'Chọn số ngày trả sau',
+                                            },
+                                        )}
+                                    </Label>
                                     <div className="flex gap-2">
                                         <Button
                                             type="button"
-                                            variant={postpayDays === 1 ? 'default' : 'outline'}
+                                            variant={
+                                                postpayDays === 1
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
                                             size="sm"
                                             onClick={() => setPostpayDays(1)}
                                         >
-                                            1 {t('service_purchase.days', { defaultValue: 'ngày' })}
+                                            1{' '}
+                                            {t('service_purchase.days', {
+                                                defaultValue: 'ngày',
+                                            })}
                                         </Button>
                                         <Button
                                             type="button"
-                                            variant={postpayDays === 3 ? 'default' : 'outline'}
+                                            variant={
+                                                postpayDays === 3
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
                                             size="sm"
                                             onClick={() => setPostpayDays(3)}
                                         >
-                                            3 {t('service_purchase.days', { defaultValue: 'ngày' })}
+                                            3{' '}
+                                            {t('service_purchase.days', {
+                                                defaultValue: 'ngày',
+                                            })}
                                         </Button>
                                         <Button
                                             type="button"
-                                            variant={postpayDays === 7 ? 'default' : 'outline'}
+                                            variant={
+                                                postpayDays === 7
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
                                             size="sm"
                                             onClick={() => setPostpayDays(7)}
                                         >
-                                            7 {t('service_purchase.days', { defaultValue: 'ngày' })}
+                                            7{' '}
+                                            {t('service_purchase.days', {
+                                                defaultValue: 'ngày',
+                                            })}
                                         </Button>
                                     </div>
                                 </div>
 
                                 {/* Thông tin */}
-                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                                <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
                                     <div className="flex items-start gap-2">
-                                        <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
                                         <div className="flex-1 space-y-1">
-                                            <p className="text-sm text-blue-800 font-medium">
-                                                {t('service_purchase.postpay_info_title', { defaultValue: 'Thông tin thanh toán trả sau' })}
+                                            <p className="text-sm font-medium text-blue-800">
+                                                {t(
+                                                    'service_purchase.postpay_info_title',
+                                                    {
+                                                        defaultValue:
+                                                            'Thông tin thanh toán trả sau',
+                                                    },
+                                                )}
                                             </p>
-                                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                            <ul className="list-inside list-disc space-y-1 text-xs text-blue-700">
                                                 <li>
-                                                    {t('service_purchase.postpay_info_1', {
-                                                        defaultValue: 'Phí dịch vụ sẽ được tính dựa trên chi tiêu thực tế hàng tháng',
-                                                    })}
+                                                    {t(
+                                                        'service_purchase.postpay_info_1',
+                                                        {
+                                                            defaultValue:
+                                                                'Phí dịch vụ sẽ được tính dựa trên chi tiêu thực tế hàng tháng',
+                                                        },
+                                                    )}
                                                 </li>
                                                 <li>
-                                                    {t('service_purchase.postpay_info_2', {
-                                                        defaultValue: 'Ngày thanh toán dự kiến: {{date}} (sau {{days}} ngày kể từ ngày tạo)',
-                                                        date: new Date(Date.now() + postpayDays * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN', {
-                                                            year: 'numeric',
-                                                            month: 'long',
-                                                            day: 'numeric',
-                                                        }),
-                                                        days: postpayDays,
-                                                    })}
+                                                    {t(
+                                                        'service_purchase.postpay_info_2',
+                                                        {
+                                                            defaultValue:
+                                                                'Ngày thanh toán dự kiến: {{date}} (sau {{days}} ngày kể từ ngày tạo)',
+                                                            date: new Date(
+                                                                Date.now() +
+                                                                    postpayDays *
+                                                                        24 *
+                                                                        60 *
+                                                                        60 *
+                                                                        1000,
+                                                            ).toLocaleDateString(
+                                                                'vi-VN',
+                                                                {
+                                                                    year: 'numeric',
+                                                                    month: 'long',
+                                                                    day: 'numeric',
+                                                                },
+                                                            ),
+                                                            days: postpayDays,
+                                                        },
+                                                    )}
                                                 </li>
                                                 <li>
-                                                    {t('service_purchase.postpay_info_3', {
-                                                        defaultValue: 'Hệ thống sẽ tự động trừ tiền từ ví vào ngày đến hạn',
-                                                    })}
+                                                    {t(
+                                                        'service_purchase.postpay_info_3',
+                                                        {
+                                                            defaultValue:
+                                                                'Hệ thống sẽ tự động trừ tiền từ ví vào ngày đến hạn',
+                                                        },
+                                                    )}
                                                 </li>
                                                 <li>
-                                                    {t('service_purchase.postpay_info_4', {
-                                                        defaultValue: 'Nếu số dư không đủ, hệ thống sẽ tự động tạm dừng các chiến dịch quảng cáo',
-                                                    })}
+                                                    {t(
+                                                        'service_purchase.postpay_info_4',
+                                                        {
+                                                            defaultValue:
+                                                                'Nếu số dư không đủ, hệ thống sẽ tự động tạm dừng các chiến dịch quảng cáo',
+                                                        },
+                                                    )}
                                                 </li>
                                             </ul>
                                         </div>
@@ -796,19 +1038,24 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                 </div>
                             </div>
                         )}
-                        {paymentType === 'postpay' && wallet_balance < postpayMinBalance && (
-                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <div className="flex items-center gap-2 text-amber-800">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <span className="text-sm font-medium">
-                                        {t('service_purchase.postpay_min_wallet_warning', {
-                                            defaultValue: 'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau',
-                                            amount: postpayMinBalance,
-                                        })}
-                                    </span>
+                        {paymentType === 'postpay' &&
+                            wallet_balance < postpayMinBalance && (
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                                    <div className="flex items-center gap-2 text-amber-800">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <span className="text-sm font-medium">
+                                            {t(
+                                                'service_purchase.postpay_min_wallet_warning',
+                                                {
+                                                    defaultValue:
+                                                        'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau',
+                                                    amount: postpayMinBalance,
+                                                },
+                                            )}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
                     </div>
 
                     {/* 
@@ -849,39 +1096,50 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                     {paymentType !== 'postpay' && (
                         <div className="space-y-2">
                             <Label htmlFor="topUpAmount">
-                                {t('service_purchase.top_up_amount')} ({t('service_purchase.optional')})
+                                {t('service_purchase.top_up_amount')} (
+                                {t('service_purchase.optional')})
                             </Label>
                             <div className="flex gap-2">
                                 <Input
                                     id="topUpAmount"
                                     type="number"
                                     placeholder={`${Math.ceil(
-                                        Number(selectedPackage.range_min_top_up || '0')
+                                        Number(
+                                            selectedPackage.range_min_top_up ||
+                                                '0',
+                                        ),
                                     )} USDT`}
                                     value={topUpAmount}
                                     onChange={(e) => {
-                                        purchaseForm.setData('top_up_amount', e.target.value);
+                                        purchaseForm.setData(
+                                            'top_up_amount',
+                                            e.target.value,
+                                        );
                                         if (purchaseForm.errors.top_up_amount) {
-                                            purchaseForm.clearErrors('top_up_amount');
+                                            purchaseForm.clearErrors(
+                                                'top_up_amount',
+                                            );
                                         }
                                     }}
                                     step="1"
                                 />
                                 <Button
                                     variant="outline"
-                                    onClick={() => setShowCalculator(!showCalculator)}
+                                    onClick={() =>
+                                        setShowCalculator(!showCalculator)
+                                    }
                                 >
                                     <Calculator className="h-4 w-4" />
                                 </Button>
                             </div>
                             {paymentType === 'prepay' && topUpError && (
-                                <div className="flex items-center gap-2 text-red-600 text-sm">
+                                <div className="flex items-center gap-2 text-sm text-red-600">
                                     <AlertTriangle className="h-4 w-4" />
                                     {topUpError}
                                 </div>
                             )}
                             {purchaseForm.errors.top_up_amount && (
-                                <div className="flex items-center gap-2 text-red-600 text-sm">
+                                <div className="flex items-center gap-2 text-sm text-red-600">
                                     <AlertTriangle className="h-4 w-4" />
                                     {purchaseForm.errors.top_up_amount}
                                 </div>
@@ -890,37 +1148,61 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                                 {t('service_purchase.top_up_amount_note')},
                                 {minTopUpAmount > 0
                                     ? t('service_purchase.min_top_up_hint', {
-                                        amount: formatUSD(minTopUpAmount),
-                                    })
+                                          amount: formatUSD(minTopUpAmount),
+                                      })
                                     : t('service_purchase.top_up_amount_note')}
                             </p>
                         </div>
                     )}
 
                     {/* Fee Calculator */}
-                    {(showCalculator || topUpAmount || paymentType === 'postpay') && (
-                        <div className="p-4 bg-orange-50 rounded-lg space-y-3">
-                            <div className="font-medium text-[#4285f4]">{t('service_purchase.calculate_fee')}:</div>
+                    {(showCalculator ||
+                        topUpAmount ||
+                        paymentType === 'postpay') && (
+                        <div className="space-y-3 rounded-lg bg-orange-50 p-4">
+                            <div className="font-medium text-[#4285f4]">
+                                {t('service_purchase.calculate_fee')}:
+                            </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="flex justify-between">
-                                    <span>{t('service_purchase.account_opening_fee')}:</span>
-                                    <span className="font-medium">{formatUSDT(chargeOpenFee)}</span>
+                                    <span>
+                                        {t(
+                                            'service_purchase.account_opening_fee',
+                                        )}
+                                        :
+                                    </span>
+                                    <span className="font-medium">
+                                        {formatUSDT(chargeOpenFee)}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>{t('service_purchase.top_up')}:</span>
-                                    <span className="font-medium">{formatUSDT(topUpNum)}</span>
+                                    <span className="font-medium">
+                                        {formatUSDT(topUpNum)}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>
-                                        {t('service_purchase.service_fee')} ({selectedPackage.top_up_fee}%):
+                                        {t('service_purchase.service_fee')} (
+                                        {selectedPackage.top_up_fee}%):
                                     </span>
-                                    <span className="font-medium">{formatUSDT(serviceFee)}</span>
+                                    <span className="font-medium">
+                                        {formatUSDT(serviceFee)}
+                                    </span>
                                 </div>
                             </div>
                             <div className="border-t pt-2">
-                                <div className="flex justify-between font-bold sm:text-lg text-md">
-                                    <span>{t('service_purchase.total_cost')}:</span>
-                                    <span className={hasInsufficientBalance ? 'text-red-600' : 'text-green-600'}>
+                                <div className="text-md flex justify-between font-bold sm:text-lg">
+                                    <span>
+                                        {t('service_purchase.total_cost')}:
+                                    </span>
+                                    <span
+                                        className={
+                                            hasInsufficientBalance
+                                                ? 'text-red-600'
+                                                : 'text-green-600'
+                                        }
+                                    >
                                         {formatUSDT(totalCost)}
                                     </span>
                                 </div>
@@ -930,18 +1212,22 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
 
                     {/* Insufficient Balance Warning */}
                     {hasInsufficientBalance && (
-                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
                             <div className="flex items-center gap-2 text-red-800">
                                 <AlertTriangle className="h-4 w-4" />
-                                <span className="font-medium">{t('service_purchase.insufficient_balance')}</span>
+                                <span className="font-medium">
+                                    {t('service_purchase.insufficient_balance')}
+                                </span>
                             </div>
-                            <p className="text-red-700 text-sm mt-1">{t('service_purchase.please_top_up_wallet')}</p>
+                            <p className="mt-1 text-sm text-red-700">
+                                {t('service_purchase.please_top_up_wallet')}
+                            </p>
                         </div>
                     )}
 
                     {/* Purchase Button */}
                     <Button
-                        className="w-full mb-3"
+                        className="mb-3 w-full"
                         size="lg"
                         onClick={handlePurchase}
                         disabled={
@@ -950,12 +1236,16 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                             purchaseForm.processing
                         }
                     >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        <ShoppingCart className="mr-2 h-4 w-4" />
                         {purchaseForm.processing
                             ? t('common.processing')
                             : `${t('service_purchase.purchase_now')} - ${formatUSDT(totalCost)}`}
                     </Button>
-                    <Button className="sm:hidden block w-full" variant="outline" onClick={() => setSelectedPackage(null)}>
+                    <Button
+                        className="block w-full sm:hidden"
+                        variant="outline"
+                        onClick={() => setSelectedPackage(null)}
+                    >
                         {t('service_purchase.back_to_services')}
                     </Button>
                 </CardContent>
@@ -967,12 +1257,18 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
         <AppLayout>
             <Head title={t('service_purchase.service_selection')} />
             <div className="space-y-6">
-                <div className="flex sm:flex-row flex-col items-center justify-between">
-                    <h1 className="sm:text-3xl text-xl sm:mb-0 mb-4 font-bold text-gray-900">{t('service_purchase.service_selection')}</h1>
-                    <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-lg">
+                <div className="flex flex-col items-center justify-between sm:flex-row">
+                    <h1 className="mb-4 text-xl font-bold text-gray-900 sm:mb-0 sm:text-3xl">
+                        {t('service_purchase.service_selection')}
+                    </h1>
+                    <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-2">
                         <Wallet className="h-5 w-5 text-green-600" />
-                        <span className="text-sm text-gray-600">{t('service_purchase.wallet_balance')}:</span>
-                        <span className="font-bold text-green-600">{formatUSDT(wallet_balance)}</span>
+                        <span className="text-sm text-gray-600">
+                            {t('service_purchase.wallet_balance')}:
+                        </span>
+                        <span className="font-bold text-green-600">
+                            {formatUSDT(wallet_balance)}
+                        </span>
                     </div>
                 </div>
 
@@ -980,51 +1276,80 @@ const ServicePurchaseIndex = ({ packages, wallet_balance, postpay_min_balance, m
                     renderOrderForm()
                 ) : (
                     <>
-                        <div className="flex items-center gap-2 mb-4">
+                        <div className="mb-4 flex items-center gap-2">
                             <Info className="h-5 w-5 text-[#4285f4]" />
-                            <span className="text-gray-600">{t('service_purchase.info_message')}</span>
+                            <span className="text-gray-600">
+                                {t('service_purchase.info_message')}
+                            </span>
                         </div>
 
                         {/* Filter and Search */}
-                        <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex flex-col gap-4 sm:flex-row">
                             {/* Platform Filter */}
-                            <div className="sm:w-48 w-full">
-                                <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                            <div className="w-full sm:w-48">
+                                <Select
+                                    value={platformFilter}
+                                    onValueChange={setPlatformFilter}
+                                >
                                     <SelectTrigger>
-                                        <SelectValue placeholder={t('service_purchase.filter_platform', { defaultValue: 'Lọc theo nền tảng' })} />
+                                        <SelectValue
+                                            placeholder={t(
+                                                'service_purchase.filter_platform',
+                                                {
+                                                    defaultValue:
+                                                        'Lọc theo nền tảng',
+                                                },
+                                            )}
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">
-                                            {t('service_purchase.filter_all', { defaultValue: 'Tất cả' })}
+                                            {t('service_purchase.filter_all', {
+                                                defaultValue: 'Tất cả',
+                                            })}
                                         </SelectItem>
-                                        <SelectItem value={String(_PlatformType.GOOGLE)}>
-                                            {t('enum.platform_type.google', { defaultValue: 'Google Ads' })}
+                                        <SelectItem
+                                            value={String(_PlatformType.GOOGLE)}
+                                        >
+                                            {t('enum.platform_type.google', {
+                                                defaultValue: 'Google Ads',
+                                            })}
                                         </SelectItem>
-                                        <SelectItem value={String(_PlatformType.META)}>
-                                            {t('enum.platform_type.meta', { defaultValue: 'Meta Ads' })}
+                                        <SelectItem
+                                            value={String(_PlatformType.META)}
+                                        >
+                                            {t('enum.platform_type.meta', {
+                                                defaultValue: 'Meta Ads',
+                                            })}
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             {/* Search */}
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
                                 <Input
-                                    placeholder={t('service_purchase.search_placeholder')}
+                                    placeholder={t(
+                                        'service_purchase.search_placeholder',
+                                    )}
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) =>
+                                        setSearchQuery(e.target.value)
+                                    }
                                     className="pl-10"
                                 />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                             {filteredPackages.map(renderServiceCard)}
                         </div>
 
                         {filteredPackages.length === 0 && (
-                            <div className="text-center py-12">
-                                <p className="text-gray-500">{t('service_purchase.no_services_found')}</p>
+                            <div className="py-12 text-center">
+                                <p className="text-gray-500">
+                                    {t('service_purchase.no_services_found')}
+                                </p>
                             </div>
                         )}
                     </>

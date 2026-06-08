@@ -2,7 +2,14 @@ import { IUser } from '@/lib/types/type';
 
 export type ProfileUser = Pick<
     IUser,
-    'id' | 'name' | 'username' | 'phone' | 'email' | 'telegram_id' | 'whatsapp_id' | 'referral_code'
+    | 'id'
+    | 'name'
+    | 'username'
+    | 'phone'
+    | 'email'
+    | 'telegram_id'
+    | 'whatsapp_id'
+    | 'referral_code'
 > & {
     email_verified_at?: string | null;
 };
@@ -36,4 +43,3 @@ export type TelegramStatus = {
     variant: 'default' | 'secondary' | 'outline';
     description: string;
 };
-

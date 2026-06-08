@@ -1,3 +1,2 @@
 export const TRANSFER_PLATFORM_META = 2;
 export const TRANSFER_PLATFORM_GOOGLE = 1;
-

@@ -1,5 +1,5 @@
-import { useForm } from '@inertiajs/react';
 import { ticket_appeal_store } from '@/routes';
+import { useForm } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 
 export const useAppealForm = () => {
@@ -16,24 +16,39 @@ export const useAppealForm = () => {
         if (form.processing) {
             return;
         }
-        
+
         if (!form.data.platform) {
-            form.setError('platform', t('ticket.appeal.platform_required', { defaultValue: 'Vui lòng chọn kênh quảng cáo' }));
+            form.setError(
+                'platform',
+                t('ticket.appeal.platform_required', {
+                    defaultValue: 'Vui lòng chọn kênh quảng cáo',
+                }),
+            );
             return;
         }
 
         if (!form.data.account_id) {
-            form.setError('account_id', t('ticket.appeal.account_id_required', { defaultValue: 'Vui lòng chọn tài khoản' }));
+            form.setError(
+                'account_id',
+                t('ticket.appeal.account_id_required', {
+                    defaultValue: 'Vui lòng chọn tài khoản',
+                }),
+            );
             return;
         }
 
         if (!form.data.notes || form.data.notes.trim() === '') {
-            form.setError('notes', t('ticket.appeal.notes_required', { defaultValue: 'Vui lòng nhập ghi chú' }));
+            form.setError(
+                'notes',
+                t('ticket.appeal.notes_required', {
+                    defaultValue: 'Vui lòng nhập ghi chú',
+                }),
+            );
             return;
         }
 
         const platformValue = parseInt(form.data.platform);
-        
+
         const submitData = {
             platform: platformValue,
             account_id: form.data.account_id,
@@ -48,7 +63,10 @@ export const useAppealForm = () => {
             },
             onError: (errors: Record<string, string>) => {
                 Object.keys(errors).forEach((key) => {
-                    form.setError(key as keyof typeof form.data, errors[key] as string);
+                    form.setError(
+                        key as keyof typeof form.data,
+                        errors[key] as string,
+                    );
                 });
             },
         });

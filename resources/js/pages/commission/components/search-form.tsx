@@ -1,10 +1,17 @@
-import { useTranslation } from 'react-i18next';
-import { useSearchCommissionReport } from '@/pages/commission/hooks/use-search';
-import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardAction,
+    CardContent,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useSearchCommissionReport } from '@/pages/commission/hooks/use-search';
 import { Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const CommissionReportSearchForm = () => {
     const { t } = useTranslation();
@@ -49,4 +56,3 @@ const CommissionReportSearchForm = () => {
 };
 
 export default CommissionReportSearchForm;
-

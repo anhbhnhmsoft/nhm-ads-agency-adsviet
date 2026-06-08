@@ -1,6 +1,11 @@
 import { IUser } from '@/lib/types/type';
-import { _TicketStatus, _TicketPriority, _TicketReplySide, _TicketType } from './constants';
 import type { TransferAccount } from '@/pages/ticket/transfer/types/type';
+import {
+    _TicketPriority,
+    _TicketReplySide,
+    _TicketStatus,
+    _TicketType,
+} from './constants';
 
 export type TicketStatus = _TicketStatus;
 export type TicketPriority = _TicketPriority;
@@ -66,4 +71,3 @@ export type TransferPageProps = {
     accounts: TransferAccount[];
     error: string | null;
 };
-

@@ -25,4 +25,3 @@ export type SupplierListQuery = BaseSearchRequest<{
 }>;
 
 export type SupplierPagination = LaravelPaginator<SupplierItem>;
-

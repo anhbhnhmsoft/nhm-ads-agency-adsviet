@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Info } from 'lucide-react';
+import { Info, Pencil, Trash2 } from 'lucide-react';
+import { useCallback } from 'react';
 
 type MinimalRow = { id: string; disabled?: boolean };
 
@@ -33,10 +33,14 @@ export function useActionCell<T extends MinimalRow>({
                             size="sm"
                             onClick={() => onToggle(row)}
                         >
-                            {getToggleText ? getToggleText(disabled) : disabled ? 'Active' : 'Disable'}
+                            {getToggleText
+                                ? getToggleText(disabled)
+                                : disabled
+                                  ? 'Active'
+                                  : 'Disable'}
                         </Button>
                     )}
-                   {onView && (
+                    {onView && (
                         <Button
                             type="button"
                             variant="outline"
@@ -69,8 +73,6 @@ export function useActionCell<T extends MinimalRow>({
                 </div>
             );
         },
-        [onToggle, onEdit, onDelete, onView, canDelete, getToggleText]
+        [onToggle, onEdit, onDelete, onView, canDelete, getToggleText],
     );
 }
-
-

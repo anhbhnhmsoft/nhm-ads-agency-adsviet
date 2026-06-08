@@ -82,7 +82,8 @@ export type CommissionReportQuery = BaseSearchRequest<{
     date_to?: string;
 }>;
 
-export type CommissionReportPagination = LaravelPaginator<CommissionTransactionItem>;
+export type CommissionReportPagination =
+    LaravelPaginator<CommissionTransactionItem>;
 
 export type CommissionSummaryItem = {
     employee_id: string;
@@ -94,4 +95,3 @@ export type CommissionSummaryItem = {
     total_base_amount: string;
     total_commission_amount: string;
 };
-

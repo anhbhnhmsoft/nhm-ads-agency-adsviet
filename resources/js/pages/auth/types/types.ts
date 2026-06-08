@@ -1,12 +1,12 @@
-import { _RoleSystemRequest } from '@/pages/auth/types/constants';
 import { _UserRole } from '@/lib/types/constants';
+import { _RoleSystemRequest } from '@/pages/auth/types/constants';
 
 export type LoginRequest = {
     username: string;
     password: string;
     role: _RoleSystemRequest;
     device: 'web';
-}
+};
 
 export type TelegramUser = {
     id: number;
@@ -15,7 +15,7 @@ export type TelegramUser = {
     first_name: string;
     last_name: string;
     hash: string;
-}
+};
 
 export type RegisterNewUserRequest = {
     role: _UserRole.CUSTOMER | _UserRole.AGENCY;
@@ -23,7 +23,7 @@ export type RegisterNewUserRequest = {
     username: string;
     password: string;
     password_confirmation: string;
-    refer_code:string;
+    refer_code: string;
     type: 'telegram' | 'gmail';
     email?: string;
-}
+};

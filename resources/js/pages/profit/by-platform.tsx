@@ -1,15 +1,26 @@
-import { useState, useMemo } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
-import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { DateRange } from 'react-day-picker';
-import { TrendingUp, TrendingDown, DollarSign, Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { profit_by_platform } from '@/routes';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import AppLayout from '@/layouts/app-layout';
 import { formatDateForQuery } from '@/lib/utils';
+import { profit_by_platform } from '@/routes';
+import { Head, router } from '@inertiajs/react';
+import { DollarSign, Info, TrendingDown, TrendingUp } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
 
 type ProfitData = {
     platform: number;
@@ -28,13 +39,21 @@ type Props = {
     selectedPlatform?: number | null;
 };
 
-export default function ProfitByPlatform({ profitData, error, startDate, endDate, selectedPlatform }: Props) {
+export default function ProfitByPlatform({
+    profitData,
+    error,
+    startDate,
+    endDate,
+    selectedPlatform,
+}: Props) {
     const { t } = useTranslation();
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: startDate ? new Date(startDate) : undefined,
         to: endDate ? new Date(endDate) : undefined,
     });
-    const [localPlatform, setLocalPlatform] = useState<string>(selectedPlatform?.toString() || 'all');
+    const [localPlatform, setLocalPlatform] = useState<string>(
+        selectedPlatform?.toString() || 'all',
+    );
 
     const formatCurrency = (value: string | number) => {
         const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -47,7 +66,10 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
     };
 
     const totalRevenue = useMemo(() => {
-        return profitData.reduce((sum, item) => sum + parseFloat(item.revenue), 0);
+        return profitData.reduce(
+            (sum, item) => sum + parseFloat(item.revenue),
+            0,
+        );
     }, [profitData]);
 
     const totalCost = useMemo(() => {
@@ -55,7 +77,8 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
     }, [profitData]);
 
     const totalProfit = totalRevenue - totalCost;
-    const totalProfitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    const totalProfitMargin =
+        totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
     const handleDateChange = (date: DateRange | undefined) => {
         setDateRange(date);
@@ -64,9 +87,10 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
             {
                 start_date: formatDateForQuery(date?.from),
                 end_date: formatDateForQuery(date?.to),
-                platform: localPlatform !== 'all' ? parseInt(localPlatform) : null,
+                platform:
+                    localPlatform !== 'all' ? parseInt(localPlatform) : null,
             },
-            { preserveState: true, preserveScroll: true }
+            { preserveState: true, preserveScroll: true },
         );
     };
 
@@ -79,37 +103,61 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
                 end_date: formatDateForQuery(dateRange?.to),
                 platform: value !== 'all' ? parseInt(value) : null,
             },
-            { preserveState: true, preserveScroll: true }
+            { preserveState: true, preserveScroll: true },
         );
     };
 
     return (
-        <AppLayout breadcrumbs={[{ title: t('profit.by_platform.title', { defaultValue: 'Lợi nhuận theo nền tảng' }) }]}>
-            <Head title={t('profit.by_platform.title', { defaultValue: 'Lợi nhuận theo nền tảng' })} />
+        <AppLayout
+            breadcrumbs={[
+                {
+                    title: t('profit.by_platform.title', {
+                        defaultValue: 'Lợi nhuận theo nền tảng',
+                    }),
+                },
+            ]}
+        >
+            <Head
+                title={t('profit.by_platform.title', {
+                    defaultValue: 'Lợi nhuận theo nền tảng',
+                })}
+            />
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        {t('profit.by_platform.title', { defaultValue: 'Lợi nhuận theo nền tảng' })}
+                    <h1 className="flex items-center gap-2 text-2xl font-bold">
+                        {t('profit.by_platform.title', {
+                            defaultValue: 'Lợi nhuận theo nền tảng',
+                        })}
                         <TooltipProvider delayDuration={0}>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Info className="h-5 w-5 text-muted-foreground hover:text-primary cursor-help transition-colors" />
+                                    <Info className="h-5 w-5 cursor-help text-muted-foreground transition-colors hover:text-primary" />
                                 </TooltipTrigger>
-                                <TooltipContent className="max-w-[350px] p-3 text-sm shadow-md bg-popover text-popover-foreground border" side="bottom" align="start">
+                                <TooltipContent
+                                    className="max-w-[350px] border bg-popover p-3 text-sm text-popover-foreground shadow-md"
+                                    side="bottom"
+                                    align="start"
+                                >
                                     <div className="space-y-3">
                                         <div>
-                                            <div className="font-semibold text-primary mb-1">Cách tính Doanh thu:</div>
-                                            <div className="text-muted-foreground leading-relaxed">
-                                                Phí mở TK + Tiền nạp + (Tiền nạp * Phí dịch vụ %)
+                                            <div className="mb-1 font-semibold text-primary">
+                                                Cách tính Doanh thu:
+                                            </div>
+                                            <div className="leading-relaxed text-muted-foreground">
+                                                Phí mở TK + Tiền nạp + (Tiền nạp
+                                                * Phí dịch vụ %)
                                             </div>
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-primary mb-1">Cách tính Chi phí:</div>
-                                            <div className="text-muted-foreground leading-relaxed">
-                                                Phí mở TK bên NCC + (Tiền nạp * Phí NCC %)
+                                            <div className="mb-1 font-semibold text-primary">
+                                                Cách tính Chi phí:
+                                            </div>
+                                            <div className="leading-relaxed text-muted-foreground">
+                                                Phí mở TK bên NCC + (Tiền nạp *
+                                                Phí NCC %)
                                             </div>
                                         </div>
-                                        <div className="pt-2 border-t font-medium text-foreground">
+                                        <div className="border-t pt-2 font-medium text-foreground">
                                             Lợi nhuận = Doanh thu - Chi phí
                                         </div>
                                     </div>
@@ -128,25 +176,45 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
                 )}
 
                 {/* Filters */}
-                <div className="flex flex-wrap gap-4 items-end">
-                    <div className="flex-1 min-w-[200px]">
-                        <label className="text-sm font-medium mb-2 block">
-                            {t('profit.date_range', { defaultValue: 'Khoảng thời gian' })}
+                <div className="flex flex-wrap items-end gap-4">
+                    <div className="min-w-[200px] flex-1">
+                        <label className="mb-2 block text-sm font-medium">
+                            {t('profit.date_range', {
+                                defaultValue: 'Khoảng thời gian',
+                            })}
                         </label>
-                        <DateRangePicker date={dateRange} onDateChange={handleDateChange} />
+                        <DateRangePicker
+                            date={dateRange}
+                            onDateChange={handleDateChange}
+                        />
                     </div>
                     <div className="w-[200px]">
-                        <label className="text-sm font-medium mb-2 block">
+                        <label className="mb-2 block text-sm font-medium">
                             {t('profit.platform', { defaultValue: 'Nền tảng' })}
                         </label>
-                        <Select value={localPlatform} onValueChange={handlePlatformChange}>
+                        <Select
+                            value={localPlatform}
+                            onValueChange={handlePlatformChange}
+                        >
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">{t('profit.all_platforms', { defaultValue: 'Tất cả' })}</SelectItem>
-                                <SelectItem value="1">{t('profit.meta_ads', { defaultValue: 'Facebook Ads' })}</SelectItem>
-                                <SelectItem value="2">{t('profit.google_ads', { defaultValue: 'Google Ads' })}</SelectItem>
+                                <SelectItem value="all">
+                                    {t('profit.all_platforms', {
+                                        defaultValue: 'Tất cả',
+                                    })}
+                                </SelectItem>
+                                <SelectItem value="1">
+                                    {t('profit.meta_ads', {
+                                        defaultValue: 'Facebook Ads',
+                                    })}
+                                </SelectItem>
+                                <SelectItem value="2">
+                                    {t('profit.google_ads', {
+                                        defaultValue: 'Google Ads',
+                                    })}
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -156,25 +224,41 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
                 <div className="grid gap-4 md:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{t('profit.total_revenue', { defaultValue: 'Tổng doanh thu' })}</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {t('profit.total_revenue', {
+                                    defaultValue: 'Tổng doanh thu',
+                                })}
+                            </CardTitle>
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue)}</div>
+                            <div className="text-2xl font-bold text-green-600">
+                                {formatCurrency(totalRevenue)}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{t('profit.total_cost', { defaultValue: 'Tổng chi phí' })}</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {t('profit.total_cost', {
+                                    defaultValue: 'Tổng chi phí',
+                                })}
+                            </CardTitle>
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-red-600">{formatCurrency(Math.abs(totalCost))}</div>
+                            <div className="text-2xl font-bold text-red-600">
+                                {formatCurrency(Math.abs(totalCost))}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{t('profit.total_profit', { defaultValue: 'Tổng lợi nhuận' })}</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {t('profit.total_profit', {
+                                    defaultValue: 'Tổng lợi nhuận',
+                                })}
+                            </CardTitle>
                             {totalProfit >= 0 ? (
                                 <TrendingUp className="h-4 w-4 text-green-600" />
                             ) : (
@@ -182,7 +266,9 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
                             )}
                         </CardHeader>
                         <CardContent>
-                            <div className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <div
+                                className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                            >
                                 {totalProfit >= 0 ? '+' : ''}
                                 {formatCurrency(totalProfit)}
                             </div>
@@ -190,11 +276,17 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{t('profit.profit_margin', { defaultValue: 'Tỷ suất lợi nhuận' })}</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {t('profit.profit_margin', {
+                                    defaultValue: 'Tỷ suất lợi nhuận',
+                                })}
+                            </CardTitle>
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className={`text-2xl font-bold ${totalProfitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <div
+                                className={`text-2xl font-bold ${totalProfitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                            >
                                 {totalProfitMargin >= 0 ? '+' : ''}
                                 {totalProfitMargin.toFixed(2)}%
                             </div>
@@ -207,7 +299,9 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
                     <div className="grid gap-4 md:grid-cols-2">
                         {profitData.map((platformProfit) => {
                             const profit = parseFloat(platformProfit.profit);
-                            const margin = parseFloat(platformProfit.profit_margin);
+                            const margin = parseFloat(
+                                platformProfit.profit_margin,
+                            );
                             return (
                                 <Card key={platformProfit.platform}>
                                     <CardHeader>
@@ -217,37 +311,67 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
                                     </CardHeader>
                                     <CardContent>
                                         <div className="space-y-3">
-                                            <div className="flex justify-between items-center">
+                                            <div className="flex items-center justify-between">
                                                 <span className="text-sm text-muted-foreground">
-                                                    {t('profit.revenue', { defaultValue: 'Doanh thu' })}:
+                                                    {t('profit.revenue', {
+                                                        defaultValue:
+                                                            'Doanh thu',
+                                                    })}
+                                                    :
                                                 </span>
                                                 <span className="font-semibold text-green-600">
-                                                    {formatCurrency(platformProfit.revenue)}
+                                                    {formatCurrency(
+                                                        platformProfit.revenue,
+                                                    )}
                                                 </span>
                                             </div>
-                                            <div className="flex justify-between items-center">
+                                            <div className="flex items-center justify-between">
                                                 <span className="text-sm text-muted-foreground">
-                                                    {t('profit.cost', { defaultValue: 'Chi phí' })}:
+                                                    {t('profit.cost', {
+                                                        defaultValue: 'Chi phí',
+                                                    })}
+                                                    :
                                                 </span>
                                                 <span className="font-semibold text-red-600">
-                                                    {formatCurrency(Math.abs(parseFloat(platformProfit.cost)))}
+                                                    {formatCurrency(
+                                                        Math.abs(
+                                                            parseFloat(
+                                                                platformProfit.cost,
+                                                            ),
+                                                        ),
+                                                    )}
                                                 </span>
                                             </div>
-                                            <div className="pt-2 border-t">
-                                                <div className="flex justify-between items-center mb-1">
+                                            <div className="border-t pt-2">
+                                                <div className="mb-1 flex items-center justify-between">
                                                     <span className="text-sm font-semibold">
-                                                        {t('profit.profit', { defaultValue: 'Lợi nhuận' })}:
+                                                        {t('profit.profit', {
+                                                            defaultValue:
+                                                                'Lợi nhuận',
+                                                        })}
+                                                        :
                                                     </span>
-                                                    <span className={`text-lg font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    <span
+                                                        className={`text-lg font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                                                    >
                                                         {profit >= 0 ? '+' : ''}
                                                         {formatCurrency(profit)}
                                                     </span>
                                                 </div>
-                                                <div className="flex justify-between items-center">
+                                                <div className="flex items-center justify-between">
                                                     <span className="text-sm text-muted-foreground">
-                                                        {t('profit.profit_margin', { defaultValue: 'Tỷ suất lợi nhuận' })}:
+                                                        {t(
+                                                            'profit.profit_margin',
+                                                            {
+                                                                defaultValue:
+                                                                    'Tỷ suất lợi nhuận',
+                                                            },
+                                                        )}
+                                                        :
                                                     </span>
-                                                    <span className={`font-semibold ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    <span
+                                                        className={`font-semibold ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                                                    >
                                                         {margin >= 0 ? '+' : ''}
                                                         {margin.toFixed(2)}%
                                                     </span>
@@ -262,7 +386,9 @@ export default function ProfitByPlatform({ profitData, error, startDate, endDate
                 ) : (
                     <Card>
                         <CardContent className="py-8 text-center text-muted-foreground">
-                            {t('profit.no_data', { defaultValue: 'Không có dữ liệu' })}
+                            {t('profit.no_data', {
+                                defaultValue: 'Không có dữ liệu',
+                            })}
                         </CardContent>
                     </Card>
                 )}

@@ -10,16 +10,23 @@ export const ShareTabs = ({ activeTab, onTabChange }: ShareTabsProps) => {
     const { t } = useTranslation();
 
     return (
-        <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as 'create' | 'list')} className="mb-6">
+        <Tabs
+            value={activeTab}
+            onValueChange={(value) => onTabChange(value as 'create' | 'list')}
+            className="mb-6"
+        >
             <TabsList>
                 <TabsTrigger value="create">
-                    {t('ticket.share.create_request', { defaultValue: 'Tạo yêu cầu' })}
+                    {t('ticket.share.create_request', {
+                        defaultValue: 'Tạo yêu cầu',
+                    })}
                 </TabsTrigger>
                 <TabsTrigger value="list">
-                    {t('ticket.share.in_progress', { defaultValue: 'Đang thực hiện' })}
+                    {t('ticket.share.in_progress', {
+                        defaultValue: 'Đang thực hiện',
+                    })}
                 </TabsTrigger>
             </TabsList>
         </Tabs>
     );
 };
-

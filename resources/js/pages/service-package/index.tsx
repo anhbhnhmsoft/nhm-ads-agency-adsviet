@@ -1,5 +1,4 @@
-import { ReactNode, useMemo, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
     Empty,
@@ -9,28 +8,31 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from '@/components/ui/empty';
-import { useTranslation } from 'react-i18next';
-import { Edit, MoreHorizontal, PackageOpen, Plus, Trash, ToggleLeft, ToggleRight } from 'lucide-react';
-import { router } from '@inertiajs/react';
-import { service_packages_create_view, service_packages_destroy, service_packages_edit_view, service_packages_toggle_disable } from '@/routes';
-import { ServicePackageItem, ServicePackagePagination } from '@/pages/service-package/types/type';
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
-
-import GoogleIcon from '@/images/google_icon.png';
-import FacebookIcon from '@/images/facebook_icon.png';
-import { _PlatformType } from '@/lib/types/constants';
-import ServicePackageListSearchForm from '@/pages/service-package/components/search-form';
-import { ColumnDef } from '@tanstack/react-table';
-import { Separator } from '@/components/ui/separator';
-import { DataTable } from '@/components/table/data-table';
+import AppLayout from '@/layouts/app-layout';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
+    ServicePackageItem,
+    ServicePackagePagination,
+} from '@/pages/service-package/types/type';
+import {
+    service_packages_create_view,
+    service_packages_destroy,
+    service_packages_edit_view,
+    service_packages_toggle_disable,
+} from '@/routes';
+import { router } from '@inertiajs/react';
+import {
+    Edit,
+    MoreHorizontal,
+    PackageOpen,
+    Plus,
+    ToggleLeft,
+    ToggleRight,
+    Trash,
+} from 'lucide-react';
+import { ReactNode, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { DataTable } from '@/components/table/data-table';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -41,6 +43,20 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
+import FacebookIcon from '@/images/facebook_icon.png';
+import GoogleIcon from '@/images/google_icon.png';
+import { _PlatformType } from '@/lib/types/constants';
+import ServicePackageListSearchForm from '@/pages/service-package/components/search-form';
+import { ColumnDef } from '@tanstack/react-table';
 
 type Props = {
     paginator: ServicePackagePagination;
@@ -48,7 +64,9 @@ type Props = {
 const Index = ({ paginator }: Props) => {
     const { t } = useTranslation();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [itemToDelete, setItemToDelete] = useState<ServicePackageItem | null>(null);
+    const [itemToDelete, setItemToDelete] = useState<ServicePackageItem | null>(
+        null,
+    );
 
     const handleDelete = () => {
         if (itemToDelete) {
@@ -61,9 +79,13 @@ const Index = ({ paginator }: Props) => {
     };
 
     const handleToggleDisable = (item: ServicePackageItem) => {
-        router.post(service_packages_toggle_disable(item.id).url, {}, {
-            preserveScroll: true,
-        });
+        router.post(
+            service_packages_toggle_disable(item.id).url,
+            {},
+            {
+                preserveScroll: true,
+            },
+        );
     };
 
     const columns: ColumnDef<ServicePackageItem>[] = useMemo(
@@ -103,7 +125,13 @@ const Index = ({ paginator }: Props) => {
                 cell: ({ row }) => {
                     const paymentType = row.original.payment_type;
                     return (
-                        <Badge variant={paymentType === 'postpay' ? 'secondary' : 'default'}>
+                        <Badge
+                            variant={
+                                paymentType === 'postpay'
+                                    ? 'secondary'
+                                    : 'default'
+                            }
+                        >
                             {paymentType === 'postpay'
                                 ? t('service_packages.payment_type_postpay')
                                 : t('service_packages.payment_type_prepay')}
@@ -139,9 +167,7 @@ const Index = ({ paginator }: Props) => {
                 cell: (cell) => {
                     const disabled = cell.row.original.disabled;
                     return (
-                        <Badge
-                            variant={disabled ? 'destructive' : 'default'}
-                        >
+                        <Badge variant={disabled ? 'destructive' : 'default'}>
                             {disabled
                                 ? t('common.disabled')
                                 : t('common.active')}
@@ -158,9 +184,7 @@ const Index = ({ paginator }: Props) => {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">
-                                        Open menu
-                                    </span>
+                                    <span className="sr-only">Open menu</span>
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>

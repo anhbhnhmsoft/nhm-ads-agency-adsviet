@@ -10,16 +10,23 @@ export const AppealTabs = ({ activeTab, onTabChange }: AppealTabsProps) => {
     const { t } = useTranslation();
 
     return (
-        <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as 'create' | 'list')} className="mb-6">
+        <Tabs
+            value={activeTab}
+            onValueChange={(value) => onTabChange(value as 'create' | 'list')}
+            className="mb-6"
+        >
             <TabsList>
                 <TabsTrigger value="create">
-                    {t('ticket.appeal.create_request', { defaultValue: 'Tạo yêu cầu' })}
+                    {t('ticket.appeal.create_request', {
+                        defaultValue: 'Tạo yêu cầu',
+                    })}
                 </TabsTrigger>
                 <TabsTrigger value="list">
-                    {t('ticket.appeal.in_progress', { defaultValue: 'Đang thực hiện' })}
+                    {t('ticket.appeal.in_progress', {
+                        defaultValue: 'Đang thực hiện',
+                    })}
                 </TabsTrigger>
             </TabsList>
         </Tabs>
     );
 };
-

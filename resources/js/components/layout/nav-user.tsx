@@ -1,12 +1,16 @@
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { UserInfo } from '@/components/layout/user-info';
+import { UserMenuContent } from '@/components/layout/user-menu-content';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
-import { UserInfo } from '@/components/layout/user-info';
-import { UserMenuContent } from '@/components/layout/user-menu-content';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePage } from '@inertiajs/react';
 import { ChevronsUpDown } from 'lucide-react';

@@ -1,15 +1,37 @@
-import { useState, useMemo } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
-import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { DateRange } from 'react-day-picker';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, Info } from 'lucide-react';
-import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+    Tooltip as UITooltip,
+} from '@/components/ui/tooltip';
+import AppLayout from '@/layouts/app-layout';
 import { formatDateForQuery } from '@/lib/utils';
+import { Head, router } from '@inertiajs/react';
+import { DollarSign, Info, TrendingDown, TrendingUp } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { DateRange } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Legend,
+    Line,
+    LineChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from 'recharts';
 
 type ProfitDataPoint = {
     period: string;
@@ -28,14 +50,25 @@ type Props = {
     selectedPlatform?: number | null;
 };
 
-export default function ProfitOverTime({ profitData, error, startDate, endDate, groupBy, selectedPlatform }: Props) {
+export default function ProfitOverTime({
+    profitData,
+    error,
+    startDate,
+    endDate,
+    groupBy,
+    selectedPlatform,
+}: Props) {
     const { t } = useTranslation();
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: startDate ? new Date(startDate) : undefined,
         to: endDate ? new Date(endDate) : undefined,
     });
-    const [localGroupBy, setLocalGroupBy] = useState<'day' | 'week' | 'month'>(groupBy);
-    const [localPlatform, setLocalPlatform] = useState<string>(selectedPlatform?.toString() || 'all');
+    const [localGroupBy, setLocalGroupBy] = useState<'day' | 'week' | 'month'>(
+        groupBy,
+    );
+    const [localPlatform, setLocalPlatform] = useState<string>(
+        selectedPlatform?.toString() || 'all',
+    );
 
     const formatCurrency = (value: string | number) => {
         const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -74,7 +107,10 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
     }, [profitData, groupBy]);
 
     const totalRevenue = useMemo(() => {
-        return profitData.reduce((sum, item) => sum + parseFloat(item.revenue), 0);
+        return profitData.reduce(
+            (sum, item) => sum + parseFloat(item.revenue),
+            0,
+        );
     }, [profitData]);
 
     const totalCost = useMemo(() => {
@@ -82,7 +118,8 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
     }, [profitData]);
 
     const totalProfit = totalRevenue - totalCost;
-    const totalProfitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    const totalProfitMargin =
+        totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
     const handleDateChange = (date: DateRange | undefined) => {
         setDateRange(date);
@@ -92,9 +129,10 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                 start_date: formatDateForQuery(date?.from),
                 end_date: formatDateForQuery(date?.to),
                 group_by: localGroupBy,
-                platform: localPlatform !== 'all' ? parseInt(localPlatform) : null,
+                platform:
+                    localPlatform !== 'all' ? parseInt(localPlatform) : null,
             },
-            { preserveState: true, preserveScroll: true }
+            { preserveState: true, preserveScroll: true },
         );
     };
 
@@ -106,9 +144,10 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                 start_date: formatDateForQuery(dateRange?.from),
                 end_date: formatDateForQuery(dateRange?.to),
                 group_by: value,
-                platform: localPlatform !== 'all' ? parseInt(localPlatform) : null,
+                platform:
+                    localPlatform !== 'all' ? parseInt(localPlatform) : null,
             },
-            { preserveState: true, preserveScroll: true }
+            { preserveState: true, preserveScroll: true },
         );
     };
 
@@ -122,37 +161,61 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                 group_by: localGroupBy,
                 platform: value !== 'all' ? parseInt(value) : null,
             },
-            { preserveState: true, preserveScroll: true }
+            { preserveState: true, preserveScroll: true },
         );
     };
 
     return (
-        <AppLayout breadcrumbs={[{ title: t('profit.over_time.title', { defaultValue: 'Lợi nhuận tổng theo thời gian' }) }]}>
-            <Head title={t('profit.over_time.title', { defaultValue: 'Lợi nhuận tổng theo thời gian' })} />
+        <AppLayout
+            breadcrumbs={[
+                {
+                    title: t('profit.over_time.title', {
+                        defaultValue: 'Lợi nhuận tổng theo thời gian',
+                    }),
+                },
+            ]}
+        >
+            <Head
+                title={t('profit.over_time.title', {
+                    defaultValue: 'Lợi nhuận tổng theo thời gian',
+                })}
+            />
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        {t('profit.over_time.title', { defaultValue: 'Lợi nhuận tổng theo thời gian' })}
+                    <h1 className="flex items-center gap-2 text-2xl font-bold">
+                        {t('profit.over_time.title', {
+                            defaultValue: 'Lợi nhuận tổng theo thời gian',
+                        })}
                         <TooltipProvider delayDuration={0}>
                             <UITooltip>
                                 <TooltipTrigger asChild>
-                                    <Info className="h-5 w-5 text-muted-foreground hover:text-primary cursor-help transition-colors" />
+                                    <Info className="h-5 w-5 cursor-help text-muted-foreground transition-colors hover:text-primary" />
                                 </TooltipTrigger>
-                                <TooltipContent className="max-w-[350px] p-3 text-sm shadow-md bg-popover text-popover-foreground border" side="bottom" align="start">
+                                <TooltipContent
+                                    className="max-w-[350px] border bg-popover p-3 text-sm text-popover-foreground shadow-md"
+                                    side="bottom"
+                                    align="start"
+                                >
                                     <div className="space-y-3">
                                         <div>
-                                            <div className="font-semibold text-primary mb-1">Cách tính Doanh thu:</div>
-                                            <div className="text-muted-foreground leading-relaxed">
-                                                Phí mở TK + Tiền nạp + (Tiền nạp * Phí dịch vụ %)
+                                            <div className="mb-1 font-semibold text-primary">
+                                                Cách tính Doanh thu:
+                                            </div>
+                                            <div className="leading-relaxed text-muted-foreground">
+                                                Phí mở TK + Tiền nạp + (Tiền nạp
+                                                * Phí dịch vụ %)
                                             </div>
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-primary mb-1">Cách tính Chi phí:</div>
-                                            <div className="text-muted-foreground leading-relaxed">
-                                                Phí mở TK bên NCC + (Tiền nạp * Phí NCC %)
+                                            <div className="mb-1 font-semibold text-primary">
+                                                Cách tính Chi phí:
+                                            </div>
+                                            <div className="leading-relaxed text-muted-foreground">
+                                                Phí mở TK bên NCC + (Tiền nạp *
+                                                Phí NCC %)
                                             </div>
                                         </div>
-                                        <div className="pt-2 border-t font-medium text-foreground">
+                                        <div className="border-t pt-2 font-medium text-foreground">
                                             Lợi nhuận = Doanh thu - Chi phí
                                         </div>
                                     </div>
@@ -171,40 +234,77 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                 )}
 
                 {/* Filters */}
-                <div className="flex flex-wrap gap-4 items-end">
-                    <div className="flex-1 min-w-[200px]">
-                        <label className="text-sm font-medium mb-2 block">
-                            {t('profit.date_range', { defaultValue: 'Khoảng thời gian' })}
+                <div className="flex flex-wrap items-end gap-4">
+                    <div className="min-w-[200px] flex-1">
+                        <label className="mb-2 block text-sm font-medium">
+                            {t('profit.date_range', {
+                                defaultValue: 'Khoảng thời gian',
+                            })}
                         </label>
-                        <DateRangePicker date={dateRange} onDateChange={handleDateChange} />
+                        <DateRangePicker
+                            date={dateRange}
+                            onDateChange={handleDateChange}
+                        />
                     </div>
                     <div className="w-[200px]">
-                        <label className="text-sm font-medium mb-2 block">
-                            {t('profit.group_by', { defaultValue: 'Nhóm theo' })}
+                        <label className="mb-2 block text-sm font-medium">
+                            {t('profit.group_by', {
+                                defaultValue: 'Nhóm theo',
+                            })}
                         </label>
-                        <Select value={localGroupBy} onValueChange={handleGroupByChange}>
+                        <Select
+                            value={localGroupBy}
+                            onValueChange={handleGroupByChange}
+                        >
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="day">{t('profit.group_by_day', { defaultValue: 'Theo ngày' })}</SelectItem>
-                                <SelectItem value="week">{t('profit.group_by_week', { defaultValue: 'Theo tuần' })}</SelectItem>
-                                <SelectItem value="month">{t('profit.group_by_month', { defaultValue: 'Theo tháng' })}</SelectItem>
+                                <SelectItem value="day">
+                                    {t('profit.group_by_day', {
+                                        defaultValue: 'Theo ngày',
+                                    })}
+                                </SelectItem>
+                                <SelectItem value="week">
+                                    {t('profit.group_by_week', {
+                                        defaultValue: 'Theo tuần',
+                                    })}
+                                </SelectItem>
+                                <SelectItem value="month">
+                                    {t('profit.group_by_month', {
+                                        defaultValue: 'Theo tháng',
+                                    })}
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="w-[200px]">
-                        <label className="text-sm font-medium mb-2 block">
+                        <label className="mb-2 block text-sm font-medium">
                             {t('profit.platform', { defaultValue: 'Nền tảng' })}
                         </label>
-                        <Select value={localPlatform} onValueChange={handlePlatformChange}>
+                        <Select
+                            value={localPlatform}
+                            onValueChange={handlePlatformChange}
+                        >
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">{t('profit.all_platforms', { defaultValue: 'Tất cả' })}</SelectItem>
-                                <SelectItem value="1">{t('profit.meta_ads', { defaultValue: 'Facebook Ads' })}</SelectItem>
-                                <SelectItem value="2">{t('profit.google_ads', { defaultValue: 'Google Ads' })}</SelectItem>
+                                <SelectItem value="all">
+                                    {t('profit.all_platforms', {
+                                        defaultValue: 'Tất cả',
+                                    })}
+                                </SelectItem>
+                                <SelectItem value="1">
+                                    {t('profit.meta_ads', {
+                                        defaultValue: 'Facebook Ads',
+                                    })}
+                                </SelectItem>
+                                <SelectItem value="2">
+                                    {t('profit.google_ads', {
+                                        defaultValue: 'Google Ads',
+                                    })}
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -214,25 +314,41 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                 <div className="grid gap-4 md:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{t('profit.total_revenue', { defaultValue: 'Tổng doanh thu' })}</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {t('profit.total_revenue', {
+                                    defaultValue: 'Tổng doanh thu',
+                                })}
+                            </CardTitle>
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue)}</div>
+                            <div className="text-2xl font-bold text-green-600">
+                                {formatCurrency(totalRevenue)}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{t('profit.total_cost', { defaultValue: 'Tổng chi phí' })}</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {t('profit.total_cost', {
+                                    defaultValue: 'Tổng chi phí',
+                                })}
+                            </CardTitle>
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-red-600">{formatCurrency(totalCost)}</div>
+                            <div className="text-2xl font-bold text-red-600">
+                                {formatCurrency(totalCost)}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{t('profit.total_profit', { defaultValue: 'Tổng lợi nhuận' })}</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {t('profit.total_profit', {
+                                    defaultValue: 'Tổng lợi nhuận',
+                                })}
+                            </CardTitle>
                             {totalProfit >= 0 ? (
                                 <TrendingUp className="h-4 w-4 text-green-600" />
                             ) : (
@@ -240,7 +356,9 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                             )}
                         </CardHeader>
                         <CardContent>
-                            <div className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <div
+                                className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                            >
                                 {totalProfit >= 0 ? '+' : ''}
                                 {formatCurrency(totalProfit)}
                             </div>
@@ -248,11 +366,17 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{t('profit.profit_margin', { defaultValue: 'Tỷ suất lợi nhuận' })}</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {t('profit.profit_margin', {
+                                    defaultValue: 'Tỷ suất lợi nhuận',
+                                })}
+                            </CardTitle>
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className={`text-2xl font-bold ${totalProfitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <div
+                                className={`text-2xl font-bold ${totalProfitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                            >
                                 {totalProfitMargin >= 0 ? '+' : ''}
                                 {totalProfitMargin.toFixed(2)}%
                             </div>
@@ -265,7 +389,12 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                     <div className="grid gap-4 md:grid-cols-1">
                         <Card>
                             <CardHeader>
-                                <CardTitle>{t('profit.profit_chart', { defaultValue: 'Biểu đồ lợi nhuận theo thời gian' })}</CardTitle>
+                                <CardTitle>
+                                    {t('profit.profit_chart', {
+                                        defaultValue:
+                                            'Biểu đồ lợi nhuận theo thời gian',
+                                    })}
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <ResponsiveContainer width="100%" height={400}>
@@ -274,24 +403,79 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                                         <XAxis dataKey="period" />
                                         <YAxis />
                                         <Tooltip
-                                            formatter={(value: number, _name: string, props: any) => {
-                                                const dataKey = props?.dataKey as string | undefined;
-                                                if (dataKey === 'profitMargin') {
-                                                    return [`${value.toFixed(2)}%`, t('profit.profit_margin', { defaultValue: 'Tỷ suất lợi nhuận' })];
+                                            formatter={(
+                                                value: number,
+                                                _name: string,
+                                                props: any,
+                                            ) => {
+                                                const dataKey =
+                                                    props?.dataKey as
+                                                        | string
+                                                        | undefined;
+                                                if (
+                                                    dataKey === 'profitMargin'
+                                                ) {
+                                                    return [
+                                                        `${value.toFixed(2)}%`,
+                                                        t(
+                                                            'profit.profit_margin',
+                                                            {
+                                                                defaultValue:
+                                                                    'Tỷ suất lợi nhuận',
+                                                            },
+                                                        ),
+                                                    ];
                                                 }
-                                                let label = t('profit.profit', { defaultValue: 'Lợi nhuận' });
+                                                let label = t('profit.profit', {
+                                                    defaultValue: 'Lợi nhuận',
+                                                });
                                                 if (dataKey === 'revenue') {
-                                                    label = t('profit.revenue', { defaultValue: 'Doanh thu' });
+                                                    label = t(
+                                                        'profit.revenue',
+                                                        {
+                                                            defaultValue:
+                                                                'Doanh thu',
+                                                        },
+                                                    );
                                                 } else if (dataKey === 'cost') {
-                                                    label = t('profit.cost', { defaultValue: 'Chi phí' });
+                                                    label = t('profit.cost', {
+                                                        defaultValue: 'Chi phí',
+                                                    });
                                                 }
-                                                return [formatCurrency(value), label];
+                                                return [
+                                                    formatCurrency(value),
+                                                    label,
+                                                ];
                                             }}
                                         />
                                         <Legend />
-                                        <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} name={t('profit.revenue', { defaultValue: 'Doanh thu' })} />
-                                        <Line type="monotone" dataKey="cost" stroke="#ef4444" strokeWidth={2} name={t('profit.cost', { defaultValue: 'Chi phí' })} />
-                                        <Line type="monotone" dataKey="profit" stroke="#4285f4" strokeWidth={2} name={t('profit.profit', { defaultValue: 'Lợi nhuận' })} />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="revenue"
+                                            stroke="#22c55e"
+                                            strokeWidth={2}
+                                            name={t('profit.revenue', {
+                                                defaultValue: 'Doanh thu',
+                                            })}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="cost"
+                                            stroke="#ef4444"
+                                            strokeWidth={2}
+                                            name={t('profit.cost', {
+                                                defaultValue: 'Chi phí',
+                                            })}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="profit"
+                                            stroke="#4285f4"
+                                            strokeWidth={2}
+                                            name={t('profit.profit', {
+                                                defaultValue: 'Lợi nhuận',
+                                            })}
+                                        />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </CardContent>
@@ -299,7 +483,12 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
 
                         <Card>
                             <CardHeader>
-                                <CardTitle>{t('profit.profit_margin_chart', { defaultValue: 'Biểu đồ tỷ suất lợi nhuận' })}</CardTitle>
+                                <CardTitle>
+                                    {t('profit.profit_margin_chart', {
+                                        defaultValue:
+                                            'Biểu đồ tỷ suất lợi nhuận',
+                                    })}
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <ResponsiveContainer width="100%" height={300}>
@@ -308,9 +497,22 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                                         <XAxis dataKey="period" />
                                         <YAxis />
                                         <Tooltip
-                                            formatter={(value: number) => [`${value.toFixed(2)}%`, t('profit.profit_margin', { defaultValue: 'Tỷ suất lợi nhuận' })]}
+                                            formatter={(value: number) => [
+                                                `${value.toFixed(2)}%`,
+                                                t('profit.profit_margin', {
+                                                    defaultValue:
+                                                        'Tỷ suất lợi nhuận',
+                                                }),
+                                            ]}
                                         />
-                                        <Bar dataKey="profitMargin" fill="#4285f4" name={t('profit.profit_margin', { defaultValue: 'Tỷ suất lợi nhuận' })} />
+                                        <Bar
+                                            dataKey="profitMargin"
+                                            fill="#4285f4"
+                                            name={t('profit.profit_margin', {
+                                                defaultValue:
+                                                    'Tỷ suất lợi nhuận',
+                                            })}
+                                        />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </CardContent>
@@ -319,7 +521,9 @@ export default function ProfitOverTime({ profitData, error, startDate, endDate, 
                 ) : (
                     <Card>
                         <CardContent className="py-8 text-center text-muted-foreground">
-                            {t('profit.no_data', { defaultValue: 'Không có dữ liệu' })}
+                            {t('profit.no_data', {
+                                defaultValue: 'Không có dữ liệu',
+                            })}
                         </CardContent>
                     </Card>
                 )}

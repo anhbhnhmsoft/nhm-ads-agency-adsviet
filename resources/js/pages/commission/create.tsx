@@ -1,12 +1,7 @@
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import AppLayout from '@/layouts/app-layout';
-import { useFormCreateCommission } from '@/pages/commission/hooks/use-form';
-import { commissions_index } from '@/routes';
-import { useTranslation } from 'react-i18next';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Select,
     SelectContent,
@@ -14,6 +9,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import AppLayout from '@/layouts/app-layout';
+import { useFormCreateCommission } from '@/pages/commission/hooks/use-form';
+import { commissions_index } from '@/routes';
+import { useTranslation } from 'react-i18next';
 
 type ServicePackage = {
     id: string;
@@ -35,7 +35,9 @@ const Create = ({ packages }: Props) => {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-semibold">
-                        {t('commission.create_title', { defaultValue: 'Tạo cấu hình hoa hồng' })}
+                        {t('commission.create_title', {
+                            defaultValue: 'Tạo cấu hình hoa hồng',
+                        })}
                     </h1>
                 </div>
 
@@ -44,18 +46,26 @@ const Create = ({ packages }: Props) => {
                         {/* Service Package */}
                         <div className="flex flex-col gap-2 md:col-span-2">
                             <Label>
-                                {t('commission.service_package', { defaultValue: 'Gói dịch vụ' })}
+                                {t('commission.service_package', {
+                                    defaultValue: 'Gói dịch vụ',
+                                })}
                             </Label>
                             <Select
                                 value={data.service_package_id}
-                                onValueChange={(value) => setData('service_package_id', value)}
+                                onValueChange={(value) =>
+                                    setData('service_package_id', value)
+                                }
                                 required
                             >
                                 <SelectTrigger>
                                     <SelectValue
-                                        placeholder={t('commission.service_package_placeholder', {
-                                            defaultValue: 'Chọn gói dịch vụ',
-                                        })}
+                                        placeholder={t(
+                                            'commission.service_package_placeholder',
+                                            {
+                                                defaultValue:
+                                                    'Chọn gói dịch vụ',
+                                            },
+                                        )}
                                     />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -67,20 +77,24 @@ const Create = ({ packages }: Props) => {
                                 </SelectContent>
                             </Select>
                             {errors.service_package_id && (
-                                <span className="text-sm text-red-500">{errors.service_package_id}</span>
+                                <span className="text-sm text-red-500">
+                                    {errors.service_package_id}
+                                </span>
                             )}
                         </div>
 
                         {/* Type */}
                         <div className="flex flex-col gap-2 md:col-span-2">
                             <Label>
-                                {t('commission.type', { defaultValue: 'Loại hoa hồng' })}
+                                {t('commission.type', {
+                                    defaultValue: 'Loại hoa hồng',
+                                })}
                             </Label>
                             <Select
                                 value={data.type}
-                                onValueChange={(value: 'service' | 'spending' | 'account') =>
-                                    setData('type', value)
-                                }
+                                onValueChange={(
+                                    value: 'service' | 'spending' | 'account',
+                                ) => setData('type', value)}
                                 required
                             >
                                 <SelectTrigger>
@@ -94,25 +108,31 @@ const Create = ({ packages }: Props) => {
                                     </SelectItem>
                                     <SelectItem value="spending">
                                         {t('commission.type_spending', {
-                                            defaultValue: 'Hoa hồng theo spending',
+                                            defaultValue:
+                                                'Hoa hồng theo spending',
                                         })}
                                     </SelectItem>
                                     <SelectItem value="account">
                                         {t('commission.type_account', {
-                                            defaultValue: 'Hoa hồng theo bán account',
+                                            defaultValue:
+                                                'Hoa hồng theo bán account',
                                         })}
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
                             {errors.type && (
-                                <span className="text-sm text-red-500">{errors.type}</span>
+                                <span className="text-sm text-red-500">
+                                    {errors.type}
+                                </span>
                             )}
                         </div>
 
                         {/* Rate */}
                         <div className="flex flex-col gap-2">
                             <Label>
-                                {t('commission.rate', { defaultValue: 'Tỷ lệ hoa hồng (%)' })}
+                                {t('commission.rate', {
+                                    defaultValue: 'Tỷ lệ hoa hồng (%)',
+                                })}
                             </Label>
                             <Input
                                 value={data.rate}
@@ -121,7 +141,9 @@ const Create = ({ packages }: Props) => {
                                 step="0.01"
                                 min="0"
                                 max="100"
-                                onChange={(e) => setData('rate', e.target.value)}
+                                onChange={(e) =>
+                                    setData('rate', e.target.value)
+                                }
                                 required
                             />
                             <span className="text-sm text-slate-400">
@@ -131,7 +153,9 @@ const Create = ({ packages }: Props) => {
                                 })}
                             </span>
                             {errors.rate && (
-                                <span className="text-sm text-red-500">{errors.rate}</span>
+                                <span className="text-sm text-red-500">
+                                    {errors.rate}
+                                </span>
                             )}
                         </div>
 
@@ -149,7 +173,9 @@ const Create = ({ packages }: Props) => {
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    onChange={(e) => setData('min_amount', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('min_amount', e.target.value)
+                                    }
                                 />
                                 <span className="text-sm text-slate-400">
                                     {t('commission.min_amount_desc', {
@@ -179,7 +205,9 @@ const Create = ({ packages }: Props) => {
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    onChange={(e) => setData('max_amount', e.target.value)}
+                                    onChange={(e) =>
+                                        setData('max_amount', e.target.value)
+                                    }
                                 />
                                 <span className="text-sm text-slate-400">
                                     {t('commission.max_amount_desc', {
@@ -198,18 +226,27 @@ const Create = ({ packages }: Props) => {
                         {/* Description */}
                         <div className="flex flex-col gap-2 md:col-span-2">
                             <Label>
-                                {t('commission.description', { defaultValue: 'Mô tả' })}
+                                {t('commission.description', {
+                                    defaultValue: 'Mô tả',
+                                })}
                             </Label>
                             <Textarea
                                 value={data.description || ''}
-                                placeholder={t('commission.description_placeholder', {
-                                    defaultValue: 'Nhập mô tả (tùy chọn)',
-                                })}
-                                onChange={(e) => setData('description', e.target.value)}
+                                placeholder={t(
+                                    'commission.description_placeholder',
+                                    {
+                                        defaultValue: 'Nhập mô tả (tùy chọn)',
+                                    },
+                                )}
+                                onChange={(e) =>
+                                    setData('description', e.target.value)
+                                }
                                 rows={3}
                             />
                             {errors.description && (
-                                <span className="text-sm text-red-500">{errors.description}</span>
+                                <span className="text-sm text-red-500">
+                                    {errors.description}
+                                </span>
                             )}
                         </div>
 
@@ -225,7 +262,7 @@ const Create = ({ packages }: Props) => {
                                 />
                                 <Label
                                     htmlFor="is_active"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                 >
                                     {t('commission.is_active', {
                                         defaultValue: 'Kích hoạt',
@@ -239,7 +276,9 @@ const Create = ({ packages }: Props) => {
                                 })}
                             </span>
                             {errors.is_active && (
-                                <span className="text-sm text-red-500">{errors.is_active}</span>
+                                <span className="text-sm text-red-500">
+                                    {errors.is_active}
+                                </span>
                             )}
                         </div>
                     </div>
@@ -256,7 +295,9 @@ const Create = ({ packages }: Props) => {
                         </Button>
                         <Button type="submit" disabled={processing}>
                             {processing
-                                ? t('common.processing', { defaultValue: 'Đang xử lý...' })
+                                ? t('common.processing', {
+                                      defaultValue: 'Đang xử lý...',
+                                  })
                                 : t('common.create', { defaultValue: 'Tạo' })}
                         </Button>
                     </div>
@@ -267,4 +308,3 @@ const Create = ({ packages }: Props) => {
 };
 
 export default Create;
-

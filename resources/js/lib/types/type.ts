@@ -1,5 +1,5 @@
+import { _PlatformType, _UserRole } from '@/lib/types/constants';
 import { JSX } from 'react';
-import { _UserRole, _PlatformType } from '@/lib/types/constants';
 
 export interface IBreadcrumbItem {
     title: string;
@@ -29,21 +29,26 @@ export interface IMenu {
     icon?: JSX.Element;
     active?: boolean;
     can_show?: boolean;
-    items?: { title: string; url: string; active?: boolean; can_show?: boolean }[];
+    items?: {
+        title: string;
+        url: string;
+        active?: boolean;
+        can_show?: boolean;
+    }[];
 }
 
 export type BaseSearchRequest<TFilter> = {
     filter: TFilter;
     sort_by?: string;
     direction?: 'asc' | 'desc';
-}
+};
 
 type PaginatorLink = {
     url: string | null;
     label: string;
     active: boolean;
     page: number | null;
-}
+};
 export type LaravelPaginator<T> = {
     data: T[];
     links: {
@@ -60,14 +65,14 @@ export type LaravelPaginator<T> = {
         per_page: number;
         to: number;
         total: number;
-    }
-}
+    };
+};
 
 export type PlatformSetting = {
     id: number;
     platform: _PlatformType;
     config: Record<string, any>;
     disabled: boolean;
-}
+};
 
 export type PlatformSettingListPagination = LaravelPaginator<PlatformSetting>;
