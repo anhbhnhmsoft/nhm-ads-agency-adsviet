@@ -810,7 +810,13 @@
             "info_fanpage": "Thông tin fanpage",
             "info_fanpage_placeholder": "Link hoặc tên fanpage",
             "info_website": "Thông tin website",
-            "info_website_placeholder": "Link website"
+            "info_website_placeholder": "Link website",
+            "billing_source_label": "Nguồn thanh toán",
+            "billing_sources": {
+                "customer_card": "Thẻ của khách",
+                "adviet_card": "Thẻ Adviet",
+                "supplier_credit_line": "Hạn mức nhà cung cấp"
+            }
         },
         "admin_form_title": "Xác nhận đơn dịch vụ",
         "admin_form_description": "Nhập đầy đủ thông tin để kích hoạt tài khoản dịch vụ cho khách hàng.",

@@ -25,6 +25,7 @@ export const useServiceOrderEditConfigDialog = () => {
         'full_asset' | 'basic_asset'
     >('full_asset');
     const [timezoneBm, setTimezoneBm] = useState('');
+    const [billingSource, setBillingSource] = useState('');
 
     const resetFormState = useCallback(() => {
         setAccounts([]);
@@ -37,6 +38,7 @@ export const useServiceOrderEditConfigDialog = () => {
         setPaymentType('');
         setAssetAccess('full_asset');
         setTimezoneBm('');
+        setBillingSource('');
     }, []);
 
     const cleanAccountData = useCallback(
@@ -59,6 +61,11 @@ export const useServiceOrderEditConfigDialog = () => {
             resetFormState();
 
             const config = order.config_account || {};
+            const billingSourceValue = (config.billing_source as string)
+                || ((config as any).payment_source as string)
+                || (order.package?.billing_source as string)
+                || 'adviet_card';
+            setBillingSource(billingSourceValue);
             const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
             const packagePaymentType =
                 order.package?.payment_type === 'postpay'
@@ -99,6 +106,7 @@ export const useServiceOrderEditConfigDialog = () => {
 
         type UpdateConfigPayload = {
             payment_type?: string;
+            billing_source?: string;
             accounts?: AccountFormData[];
             meta_email?: string;
             display_name?: string;
@@ -114,6 +122,7 @@ export const useServiceOrderEditConfigDialog = () => {
                 selectedOrder.package?.payment_type === 'postpay'
                     ? 'postpay'
                     : 'prepay',
+            billing_source: billingSource || undefined,
         };
 
         if (useAccountsStructure && accounts.length > 0) {
@@ -152,6 +161,7 @@ export const useServiceOrderEditConfigDialog = () => {
         paymentType,
         assetAccess,
         timezoneBm,
+        billingSource,
         selectedOrder,
         useAccountsStructure,
         accounts,
@@ -193,6 +203,8 @@ export const useServiceOrderEditConfigDialog = () => {
         setAssetAccess,
         timezoneBm,
         setTimezoneBm,
+        billingSource,
+        setBillingSource,
         openDialogForOrder,
         handleSubmitUpdate,
     };

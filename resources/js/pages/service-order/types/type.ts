@@ -33,6 +33,7 @@ export type ServiceOrderConfigAccount = {
 
     // Common fields
     payment_type?: 'prepay' | 'postpay';
+    billing_source?: string;
     top_up_amount?: number | string;
     open_fee_paid?: boolean;
 };
@@ -47,6 +48,7 @@ export type ServiceOrder = {
         platform?: number | null;
         payment_type?: 'prepay' | 'postpay' | null;
         platform_label?: string | null;
+        billing_source?: string | null;
     };
     user?: {
         referrer?: {

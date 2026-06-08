@@ -18,8 +18,27 @@ export const AccountInfoCell = ({ config, platform }: AccountInfoCellProps) => {
 
     const accounts = config.accounts;
     if (Array.isArray(accounts) && accounts.length > 0) {
+        const billingSource = config.billing_source || (config as any).payment_source;
         return (
             <div className="space-y-2 text-xs">
+                {billingSource && (
+                    <div className="rounded border border-indigo-100 bg-indigo-50/50 p-2 font-medium text-indigo-950">
+                        <span className="font-semibold text-indigo-900">
+                            {t('service_orders.form.billing_source_label', {
+                                defaultValue: 'Nguồn thanh toán',
+                            })}:
+                        </span>{' '}
+                        {t(`service_orders.form.billing_sources.${billingSource}`, {
+                            defaultValue: billingSource === 'customer_card'
+                                ? 'Thẻ của khách'
+                                : billingSource === 'adviet_card'
+                                ? 'Thẻ Adviet'
+                                : billingSource === 'supplier_credit_line'
+                                ? 'Hạn mức nhà cung cấp'
+                                : billingSource,
+                        })}
+                    </div>
+                )}
                 {accounts.map((account: AccountConfig, idx: number) => {
                     const email = account.meta_email || '';
                     const name = account.display_name || '';
@@ -203,13 +222,34 @@ export const AccountInfoCell = ({ config, platform }: AccountInfoCellProps) => {
     const fanpage = (config.info_fanpage as string) || '';
     const website = (config.info_website as string) || '';
     const timezone = (config.timezone_bm as string) || '';
+    const billingSource = config.billing_source || (config as any).payment_source || '';
 
-    if (!email && !name && !bm && !fanpage && !website && !timezone) {
+    if (!email && !name && !bm && !fanpage && !website && !timezone && !billingSource) {
         return <span className="text-xs text-muted-foreground">-</span>;
     }
 
     return (
         <div className="space-y-1 text-xs">
+            {billingSource && (
+                <div>
+                    <span className="font-medium">
+                        {t('service_orders.form.billing_source_label', {
+                            defaultValue: 'Nguồn thanh toán',
+                        })}:
+                    </span>{' '}
+                    <span className="font-semibold text-indigo-700">
+                        {t(`service_orders.form.billing_sources.${billingSource}`, {
+                            defaultValue: billingSource === 'customer_card'
+                                ? 'Thẻ của khách'
+                                : billingSource === 'adviet_card'
+                                ? 'Thẻ Adviet'
+                                : billingSource === 'supplier_credit_line'
+                                ? 'Hạn mức nhà cung cấp'
+                                : billingSource,
+                        })}
+                    </span>
+                </div>
+            )}
             {email && (
                 <div>
                     <span className="font-medium">Email:</span> {email}

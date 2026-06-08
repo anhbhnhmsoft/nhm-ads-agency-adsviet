@@ -877,7 +877,13 @@
             "info_fanpage": "Fanpage info",
             "info_fanpage_placeholder": "Fanpage link or name",
             "info_website": "Website info",
-            "info_website_placeholder": "Website link"
+            "info_website_placeholder": "Website link",
+            "billing_source_label": "Billing Source",
+            "billing_sources": {
+                "customer_card": "Customer Card",
+                "adviet_card": "Adviet Card",
+                "supplier_credit_line": "Supplier Credit Line"
+            }
         },
         "admin_form_title": "Approve service order",
         "admin_form_description": "Fill in all required information to activate the service account.",

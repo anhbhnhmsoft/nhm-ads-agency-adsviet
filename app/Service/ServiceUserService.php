@@ -105,6 +105,7 @@ class ServiceUserService
                 $newConfig = array_merge($currentConfig, [
                     'accounts' => $accounts,
                     'payment_type' => $paymentType,
+                    'billing_source' => $config['billing_source'] ?? ($currentConfig['billing_source'] ?? null),
                 ]);
                 
                 // Lưu bm_id vào google_manager_id nếu là Google Ads
@@ -145,6 +146,7 @@ class ServiceUserService
                     'account_name' => $config['account_name'] ?? ($currentConfig['account_name'] ?? null),
                     'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
                     'payment_type' => $paymentType,
+                    'billing_source' => $config['billing_source'] ?? ($currentConfig['billing_source'] ?? null),
                 ]);
 
                 if ($platform === PlatformType::GOOGLE->value) {
@@ -391,6 +393,7 @@ class ServiceUserService
                 $serviceUser->config_account = array_merge($currentConfig, array_filter([
                     'accounts' => $config['accounts'],
                     'payment_type' => $paymentType,
+                    'billing_source' => $config['billing_source'] ?? null,
                 ], fn($value) => $value !== null));
             } else {
                 $serviceUser->config_account = array_merge($currentConfig, array_filter([
@@ -403,6 +406,7 @@ class ServiceUserService
                     'info_fanpage' => $config['info_fanpage'] ?? null,
                     'info_website' => $config['info_website'] ?? null,
                     'payment_type' => $paymentType,
+                    'billing_source' => $config['billing_source'] ?? null,
                 ], fn($value) => $value !== null));
             }
             $serviceUser->save();

@@ -26,7 +26,7 @@ import {
 } from '@/pages/service-package/types/type';
 import { service_packages_index } from '@/routes';
 import axios from 'axios';
-import { Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Plus, RotateCcw, Trash2, Database, Upload, Info, AlertCircle, UserCheck, Layers } from 'lucide-react';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -943,153 +943,237 @@ const Edit = ({
                 </div>
             )}
 
-            <div className="space-y-4 rounded-lg border bg-white p-4">
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h2 className="text-lg font-semibold">
-                            {t('service_packages.account_inventory_title', {
-                                defaultValue: 'Kho tài khoản bán tự động',
-                            })}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            {t(
-                                'service_packages.account_inventory_description',
-                                {
-                                    defaultValue:
-                                        'Mỗi dòng: account_id, tên tài khoản, BM/MCC, ghi chú. Khi khách mua gói này, hệ thống tự lấy account còn trống để giao.',
-                                },
-                            )}
-                        </p>
+            <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                {/* Header Section */}
+                <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-3">
+                        <div className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600">
+                            <Database className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900">
+                                {t('service_packages.account_inventory_title', {
+                                    defaultValue: 'Kho tài khoản bán tự động',
+                                })}
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                                {t(
+                                    'service_packages.account_inventory_description',
+                                    {
+                                        defaultValue:
+                                            'Khi khách hàng mua gói dịch vụ này, hệ thống sẽ tự động phân phối các tài khoản còn trống trong kho.',
+                                    },
+                                )}
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 text-sm">
-                        <span className="rounded border px-2 py-1">
-                            Total: {inventoryStats.total || 0}
-                        </span>
-                        <span className="rounded border px-2 py-1 text-green-700">
-                            Available: {inventoryStats.available || 0}
-                        </span>
-                        <span className="rounded border px-2 py-1 text-blue-700">
-                            Assigned: {inventoryStats.assigned || 0}
-                        </span>
+                    
+                    {/* Stats Badges */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                            <Layers className="h-3.5 w-3.5 text-slate-500" />
+                            <span>Total:</span>
+                            <span className="font-bold text-slate-950">{inventoryStats.total || 0}</span>
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>Available:</span>
+                            <span className="font-bold text-emerald-950">{inventoryStats.available || 0}</span>
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                            <UserCheck className="h-3.5 w-3.5 text-blue-500" />
+                            <span>Assigned:</span>
+                            <span className="font-bold text-blue-950">{inventoryStats.assigned || 0}</span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                    <Textarea
-                        value={inventoryImportText}
-                        onChange={(event) =>
-                            setInventoryImportText(event.target.value)
-                        }
-                        placeholder={
-                            data.platform === _PlatformType.META
-                                ? 'act_123456789, Account name, 987654321, note'
-                                : '1234567890, Account name, 9876543210, note'
-                        }
-                        rows={4}
-                    />
-                    <Button
-                        type="button"
-                        onClick={handleImportInventory}
-                        disabled={
-                            inventorySubmitting || !inventoryImportText.trim()
-                        }
-                    >
-                        {inventorySubmitting
-                            ? t('common.loading', {
-                                  defaultValue: 'Đang tải...',
-                              })
-                            : t('service_packages.account_inventory_import', {
-                                  defaultValue: 'Import kho',
-                              })}
-                    </Button>
+                {/* Import Guide Alert */}
+                <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-4 text-blue-950">
+                    <div className="flex gap-2.5">
+                        <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                        <div className="space-y-1.5 text-sm">
+                            <p className="font-semibold text-blue-900">Hướng dẫn Import kho tài khoản</p>
+                            <p className="leading-relaxed text-blue-800">
+                                Nhập danh sách tài khoản cần thêm vào kho, mỗi tài khoản viết trên một dòng. 
+                                Định dạng phân cách bởi dấu phẩy <code className="font-mono bg-blue-100 px-1 py-0.5 rounded text-blue-900 font-bold">,</code> hoặc khoảng Tab:
+                            </p>
+                            <div className="mt-2 font-mono text-xs bg-white/80 border border-blue-100/60 p-2.5 rounded-md text-blue-800/90 shadow-inner">
+                                {data.platform === _PlatformType.META
+                                    ? 'act_123456789, Tên tài khoản, 987654321 (BM ID), Ghi chú thêm'
+                                    : '1234567890 (Customer ID), Tên tài khoản, 9876543210 (MCC ID), Ghi chú thêm'}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-md border">
-                    <table className="w-full min-w-[760px] text-sm">
-                        <thead className="bg-muted/50">
-                            <tr>
-                                <th className="p-2 text-left">Account</th>
-                                <th className="p-2 text-left">BM/MCC</th>
-                                <th className="p-2 text-left">Status</th>
-                                <th className="p-2 text-left">Target</th>
-                                <th className="p-2 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {inventoryLoading ? (
-                                <tr>
-                                    <td
-                                        className="p-4 text-center text-muted-foreground"
-                                        colSpan={5}
-                                    >
-                                        {t('common.loading', {
-                                            defaultValue: 'Đang tải...',
-                                        })}
-                                    </td>
-                                </tr>
-                            ) : inventoryItems.length === 0 ? (
-                                <tr>
-                                    <td
-                                        className="p-4 text-center text-muted-foreground"
-                                        colSpan={5}
-                                    >
-                                        {t('common.no_data_display')}
-                                    </td>
-                                </tr>
-                            ) : (
-                                inventoryItems.map((item) => (
-                                    <tr key={item.id} className="border-t">
-                                        <td className="p-2">
-                                            <div className="font-medium">
-                                                {item.account_name ||
-                                                    item.account_id}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {item.account_id}
-                                            </div>
-                                            {item.last_error && (
-                                                <div className="mt-1 text-xs text-red-600">
-                                                    {item.last_error}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="p-2">
-                                            {item.business_manager_id ||
-                                                item.customer_manager_id ||
-                                                '-'}
-                                        </td>
-                                        <td className="p-2">
-                                            <span className="rounded border px-2 py-1">
-                                                {item.status}
-                                            </span>
-                                        </td>
-                                        <td className="p-2">
-                                            {item.link_target_value
-                                                ? `${item.link_target_type}: ${item.link_target_value}`
-                                                : '-'}
-                                        </td>
-                                        <td className="p-2 text-right">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() =>
-                                                    handleDeleteInventory(
-                                                        item.id,
-                                                    )
-                                                }
-                                                disabled={
-                                                    item.status === 'assigned'
-                                                }
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </td>
+                {/* Textarea Import Section */}
+                <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-slate-800">Dữ liệu Import</Label>
+                    <div className="flex flex-col gap-3">
+                        <Textarea
+                            value={inventoryImportText}
+                            onChange={(event) =>
+                                setInventoryImportText(event.target.value)
+                            }
+                            placeholder={
+                                data.platform === _PlatformType.META
+                                    ? 'act_123456789, Account name, 987654321, note'
+                                    : '1234567890, Account name, 9876543210, note'
+                            }
+                            rows={4}
+                            className="font-mono text-sm border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/20"
+                        />
+                        <div className="flex items-center justify-between gap-4">
+                            <span className="text-xs text-slate-400 italic">
+                                * Lưu ý: Nhập đúng định dạng để hệ thống phân tách chính xác các cột dữ liệu.
+                            </span>
+                            <Button
+                                type="button"
+                                onClick={handleImportInventory}
+                                disabled={
+                                    inventorySubmitting || !inventoryImportText.trim()
+                                }
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors shrink-0"
+                            >
+                                {inventorySubmitting ? (
+                                    <>
+                                        <RotateCcw className="h-4 w-4 animate-spin" />
+                                        <span>{t('common.loading', { defaultValue: 'Đang tải...' })}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="h-4 w-4" />
+                                        <span>{t('service_packages.account_inventory_import', { defaultValue: 'Import kho' })}</span>
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Table Section */}
+                <div className="space-y-2.5">
+                    <Label className="text-sm font-semibold text-slate-800">Danh sách tài khoản trong kho</Label>
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-inner">
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[760px] text-sm">
+                                <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                                    <tr>
+                                        <th className="p-3.5 text-left font-semibold">Tài khoản (Account)</th>
+                                        <th className="p-3.5 text-left font-semibold">BM/MCC ID</th>
+                                        <th className="p-3.5 text-left font-semibold">Trạng thái</th>
+                                        <th className="p-3.5 text-left font-semibold">Đối tượng sử dụng</th>
+                                        <th className="p-3.5 text-right font-semibold">Hành động</th>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-150 bg-white">
+                                    {inventoryLoading ? (
+                                        <tr>
+                                            <td
+                                                className="p-8 text-center text-slate-400"
+                                                colSpan={5}
+                                            >
+                                                <div className="flex flex-col items-center justify-center gap-2">
+                                                    <RotateCcw className="h-5 w-5 animate-spin text-indigo-500" />
+                                                    <span>{t('common.loading', { defaultValue: 'Đang tải...' })}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : inventoryItems.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                className="p-8 text-center text-slate-400"
+                                                colSpan={5}
+                                            >
+                                                <div className="flex flex-col items-center justify-center gap-2">
+                                                    <Database className="h-8 w-8 text-slate-300" />
+                                                    <span>{t('common.no_data_display')}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        inventoryItems.map((item) => (
+                                            <tr key={item.id} className="hover:bg-slate-50/40 transition-colors">
+                                                <td className="p-3.5">
+                                                    <div className="font-semibold text-slate-900">
+                                                        {item.account_name || 'Chưa gán tên'}
+                                                    </div>
+                                                    <div className="mt-0.5 font-mono text-xs text-slate-500">
+                                                        {item.account_id}
+                                                    </div>
+                                                    {item.last_error && (
+                                                        <div className="mt-1.5 flex items-center gap-1 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-100 rounded px-2 py-1">
+                                                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                                            <span>{item.last_error}</span>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="p-3.5">
+                                                    {item.business_manager_id || item.customer_manager_id ? (
+                                                        <span className="font-mono text-xs bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded-md">
+                                                            {item.business_manager_id || item.customer_manager_id}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400 italic">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-3.5">
+                                                    {item.status === 'available' ? (
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 text-xs font-semibold">
+                                                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                                            Sẵn sàng
+                                                        </span>
+                                                    ) : item.status === 'assigned' ? (
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 px-2.5 py-0.5 text-xs font-semibold">
+                                                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                                                            Đã bàn giao
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 px-2.5 py-0.5 text-xs font-semibold">
+                                                            {item.status}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-3.5 text-slate-700">
+                                                    {item.link_target_value ? (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                                                {item.link_target_type}
+                                                            </span>
+                                                            <span className="font-medium text-slate-900">
+                                                                {item.link_target_value}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-slate-400 italic">Chưa bàn giao</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-3.5 text-right">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() =>
+                                                            handleDeleteInventory(
+                                                                item.id,
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            item.status === 'assigned'
+                                                        }
+                                                        className="text-slate-400 hover:text-rose-600 hover:bg-rose-50/50 rounded-lg transition-colors"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
