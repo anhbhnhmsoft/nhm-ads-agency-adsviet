@@ -1710,7 +1710,31 @@ const ServiceManagementIndex = ({
                                     selectedAccountForTopUp?.id ||
                                     '-'}
                             </div>
+                            {selectedAccountForTopUp?.customer_name && (
+                                <div className="text-muted-foreground mt-1 text-xs">
+                                    {t('service_management.customer_name', {
+                                        defaultValue: 'Khách hàng',
+                                    })}:{' '}
+                                    <span className="font-semibold text-foreground">
+                                        {selectedAccountForTopUp.customer_name}
+                                    </span>
+                                </div>
+                            )}
                         </div>
+                        {isStaff && (
+                            <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/30">
+                                <p className="font-semibold mb-1">
+                                    {t('service_management.staff_action_notice_title', {
+                                        defaultValue: 'Lưu ý quyền Admin/Nhân viên',
+                                    })}
+                                </p>
+                                <p className="text-muted-foreground">
+                                    {t('service_management.staff_action_notice_desc', {
+                                        defaultValue: 'Bạn đang thực hiện nạp tiền thay cho khách hàng. Hệ thống sẽ trừ tiền trực tiếp từ ví của khách hàng này mà không cần nhập mật khẩu ví.',
+                                    })}
+                                </p>
+                            </div>
+                        )}
                         {isAgencyOrCustomer && (
                             <div className="text-sm text-muted-foreground">
                                 {walletBalanceLoading
