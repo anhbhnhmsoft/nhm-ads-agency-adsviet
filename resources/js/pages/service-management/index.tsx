@@ -738,7 +738,7 @@ const ServiceManagementIndex = ({
                         account.platform === _PlatformType.META ||
                         account.platform === _PlatformType.GOOGLE;
                     return (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-end gap-2">
                             {(isAgencyOrCustomer || isStaff) && !!account.service_user_id && (
                                 <Button
                                     size="sm"
