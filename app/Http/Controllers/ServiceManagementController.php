@@ -185,4 +185,50 @@ class ServiceManagementController extends Controller
             'message' => __('common.processing'),
         ]);
     }
+
+    public function getActiveServices(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->ensureInternalAccess();
+
+        $platform = $request->input('platform');
+
+        $query = \App\Models\ServiceUser::query()
+            ->with(['user:id,name,username', 'package:id,name,platform'])
+            ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value);
+
+        if ($platform) {
+            $query->whereHas('package', function ($q) use ($platform) {
+                $q->where('platform', (int) $platform);
+            });
+        }
+
+        $services = $query->get()->map(function ($serviceUser) {
+            $ownerName = $serviceUser->user->name ?? $serviceUser->user->username ?? 'Unknown';
+            $packageName = $serviceUser->package->name ?? 'Unknown Package';
+            return [
+                'id' => (string) $serviceUser->id,
+                'user_id' => $serviceUser->user_id,
+                'customer_name' => $ownerName,
+                'package_name' => $packageName,
+                'display_label' => "ID: {$serviceUser->id} - {$ownerName} ({$packageName})",
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $services,
+        ]);
+    }
+
+    private function ensureInternalAccess(): void
+    {
+        if (!in_array((int) auth()->user()?->role, [
+            \App\Common\Constants\User\UserRole::ADMIN->value,
+            \App\Common\Constants\User\UserRole::MANAGER->value,
+            \App\Common\Constants\User\UserRole::EMPLOYEE->value,
+        ], true)) {
+            abort(403);
+        }
+    }
 }
+

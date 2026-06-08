@@ -193,6 +193,9 @@ const ServiceManagementIndex = ({
     const [accountTopUpWalletPassword, setAccountTopUpWalletPassword] =
         useState('');
     const [accountTopUpSubmitting, setAccountTopUpSubmitting] = useState(false);
+    const [activeServices, setActiveServices] = useState<any[]>([]);
+    const [loadingServices, setLoadingServices] = useState(false);
+    const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
     const selectedMetaBmId =
         query.platform === _PlatformType.META
@@ -235,15 +238,48 @@ const ServiceManagementIndex = ({
     const openAccountTopUpDialog = useCallback(
         async (account: BusinessManagerItem) => {
             setSelectedAccountForTopUp(account);
+            setSelectedServiceId(account.service_user_id || null);
             setAccountTopUpDialogOpen(true);
             setWalletBalance(null);
             if (isAgencyOrCustomer) {
                 await fetchWalletBalance();
-            } else if (isStaff && account.owner_id) {
-                await fetchWalletBalance(account.owner_id);
+            } else if (isStaff) {
+                setLoadingServices(true);
+                try {
+                    const response = await axios.get(
+                        `/service-management/active-services?platform=${account.platform}`
+                    );
+                    const services = response.data?.data || [];
+                    setActiveServices(services);
+                    
+                    const serviceUserId = account.service_user_id;
+                    if (serviceUserId) {
+                        const foundService = services.find((s: any) => String(s.id) === String(serviceUserId));
+                        if (foundService && foundService.user_id) {
+                            await fetchWalletBalance(foundService.user_id);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch active services', e);
+                } finally {
+                    setLoadingServices(false);
+                }
             }
         },
         [fetchWalletBalance, isAgencyOrCustomer, isStaff],
+    );
+
+    const handleServiceChange = useCallback(
+        async (serviceId: string) => {
+            setSelectedServiceId(serviceId);
+            const service = activeServices.find((s) => String(s.id) === String(serviceId));
+            if (service && service.user_id) {
+                await fetchWalletBalance(service.user_id);
+            } else {
+                setWalletBalance(null);
+            }
+        },
+        [activeServices, fetchWalletBalance],
     );
 
     const handleSyncMetaInsights = useCallback(async () => {
@@ -751,8 +787,8 @@ const ServiceManagementIndex = ({
                         account.platform === _PlatformType.META ||
                         account.platform === _PlatformType.GOOGLE;
                     return (
-                        <div className="flex items-center gap-2">
-                            {(isAgencyOrCustomer || isStaff) && !!account.service_user_id && (
+                        <div className="flex items-center justify-end gap-2">
+                            {((isAgencyOrCustomer && !!account.service_user_id) || isStaff) && (
                                 <Button
                                     size="sm"
                                     variant="outline"
@@ -1692,6 +1728,8 @@ const ServiceManagementIndex = ({
                         setSelectedAccountForTopUp(null);
                         setAccountTopUpAmount('');
                         setAccountTopUpWalletPassword('');
+                        setSelectedServiceId(null);
+                        setActiveServices([]);
                     }
                 }}
             >
@@ -1723,8 +1761,88 @@ const ServiceManagementIndex = ({
                                     selectedAccountForTopUp?.id ||
                                     '-'}
                             </div>
+                            {selectedAccountForTopUp?.customer_name && (
+                                <div className="text-muted-foreground mt-1 text-xs">
+                                    {t('service_management.customer_name', {
+                                        defaultValue: 'Khách hàng',
+                                    })}:{' '}
+                                    <span className="font-semibold text-foreground">
+                                        {selectedAccountForTopUp.customer_name}
+                                    </span>
+                                </div>
+                            )}
                         </div>
-                        {isAgencyOrCustomer && (
+
+                        {isStaff && (
+                            <div className="space-y-2">
+                                <Label htmlFor="account-top-up-service">
+                                    {t('service_management.select_customer_service_label', {
+                                        defaultValue: 'Chọn khách hàng - ví dịch vụ',
+                                    })}
+                                </Label>
+                                {loadingServices ? (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <span>
+                                            {t('service_management.loading_services', {
+                                                defaultValue: 'Đang tải danh sách dịch vụ...',
+                                            })}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <Select
+                                        value={selectedServiceId || ''}
+                                        onValueChange={handleServiceChange}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue
+                                                placeholder={t(
+                                                    'service_management.select_service_placeholder',
+                                                    {
+                                                        defaultValue: 'Chọn gói dịch vụ của khách hàng',
+                                                    },
+                                                )}
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[300px]">
+                                            {activeServices.length === 0 ? (
+                                                <div className="p-2 text-sm text-center text-muted-foreground">
+                                                    {t('service_management.no_active_services', {
+                                                        defaultValue: 'Không có gói dịch vụ nào đang hoạt động',
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                activeServices.map((service) => (
+                                                    <SelectItem
+                                                        key={service.id}
+                                                        value={String(service.id)}
+                                                    >
+                                                        {service.display_label}
+                                                    </SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </div>
+                        )}
+
+                        {isStaff && (
+                            <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/30">
+                                <p className="font-semibold mb-1">
+                                    {t('service_management.staff_action_notice_title', {
+                                        defaultValue: 'Lưu ý quyền Admin/Nhân viên',
+                                    })}
+                                </p>
+                                <p className="text-muted-foreground">
+                                    {t('service_management.staff_action_notice_desc', {
+                                        defaultValue: 'Bạn đang thực hiện nạp tiền thay cho khách hàng. Hệ thống sẽ trừ tiền trực tiếp từ ví của khách hàng này mà không cần nhập mật khẩu ví.',
+                                    })}
+                                </p>
+                            </div>
+                        )}
+
+                        {((isAgencyOrCustomer) || (isStaff && selectedServiceId)) && (
                             <div className="text-sm text-muted-foreground">
                                 {walletBalanceLoading
                                     ? t(
@@ -1812,6 +1930,15 @@ const ServiceManagementIndex = ({
                                     return;
                                 }
 
+                                if (isStaff && !selectedServiceId) {
+                                    toast.error(
+                                        t('service_management.select_service_required', {
+                                            defaultValue: 'Vui lòng chọn khách hàng - ví dịch vụ để nạp tiền',
+                                        }),
+                                    );
+                                    return;
+                                }
+
                                 if (!selectedAccountForTopUp?.platform) {
                                     toast.error(
                                         t(
@@ -1836,7 +1963,7 @@ const ServiceManagementIndex = ({
                                             platform_type:
                                                 selectedAccountForTopUp.platform,
                                             service_user_id:
-                                                selectedAccountForTopUp.service_user_id,
+                                                isStaff ? selectedServiceId : selectedAccountForTopUp.service_user_id,
                                             account_id:
                                                 selectedAccountForTopUp.account_id ||
                                                 selectedAccountForTopUp.id,

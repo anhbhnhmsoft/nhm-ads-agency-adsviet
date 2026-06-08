@@ -1789,7 +1789,7 @@ class BusinessManagerService
                         'name' => $account->account_name,
                         'platform' => $platform,
                         'customer_name' => null,
-                        'owner_name' => 'System (Chưa gán)',
+                        'owner_name' => $platformSetting->name ?: 'System (Chưa gán)',
                         'owner_id' => null,
                         'total_accounts' => 1,
                         'active_accounts' => $isActive ? 1 : 0,

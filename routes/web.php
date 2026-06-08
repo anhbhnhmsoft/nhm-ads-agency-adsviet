@@ -217,6 +217,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
 
     Route::prefix('/service-management')->group(function () {
         Route::get('/', [ServiceManagementController::class, 'index'])->name('service_management_index');
+        Route::get('/active-services', [ServiceManagementController::class, 'getActiveServices'])->name('service_management_active_services');
         Route::post('/sync-meta-insights', [ServiceManagementController::class, 'syncMetaInsights'])->name('service_management_sync_meta_insights');
         Route::post('/sync-google-insights', [ServiceManagementController::class, 'syncGoogleInsights'])->name('service_management_sync_google_insights');
     });
