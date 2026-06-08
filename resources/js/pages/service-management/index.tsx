@@ -119,9 +119,12 @@ const ServiceManagementIndex = ({
 }: Props) => {
     const { t, i18n } = useTranslation();
     const { auth } = usePage().props as any;
+    const currentUserRole = Number(
+        auth?.role ?? auth?.user?.role ?? auth?.role_id ?? auth?.user?.role_id,
+    );
     const isAgencyOrCustomer =
-        auth?.user?.role_id === _UserRole.AGENCY ||
-        auth?.user?.role_id === _UserRole.CUSTOMER;
+        currentUserRole === _UserRole.AGENCY ||
+        currentUserRole === _UserRole.CUSTOMER;
     const { query, setQuery, handleSearch, handleReset } =
         useSearchServiceManagement();
 
@@ -178,6 +181,7 @@ const ServiceManagementIndex = ({
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [walletBalanceLoading, setWalletBalanceLoading] = useState(false);
     const [syncMetaSubmitting, setSyncMetaSubmitting] = useState(false);
+    const [syncGoogleSubmitting, setSyncGoogleSubmitting] = useState(false);
     const [accountTopUpDialogOpen, setAccountTopUpDialogOpen] = useState(false);
     const [selectedAccountForTopUp, setSelectedAccountForTopUp] =
         useState<BusinessManagerItem | null>(null);
@@ -188,6 +192,10 @@ const ServiceManagementIndex = ({
 
     const selectedMetaBmId =
         query.platform === _PlatformType.META
+            ? query.child_manager_id || query.manager_id
+            : undefined;
+    const selectedGoogleMccId =
+        query.platform === _PlatformType.GOOGLE
             ? query.child_manager_id || query.manager_id
             : undefined;
 
@@ -222,15 +230,6 @@ const ServiceManagementIndex = ({
     );
 
     const handleSyncMetaInsights = useCallback(async () => {
-        if (!selectedMetaBmId) {
-            toast.error(
-                t('service_management.sync_meta_select_bm', {
-                    defaultValue: 'Vui lòng chọn BM/MCC con cần đồng bộ',
-                }),
-            );
-            return;
-        }
-
         setSyncMetaSubmitting(true);
         try {
             await axios.post('/service-management/sync-meta-insights', {
@@ -253,6 +252,29 @@ const ServiceManagementIndex = ({
         }
     }, [selectedMetaBmId, t]);
 
+    const handleSyncGoogleInsights = useCallback(async () => {
+        setSyncGoogleSubmitting(true);
+        try {
+            await axios.post('/service-management/sync-google-insights', {
+                mcc_id: selectedGoogleMccId,
+            });
+            toast.success(
+                t('service_management.sync_google_queued', {
+                    defaultValue: 'Đã đưa yêu cầu đồng bộ Google vào hàng đợi',
+                }),
+            );
+        } catch (e: any) {
+            toast.error(
+                e?.response?.data?.message ||
+                    t('service_management.sync_google_failed', {
+                        defaultValue: 'Không thể gửi yêu cầu đồng bộ Google',
+                    }),
+            );
+        } finally {
+            setSyncGoogleSubmitting(false);
+        }
+    }, [selectedGoogleMccId, t]);
+
     const loadCampaigns = useCallback(
         async (
             accountArg?: BusinessManagerItem,
@@ -262,7 +284,8 @@ const ServiceManagementIndex = ({
             if (!account) return;
 
             const canLoadPlatformCampaigns =
-                account?.platform === _PlatformType.META;
+                account?.platform === _PlatformType.META ||
+                account?.platform === _PlatformType.GOOGLE;
             if (!account?.service_user_id && !canLoadPlatformCampaigns) {
                 setCampaignError(
                     t('service_management.account_not_assigned', {
@@ -282,9 +305,10 @@ const ServiceManagementIndex = ({
 
             try {
                 const apiPath =
-                    !account.service_user_id &&
-                    account.platform === _PlatformType.META
-                        ? `/meta/platform-accounts/${account.id}/campaigns`
+                    !account.service_user_id
+                        ? account.platform === _PlatformType.GOOGLE
+                            ? `/google-ads/platform-accounts/${account.id}/campaigns`
+                            : `/meta/platform-accounts/${account.id}/campaigns`
                         : account.platform === _PlatformType.GOOGLE
                           ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
                           : `/meta/${account.service_user_id}/${account.id}/campaigns`;
@@ -708,7 +732,8 @@ const ServiceManagementIndex = ({
                     const account = row.original;
                     const canViewCampaigns =
                         !!account.service_user_id ||
-                        account.platform === _PlatformType.META;
+                        account.platform === _PlatformType.META ||
+                        account.platform === _PlatformType.GOOGLE;
                     return (
                         <div className="flex items-center gap-2">
                             {isAgencyOrCustomer && (
@@ -1549,7 +1574,8 @@ const ServiceManagementIndex = ({
                             handleReset={handleReset}
                         />
                         {(lastSyncedAt ||
-                            query.platform === _PlatformType.META) && (
+                            query.platform === _PlatformType.META ||
+                            query.platform === _PlatformType.GOOGLE) && (
                             <div className="-mt-4 flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-end">
                                 <span>
                                     {t('service_management.last_synced_at', {
@@ -1562,10 +1588,7 @@ const ServiceManagementIndex = ({
                                         type="button"
                                         variant="outline"
                                         onClick={handleSyncMetaInsights}
-                                        disabled={
-                                            syncMetaSubmitting ||
-                                            !selectedMetaBmId
-                                        }
+                                        disabled={syncMetaSubmitting}
                                     >
                                         {syncMetaSubmitting ? (
                                             <Loader2 className="animate-spin" />
@@ -1575,6 +1598,24 @@ const ServiceManagementIndex = ({
                                         {t('service_management.sync_meta', {
                                             defaultValue:
                                                 'Cập nhật dữ liệu Meta',
+                                        })}
+                                    </Button>
+                                )}
+                                {query.platform === _PlatformType.GOOGLE && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleSyncGoogleInsights}
+                                        disabled={syncGoogleSubmitting}
+                                    >
+                                        {syncGoogleSubmitting ? (
+                                            <Loader2 className="animate-spin" />
+                                        ) : (
+                                            <RefreshCw />
+                                        )}
+                                        {t('service_management.sync_google', {
+                                            defaultValue:
+                                                'Cập nhật dữ liệu Google',
                                         })}
                                     </Button>
                                 )}

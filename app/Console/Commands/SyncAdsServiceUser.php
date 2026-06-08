@@ -16,7 +16,7 @@ class SyncAdsServiceUser extends Command
 {
     protected $signature = 'app:sync-ads-service-user';
 
-    protected $description = '(1h/lần) Đẩy Job vào queue để đồng bộ các ads account từ Meta hoặc Google Ads của Agency';
+    protected $description = '(30 phút/lần) Đẩy Job vào queue để đồng bộ các ads account từ Meta hoặc Google Ads của Agency';
 
     public function __construct(
         protected ServiceUserRepository $serviceUserRepository,

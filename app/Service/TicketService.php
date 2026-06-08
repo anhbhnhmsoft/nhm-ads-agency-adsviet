@@ -455,9 +455,19 @@ class TicketService
      */
     public function findAccountById(string $accountId): array
     {
+        $canMatchInternalId = ctype_digit($accountId);
+
         // Tìm trong Meta accounts qua Repository
         $metaAccount = $this->metaAccountRepository->query()
-            ->where('account_id', $accountId)
+            ->where(function ($query) use ($accountId, $canMatchInternalId) {
+                if ($canMatchInternalId) {
+                    $query->where('id', $accountId)
+                        ->orWhere('account_id', $accountId);
+                    return;
+                }
+
+                $query->where('account_id', $accountId);
+            })
             ->select('account_id', 'account_name')
             ->first();
         
@@ -470,7 +480,15 @@ class TicketService
         
         // Tìm trong Google accounts qua Repository
         $googleAccount = $this->googleAccountRepository->query()
-            ->where('account_id', $accountId)
+            ->where(function ($query) use ($accountId, $canMatchInternalId) {
+                if ($canMatchInternalId) {
+                    $query->where('id', $accountId)
+                        ->orWhere('account_id', $accountId);
+                    return;
+                }
+
+                $query->where('account_id', $accountId);
+            })
             ->select('account_id', 'account_name')
             ->first();
         

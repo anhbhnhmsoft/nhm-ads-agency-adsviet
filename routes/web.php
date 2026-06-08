@@ -217,6 +217,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::prefix('/service-management')->group(function () {
         Route::get('/', [ServiceManagementController::class, 'index'])->name('service_management_index');
         Route::post('/sync-meta-insights', [ServiceManagementController::class, 'syncMetaInsights'])->name('service_management_sync_meta_insights');
+        Route::post('/sync-google-insights', [ServiceManagementController::class, 'syncGoogleInsights'])->name('service_management_sync_google_insights');
     });
 
     Route::prefix('/spend-report')->group(function () {
@@ -271,6 +272,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
 
     Route::prefix('/google-ads')->group(function () {
         Route::get('/{serviceUserId}/accounts', [GoogleAdsController::class, 'getAdsAccount'])->name('google_ads_get_accounts');
+        Route::get('/platform-accounts/{accountId}/campaigns', [GoogleAdsController::class, 'getPlatformAccountCampaigns'])->name('google_ads_platform_account_campaigns');
         Route::get('/{serviceUserId}/{accountId}/campaigns', [GoogleAdsController::class, 'getCampaigns'])->name('google_ads_get_campaigns');
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [GoogleAdsController::class, 'detailCampaign'])->name('google_ads_detail_campaign');
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [GoogleAdsController::class, 'getCampaignInsights'])->name('google_ads_detail_campaign_insight');

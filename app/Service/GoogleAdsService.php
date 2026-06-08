@@ -876,7 +876,7 @@ GAQL;
                 ->where('service_user_id', $serviceUser->id)
                 ->chunkById(10, function (Collection $accounts) use ($googleAdsService, $serviceUser) {
                     foreach ($accounts as $account) {
-                        $this->syncCampaignsForAccount($googleAdsService, $serviceUser, $account->id, $account->account_id);
+                        $this->syncCampaignsForAccount($googleAdsService, (string) $serviceUser->id, $account->id, $account->account_id);
                     }
                 });
 
@@ -916,7 +916,7 @@ GAQL;
                 ->where('service_user_id', $serviceUser->id)
                 ->chunkById(10, function (Collection $accounts) use ($googleAdsService, $serviceUser) {
                     foreach ($accounts as $account) {
-                        $this->syncInsightsForAccount($googleAdsService, $serviceUser, $account->id, $account->account_id);
+                        $this->syncInsightsForAccount($googleAdsService, (string) $serviceUser->id, $account->id, $account->account_id);
                     }
                 });
 
@@ -947,7 +947,7 @@ GAQL;
 
     protected function syncCampaignsForAccount(
         GoogleAdsServiceClient $googleAdsService,
-        ServiceUser $serviceUser,
+        ?string $serviceUserId,
         string $googleAccountDbId,
         string $googleAccountId
     ): void {
@@ -974,7 +974,7 @@ GAQL;
             $stream = $googleAdsService->searchStream($request);
             foreach ($stream->readAll() as $response) {
                 foreach ($response->getResults() as $row) {
-                    $this->persistCampaignRow($serviceUser, $googleAccountDbId, $googleAccountId, $row);
+                    $this->persistCampaignRow($serviceUserId, $googleAccountDbId, $googleAccountId, $row);
                     $campaignCount++;
                 }
             }
@@ -982,7 +982,7 @@ GAQL;
             Log::info(
                 'GoogleAdsService@syncCampaignsForAccount: Successfully synced campaigns',
                 [
-                    'service_user_id' => $serviceUser->id,
+                    'service_user_id' => $serviceUserId,
                     'google_account_id' => $googleAccountId,
                     'campaign_count' => $campaignCount,
                 ]
@@ -991,7 +991,7 @@ GAQL;
             Logging::error(
                 message: 'GoogleAdsService@syncCampaignsForAccount failed',
                 context: [
-                    'service_user_id' => $serviceUser->id,
+                    'service_user_id' => $serviceUserId,
                     'google_account_id' => $googleAccountId,
                     'error' => $exception->getMessage(),
                     'query' => $query,
@@ -1002,7 +1002,7 @@ GAQL;
     }
 
     protected function persistCampaignRow(
-        ServiceUser $serviceUser,
+        ?string $serviceUserId,
         string $googleAccountDbId,
         string $googleAccountId,
         GoogleAdsRow $row
@@ -1012,7 +1012,7 @@ GAQL;
             Logging::error(
                 message: 'GoogleAdsService@persistCampaignRow: Campaign is null',
                 context: [
-                    'service_user_id' => $serviceUser->id,
+                    'service_user_id' => $serviceUserId,
                     'google_account_id' => $googleAccountId,
                 ]
             );
@@ -1024,7 +1024,7 @@ GAQL;
             Logging::error(
                 message: 'GoogleAdsService@persistCampaignRow: Campaign ID is null',
                 context: [
-                    'service_user_id' => $serviceUser->id,
+                    'service_user_id' => $serviceUserId,
                     'google_account_id' => $googleAccountId,
                 ]
             );
@@ -1096,11 +1096,11 @@ GAQL;
         try {
             $this->googleAdsCampaignRepository->query()->updateOrCreate(
                 [
-                    'service_user_id' => $serviceUser->id,
                     'google_account_id' => $googleAccountDbId,
                     'campaign_id' => $campaignId,
                 ],
                 [
+                    'service_user_id' => $serviceUserId,
                     'name' => $campaign->getName() ?? '',
                     'status' => $normalizedCampaignStatus,
                     'effective_status' => $normalizedCampaignStatus,
@@ -1116,7 +1116,7 @@ GAQL;
             Logging::error(
                 message: 'GoogleAdsService@persistCampaignRow failed',
                 context: [
-                    'service_user_id' => $serviceUser->id,
+                    'service_user_id' => $serviceUserId,
                     'google_account_id' => $googleAccountId,
                     'campaign_id' => $campaignId,
                     'campaign_name' => $campaign->getName(),
@@ -1138,7 +1138,7 @@ GAQL;
 
     protected function syncInsightsForAccount(
         GoogleAdsServiceClient $googleAdsService,
-        ServiceUser $serviceUser,
+        ?string $serviceUserId,
         string $googleAccountDbId,
         string $googleAccountId
     ): void {
@@ -1165,14 +1165,14 @@ GAQL;
             $stream = $googleAdsService->searchStream($request);
             foreach ($stream->readAll() as $response) {
                 foreach ($response->getResults() as $row) {
-                    $this->persistInsightRow($serviceUser, $googleAccountDbId, $googleAccountId, $row);
+                    $this->persistInsightRow($serviceUserId, $googleAccountDbId, $googleAccountId, $row);
                 }
             }
         } catch (GoogleAdsException | ApiException $exception) {
             Logging::error(
                 message: 'GoogleAdsService@syncInsightsForAccount failed',
                 context: [
-                    'service_user_id' => $serviceUser->id,
+                    'service_user_id' => $serviceUserId,
                     'google_account_id' => $googleAccountId,
                     'error' => $exception->getMessage(),
                 ]
@@ -1181,7 +1181,7 @@ GAQL;
     }
 
     protected function persistInsightRow(
-        ServiceUser $serviceUser,
+        ?string $serviceUserId,
         string $googleAccountDbId,
         string $googleAccountId,
         GoogleAdsRow $row
@@ -1201,6 +1201,7 @@ GAQL;
         $roas = $spend > 0 ? $conversionsValue / max($spend, 0.000001) : 0.0;
 
         $payload = [
+            'service_user_id' => $serviceUserId,
             'spend' => $spend,
             'impressions' => $impressions,
             'clicks' => $clicks,
@@ -1217,7 +1218,6 @@ GAQL;
 
         $this->googleAdsAccountInsightRepository->query()->updateOrCreate(
             [
-                'service_user_id' => $serviceUser->id,
                 'google_account_id' => $googleAccountDbId,
                 'date' => $date,
             ],
@@ -1737,11 +1737,25 @@ GAQL;
                                 $updateData['service_user_id'] = null;
                             }
 
-                            $this->googleAccountRepository->query()->updateOrCreate(
+                            $syncedAccount = $this->googleAccountRepository->query()->updateOrCreate(
                                 [
                                     'account_id' => (string) $accountId,
                                 ],
                                 $updateData
+                            );
+
+                            $this->syncInsightsForAccount(
+                                $googleAdsService,
+                                $syncedAccount->service_user_id ? (string) $syncedAccount->service_user_id : null,
+                                (string) $syncedAccount->id,
+                                (string) $accountId
+                            );
+
+                            $this->syncCampaignsForAccount(
+                                $googleAdsService,
+                                $syncedAccount->service_user_id ? (string) $syncedAccount->service_user_id : null,
+                                (string) $syncedAccount->id,
+                                (string) $accountId
                             );
 
                             $syncedCount++;
@@ -2290,6 +2304,69 @@ GAQL;
                 exception: $e
             );
             // trả về paginator rỗng khi có lỗi
+            return ServiceReturn::success(
+                data: new LengthAwarePaginator(
+                    items: [],
+                    total: 0,
+                    perPage: $queryListDTO->perPage,
+                    currentPage: $queryListDTO->page
+                )
+            );
+        }
+    }
+
+    public function getCampaignsPaginatedByAccountId(string $accountId, QueryListDTO $queryListDTO): ServiceReturn
+    {
+        try {
+            $adsAccount = $this->googleAccountRepository->query()
+                ->where('id', $accountId)
+                ->first();
+
+            if (!$adsAccount) {
+                return ServiceReturn::error(__('google_ads.error.account_not_found'));
+            }
+
+            $googleAccountIds = [$adsAccount->id];
+
+            $totalResult = $this->getAccountsInsightsSummaryFromDatabase($googleAccountIds, 'maximum');
+            $totalSpend = $totalResult->isSuccess() ? (float) ($totalResult->getData()['spend'] ?? 0) : 0.0;
+
+            $todayResult = $this->getAccountsInsightsSummaryFromDatabase($googleAccountIds, 'today');
+            $todaySpend = $todayResult->isSuccess() ? (float) ($todayResult->getData()['spend'] ?? 0) : 0.0;
+
+            $query = $this->googleAdsCampaignRepository->query()
+                ->where('google_account_id', $adsAccount->id);
+
+            $query = $this->googleAdsCampaignRepository->sortQuery(
+                $query,
+                $queryListDTO->sortBy,
+                $queryListDTO->sortDirection
+            );
+
+            $paginator = $query->paginate(
+                $queryListDTO->perPage,
+                ['*'],
+                'page',
+                $queryListDTO->page
+            );
+
+            $paginator->getCollection()->each(function ($item) use ($totalSpend, $todaySpend) {
+                $item->total_spend = $totalSpend;
+                $item->today_spend = $todaySpend;
+            });
+
+            Logging::web('GoogleAdsService@getCampaignsPaginatedByAccountId status snapshot', [
+                'google_account_id' => (string) $accountId,
+                'total' => $paginator->total(),
+            ]);
+
+            return ServiceReturn::success(data: $paginator);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'GoogleAdsService@getCampaignsPaginatedByAccountId error: ' . $exception->getMessage(),
+                exception: $exception
+            );
+
             return ServiceReturn::success(
                 data: new LengthAwarePaginator(
                     items: [],

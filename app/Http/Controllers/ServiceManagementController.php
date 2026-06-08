@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Common\Constants\Platform\PlatformType;
 use App\Core\Controller;
 use App\Core\QueryListDTO;
+use App\Jobs\GoogleAds\SyncGooglePlatformJob;
 use App\Jobs\MetaApi\SyncMetaPlatformJob;
 use App\Service\BusinessManagerService;
+use App\Service\PlatformSettingService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -13,6 +16,7 @@ class ServiceManagementController extends Controller
 {
     public function __construct(
         protected BusinessManagerService $businessManagerService,
+        protected PlatformSettingService $platformSettingService,
     ) {
     }
 
@@ -127,13 +131,55 @@ class ServiceManagementController extends Controller
     public function syncMetaInsights(Request $request): \Illuminate\Http\JsonResponse
     {
         $bmId = trim((string) $request->input('bm_id', ''));
+        $settingId = session('active_meta_setting_id');
+
         if ($bmId === '') {
+            $settingResult = $this->platformSettingService->findPlatformActive(
+                PlatformType::META->value,
+                $settingId ? (string) $settingId : null
+            );
+            $setting = $settingResult->isSuccess() ? $settingResult->getData() : null;
+            $settingId = $setting?->id ? (string) $setting->id : $settingId;
+            $config = $setting?->config ?? [];
+            $bmId = $this->platformSettingService->getMetaScopedBusinessManagerId($config) ?? '';
+        }
+
+        if ($bmId === '' && !$settingId) {
             return response()->json([
-                'message' => 'Vui lòng chọn BM/MCC con cần đồng bộ',
+                'message' => 'Vui lòng chọn hoặc cấu hình Meta BM cần đồng bộ',
             ], 422);
         }
 
-        SyncMetaPlatformJob::dispatch($bmId, session('active_meta_setting_id'));
+        SyncMetaPlatformJob::dispatch($bmId !== '' ? $bmId : null, $settingId ? (string) $settingId : null);
+
+        return response()->json([
+            'message' => __('common.processing'),
+        ]);
+    }
+
+    public function syncGoogleInsights(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $mccId = preg_replace('/[^0-9]/', '', (string) $request->input('mcc_id', ''));
+        $settingId = session('active_google_setting_id');
+
+        if ($mccId === '') {
+            $settingResult = $this->platformSettingService->findPlatformActive(
+                PlatformType::GOOGLE->value,
+                $settingId ? (string) $settingId : null
+            );
+            $setting = $settingResult->isSuccess() ? $settingResult->getData() : null;
+            $settingId = $setting?->id ? (string) $setting->id : $settingId;
+            $config = $setting?->config ?? [];
+            $mccId = preg_replace('/[^0-9]/', '', (string) ($config['login_customer_id'] ?? ''));
+        }
+
+        if ($mccId === '') {
+            return response()->json([
+                'message' => 'Vui lòng chọn hoặc cấu hình Google MCC cần đồng bộ',
+            ], 422);
+        }
+
+        SyncGooglePlatformJob::dispatch($mccId, $settingId ? (string) $settingId : null);
 
         return response()->json([
             'message' => __('common.processing'),

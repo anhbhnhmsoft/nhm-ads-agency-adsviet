@@ -74,6 +74,29 @@ class GoogleAdsController extends Controller
         return RestResponse::success(data: GoogleAdsCampaignResource::collection($pagination)->response()->getData());
     }
 
+    public function getPlatformAccountCampaigns(string $accountId, Request $request): JsonResponse
+    {
+        $params = $this->extractQueryPagination($request);
+        $result = $this->googleAdsService->getCampaignsPaginatedByAccountId(
+            accountId: $accountId,
+            queryListDTO: new QueryListDTO(
+                perPage: $params->get('per_page'),
+                page: $params->get('page'),
+                filter: $params->get('filter'),
+                sortBy: $params->get('sort_by'),
+                sortDirection: $params->get('direction'),
+            ));
+
+        if ($result->isError()) {
+            return RestResponse::error(
+                message: $result->getMessage(),
+            );
+        }
+
+        $pagination = $result->getData();
+        return RestResponse::success(data: GoogleAdsCampaignResource::collection($pagination)->response()->getData());
+    }
+
     /**
      * Lấy thông tin chi tiết chiến dịch quảng cáo theo service user id và campaign id
      * @param string $serviceUserId
@@ -154,4 +177,3 @@ class GoogleAdsController extends Controller
         return RestResponse::success(data: $result->getData());
     }
 }
-

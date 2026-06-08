@@ -30,3 +30,6 @@ package-lock.json
 composer.lock
 yarn.lock
 *.log
+.agents/
+.cursor/
+/bin/ngrok

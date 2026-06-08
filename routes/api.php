@@ -73,6 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('google-ads')->group(function () {
         Route::get('/{serviceUserId}/accounts', [GoogleAdsController::class, 'getAdsAccount']);
+        Route::get('/platform-accounts/{accountId}/campaigns', [GoogleAdsController::class, 'getPlatformAccountCampaigns']);
         Route::get('/{serviceUserId}/{accountId}/campaigns', [GoogleAdsController::class, 'getCampaigns']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [GoogleAdsController::class, 'detailCampaign']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [GoogleAdsController::class, 'getCampaignInsights']);

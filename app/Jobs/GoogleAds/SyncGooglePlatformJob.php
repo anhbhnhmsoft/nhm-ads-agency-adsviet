@@ -18,6 +18,9 @@ class SyncGooglePlatformJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $timeout = 1800;
+    public int $tries = 1;
+
     public function __construct(
         protected string $managerId,
         protected ?string $settingId = null,
@@ -33,6 +36,5 @@ class SyncGooglePlatformJob implements ShouldQueue
         $googleAdsService->syncFromManagerId($this->managerId, $this->settingId);
     }
 }
-
 
 

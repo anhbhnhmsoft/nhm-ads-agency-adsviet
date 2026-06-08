@@ -471,18 +471,18 @@ class BusinessManagerService
                         ->get();
 
                     foreach ($accounts as $account) {
-                        // Tính spend từ insights nếu có date range
+                        $insightQuery = $this->googleAdsAccountInsightRepository->query()
+                            ->where('google_account_id', $account->id);
+
                         if ($dateStart && $dateEnd) {
-                            $insight = $this->googleAdsAccountInsightRepository->query()
-                                ->where('google_account_id', $account->id)
-                                ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
-                                ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
-                                ->first();
-                            $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
-                        } else {
-                            // Google không có amount_spent trong account, để 0 hoặc tính từ insights tổng
-                            $spendValue = '0';
+                            $insightQuery->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')]);
                         }
+
+                        $insight = $insightQuery
+                            ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend, MAX(last_synced_at) as last_synced_at')
+                            ->first();
+                        $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
+                        $lastSyncedAt = $insight?->last_synced_at ?? $account->last_synced_at;
 
                         $balanceValue = (string) ($account->balance ?? '0');
                         $status = $account->account_status !== null ? (int) $account->account_status : null;
@@ -548,7 +548,7 @@ class BusinessManagerService
                             'timezone' => $this->formatTimezone($account->time_zone ?? null),
                             'payment_card' => $account->payment_card ?? null,
                             'currency' => $account->currency ?? 'USD',
-                            'last_synced_at' => $account->last_synced_at,
+                            'last_synced_at' => $lastSyncedAt,
                             'accounts' => [
                                 ['currency' => $account->currency ?? 'USD'],
                             ],
@@ -1745,21 +1745,34 @@ class BusinessManagerService
                     ->get();
 
                 foreach ($googleAccounts as $account) {
-                    // Tính spend từ insights nếu có date range
+                    $insightQuery = $this->googleAdsAccountInsightRepository->query()
+                        ->where('google_account_id', $account->id);
+
                     if ($dateStart && $dateEnd) {
-                        $insight = $this->googleAdsAccountInsightRepository->query()
-                            ->where('google_account_id', $account->id)
-                            ->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')])
-                            ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend')
-                            ->first();
-                        $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
-                    } else {
-                        $spendValue = '0';
+                        $insightQuery->whereBetween('date', [$dateStart->format('Y-m-d'), $dateEnd->format('Y-m-d')]);
                     }
+
+                    $insight = $insightQuery
+                        ->selectRaw('COALESCE(SUM(CAST(spend AS DECIMAL(15,2))), 0) as total_spend, MAX(last_synced_at) as last_synced_at')
+                        ->first();
+                    $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
+                    $lastSyncedAt = $insight?->last_synced_at ?? $account->last_synced_at;
 
                     $balanceValue = (string) ($account->balance ?? '0');
                     $status = $account->account_status !== null ? (int) $account->account_status : null;
                     $isActive = $this->isAccountActive((int) $platform, $status);
+
+                    $totalCampaigns = $this->googleAdsCampaignRepository->query()
+                        ->where('google_account_id', $account->id)
+                        ->count();
+                    $activeCampaigns = $this->googleAdsCampaignRepository->query()
+                        ->where('google_account_id', $account->id)
+                        ->where(function ($query) {
+                            $query->where('status', 'ENABLED')
+                                ->orWhere('effective_status', 'ENABLED');
+                        })
+                        ->count();
+                    $disabledCampaigns = $totalCampaigns - $activeCampaigns;
 
                     $accountMccId = (string) ($account->customer_manager_id ?: $mccId);
                     $mccDisplayName = $mccNameMap[$accountMccId] ?? null;
@@ -1781,6 +1794,9 @@ class BusinessManagerService
                         'total_accounts' => 1,
                         'active_accounts' => $isActive ? 1 : 0,
                         'disabled_accounts' => $isActive ? 0 : 1,
+                        'total_campaigns' => $totalCampaigns,
+                        'active_campaigns' => $activeCampaigns,
+                        'disabled_campaigns' => $disabledCampaigns,
                         'total_spend' => $spendValue,
                         'total_reach' => 0,
                         'total_balance' => $balanceValue,
@@ -1795,6 +1811,7 @@ class BusinessManagerService
                         'timezone' => $this->formatTimezone($account->time_zone ?? null),
                         'payment_card' => null,
                         'currency' => $account->currency ?? 'USD',
+                        'last_synced_at' => $lastSyncedAt,
                         'accounts' => [
                             ['currency' => $account->currency ?? 'USD'],
                         ],
