@@ -1794,7 +1794,7 @@ const ServiceManagementIndex = ({
                                         value={selectedServiceId || ''}
                                         onValueChange={handleServiceChange}
                                     >
-                                        <SelectTrigger className="w-full [&>span]:truncate [&>span]:block">
+                                        <SelectTrigger className="w-full h-auto py-2 [&>span]:line-clamp-none [&>span]:block [&_span.text-muted-foreground]:truncate [&_span.text-muted-foreground]:block [&_span.text-muted-foreground]:max-w-[380px]">
                                             <SelectValue
                                                 placeholder={t(
                                                     'service_management.select_service_placeholder',
@@ -1817,9 +1817,14 @@ const ServiceManagementIndex = ({
                                                         key={service.id}
                                                         value={String(service.id)}
                                                     >
-                                                        <span className="truncate block max-w-[420px]" title={service.display_label}>
-                                                            {service.display_label}
-                                                        </span>
+                                                        <div className="flex flex-col items-start py-1 text-left w-full">
+                                                            <span className="font-medium text-sm text-foreground">
+                                                                {service.customer_name} (ID: {service.id})
+                                                            </span>
+                                                            <span className="text-xs text-muted-foreground whitespace-normal break-words max-w-[420px] mt-1 leading-relaxed">
+                                                                {service.package_name}
+                                                            </span>
+                                                        </div>
                                                     </SelectItem>
                                                 ))
                                             )}
