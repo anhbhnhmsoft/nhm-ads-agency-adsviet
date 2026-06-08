@@ -205,32 +205,45 @@ const ServiceManagementIndex = ({
 
     const lastSyncedAt = totals.last_synced_at ?? null;
 
-    const fetchWalletBalance = useCallback(async () => {
-        if (!isAgencyOrCustomer || walletBalanceLoading) {
-            return;
-        }
+    const fetchWalletBalance = useCallback(
+        async (ownerId?: string | null) => {
+            if (walletBalanceLoading) {
+                return;
+            }
 
-        setWalletBalanceLoading(true);
-        try {
-            const response = await axios.get('/wallets/me');
-            setWalletBalance(response.data?.data?.balance ?? 0);
-        } catch (e) {
-            console.error('Failed to fetch wallet balance', e);
-            setWalletBalance(null);
-        } finally {
-            setWalletBalanceLoading(false);
-        }
-    }, [isAgencyOrCustomer, walletBalanceLoading]);
+            setWalletBalanceLoading(true);
+            try {
+                if (isStaff && ownerId) {
+                    const response = await axios.get(
+                        `/wallets/customer-balance/${ownerId}`,
+                    );
+                    setWalletBalance(response.data?.data?.balance ?? 0);
+                } else if (isAgencyOrCustomer) {
+                    const response = await axios.get('/wallets/me');
+                    setWalletBalance(response.data?.data?.balance ?? 0);
+                }
+            } catch (e) {
+                console.error('Failed to fetch wallet balance', e);
+                setWalletBalance(null);
+            } finally {
+                setWalletBalanceLoading(false);
+            }
+        },
+        [isAgencyOrCustomer, isStaff, walletBalanceLoading],
+    );
 
     const openAccountTopUpDialog = useCallback(
         async (account: BusinessManagerItem) => {
             setSelectedAccountForTopUp(account);
             setAccountTopUpDialogOpen(true);
-            if (isAgencyOrCustomer && walletBalance === null) {
+            setWalletBalance(null);
+            if (isAgencyOrCustomer) {
                 await fetchWalletBalance();
+            } else if (isStaff && account.owner_id) {
+                await fetchWalletBalance(account.owner_id);
             }
         },
-        [fetchWalletBalance, isAgencyOrCustomer, walletBalance],
+        [fetchWalletBalance, isAgencyOrCustomer, isStaff],
     );
 
     const handleSyncMetaInsights = useCallback(async () => {
@@ -247,9 +260,9 @@ const ServiceManagementIndex = ({
         } catch (e: any) {
             toast.error(
                 e?.response?.data?.message ||
-                    t('service_management.sync_meta_failed', {
-                        defaultValue: 'Không thể gửi yêu cầu đồng bộ Meta',
-                    }),
+                t('service_management.sync_meta_failed', {
+                    defaultValue: 'Không thể gửi yêu cầu đồng bộ Meta',
+                }),
             );
         } finally {
             setSyncMetaSubmitting(false);
@@ -270,9 +283,9 @@ const ServiceManagementIndex = ({
         } catch (e: any) {
             toast.error(
                 e?.response?.data?.message ||
-                    t('service_management.sync_google_failed', {
-                        defaultValue: 'Không thể gửi yêu cầu đồng bộ Google',
-                    }),
+                t('service_management.sync_google_failed', {
+                    defaultValue: 'Không thể gửi yêu cầu đồng bộ Google',
+                }),
             );
         } finally {
             setSyncGoogleSubmitting(false);
@@ -313,8 +326,8 @@ const ServiceManagementIndex = ({
                         ? `/google-ads/platform-accounts/${account.id}/campaigns`
                         : `/meta/platform-accounts/${account.id}/campaigns`
                     : account.platform === _PlatformType.GOOGLE
-                      ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
-                      : `/meta/${account.service_user_id}/${account.id}/campaigns`;
+                        ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
+                        : `/meta/${account.service_user_id}/${account.id}/campaigns`;
 
                 const dateRange =
                     dateRangeArg === undefined
@@ -336,15 +349,15 @@ const ServiceManagementIndex = ({
                 const items: any[] = Array.isArray(payload?.data)
                     ? payload.data
                     : Array.isArray(payload)
-                      ? payload
-                      : [];
+                        ? payload
+                        : [];
                 setCampaigns(items as Campaign[]);
             } catch (e: any) {
                 setCampaignError(
                     e?.response?.data?.message ||
-                        t('service_management.campaigns_error', {
-                            defaultValue: 'Không thể tải chiến dịch',
-                        }),
+                    t('service_management.campaigns_error', {
+                        defaultValue: 'Không thể tải chiến dịch',
+                    }),
                 );
             } finally {
                 setCampaignLoading(false);
@@ -372,7 +385,7 @@ const ServiceManagementIndex = ({
             } catch (e: any) {
                 setCampaignInsightsError(
                     e?.response?.data?.message ||
-                        t('service_management.campaign_insight_error'),
+                    t('service_management.campaign_insight_error'),
                 );
             } finally {
                 setCampaignInsightsLoading(false);
@@ -405,7 +418,7 @@ const ServiceManagementIndex = ({
             } catch (e: any) {
                 setCampaignDetailError(
                     e?.response?.data?.message ||
-                        t('service_management.campaign_detail_error'),
+                    t('service_management.campaign_detail_error'),
                 );
             } finally {
                 setCampaignDetailLoading(false);
@@ -738,7 +751,7 @@ const ServiceManagementIndex = ({
                         account.platform === _PlatformType.META ||
                         account.platform === _PlatformType.GOOGLE;
                     return (
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center gap-2">
                             {(isAgencyOrCustomer || isStaff) && !!account.service_user_id && (
                                 <Button
                                     size="sm"
@@ -765,19 +778,19 @@ const ServiceManagementIndex = ({
                                 title={
                                     !canViewCampaigns
                                         ? t(
-                                              'service_management.account_not_assigned',
-                                              {
-                                                  defaultValue:
-                                                      'Tài khoản này chưa được gán với user nào',
-                                              },
-                                          )
+                                            'service_management.account_not_assigned',
+                                            {
+                                                defaultValue:
+                                                    'Tài khoản này chưa được gán với user nào',
+                                            },
+                                        )
                                         : t(
-                                              'service_management.view_campaigns_tooltip',
-                                              {
-                                                  defaultValue:
-                                                      'Xem danh sách chiến dịch đã được sync từ API',
-                                              },
-                                          )
+                                            'service_management.view_campaigns_tooltip',
+                                            {
+                                                defaultValue:
+                                                    'Xem danh sách chiến dịch đã được sync từ API',
+                                            },
+                                        )
                                 }
                             >
                                 {t('service_management.view_campaigns', {
@@ -850,11 +863,11 @@ const ServiceManagementIndex = ({
                 header:
                     campaignDateRange?.from && campaignDateRange?.to
                         ? t('service_management.period_spend', {
-                              defaultValue: 'Chi tiêu theo khoảng ngày',
-                          })
+                            defaultValue: 'Chi tiêu theo khoảng ngày',
+                        })
                         : t('service_management.total_spend', {
-                              defaultValue: 'Tổng chi tiêu',
-                          }),
+                            defaultValue: 'Tổng chi tiêu',
+                        }),
                 cell: ({ row }) => formatCurrency(row.original.total_spend),
             },
             {
@@ -920,8 +933,8 @@ const ServiceManagementIndex = ({
             spendChangeNumber === null
                 ? 'text-muted-foreground'
                 : spendChangeNumber >= 0
-                  ? 'text-green-600'
-                  : 'text-red-600';
+                    ? 'text-green-600'
+                    : 'text-red-600';
 
         return (
             <Card className="mt-4">
@@ -934,9 +947,9 @@ const ServiceManagementIndex = ({
                             {spendChangeNumber === null
                                 ? t('service_management.spend_chart_no_change')
                                 : t(
-                                      'service_management.spend_chart_description',
-                                      { percent: spendChangeText },
-                                  )}
+                                    'service_management.spend_chart_description',
+                                    { percent: spendChangeText },
+                                )}
                         </CardDescription>
                     </div>
                     <Select
@@ -1328,14 +1341,14 @@ const ServiceManagementIndex = ({
                                                         percentNumber === null
                                                             ? null
                                                             : percentNumber >= 0
-                                                              ? TrendingUp
-                                                              : TrendingDown;
+                                                                ? TrendingUp
+                                                                : TrendingDown;
                                                     const percentColor =
                                                         percentNumber === null
                                                             ? 'text-muted-foreground'
                                                             : percentNumber >= 0
-                                                              ? 'text-green-500'
-                                                              : 'text-red-500';
+                                                                ? 'text-green-500'
+                                                                : 'text-red-500';
 
                                                     return (
                                                         <Card key={key}>
@@ -1407,8 +1420,8 @@ const ServiceManagementIndex = ({
                                                 const normalizedStatus =
                                                     rawStatus
                                                         ? String(
-                                                              rawStatus,
-                                                          ).toUpperCase()
+                                                            rawStatus,
+                                                        ).toUpperCase()
                                                         : '';
                                                 const isDeleted = [
                                                     'DELETED',
@@ -1479,7 +1492,7 @@ const ServiceManagementIndex = ({
                                                                 if (
                                                                     isAgencyOrCustomer &&
                                                                     walletBalance ===
-                                                                        null
+                                                                    null
                                                                 ) {
                                                                     await fetchWalletBalance();
                                                                 }
@@ -1580,51 +1593,51 @@ const ServiceManagementIndex = ({
                         {(lastSyncedAt ||
                             query.platform === _PlatformType.META ||
                             query.platform === _PlatformType.GOOGLE) && (
-                            <div className="-mt-4 flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-end">
-                                <span>
-                                    {t('service_management.last_synced_at', {
-                                        defaultValue: 'Cập nhật lần cuối',
-                                    })}
-                                    : {formatDateTimeFull(lastSyncedAt)}
-                                </span>
-                                {query.platform === _PlatformType.META && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleSyncMetaInsights}
-                                        disabled={syncMetaSubmitting}
-                                    >
-                                        {syncMetaSubmitting ? (
-                                            <Loader2 className="animate-spin" />
-                                        ) : (
-                                            <RefreshCw />
-                                        )}
-                                        {t('service_management.sync_meta', {
-                                            defaultValue:
-                                                'Cập nhật dữ liệu Meta',
+                                <div className="-mt-4 flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-end">
+                                    <span>
+                                        {t('service_management.last_synced_at', {
+                                            defaultValue: 'Cập nhật lần cuối',
                                         })}
-                                    </Button>
-                                )}
-                                {query.platform === _PlatformType.GOOGLE && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleSyncGoogleInsights}
-                                        disabled={syncGoogleSubmitting}
-                                    >
-                                        {syncGoogleSubmitting ? (
-                                            <Loader2 className="animate-spin" />
-                                        ) : (
-                                            <RefreshCw />
-                                        )}
-                                        {t('service_management.sync_google', {
-                                            defaultValue:
-                                                'Cập nhật dữ liệu Google',
-                                        })}
-                                    </Button>
-                                )}
-                            </div>
-                        )}
+                                        : {formatDateTimeFull(lastSyncedAt)}
+                                    </span>
+                                    {query.platform === _PlatformType.META && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={handleSyncMetaInsights}
+                                            disabled={syncMetaSubmitting}
+                                        >
+                                            {syncMetaSubmitting ? (
+                                                <Loader2 className="animate-spin" />
+                                            ) : (
+                                                <RefreshCw />
+                                            )}
+                                            {t('service_management.sync_meta', {
+                                                defaultValue:
+                                                    'Cập nhật dữ liệu Meta',
+                                            })}
+                                        </Button>
+                                    )}
+                                    {query.platform === _PlatformType.GOOGLE && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={handleSyncGoogleInsights}
+                                            disabled={syncGoogleSubmitting}
+                                        >
+                                            {syncGoogleSubmitting ? (
+                                                <Loader2 className="animate-spin" />
+                                            ) : (
+                                                <RefreshCw />
+                                            )}
+                                            {t('service_management.sync_google', {
+                                                defaultValue:
+                                                    'Cập nhật dữ liệu Google',
+                                            })}
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
 
                         <DataTable
                             columns={accountColumns}
@@ -1710,46 +1723,22 @@ const ServiceManagementIndex = ({
                                     selectedAccountForTopUp?.id ||
                                     '-'}
                             </div>
-                            {selectedAccountForTopUp?.customer_name && (
-                                <div className="text-muted-foreground mt-1 text-xs">
-                                    {t('service_management.customer_name', {
-                                        defaultValue: 'Khách hàng',
-                                    })}:{' '}
-                                    <span className="font-semibold text-foreground">
-                                        {selectedAccountForTopUp.customer_name}
-                                    </span>
-                                </div>
-                            )}
                         </div>
-                        {isStaff && (
-                            <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/30">
-                                <p className="font-semibold mb-1">
-                                    {t('service_management.staff_action_notice_title', {
-                                        defaultValue: 'Lưu ý quyền Admin/Nhân viên',
-                                    })}
-                                </p>
-                                <p className="text-muted-foreground">
-                                    {t('service_management.staff_action_notice_desc', {
-                                        defaultValue: 'Bạn đang thực hiện nạp tiền thay cho khách hàng. Hệ thống sẽ trừ tiền trực tiếp từ ví của khách hàng này mà không cần nhập mật khẩu ví.',
-                                    })}
-                                </p>
-                            </div>
-                        )}
                         {isAgencyOrCustomer && (
                             <div className="text-sm text-muted-foreground">
                                 {walletBalanceLoading
                                     ? t(
-                                          'service_management.campaign_update_budget_wallet_balance_loading',
-                                      )
+                                        'service_management.campaign_update_budget_wallet_balance_loading',
+                                    )
                                     : walletBalance !== null
-                                      ? t(
+                                        ? t(
                                             'service_management.campaign_update_budget_wallet_balance',
                                             {
                                                 balance:
                                                     walletBalance.toLocaleString(),
                                             },
                                         )
-                                      : t(
+                                        : t(
                                             'service_management.campaign_update_budget_wallet_balance_error',
                                         )}
                             </div>
@@ -1874,13 +1863,13 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                            t(
-                                                'service_management.account_top_up_error',
-                                                {
-                                                    defaultValue:
-                                                        'Không thể tạo yêu cầu nạp tiền tài khoản quảng cáo.',
-                                                },
-                                            ),
+                                        t(
+                                            'service_management.account_top_up_error',
+                                            {
+                                                defaultValue:
+                                                    'Không thể tạo yêu cầu nạp tiền tài khoản quảng cáo.',
+                                            },
+                                        ),
                                     );
                                 } finally {
                                     setAccountTopUpSubmitting(false);
@@ -1909,11 +1898,11 @@ const ServiceManagementIndex = ({
                         <DialogDescription>
                             {selectedAccount?.platform === _PlatformType.META
                                 ? t(
-                                      'service_management.campaign_update_budget_help_meta',
-                                  )
+                                    'service_management.campaign_update_budget_help_meta',
+                                )
                                 : t(
-                                      'service_management.campaign_update_budget_help_google',
-                                  )}
+                                    'service_management.campaign_update_budget_help_google',
+                                )}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -1921,17 +1910,17 @@ const ServiceManagementIndex = ({
                             <div className="text-sm text-muted-foreground">
                                 {walletBalanceLoading
                                     ? t(
-                                          'service_management.campaign_update_budget_wallet_balance_loading',
-                                      )
+                                        'service_management.campaign_update_budget_wallet_balance_loading',
+                                    )
                                     : walletBalance !== null
-                                      ? t(
+                                        ? t(
                                             'service_management.campaign_update_budget_wallet_balance',
                                             {
                                                 balance:
                                                     walletBalance.toLocaleString(),
                                             },
                                         )
-                                      : null}
+                                        : null}
                             </div>
                         )}
                         <div className="space-y-2">
@@ -1989,12 +1978,12 @@ const ServiceManagementIndex = ({
                                 try {
                                     const platformPrefix =
                                         selectedAccount?.platform ===
-                                        _PlatformType.GOOGLE
+                                            _PlatformType.GOOGLE
                                             ? 'google-ads'
                                             : 'meta';
                                     const fieldName =
                                         selectedAccount?.platform ===
-                                        _PlatformType.GOOGLE
+                                            _PlatformType.GOOGLE
                                             ? 'budget'
                                             : 'spend-cap';
                                     await axios.post(
@@ -2018,9 +2007,9 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                            t(
-                                                'service_management.campaign_update_budget_error',
-                                            ),
+                                        t(
+                                            'service_management.campaign_update_budget_error',
+                                        ),
                                     );
                                 } finally {
                                     setBudgetSubmitting(false);
@@ -2063,7 +2052,7 @@ const ServiceManagementIndex = ({
                                 try {
                                     const platformPrefix =
                                         selectedAccount?.platform ===
-                                        _PlatformType.GOOGLE
+                                            _PlatformType.GOOGLE
                                             ? 'google-ads'
                                             : 'meta';
                                     await axios.post(
@@ -2082,9 +2071,9 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                            t(
-                                                'service_management.campaign_pause_error',
-                                            ),
+                                        t(
+                                            'service_management.campaign_pause_error',
+                                        ),
                                     );
                                 } finally {
                                     setPauseSubmitting(false);
@@ -2126,12 +2115,12 @@ const ServiceManagementIndex = ({
                                 try {
                                     const platformPrefix =
                                         selectedAccount?.platform ===
-                                        _PlatformType.GOOGLE
+                                            _PlatformType.GOOGLE
                                             ? 'google-ads'
                                             : 'meta';
                                     const status =
                                         selectedAccount?.platform ===
-                                        _PlatformType.GOOGLE
+                                            _PlatformType.GOOGLE
                                             ? 'ENABLED'
                                             : 'ACTIVE';
                                     await axios.post(
@@ -2150,9 +2139,9 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                            t(
-                                                'service_management.campaign_resume_error',
-                                            ),
+                                        t(
+                                            'service_management.campaign_resume_error',
+                                        ),
                                     );
                                 } finally {
                                     setResumeSubmitting(false);
@@ -2195,12 +2184,12 @@ const ServiceManagementIndex = ({
                                 try {
                                     const platformPrefix =
                                         selectedAccount?.platform ===
-                                        _PlatformType.GOOGLE
+                                            _PlatformType.GOOGLE
                                             ? 'google-ads'
                                             : 'meta';
                                     const status =
                                         selectedAccount?.platform ===
-                                        _PlatformType.GOOGLE
+                                            _PlatformType.GOOGLE
                                             ? 'REMOVED'
                                             : 'DELETED';
                                     await axios.post(
@@ -2221,9 +2210,9 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                            t(
-                                                'service_management.campaign_end_error',
-                                            ),
+                                        t(
+                                            'service_management.campaign_end_error',
+                                        ),
                                     );
                                 } finally {
                                     setEndSubmitting(false);

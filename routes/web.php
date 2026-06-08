@@ -141,6 +141,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::prefix('/wallets')->group(function(){
         Route::get('/', [WalletController::class, 'index'])->name('wallet_index');
         Route::get('/me', [WalletController::class, 'me'])->name('wallet_me_json');
+        Route::get('/customer-balance/{userId}', [WalletController::class, 'getCustomerBalance'])->name('wallet_customer_balance');
         Route::post('/campaign-budget-update', [WalletController::class, 'campaignBudgetUpdate'])->name('wallet_campaign_budget_update');
         Route::post('/account-top-up', [WalletController::class, 'accountTopUp'])->name('wallet_account_top_up');
         Route::post('/campaign-pause', [WalletController::class, 'campaignPause'])->name('wallet_campaign_pause');

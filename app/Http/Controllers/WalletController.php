@@ -848,4 +848,32 @@ class WalletController extends Controller
             return redirect()->back();
         }
     }
+
+    /**
+     * API lấy số dư ví của khách hàng (dành cho Admin/Manager/Employee)
+     */
+    public function getCustomerBalance(int $userId): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user || !in_array($user->role, [
+            \App\Common\Constants\User\UserRole::ADMIN->value,
+            \App\Common\Constants\User\UserRole::MANAGER->value,
+            \App\Common\Constants\User\UserRole::EMPLOYEE->value
+        ])) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $walletResult = $this->walletService->getWalletForUser($userId);
+        if ($walletResult->isError()) {
+            return response()->json(['message' => $walletResult->getMessage()], 400);
+        }
+
+        $wallet = $walletResult->getData();
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'balance' => $wallet ? ($wallet['balance'] ?? 0) : 0
+            ]
+        ]);
+    }
 }
