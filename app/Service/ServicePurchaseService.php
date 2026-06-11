@@ -13,6 +13,7 @@ use App\Core\ServiceReturn;
 use App\Models\ServiceUserTransactionLog;
 use App\Repositories\ConfigRepository;
 use App\Common\Constants\Config\ConfigName;
+use App\Common\Constants\ServicePackage\AccountBillingSource;
 use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Repositories\ServicePackageAllowedUserRepository;
 use App\Repositories\ServicePackageRepository;
@@ -77,6 +78,7 @@ class ServicePurchaseService
                     ? ServicePackagePaymentType::POSTPAY->value
                     : $requestedPaymentType;
                 $configAccount['payment_type'] = $paymentType;
+                $configAccount['billing_source'] = $this->resolvePackageBillingSource($package, $packagePaymentType);
                 $isPrepay = $paymentType === ServicePackagePaymentType::PREPAY->value;
                 $topUpAmount = $isPrepay ? max(0, $topUpAmount) : 0;
                 $minTopUp = (float) $package->range_min_top_up;
@@ -114,7 +116,7 @@ class ServicePurchaseService
                 // Kiểm tra ngưỡng tối thiểu để đăng ký trả sau (cấu hình)
                 $postpayMinBalanceRaw = $this->configRepository
                     ->findByKey(ConfigName::POSTPAY_MIN_BALANCE->value)?->value;
-                $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 200;
+                $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 100;
                 if (!$isPrepay && (float) $wallet->balance < $postpayMinBalance) {
                     return ServiceReturn::error(
                         message: __('services.validation.postpay_min_wallet', ['amount' => $postpayMinBalance])
@@ -131,22 +133,6 @@ class ServicePurchaseService
                 $configAccount['top_up_amount'] = $topUpAmount;
                 // Đánh dấu đã thu phí mở tài khoản nếu trả trước; trả sau sẽ thu ở kỳ bill đầu tiên
                 $configAccount['open_fee_paid'] = true;
-                // Thêm post_payment_date và postpay_days cho trả sau
-                if ($configAccount['payment_type'] === ServicePackagePaymentType::POSTPAY->value) {
-                    $postpayDays = isset($configAccount['postpay_days']) && is_numeric($configAccount['postpay_days'])
-                        ? (int) $configAccount['postpay_days']
-                        : 30; // Mặc định 30 ngày
-
-                    // Lưu postpay_days vào config
-                    $configAccount['postpay_days'] = $postpayDays;
-
-                    // Tính post_payment_date
-                    if (!isset($configAccount['post_payment_date'])) {
-                        $configAccount['post_payment_date'] = now()->addDays($postpayDays)->format('Y-m-d');
-                    }
-                }
-
-
                 $defaultConfig = $this->getDefaultConfigAccount($package->platform, $configAccount);
 
                 $serviceUser = $this->serviceUserRepository->create([
@@ -261,14 +247,11 @@ class ServicePurchaseService
 
             $config = [
                 'payment_type' => $userConfig['payment_type'] ?? 'prepay',
+                'billing_source' => $userConfig['billing_source'] ?? null,
                 'top_up_amount' => $userConfig['top_up_amount'] ?? 0,
                 'open_fee_paid' => $userConfig['open_fee_paid'] ?? false,
                 'accounts' => $accounts,
             ];
-
-            if (isset($userConfig['postpay_days'])) {
-                $config['postpay_days'] = $userConfig['postpay_days'];
-            }
 
             return $config;
         }
@@ -278,15 +261,12 @@ class ServicePurchaseService
             'display_name' => $userConfig['display_name'] ?? '',
             'bm_id' => $userConfig['bm_id'] ?? '',
             'payment_type' => $userConfig['payment_type'] ?? 'prepay',
+            'billing_source' => $userConfig['billing_source'] ?? null,
             'top_up_amount' => $userConfig['top_up_amount'] ?? 0,
             'asset_access' => $userConfig['asset_access'] ?? 'full_asset',
             'timezone_bm' => $userConfig['timezone_bm'] ?? null,
             'open_fee_paid' => $userConfig['open_fee_paid'] ?? false,
         ];
-
-        if (isset($userConfig['postpay_days'])) {
-            $config['postpay_days'] = $userConfig['postpay_days'];
-        }
 
         // Meta Ads: thêm info_fanpage và info_website
         if ($platform === PlatformType::META->value) {
@@ -295,5 +275,23 @@ class ServicePurchaseService
         }
 
         return $config;
+    }
+
+    private function resolvePackageBillingSource($package, string $packagePaymentType): string
+    {
+        $billingSource = $package->billing_source ?? null;
+        if (in_array($billingSource, AccountBillingSource::getValues(), true)) {
+            return $billingSource;
+        }
+
+        if (!empty($package->supplier_id)) {
+            return AccountBillingSource::SUPPLIER_CREDIT_LINE->value;
+        }
+
+        if ($packagePaymentType === ServicePackagePaymentType::POSTPAY->value) {
+            return AccountBillingSource::CUSTOMER_CARD->value;
+        }
+
+        return AccountBillingSource::ADVIET_CARD->value;
     }
 }

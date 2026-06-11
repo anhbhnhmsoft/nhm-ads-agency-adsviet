@@ -5,9 +5,14 @@ import type { AccountConfig, ServiceOrderConfigAccount } from '../types/type';
 type AccountInfoCellProps = {
     config: ServiceOrderConfigAccount | null;
     platform?: number | null;
+    packageBillingSource?: string | null;
 };
 
-export const AccountInfoCell = ({ config, platform }: AccountInfoCellProps) => {
+export const AccountInfoCell = ({
+    config,
+    platform,
+    packageBillingSource,
+}: AccountInfoCellProps) => {
     const { t } = useTranslation();
 
     if (!config) {
@@ -18,7 +23,10 @@ export const AccountInfoCell = ({ config, platform }: AccountInfoCellProps) => {
 
     const accounts = config.accounts;
     if (Array.isArray(accounts) && accounts.length > 0) {
-        const billingSource = config.billing_source || (config as any).payment_source;
+        const billingSource =
+            packageBillingSource ||
+            config.billing_source ||
+            (config as any).payment_source;
         return (
             <div className="space-y-2 text-xs">
                 {billingSource && (
@@ -222,7 +230,11 @@ export const AccountInfoCell = ({ config, platform }: AccountInfoCellProps) => {
     const fanpage = (config.info_fanpage as string) || '';
     const website = (config.info_website as string) || '';
     const timezone = (config.timezone_bm as string) || '';
-    const billingSource = config.billing_source || (config as any).payment_source || '';
+    const billingSource =
+        packageBillingSource ||
+        config.billing_source ||
+        (config as any).payment_source ||
+        '';
 
     if (!email && !name && !bm && !fanpage && !website && !timezone && !billingSource) {
         return <span className="text-xs text-muted-foreground">-</span>;

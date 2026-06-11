@@ -16,9 +16,11 @@ use App\Service\MetaBusinessService;
 use App\Service\PlatformSettingService;
 use App\Service\GoogleAdsService;
 use App\Service\MetaService;
+use App\Service\PlatformTokenHealthService;
 use App\Http\Resources\PlatformSettingListResource;
 use App\Jobs\GoogleAds\SyncGooglePlatformJob;
 use App\Jobs\MetaApi\SyncMetaPlatformJob;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use App\Core\Logging;
 use Illuminate\Http\Request;
@@ -31,6 +33,7 @@ class PlatformSettingController extends Controller
         protected MetaBusinessService $metaBusinessService,
         protected GoogleAdsService $googleAdsService,
         protected MetaService $metaService,
+        protected PlatformTokenHealthService $platformTokenHealthService,
     ) {
     }
 
@@ -138,6 +141,38 @@ class PlatformSettingController extends Controller
             FlashMessage::error($result->getMessage());
         }
         return redirect()->back();
+    }
+
+    public function checkToken(string $id): JsonResponse
+    {
+        $result = $this->authService->checkAccess([UserRole::ADMIN->value]);
+        if ($result->isError()) {
+            return response()->json([
+                'message' => $result->getMessage(),
+            ], 403);
+        }
+
+        $result = $this->platformSettingService->find($id);
+        if ($result->isError()) {
+            return response()->json([
+                'message' => $result->getMessage(),
+            ], 404);
+        }
+
+        $setting = $result->getData();
+        $config = (array) ($setting->config ?? []);
+        $tokenStatus = $this->platformTokenHealthService->check((int) $setting->platform, $config);
+
+        $config['token_status'] = $tokenStatus;
+        $setting->update(['config' => $config]);
+
+        return response()->json([
+            'data' => [
+                'id' => (string) $setting->id,
+                'token_status' => $tokenStatus,
+            ],
+            'message' => $tokenStatus['message'] ?? __('common_success.update_success'),
+        ]);
     }
 
     /**

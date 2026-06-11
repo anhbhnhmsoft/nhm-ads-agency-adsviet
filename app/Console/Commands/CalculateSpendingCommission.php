@@ -15,7 +15,7 @@ class CalculateSpendingCommission extends Command
 {
     protected $signature = 'app:calculate-spending-commission';
 
-    protected $description = 'Tính hoa hồng theo spending cho từng khách hàng trong một kỳ (tháng), dựa trên dữ liệu insights đã sync';
+    protected $description = 'Tính hoa hồng theo phí spending của từng dịch vụ trong một kỳ (tháng), dựa trên dữ liệu insights đã sync';
 
     public function __construct(
         protected ServiceUserRepository             $serviceUserRepository,
@@ -39,37 +39,28 @@ class CalculateSpendingCommission extends Command
 
         $this->info("Bắt đầu tính hoa hồng spending cho kỳ {$time} ({$startDate->toDateString()} - {$endDate->toDateString()})");
 
-        // Lấy tất cả service_users ACTIVE, group theo customer
         $serviceUsers = $this->serviceUserRepository->query()
             ->where('status', ServiceUserStatus::ACTIVE->value)
-            ->get(['id', 'user_id']);
+            ->with('package')
+            ->get(['id', 'user_id', 'package_id']);
 
         if ($serviceUsers->isEmpty()) {
             $this->info('Không có service user ACTIVE nào, kết thúc.');
             return Command::SUCCESS;
         }
 
-        $customerIds = $serviceUsers->pluck('user_id')->unique()->values();
-
-        $totalCustomers = 0;
+        $totalServices = 0;
         $totalWithCommission = 0;
 
-        foreach ($customerIds as $customerId) {
-            $totalCustomers++;
-
-            // Lấy danh sách service_user_id của customer này
-            $customerServiceUserIds = $serviceUsers
-                ->where('user_id', $customerId)
-                ->pluck('id')
-                ->values()
-                ->all();
-
-            if (empty($customerServiceUserIds)) {
+        foreach ($serviceUsers as $serviceUser) {
+            $totalServices++;
+            $spendingFeePercent = (float) ($serviceUser->package?->spending_fee ?? 0);
+            if ($spendingFeePercent <= 0) {
                 continue;
             }
 
             $spendingAmount = $this->calculateTotalSpendingForServiceUsers(
-                $customerServiceUserIds,
+                [(string) $serviceUser->id],
                 $startDate,
                 $endDate
             );
@@ -78,21 +69,28 @@ class CalculateSpendingCommission extends Command
                 continue;
             }
 
-            // Gọi CommissionService để ghi nhận hoa hồng
+            $spendingFeeAmount = $spendingAmount * $spendingFeePercent / 100;
+            if ($spendingFeeAmount <= 0) {
+                continue;
+            }
+
             $result = $this->commissionService->calculateSpendingCommission(
-                (string) $customerId,
+                (string) $serviceUser->id,
                 $time,
-                $spendingAmount
+                $spendingFeeAmount
             );
 
             if ($result->isError()) {
-                $this->error("Lỗi tính hoa hồng spending cho customer {$customerId}: " . $result->getMessage());
+                $this->error("Lỗi tính hoa hồng spending cho service {$serviceUser->id}: " . $result->getMessage());
                 Logging::error(
-                    message: 'CalculateSpendingCommission: Failed to calculate commission for customer',
+                    message: 'CalculateSpendingCommission: Failed to calculate commission for service',
                     context: [
-                        'customer_id' => $customerId,
+                        'service_user_id' => $serviceUser->id,
+                        'customer_id' => $serviceUser->user_id,
                         'period' => $time,
                         'spending_amount' => $spendingAmount,
+                        'spending_fee_percent' => $spendingFeePercent,
+                        'spending_fee_amount' => $spendingFeeAmount,
                         'error' => $result->getMessage(),
                     ]
                 );
@@ -101,10 +99,10 @@ class CalculateSpendingCommission extends Command
 
             $totalWithCommission++;
 
-            $this->info("✓ Đã tính hoa hồng spending cho customer {$customerId}, spending={$spendingAmount}");
+            $this->info("✓ Đã tính hoa hồng spending cho service {$serviceUser->id}, spend={$spendingAmount}, fee_base={$spendingFeeAmount}");
         }
 
-        $this->info("Hoàn thành. Tổng customer xem xét: {$totalCustomers}, có hoa hồng: {$totalWithCommission}");
+        $this->info("Hoàn thành. Tổng service xem xét: {$totalServices}, có hoa hồng: {$totalWithCommission}");
 
         return Command::SUCCESS;
     }
@@ -144,5 +142,3 @@ class CalculateSpendingCommission extends Command
         return [$start, $end];
     }
 }
-
-

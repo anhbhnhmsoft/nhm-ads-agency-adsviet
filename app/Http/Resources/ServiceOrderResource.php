@@ -31,6 +31,7 @@ class ServiceOrderResource extends JsonResource
 
         $openFee          = (float) ($package?->open_fee ?? 0);
         $topUpFeePercent  = (float) ($package?->top_up_fee ?? 0);
+        $spendingFeePercent = (float) ($package?->spending_fee ?? 0);
         $isPostpay        = $paymentType === 'postpay';
 
         $accountsCount = 1;
@@ -38,8 +39,8 @@ class ServiceOrderResource extends JsonResource
             $accountsCount = count($config['accounts']);
         }
 
-        // Phí mở tài khoản thực tế = open_fee * số tài khoản (nếu trả trước)
-        $openFeePayable = $isPostpay ? 0.0 : ($openFee * $accountsCount);
+        // Phí mở tài khoản được thu upfront cho cả trả trước và trả sau.
+        $openFeePayable = $openFee * $accountsCount;
 
         if ($topUpAmount > 0) {
             $serviceFee = $topUpAmount * $topUpFeePercent / 100;
@@ -57,6 +58,9 @@ class ServiceOrderResource extends JsonResource
                 'name' => $package?->name,
                 'platform' => $package?->platform,
                 'payment_type' => $package?->payment_type ?? 'prepay',
+                'billing_source' => $package?->billing_source ?? 'adviet_card',
+                'top_up_fee' => $package?->top_up_fee,
+                'spending_fee' => $spendingFeePercent,
                 'platform_label' => $package ? PlatformType::tryFrom((int) $package->platform)?->label() : null,
             ],
             'user' => [
@@ -67,6 +71,7 @@ class ServiceOrderResource extends JsonResource
             'budget' => $this->budget,
             'open_fee' => $package?->open_fee,
             'top_up_fee' => $package?->top_up_fee,
+            'spending_fee' => $spendingFeePercent,
             'total_cost' => $totalCost,
             'config_account' => $this->config_account,
             'description' => $this->description,

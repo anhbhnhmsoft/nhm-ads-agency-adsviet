@@ -19,7 +19,7 @@ import {
     platform_settings_update,
 } from '@/routes';
 import axios from 'axios';
-import { Plus, X } from 'lucide-react';
+import { Plus, RefreshCw, X } from 'lucide-react';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -36,6 +36,13 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
             name: string;
             platform: number;
             config: Record<string, any>;
+            token_status?: {
+                status?: string;
+                message?: string;
+                expires_label?: string;
+                expires_at?: string | null;
+                checked_at?: string;
+            };
             disabled: boolean;
         }[]
     >([]);
@@ -44,6 +51,13 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
         name: string;
         platform: number;
         config: Record<string, any>;
+        token_status?: {
+            status?: string;
+            message?: string;
+            expires_label?: string;
+            expires_at?: string | null;
+            checked_at?: string;
+        };
         disabled: boolean;
     } | null>(null);
     const [showForm, setShowForm] = useState(false);
@@ -59,7 +73,7 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
         },
         storeUrl: platform_settings_store.url(),
     });
-    const { data, setData, processing, errors, reset, post, put } = form;
+    const { data, setData, processing, errors, post, put } = form;
 
     useEffect(() => {
         loadPlatformData();
@@ -110,6 +124,7 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
             name: setting.name || '',
             platform: Number(setting.platform),
             config: (setting.config ?? {}) as Record<string, any>,
+            token_status: setting.token_status,
             disabled: Boolean(setting.disabled),
         });
         // Scroll lên đầu trang để anh thấy Form
@@ -163,6 +178,54 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
                     loadPlatformData();
                 },
             });
+        }
+    };
+
+    const handleCheckToken = async (setting: {
+        id: string;
+        name: string;
+        platform: number;
+    }) => {
+        try {
+            setLoading(true);
+            const response = await axios.post(
+                `/platform-settings/${setting.id}/check-token`,
+            );
+            const nextTokenStatus = response.data?.data?.token_status ?? null;
+
+            setSettingsList((prev) =>
+                prev.map((item) =>
+                    item.id === setting.id
+                        ? {
+                              ...item,
+                              config: {
+                                  ...item.config,
+                                  token_status: nextTokenStatus,
+                              },
+                              token_status: nextTokenStatus,
+                          }
+                        : item,
+                ),
+            );
+
+            if (currentSetting?.id === setting.id) {
+                setCurrentSetting((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              config: {
+                                  ...prev.config,
+                                  token_status: nextTokenStatus,
+                              },
+                              token_status: nextTokenStatus,
+                          }
+                        : prev,
+                );
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -307,6 +370,11 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
                                             defaultValue: 'Trạng thái',
                                         })}
                                     </th>
+                                    <th className="px-4 py-3">
+                                        {t('platform.col_token_life', {
+                                            defaultValue: 'Thời gian sống',
+                                        })}
+                                    </th>
                                     <th className="px-4 py-3 text-right">
                                         {t('common.action')}
                                     </th>
@@ -316,7 +384,7 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
                                 {loading && settingsList.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={4}
+                                            colSpan={5}
                                             className="py-4 text-center"
                                         >
                                             {t('common.loading')}
@@ -325,7 +393,7 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
                                 ) : filteredSettings.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={4}
+                                            colSpan={5}
                                             className="py-4 text-center text-muted-foreground"
                                         >
                                             {t('common.no_data')}
@@ -378,8 +446,46 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
                                                     </span>
                                                 )}
                                             </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                                                    <span>
+                                                        {item.token_status?.expires_label ||
+                                                            t('platform.token_not_checked', {
+                                                                defaultValue:
+                                                                    'Chưa kiểm tra',
+                                                            })}
+                                                    </span>
+                                                    {item.token_status?.checked_at && (
+                                                        <span>
+                                                            {t('platform.token_checked_at', {
+                                                                defaultValue:
+                                                                    'Kiểm tra lúc: {{time}}',
+                                                                time: new Date(
+                                                                    item.token_status.checked_at,
+                                                                ).toLocaleString('vi-VN'),
+                                                            })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleCheckToken(
+                                                                item,
+                                                            )
+                                                        }
+                                                        disabled={loading}
+                                                    >
+                                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                                        {t('platform.check_token', {
+                                                            defaultValue:
+                                                                'Kiểm tra token/key',
+                                                        })}
+                                                    </Button>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"

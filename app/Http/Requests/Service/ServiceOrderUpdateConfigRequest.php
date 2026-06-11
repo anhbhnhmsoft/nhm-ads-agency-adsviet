@@ -15,7 +15,6 @@ class ServiceOrderUpdateConfigRequest extends FormRequest
     {
         return [
             'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],            
-            'billing_source' => ['nullable', 'string', \Illuminate\Validation\Rule::in(\App\Common\Constants\ServicePackage\AccountBillingSource::getValues())],
             'meta_email' => ['nullable', 'email', 'max:255'],
             'display_name' => ['nullable', 'string', 'max:255'],
             'bm_id' => ['nullable', 'string', 'max:255'],
@@ -48,4 +47,3 @@ class ServiceOrderUpdateConfigRequest extends FormRequest
         ];
     }
 }
-

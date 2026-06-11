@@ -16,8 +16,8 @@ Schedule::command('notifications:wallet-low-balance')->dailyAt('09:00');
 // Kiểm tra và auto-pause accounts nếu balance dương và vượt ngưỡng mỗi 2 phút
 Schedule::command('accounts:check-and-auto-pause')->everyTwoMinutes();
 
-// Billing postpay hằng ngày (02:00)
-Schedule::command('services:bill-postpay')->dailyAt('02:00');
+// Billing spending fee theo ngưỡng chi tiêu, chạy sau mỗi nhịp sync insight
+Schedule::command('services:bill-postpay')->everyThirtyMinutes();
 
 // Đồng bộ toàn bộ các Platform (BM+MCC) mỗi 30 phút
 Schedule::job(SyncAllPlatformsJob::class)->everyThirtyMinutes();

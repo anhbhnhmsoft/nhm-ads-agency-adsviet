@@ -140,6 +140,22 @@ const Index = ({ paginator }: Props) => {
                 },
             },
             {
+                accessorKey: 'billing_source',
+                header: t('service_packages.billing_source'),
+                cell: ({ row }) => {
+                    const billingSource =
+                        row.original.billing_source || 'adviet_card';
+                    return (
+                        <Badge variant="outline">
+                            {t(
+                                `service_packages.billing_sources.${billingSource}`,
+                                { defaultValue: billingSource },
+                            )}
+                        </Badge>
+                    );
+                },
+            },
+            {
                 accessorKey: 'open_fee',
                 header: t('service_packages.open_fee'),
                 cell: ({ row }) => {
@@ -153,6 +169,15 @@ const Index = ({ paginator }: Props) => {
                 header: t('service_packages.top_up_fee'),
                 cell: ({ row }) => {
                     const raw = row.original.top_up_fee;
+                    const num = Number(raw);
+                    return Number.isFinite(num) ? num.toFixed(2) : raw;
+                },
+            },
+            {
+                accessorKey: 'spending_fee',
+                header: t('service_packages.spending_fee'),
+                cell: ({ row }) => {
+                    const raw = row.original.spending_fee;
                     const num = Number(raw);
                     return Number.isFinite(num) ? num.toFixed(2) : raw;
                 },

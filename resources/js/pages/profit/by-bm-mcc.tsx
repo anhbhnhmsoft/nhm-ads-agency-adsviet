@@ -269,8 +269,9 @@ export default function ProfitByBmMcc({
                                                 Cách tính Doanh thu:
                                             </div>
                                             <div className="leading-relaxed text-muted-foreground">
-                                                Phí mở TK + Tiền nạp + (Tiền nạp
-                                                * Phí dịch vụ %)
+                                                Phí mở TK + tiền nạp/top-up + phí
+                                                nạp tiền + phí spending theo chi
+                                                tiêu thực tế
                                             </div>
                                         </div>
                                         <div>
@@ -278,8 +279,9 @@ export default function ProfitByBmMcc({
                                                 Cách tính Chi phí:
                                             </div>
                                             <div className="leading-relaxed text-muted-foreground">
-                                                Phí mở TK bên NCC + (Tiền nạp *
-                                                Phí NCC %)
+                                                Phí mở TK bên NCC + phí NCC trên
+                                                top-up + phí postpay NCC theo chi
+                                                tiêu
                                             </div>
                                         </div>
                                         <div className="border-t pt-2 font-medium text-foreground">

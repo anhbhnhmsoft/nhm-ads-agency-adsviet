@@ -18,6 +18,7 @@ export type CreateServicePackageForm = {
     description: string | null;
     platform: _PlatformType;
     payment_type: 'prepay' | 'postpay';
+    billing_source: 'customer_card' | 'adviet_card' | 'supplier_credit_line';
     allowed_user_ids: string[];
     features: {
         key: string;
@@ -26,6 +27,7 @@ export type CreateServicePackageForm = {
     open_fee: string;
     range_min_top_up: string;
     top_up_fee: string;
+    spending_fee: string;
     supplier_fee_percent?: string;
     supplier_id?: string | null;
     set_up_time: string;
@@ -43,10 +45,12 @@ export type ServicePackageItem = {
     name: string;
     platform: _PlatformType;
     payment_type: 'prepay' | 'postpay';
+    billing_source: 'customer_card' | 'adviet_card' | 'supplier_credit_line';
     allowed_user_ids?: string[];
     features: ServicePackageFeatureValue[];
     open_fee: string;
     top_up_fee: string;
+    spending_fee: string;
     supplier_fee_percent?: string;
     supplier_id?: string | null;
     set_up_time: number;

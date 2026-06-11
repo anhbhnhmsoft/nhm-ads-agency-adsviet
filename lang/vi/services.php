@@ -15,6 +15,10 @@ return [
         'open_fee_invalid' => 'Giá mở dịch vụ không hợp lệ',
         'range_min_top_up_invalid' => 'Số tiền tối thiểu top up không hợp lệ',
         'top_up_fee_invalid' => 'Giá top up không hợp lệ',
+        'spending_fee_invalid' => 'Phí spending không hợp lệ',
+        'supplier_fee_percent_invalid' => 'Chi phí nhà cung cấp phải là số',
+        'supplier_fee_percent_min' => 'Chi phí nhà cung cấp không được nhỏ hơn 0',
+        'supplier_fee_percent_max' => 'Chi phí nhà cung cấp không được lớn hơn 100',
         'set_up_time_invalid' => 'Thời gian thiết lập không hợp lệ',
         'disabled_invalid' => 'Trạng thái không hợp lệ',
         'service_package_invalid' => 'Gói dịch vụ không hợp lệ',
@@ -44,6 +48,6 @@ return [
         'config_update_success' => 'Đã cập nhật cấu hình tài khoản.',
     ],
     'service_packages' => [
-        'cashback_percent_tooltip' => 'Cashback dựa theo tổng chi tiêu của khách trong 30 ngày sử dụng dịch vụ.',
+        'cashback_percent_tooltip' => 'Cashback dựa theo tổng chi tiêu của khách từ đầu tháng đến cuối tháng.',
     ],
 ];

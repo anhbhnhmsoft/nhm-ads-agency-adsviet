@@ -20,9 +20,9 @@ class PlatformSettingListResource extends JsonResource
             'name' => (string) ($this->name ?? ''),
             'platform' => (int) $this->platform,
             'config' => (array) $this->config,
+            'token_status' => (array) (($this->config ?? [])['token_status'] ?? []),
             'disabled' => (bool) $this->disabled,
         ];
     }
 }
-
 

@@ -420,11 +420,18 @@ class WalletTransactionService
                     }
                 }
 
-                if ((float) $wallet->balance < $amount) {
+                $billingSource = $this->resolveAccountTopUpBillingSource($serviceUserId);
+                $feeData = $this->calculateAccountTopUpFee($serviceUserId, $amount, $billingSource);
+                $topUpAmount = $feeData['top_up_amount'];
+                $feePercent = $feeData['fee_percent'];
+                $feeAmount = $feeData['fee_amount'];
+                $totalChargeAmount = $feeData['total_charge_amount'];
+
+                if ((float) $wallet->balance < $totalChargeAmount) {
                     return ServiceReturn::error(message: __('wallet.error.wallet_balance_not_enough'));
                 }
 
-                $newBalance = (float) $wallet->balance - $amount;
+                $newBalance = (float) $wallet->balance - $totalChargeAmount;
                 $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
 
                 $type = WalletTransactionType::ACCOUNT_TOP_UP_GOOGLE;
@@ -439,10 +446,16 @@ class WalletTransactionService
                         'account_id' => $accountId ?: '-',
                     ]);
                 }
+                if ($feeAmount > 0) {
+                    $description .= ' | ' . __('wallet.transaction_description.account_top_up_fee_detail', [
+                        'fee' => number_format($feeAmount, 2),
+                        'percent' => number_format($feePercent, 2),
+                    ]);
+                }
 
                 $transaction = $this->transactionRepository->create([
                     'wallet_id' => $wallet->id,
-                    'amount' => -$amount,
+                    'amount' => -$totalChargeAmount,
                     'type' => $type->value,
                     'status' => WalletTransactionStatus::PENDING->value,
                     'description' => $description,
@@ -452,6 +465,11 @@ class WalletTransactionService
                         'service_user_id' => $serviceUserId,
                         'account_id' => $accountId,
                         'account_name' => $accountName,
+                        'billing_source' => $billingSource,
+                        'top_up_amount' => $topUpAmount,
+                        'top_up_fee_percent' => $feePercent,
+                        'fee_amount' => $feeAmount,
+                        'total_charge_amount' => $totalChargeAmount,
                     ],
                 ]);
 
@@ -790,9 +808,14 @@ class WalletTransactionService
             $serviceUserId = isset($metadata['service_user_id']) ? (string) $metadata['service_user_id'] : null;
             $accountId = isset($metadata['account_id']) ? (string) $metadata['account_id'] : null;
             $platformType = isset($metadata['platform_type']) ? (int) $metadata['platform_type'] : null;
-            $amount = abs((float) $transaction->amount);
+            $amount = isset($metadata['top_up_amount'])
+                ? abs((float) $metadata['top_up_amount'])
+                : abs((float) $transaction->amount);
 
-            $billingSource = $this->resolveAccountTopUpBillingSource($serviceUserId);
+            $billingSource = $metadata['billing_source'] ?? $this->resolveAccountTopUpBillingSource($serviceUserId);
+            if (!in_array($billingSource, AccountBillingSource::getValues(), true)) {
+                $billingSource = $this->resolveAccountTopUpBillingSource($serviceUserId);
+            }
             $autoResult = null;
 
             if ($billingSource === AccountBillingSource::ADVIET_CARD->value && $accountId) {
@@ -842,9 +865,9 @@ class WalletTransactionService
         }
 
         $config = $serviceUser->config_account ?? [];
-        $source = $config['billing_source']
+        $source = $serviceUser->package?->billing_source
+            ?? $config['billing_source']
             ?? $config['payment_source']
-            ?? $serviceUser->package?->billing_source
             ?? null;
 
         if (in_array($source, AccountBillingSource::getValues(), true)) {
@@ -860,6 +883,34 @@ class WalletTransactionService
         }
 
         return AccountBillingSource::ADVIET_CARD->value;
+    }
+
+    private function calculateAccountTopUpFee(?string $serviceUserId, float $amount, string $billingSource): array
+    {
+        $topUpAmount = max(0, $amount);
+        $feePercent = 0.0;
+
+        if (
+            $serviceUserId &&
+            in_array($billingSource, [
+                AccountBillingSource::ADVIET_CARD->value,
+                AccountBillingSource::SUPPLIER_CREDIT_LINE->value,
+            ], true)
+        ) {
+            $serviceUser = ServiceUser::query()
+                ->with('package')
+                ->find($serviceUserId);
+            $feePercent = (float) ($serviceUser?->package?->top_up_fee ?? 0);
+        }
+
+        $feeAmount = round($topUpAmount * $feePercent / 100, 2);
+
+        return [
+            'top_up_amount' => $topUpAmount,
+            'fee_percent' => $feePercent,
+            'fee_amount' => $feeAmount,
+            'total_charge_amount' => $topUpAmount + $feeAmount,
+        ];
     }
 
     public function getPendingTransactionsSummary(int $limit = 10): ServiceReturn

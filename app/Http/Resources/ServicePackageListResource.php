@@ -26,6 +26,7 @@ class ServicePackageListResource extends JsonResource
             'monthly_spending_fee_structure' => $this->monthly_spending_fee_structure,
             'open_fee' => $this->open_fee,
             'top_up_fee' => $this->top_up_fee,
+            'spending_fee' => $this->spending_fee,
             'inventory_total_count' => (int) ($this->inventory_total_count ?? 0),
             'inventory_available_count' => (int) ($this->inventory_available_count ?? 0),
             'supplier_fee_percent' => $this->supplier_fee_percent,

@@ -37,7 +37,6 @@ export const useServiceOrderAdminDialog = () => {
         payment_type: '',
         asset_access: '',
         timezone_bm: '',
-        billing_source: '',
         accounts: [] as AccountFormData[],
     });
 
@@ -90,10 +89,6 @@ export const useServiceOrderAdminDialog = () => {
 
             const config = order.config_account || {};
             const typedConfig: ServiceOrderConfigAccount = config;
-            const billingSourceValue = typedConfig.billing_source
-                || (typedConfig as any).payment_source
-                || order.package?.billing_source
-                || 'adviet_card';
 
             setSelectedOrder(order);
             const isGoogle = order.package?.platform === _PlatformType.GOOGLE;
@@ -130,7 +125,6 @@ export const useServiceOrderAdminDialog = () => {
                     payment_type: packagePaymentType,
                     asset_access: 'full_asset',
                     timezone_bm: '',
-                    billing_source: billingSourceValue,
                     accounts: cleanedAccounts,
                 });
             } else {
@@ -153,7 +147,6 @@ export const useServiceOrderAdminDialog = () => {
                     payment_type: packagePaymentType,
                     asset_access: typedConfig.asset_access || 'full_asset',
                     timezone_bm: typedConfig.timezone_bm || '',
-                    billing_source: billingSourceValue,
                     accounts: [],
                 });
 
@@ -278,8 +271,6 @@ export const useServiceOrderAdminDialog = () => {
         setAssetAccess: (value: string) => form.setData('asset_access', value),
         timezoneBm: form.data.timezone_bm,
         setTimezoneBm: (value: string) => form.setData('timezone_bm', value),
-        billingSource: form.data.billing_source,
-        setBillingSource: (value: string) => form.setData('billing_source', value),
         childBusinessManagers,
         selectedChildBmId,
         setSelectedChildBmId,

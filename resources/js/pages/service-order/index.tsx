@@ -102,8 +102,6 @@ const ServiceOrdersIndex = ({
         setAssetAccess,
         timezoneBm,
         setTimezoneBm,
-        billingSource: approveBillingSource,
-        setBillingSource: setApproveBillingSource,
         childBusinessManagers,
         selectedChildBmId,
         setSelectedChildBmId,
@@ -137,8 +135,6 @@ const ServiceOrdersIndex = ({
         setAssetAccess: setEditAssetAccess,
         timezoneBm: editTimezoneBm,
         setTimezoneBm: setEditTimezoneBm,
-        billingSource: editBillingSource,
-        setBillingSource: setEditBillingSource,
         openDialogForOrder: openEditDialogForOrder,
         handleSubmitUpdate,
     } = useServiceOrderEditConfigDialog();
@@ -226,6 +222,7 @@ const ServiceOrdersIndex = ({
                         <AccountInfoCell
                             config={row.original.config_account || null}
                             platform={row.original.package?.platform}
+                            packageBillingSource={row.original.package?.billing_source}
                         />
                     );
                 },
@@ -589,41 +586,6 @@ const ServiceOrdersIndex = ({
                                                 )}
                                             </Button>
                                         </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="approve_billing_source">
-                                            {t('service_orders.form.billing_source_label', {
-                                                defaultValue: 'Nguồn thanh toán',
-                                            })}
-                                        </Label>
-                                        <Select
-                                            value={approveBillingSource}
-                                            onValueChange={setApproveBillingSource}
-                                        >
-                                            <SelectTrigger id="approve_billing_source">
-                                                <SelectValue placeholder={t('service_orders.form.billing_source_label', {
-                                                    defaultValue: 'Nguồn thanh toán',
-                                                })} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="adviet_card">
-                                                    {t('service_orders.form.billing_sources.adviet_card', {
-                                                        defaultValue: 'Thẻ Adviet',
-                                                    })}
-                                                </SelectItem>
-                                                <SelectItem value="customer_card">
-                                                    {t('service_orders.form.billing_sources.customer_card', {
-                                                        defaultValue: 'Thẻ của khách',
-                                                    })}
-                                                </SelectItem>
-                                                <SelectItem value="supplier_credit_line">
-                                                    {t('service_orders.form.billing_sources.supplier_credit_line', {
-                                                        defaultValue: 'Hạn mức nhà cung cấp',
-                                                    })}
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
                                     </div>
 
                                     {approveUseAccountsStructure ? (
@@ -1165,40 +1127,6 @@ const ServiceOrdersIndex = ({
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="edit_billing_source">
-                                            {t('service_orders.form.billing_source_label', {
-                                                defaultValue: 'Nguồn thanh toán',
-                                            })}
-                                        </Label>
-                                        <Select
-                                            value={editBillingSource}
-                                            onValueChange={setEditBillingSource}
-                                        >
-                                            <SelectTrigger id="edit_billing_source">
-                                                <SelectValue placeholder={t('service_orders.form.billing_source_label', {
-                                                    defaultValue: 'Nguồn thanh toán',
-                                                })} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="adviet_card">
-                                                    {t('service_orders.form.billing_sources.adviet_card', {
-                                                        defaultValue: 'Thẻ Adviet',
-                                                    })}
-                                                </SelectItem>
-                                                <SelectItem value="customer_card">
-                                                    {t('service_orders.form.billing_sources.customer_card', {
-                                                        defaultValue: 'Thẻ của khách',
-                                                    })}
-                                                </SelectItem>
-                                                <SelectItem value="supplier_credit_line">
-                                                    {t('service_orders.form.billing_sources.supplier_credit_line', {
-                                                        defaultValue: 'Hạn mức nhà cung cấp',
-                                                    })}
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
                                     {editUseAccountsStructure ? (
                                         <>
                                             <div className="flex items-center justify-between">

@@ -222,27 +222,25 @@ class CommissionService
     }
 
     /**
-     * Tính hoa hồng theo spending của khách hàng (theo tháng)
+     * Tính hoa hồng theo phí spending đã thu của một dịch vụ.
      */
     public function calculateSpendingCommission(
-        string $customerId,
+        string $serviceUserId,
         string $period,
-        float $spendingAmount
+        float $spendingFeeAmount
     ): ServiceReturn {
         try {
-            $employeeId = $this->getEmployeeIdForCustomer($customerId);
-            if (!$employeeId) {
+            $serviceUser = $this->serviceUserRepository->query()
+                ->with('package')
+                ->find($serviceUserId);
+            
+            if (!$serviceUser || !$serviceUser->package_id) {
                 return ServiceReturn::success();
             }
 
-            // Lấy package từ service user của customer
-            $serviceUser = $this->serviceUserRepository->query()
-                ->where('user_id', $customerId)
-                ->where('status', ServiceUserStatus::ACTIVE->value)
-                ->with('package')
-                ->first();
-            
-            if (!$serviceUser || !$serviceUser->package_id) {
+            $customerId = (string) $serviceUser->user_id;
+            $employeeId = $this->getEmployeeIdForCustomer($customerId);
+            if (!$employeeId) {
                 return ServiceReturn::success();
             }
 
@@ -256,27 +254,30 @@ class CommissionService
             }
 
             // Kiểm tra min/max amount
-            if ($commissionConfig->min_amount && $spendingAmount < $commissionConfig->min_amount) {
-                return ServiceReturn::success(); // Spending quá thấp
+            if ($commissionConfig->min_amount && $spendingFeeAmount < $commissionConfig->min_amount) {
+                return ServiceReturn::success();
             }
-            if ($commissionConfig->max_amount && $spendingAmount > $commissionConfig->max_amount) {
-                $spendingAmount = $commissionConfig->max_amount; // Chỉ tính đến max
+            if ($commissionConfig->max_amount && $spendingFeeAmount > $commissionConfig->max_amount) {
+                $spendingFeeAmount = $commissionConfig->max_amount;
             }
 
-            $commissionAmount = $spendingAmount * ($commissionConfig->rate / 100);
+            $commissionAmount = $spendingFeeAmount * ($commissionConfig->rate / 100);
 
             // Kiểm tra xem đã tính hoa hồng cho period này chưa
             $existing = $this->commissionTransactionRepository->query()
                 ->where('employee_id', $employeeId)
                 ->where('customer_id', $customerId)
                 ->where('type', EmployeeCommission::TYPE_SPENDING)
+                ->where('reference_type', 'ServiceUser')
+                ->where('reference_id', $serviceUserId)
                 ->where('period', $period)
                 ->first();
 
             if ($existing) {
                 // Cập nhật lại nếu spending thay đổi
                 $existing->update([
-                    'base_amount' => $spendingAmount,
+                    'base_amount' => $spendingFeeAmount,
+                    'commission_rate' => $commissionConfig->rate,
                     'commission_amount' => $commissionAmount,
                 ]);
                 return ServiceReturn::success(data: $existing);
@@ -286,12 +287,12 @@ class CommissionService
                 'employee_id' => $employeeId,
                 'customer_id' => $customerId,
                 'type' => EmployeeCommission::TYPE_SPENDING,
-                'reference_type' => 'Customer',
-                'reference_id' => $customerId,
-                'base_amount' => $spendingAmount,
+                'reference_type' => 'ServiceUser',
+                'reference_id' => $serviceUserId,
+                'base_amount' => $spendingFeeAmount,
                 'commission_rate' => $commissionConfig->rate,
                 'commission_amount' => $commissionAmount,
-            'period' => $period,
+                'period' => $period,
             ]);
 
             return ServiceReturn::success(data: $transaction);
@@ -466,4 +467,3 @@ class CommissionService
         return null;
     }
 }
-

@@ -3,9 +3,11 @@
 namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServicePackage\AccountBillingSource;
+use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Common\Constants\User\UserRole;
-use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Common\Constants\Wallet\WalletTransactionStatus;
+use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
 use App\Repositories\ServiceUserRepository;
@@ -130,7 +132,7 @@ class ProfitService
 
                 // Lấy tất cả service_users của customer này
                 $query = $this->serviceUserRepository->query()
-                    ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
+                    ->with($this->profitRelations())
                     ->where('user_id', $customerId)
                     ->whereHas('package');
 
@@ -140,66 +142,16 @@ class ProfitService
                     });
                 }
 
-                if ($startDate && $endDate) {
-                    $query->whereBetween('created_at', [$startDate, $endDate]);
-                }
-
                 $serviceUsers = $query->get();
 
                 $revenue = 0.0;
                 $cost = 0.0;
 
                 foreach ($serviceUsers as $serviceUser) {
-                    $package = $serviceUser->package;
-                    if (!$package) {
-                        continue;
-                    }
+                    $components = $this->calculateServiceUserProfitComponents($serviceUser, $startDate, $endDate);
 
-                    $config = $serviceUser->config_account ?? [];
-                    $topUpAmount = 0.0;
-                    if (is_array($config)) {
-                        $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
-                    }
-
-                    $openFee = (float) $package->open_fee;
-                    $topUpFeePercent = (float) $package->top_up_fee;
-                    // Lấy supplier_fee_percent từ supplier
-                    $supplier = $package->supplier;
-                    $supplierFeePercent = 0.0;
-                    if ($supplier && isset($supplier->supplier_fee_percent)) {
-                        $supplierFeePercent = (float) $supplier->supplier_fee_percent;
-                    } elseif (isset($package->supplier_fee_percent)) {
-                        $supplierFeePercent = (float) $package->supplier_fee_percent;
-                    }
-
-                    // Doanh thu = tổng số tiền khách hàng đã trả
-                    // = open_fee + top_up_amount + top_up_amount * top_up_fee%
-                    $itemRevenue = $openFee;
-                    if ($topUpAmount > 0) {
-                        $itemRevenue += $topUpAmount;
-                        if ($topUpFeePercent !== 0.0) {
-                            $itemRevenue += $topUpAmount * $topUpFeePercent / 100;
-                        }
-                    }
-
-                    // Chi phí nhà cung cấp = supplier_open_fee + top_up_amount * supplier_fee_percent%
-                    // (Áp dụng cho cả trả trước và trả sau, nếu open_fee = 0 thì không tính)
-                    $itemCost = 0.0;
-                    $supplier = $package->supplier;
-                    if ($supplier) {
-                        // Chi phí mở tài khoản (nếu > 0)
-                        $supplierOpenFee = (float) $supplier->open_fee;
-                        if ($supplierOpenFee > 0) {
-                            $itemCost += $supplierOpenFee;
-                        }
-                        // Chi phí nhà cung cấp trên số tiền nạp
-                        if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                            $itemCost += $topUpAmount * $supplierFeePercent / 100;
-                        }
-                    }
-
-                    $revenue += $itemRevenue;
-                    $cost += $itemCost;
+                    $revenue += $components['revenue'];
+                    $cost += $components['cost'];
                 }
 
                 // Tính lợi nhuận = doanh thu - chi phí
@@ -282,17 +234,13 @@ class ProfitService
             foreach ($platforms as $platformType) {
                 // Lấy service_users theo platform
                 $query = $this->serviceUserRepository->query()
-                    ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
+                    ->with($this->profitRelations())
                     ->whereHas('package', function ($q) use ($platformType) {
                         $q->where('platform', $platformType);
                     });
 
                 if (!empty($customerIds)) {
                     $query->whereIn('user_id', $customerIds);
-                }
-
-                if ($startDate && $endDate) {
-                    $query->whereBetween('created_at', [$startDate, $endDate]);
                 }
 
                 $this->applyPlatformSettingFilter($query, $platformType);
@@ -303,57 +251,10 @@ class ProfitService
                 $cost = 0.0;
 
                 foreach ($serviceUsers as $serviceUser) {
-                    $package = $serviceUser->package;
-                    if (!$package) {
-                        continue;
-                    }
+                    $components = $this->calculateServiceUserProfitComponents($serviceUser, $startDate, $endDate);
 
-                    $config = $serviceUser->config_account ?? [];
-                    $topUpAmount = 0.0;
-                    if (is_array($config)) {
-                        $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
-                    }
-
-                    $openFee = (float) $package->open_fee;
-                    $topUpFeePercent = (float) $package->top_up_fee;
-                    // Lấy supplier_fee_percent từ supplier
-                    $supplier = $package->supplier;
-                    $supplierFeePercent = 0.0;
-                    if ($supplier && isset($supplier->supplier_fee_percent)) {
-                        $supplierFeePercent = (float) $supplier->supplier_fee_percent;
-                    } elseif (isset($package->supplier_fee_percent)) {
-                        $supplierFeePercent = (float) $package->supplier_fee_percent;
-                    }
-
-                    // Doanh thu = tổng số tiền khách hàng đã trả
-                    // = open_fee + top_up_amount + top_up_amount * top_up_fee%
-                    // = open_fee + top_up_amount * (1 + top_up_fee%)
-                    $itemRevenue = $openFee;
-                    if ($topUpAmount > 0) {
-                        $itemRevenue += $topUpAmount;
-                        if ($topUpFeePercent !== 0.0) {
-                            $itemRevenue += $topUpAmount * $topUpFeePercent / 100;
-                        }
-                    }
-
-                    // Chi phí nhà cung cấp = supplier_open_fee + top_up_amount * supplier_fee_percent%
-                    // (Áp dụng cho cả trả trước và trả sau, nếu open_fee = 0 thì không tính)
-                    $itemCost = 0.0;
-                    $supplier = $package->supplier;
-                    if ($supplier) {
-                        // Chi phí mở tài khoản (nếu > 0)
-                        $supplierOpenFee = (float) $supplier->open_fee;
-                        if ($supplierOpenFee > 0) {
-                            $itemCost += $supplierOpenFee;
-                        }
-                        // Chi phí nhà cung cấp trên số tiền nạp
-                        if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                            $itemCost += $topUpAmount * $supplierFeePercent / 100;
-                        }
-                    }
-
-                    $revenue += $itemRevenue;
-                    $cost += $itemCost;
+                    $revenue += $components['revenue'];
+                    $cost += $components['cost'];
                 }
 
                 $profit = $revenue - $cost;
@@ -390,73 +291,21 @@ class ProfitService
 
         // Meta/Facebook
         $query = $this->serviceUserRepository->query()
-            ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
+            ->with($this->profitRelations())
             ->where('user_id', $customerId)
             ->whereHas('package', function ($q) {
                 $q->where('platform', PlatformType::META->value);
             });
-
-        if ($startDate && $endDate) {
-            $query->whereBetween('created_at', [$startDate, $endDate]);
-        }
 
         $metaServiceUsers = $query->get();
 
         $metaRevenue = 0.0;
         $metaCost = 0.0;
         foreach ($metaServiceUsers as $serviceUser) {
-            $package = $serviceUser->package;
-            if (!$package) {
-                continue;
-            }
+            $components = $this->calculateServiceUserProfitComponents($serviceUser, $startDate, $endDate);
 
-            $config = $serviceUser->config_account ?? [];
-            $topUpAmount = 0.0;
-            if (is_array($config)) {
-                $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
-            }
-
-            $openFee = (float) $package->open_fee;
-            $topUpFeePercent = (float) $package->top_up_fee;
-            // Lấy supplier_fee_percent từ supplier
-            $supplier = $package->supplier;
-            $supplierFeePercent = 0.0;
-            if ($supplier && isset($supplier->supplier_fee_percent)) {
-                $supplierFeePercent = (float) $supplier->supplier_fee_percent;
-            } elseif (isset($package->supplier_fee_percent)) {
-                $supplierFeePercent = (float) $package->supplier_fee_percent;
-            }
-
-            // Doanh thu = tổng số tiền khách hàng đã trả
-            // = open_fee + top_up_amount + top_up_amount * top_up_fee%
-            $itemRevenue = $openFee;
-            if ($topUpAmount > 0) {
-                $itemRevenue += $topUpAmount;
-                if ($topUpFeePercent !== 0.0) {
-                    $itemRevenue += $topUpAmount * $topUpFeePercent / 100;
-                }
-            }
-
-            // Chi phí nhà cung cấp: phân biệt trả trước và trả sau
-            $itemCost = 0.0;
-            if ($supplier) {
-                // Kiểm tra xem user có phải postpay không
-                $isPostpay = ($serviceUser->config_account['payment_type'] ?? 'prepay') === 'postpay';
-
-                if ($isPostpay) {
-                    // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
-                    if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                        $itemCost += $topUpAmount * $supplierFeePercent / 100;
-                    }
-                } else {
-                    // Trả trước: chỉ tính chi phí mở tài khoản
-                    $supplierOpenFee = (float) $supplier->open_fee;
-                    $itemCost += $supplierOpenFee;
-                }
-            }
-
-            $metaRevenue += $itemRevenue;
-            $metaCost += $itemCost;
+            $metaRevenue += $components['revenue'];
+            $metaCost += $components['cost'];
         }
 
         $stats['meta'] = [
@@ -467,73 +316,21 @@ class ProfitService
 
         // Google
         $query = $this->serviceUserRepository->query()
-            ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
+            ->with($this->profitRelations())
             ->where('user_id', $customerId)
             ->whereHas('package', function ($q) {
                 $q->where('platform', PlatformType::GOOGLE->value);
             });
-
-        if ($startDate && $endDate) {
-            $query->whereBetween('created_at', [$startDate, $endDate]);
-        }
 
         $googleServiceUsers = $query->get();
 
         $googleRevenue = 0.0;
         $googleCost = 0.0;
         foreach ($googleServiceUsers as $serviceUser) {
-            $package = $serviceUser->package;
-            if (!$package) {
-                continue;
-            }
+            $components = $this->calculateServiceUserProfitComponents($serviceUser, $startDate, $endDate);
 
-            $config = $serviceUser->config_account ?? [];
-            $topUpAmount = 0.0;
-            if (is_array($config)) {
-                $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
-            }
-
-            $openFee = (float) $package->open_fee;
-            $topUpFeePercent = (float) $package->top_up_fee;
-            // Lấy supplier_fee_percent từ supplier
-            $supplier = $package->supplier ?? null;
-            $supplierFeePercent = 0.0;
-            if ($supplier && isset($supplier->supplier_fee_percent)) {
-                $supplierFeePercent = (float) $supplier->supplier_fee_percent;
-            } elseif (isset($package->supplier_fee_percent)) {
-                $supplierFeePercent = (float) $package->supplier_fee_percent;
-            }
-
-            // Doanh thu = tổng số tiền khách hàng đã trả
-            // = open_fee + top_up_amount + top_up_amount * top_up_fee%
-            $itemRevenue = $openFee;
-            if ($topUpAmount > 0) {
-                $itemRevenue += $topUpAmount;
-                if ($topUpFeePercent !== 0.0) {
-                    $itemRevenue += $topUpAmount * $topUpFeePercent / 100;
-                }
-            }
-
-            // Chi phí nhà cung cấp: phân biệt trả trước và trả sau
-            $itemCost = 0.0;
-            if ($supplier) {
-                // Kiểm tra xem user có phải postpay không
-                $isPostpay = ($serviceUser->config_account['payment_type'] ?? 'prepay') === 'postpay';
-
-                if ($isPostpay) {
-                    // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
-                    if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                        $itemCost += $topUpAmount * $supplierFeePercent / 100;
-                    }
-                } else {
-                    // Trả trước: chỉ tính chi phí mở tài khoản
-                    $supplierOpenFee = (float) $supplier->open_fee;
-                    $itemCost += $supplierOpenFee;
-                }
-            }
-
-            $googleRevenue += $itemRevenue;
-            $googleCost += $itemCost;
+            $googleRevenue += $components['revenue'];
+            $googleCost += $components['cost'];
         }
 
         $stats['google'] = [
@@ -584,8 +381,8 @@ class ProfitService
 
             // Lấy toàn bộ service_users trong khoảng thời gian
             $query = $this->serviceUserRepository->query()
-                ->with(['package:id,name,platform,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
-                ->whereBetween('created_at', [$startDate, $endDate])
+                ->with($this->profitRelations())
+                ->where('created_at', '<=', $endDate)
                 ->whereHas('package');
 
             if ($platform) {
@@ -617,70 +414,24 @@ class ProfitService
                     continue;
                 }
 
+                $config = $this->serviceUserConfig($serviceUser);
+                $billingSource = $this->resolveBillingSource($serviceUser, $config);
                 $createdAt = $serviceUser->created_at instanceof Carbon
                     ? $serviceUser->created_at
                     : Carbon::parse($serviceUser->created_at);
 
-                $period = match ($groupBy) {
-                    'week' => $createdAt->isoWeekYear() . '-W' . str_pad((string) $createdAt->isoWeek(), 2, '0', STR_PAD_LEFT),
-                    'month' => $createdAt->format('Y-m'),
-                    default => $createdAt->format('Y-m-d'),
-                };
-
-                if (!isset($buckets[$period])) {
-                    $buckets[$period] = [
-                        'revenue' => 0.0,
-                        'cost' => 0.0,
-                    ];
+                if ($this->serviceUserCreatedInRange($serviceUser, $startDate, $endDate)) {
+                    $purchaseComponents = $this->calculateServiceUserPurchaseComponents($serviceUser, $billingSource, $config);
+                    $this->addProfitToBucket(
+                        $buckets,
+                        $this->profitPeriod($createdAt, $groupBy),
+                        $purchaseComponents['revenue'],
+                        $purchaseComponents['cost']
+                    );
                 }
 
-                $config = $serviceUser->config_account ?? [];
-                $topUpAmount = 0.0;
-                if (is_array($config)) {
-                    $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
-                }
-
-                $openFee = (float) $package->open_fee;
-                $topUpFeePercent = (float) $package->top_up_fee;
-                // Lấy supplier_fee_percent từ supplier
-                $supplier = $package->supplier;
-                $supplierFeePercent = 0.0;
-                if ($supplier && isset($supplier->supplier_fee_percent)) {
-                    $supplierFeePercent = (float) $supplier->supplier_fee_percent;
-                } elseif (isset($package->supplier_fee_percent)) {
-                    $supplierFeePercent = (float) $package->supplier_fee_percent;
-                }
-
-                // Doanh thu = tổng số tiền khách hàng đã trả
-                // = open_fee + top_up_amount + top_up_amount * top_up_fee%
-                $itemRevenue = $openFee;
-                if ($topUpAmount > 0) {
-                    $itemRevenue += $topUpAmount;
-                    if ($topUpFeePercent !== 0.0) {
-                        $itemRevenue += $topUpAmount * $topUpFeePercent / 100;
-                    }
-                }
-
-                // Chi phí nhà cung cấp: phân biệt trả trước và trả sau
-                $itemCost = 0.0;
-                if ($supplier) {
-                    // Kiểm tra xem user có phải postpay không
-                    $isPostpay = ($serviceUser->config_account['payment_type'] ?? 'prepay') === 'postpay';
-
-                    if ($isPostpay) {
-                        // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
-                        if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                            $itemCost += $topUpAmount * $supplierFeePercent / 100;
-                        }
-                    } else {
-                        // Trả trước: chỉ tính chi phí mở tài khoản
-                        $supplierOpenFee = (float) $supplier->open_fee;
-                        $itemCost += $supplierOpenFee;
-                    }
-                }
-
-                $buckets[$period]['revenue'] += $itemRevenue;
-                $buckets[$period]['cost'] += $itemCost;
+                $this->addAccountTopUpTransactionsToBuckets($buckets, $serviceUser, $billingSource, $groupBy, $startDate, $endDate);
+                $this->addSpendingProfitToBuckets($buckets, $serviceUser, $billingSource, $groupBy, $startDate, $endDate);
             }
 
             ksort($buckets);
@@ -737,13 +488,9 @@ class ProfitService
 
             // Lấy tất cả service_users active
             $serviceUsersQuery = $this->serviceUserRepository->query()
-                ->with(['user:id,name,username,email', 'package:id,platform,name,open_fee,top_up_fee,supplier_fee_percent,supplier_id', 'package.supplier:id,name,open_fee,supplier_fee_percent'])
+                ->with(array_merge(['user:id,name,username,email'], $this->profitRelations()))
                 ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
                 ->whereHas('package');
-
-            if ($startDate && $endDate) {
-                $serviceUsersQuery->whereBetween('created_at', [$startDate, $endDate]);
-            }
 
             if ($platform) {
                 $this->applyPlatformSettingFilter($serviceUsersQuery, $platform);
@@ -765,51 +512,9 @@ class ProfitService
                     continue;
                 }
 
-                // Tính doanh thu/chi phí cho service_user này
-                $topUpAmount = 0.0;
-                if (is_array($config)) {
-                    $topUpAmount = (float) ($config['top_up_amount'] ?? 0);
-                }
-
-                $package = $serviceUser->package;
-                $openFee = (float) $package->open_fee;
-                $topUpFeePercent = (float) $package->top_up_fee;
-                // Lấy supplier_fee_percent từ supplier
-                $supplier = $package->supplier ?? null;
-                $supplierFeePercent = 0.0;
-                if ($supplier && isset($supplier->supplier_fee_percent)) {
-                    $supplierFeePercent = (float) $supplier->supplier_fee_percent;
-                } elseif (isset($package->supplier_fee_percent)) {
-                    $supplierFeePercent = (float) $package->supplier_fee_percent;
-                }
-
-                // Doanh thu = tổng số tiền khách hàng đã trả
-                // = open_fee + top_up_amount + top_up_amount * top_up_fee%
-                $itemRevenue = $openFee;
-                if ($topUpAmount > 0) {
-                    $itemRevenue += $topUpAmount; // Số tiền nạp vào tài khoản quảng cáo
-                    if ($topUpFeePercent !== 0.0) {
-                        $itemRevenue += $topUpAmount * $topUpFeePercent / 100; // Phí dịch vụ top-up
-                    }
-                }
-
-                // Chi phí nhà cung cấp: phân biệt trả trước và trả sau
-                $itemCost = 0.0;
-                if ($supplier) {
-                    // Kiểm tra xem user có phải postpay không
-                    $isPostpay = ($serviceUser->config_account['payment_type'] ?? 'prepay') === 'postpay';
-
-                    if ($isPostpay) {
-                        // Trả sau: chỉ tính supplier_fee_percent trên số tiền nạp
-                        if ($topUpAmount > 0 && $supplierFeePercent > 0.0) {
-                            $itemCost += $topUpAmount * $supplierFeePercent / 100;
-                        }
-                    } else {
-                        // Trả trước: chỉ tính chi phí mở tài khoản
-                        $supplierOpenFee = (float) $supplier->open_fee;
-                        $itemCost += $supplierOpenFee;
-                    }
-                }
+                $components = $this->calculateServiceUserProfitComponents($serviceUser, $startDate, $endDate);
+                $itemRevenue = $components['revenue'];
+                $itemCost = $components['cost'];
 
                 $bmIds = [];
                 if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
@@ -919,5 +624,401 @@ class ProfitService
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
+    }
+
+    private function profitRelations(): array
+    {
+        return [
+            'package:id,name,platform,payment_type,billing_source,open_fee,top_up_fee,spending_fee,supplier_fee_percent,supplier_id',
+            'package.supplier:id,name,open_fee,postpay_fee,supplier_fee_percent',
+        ];
+    }
+
+    private function calculateServiceUserProfitComponents($serviceUser, ?Carbon $startDate = null, ?Carbon $endDate = null): array
+    {
+        $package = $serviceUser->package ?? null;
+        if (!$package) {
+            return ['revenue' => 0.0, 'cost' => 0.0];
+        }
+
+        $config = $this->serviceUserConfig($serviceUser);
+        $billingSource = $this->resolveBillingSource($serviceUser, $config);
+        $revenue = 0.0;
+        $cost = 0.0;
+
+        if ($this->serviceUserCreatedInRange($serviceUser, $startDate, $endDate)) {
+            $purchaseComponents = $this->calculateServiceUserPurchaseComponents($serviceUser, $billingSource, $config);
+
+            $revenue += $purchaseComponents['revenue'];
+            $cost += $purchaseComponents['cost'];
+        }
+
+        $accountTopUpComponents = $this->calculateAccountTopUpTransactionComponents(
+            $serviceUser,
+            $billingSource,
+            $startDate,
+            $endDate
+        );
+        $revenue += $accountTopUpComponents['revenue'];
+        $cost += $accountTopUpComponents['cost'];
+
+        $spend = $this->getServiceUserSpend($serviceUser, $startDate, $endDate);
+        if ($spend > 0 && $this->shouldChargeSpendingFee($serviceUser, $billingSource)) {
+            $revenue += $this->calculatePercentAmount($spend, (float) ($package->spending_fee ?? 0));
+        }
+
+        if ($spend > 0 && $this->shouldApplySupplierPostpayCost($serviceUser)) {
+            $cost += $this->calculatePercentAmount($spend, (float) ($package->supplier?->postpay_fee ?? 0));
+        }
+
+        return [
+            'revenue' => $revenue,
+            'cost' => $cost,
+        ];
+    }
+
+    private function calculateServiceUserPurchaseComponents($serviceUser, string $billingSource, array $config): array
+    {
+        $package = $serviceUser->package;
+        $accountsCount = $this->configuredAccountsCount($config);
+        $topUpAmount = $this->configuredTopUpAmount($config);
+
+        $revenue = (float) ($package->open_fee ?? 0) * $accountsCount;
+        if ($topUpAmount > 0) {
+            $revenue += $topUpAmount + $this->calculatePercentAmount($topUpAmount, (float) ($package->top_up_fee ?? 0));
+        }
+
+        $cost = 0.0;
+        $supplier = $package->supplier ?? null;
+        if ($supplier) {
+            $cost += (float) ($supplier->open_fee ?? 0) * $accountsCount;
+            if ($topUpAmount > 0 && $this->usesTopUpBilling($billingSource)) {
+                $cost += $this->calculatePercentAmount($topUpAmount, $this->resolveSupplierFeePercent($package));
+            }
+        }
+
+        return [
+            'revenue' => $revenue,
+            'cost' => $cost,
+        ];
+    }
+
+    private function calculateAccountTopUpTransactionComponents(
+        $serviceUser,
+        string $defaultBillingSource,
+        ?Carbon $startDate = null,
+        ?Carbon $endDate = null
+    ): array {
+        $query = $this->walletTransactionRepository->query()
+            ->whereIn('type', [
+                WalletTransactionType::ACCOUNT_TOP_UP_GOOGLE->value,
+                WalletTransactionType::ACCOUNT_TOP_UP_META->value,
+            ])
+            ->whereNotIn('status', [
+                WalletTransactionStatus::REJECTED->value,
+                WalletTransactionStatus::CANCELLED->value,
+            ])
+            ->where('withdraw_info->service_user_id', (string) $serviceUser->id);
+
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [
+                $startDate->copy()->startOfDay(),
+                $endDate->copy()->endOfDay(),
+            ]);
+        }
+
+        $revenue = 0.0;
+        $cost = 0.0;
+        $supplierFeePercent = $this->resolveSupplierFeePercent($serviceUser->package);
+
+        foreach ($query->get(['amount', 'withdraw_info']) as $transaction) {
+            $metadata = is_array($transaction->withdraw_info) ? $transaction->withdraw_info : [];
+            $topUpAmount = (float) ($metadata['top_up_amount'] ?? 0);
+            $feeAmount = (float) ($metadata['fee_amount'] ?? 0);
+            $totalChargeAmount = (float) ($metadata['total_charge_amount'] ?? abs((float) $transaction->amount));
+            $billingSource = $metadata['billing_source'] ?? $defaultBillingSource;
+
+            if ($topUpAmount <= 0) {
+                $topUpAmount = max(0.0, $totalChargeAmount - $feeAmount);
+            }
+
+            $revenue += $totalChargeAmount;
+
+            if ($topUpAmount > 0 && $this->usesTopUpBilling($billingSource)) {
+                $cost += $this->calculatePercentAmount($topUpAmount, $supplierFeePercent);
+            }
+        }
+
+        return [
+            'revenue' => $revenue,
+            'cost' => $cost,
+        ];
+    }
+
+    private function addAccountTopUpTransactionsToBuckets(
+        array &$buckets,
+        $serviceUser,
+        string $defaultBillingSource,
+        string $groupBy,
+        Carbon $startDate,
+        Carbon $endDate
+    ): void {
+        $query = $this->walletTransactionRepository->query()
+            ->whereIn('type', [
+                WalletTransactionType::ACCOUNT_TOP_UP_GOOGLE->value,
+                WalletTransactionType::ACCOUNT_TOP_UP_META->value,
+            ])
+            ->whereNotIn('status', [
+                WalletTransactionStatus::REJECTED->value,
+                WalletTransactionStatus::CANCELLED->value,
+            ])
+            ->where('withdraw_info->service_user_id', (string) $serviceUser->id)
+            ->whereBetween('created_at', [
+                $startDate->copy()->startOfDay(),
+                $endDate->copy()->endOfDay(),
+            ]);
+
+        $supplierFeePercent = $this->resolveSupplierFeePercent($serviceUser->package);
+
+        foreach ($query->get(['amount', 'withdraw_info', 'created_at']) as $transaction) {
+            $metadata = is_array($transaction->withdraw_info) ? $transaction->withdraw_info : [];
+            $topUpAmount = (float) ($metadata['top_up_amount'] ?? 0);
+            $feeAmount = (float) ($metadata['fee_amount'] ?? 0);
+            $totalChargeAmount = (float) ($metadata['total_charge_amount'] ?? abs((float) $transaction->amount));
+            $billingSource = $metadata['billing_source'] ?? $defaultBillingSource;
+
+            if ($topUpAmount <= 0) {
+                $topUpAmount = max(0.0, $totalChargeAmount - $feeAmount);
+            }
+
+            $cost = 0.0;
+            if ($topUpAmount > 0 && $this->usesTopUpBilling($billingSource)) {
+                $cost = $this->calculatePercentAmount($topUpAmount, $supplierFeePercent);
+            }
+
+            $createdAt = $transaction->created_at instanceof Carbon
+                ? $transaction->created_at
+                : Carbon::parse($transaction->created_at);
+
+            $this->addProfitToBucket(
+                $buckets,
+                $this->profitPeriod($createdAt, $groupBy),
+                $totalChargeAmount,
+                $cost
+            );
+        }
+    }
+
+    private function addSpendingProfitToBuckets(
+        array &$buckets,
+        $serviceUser,
+        string $billingSource,
+        string $groupBy,
+        Carbon $startDate,
+        Carbon $endDate
+    ): void {
+        $shouldChargeSpendingFee = $this->shouldChargeSpendingFee($serviceUser, $billingSource);
+        $shouldApplySupplierCost = $this->shouldApplySupplierPostpayCost($serviceUser);
+        if (!$shouldChargeSpendingFee && !$shouldApplySupplierCost) {
+            return;
+        }
+
+        $spendingFeePercent = (float) ($serviceUser->package?->spending_fee ?? 0);
+        $supplierPostpayFeePercent = (float) ($serviceUser->package?->supplier?->postpay_fee ?? 0);
+
+        foreach ($this->serviceUserInsightTables($serviceUser) as $table) {
+            $rows = DB::table($table)
+                ->selectRaw('date, SUM(CAST(spend AS DECIMAL(18,4))) as total_spend')
+                ->where('service_user_id', (string) $serviceUser->id)
+                ->whereNull('deleted_at')
+                ->whereBetween('date', [
+                    $startDate->copy()->toDateString(),
+                    $endDate->copy()->toDateString(),
+                ])
+                ->groupBy('date')
+                ->get();
+
+            foreach ($rows as $row) {
+                $spend = (float) ($row->total_spend ?? 0);
+                if ($spend <= 0) {
+                    continue;
+                }
+
+                $revenue = $shouldChargeSpendingFee
+                    ? $this->calculatePercentAmount($spend, $spendingFeePercent)
+                    : 0.0;
+                $cost = $shouldApplySupplierCost
+                    ? $this->calculatePercentAmount($spend, $supplierPostpayFeePercent)
+                    : 0.0;
+
+                $this->addProfitToBucket(
+                    $buckets,
+                    $this->profitPeriod(Carbon::parse($row->date), $groupBy),
+                    $revenue,
+                    $cost
+                );
+            }
+        }
+    }
+
+    private function getServiceUserSpend($serviceUser, ?Carbon $startDate = null, ?Carbon $endDate = null): float
+    {
+        $spend = 0.0;
+        foreach ($this->serviceUserInsightTables($serviceUser) as $table) {
+            $query = DB::table($table)
+                ->where('service_user_id', (string) $serviceUser->id)
+                ->whereNull('deleted_at');
+
+            if ($startDate && $endDate) {
+                $query->whereBetween('date', [
+                    $startDate->copy()->toDateString(),
+                    $endDate->copy()->toDateString(),
+                ]);
+            }
+
+            $spend += (float) $query->sum(DB::raw('CAST(spend AS DECIMAL(18,4))'));
+        }
+
+        return $spend;
+    }
+
+    private function serviceUserInsightTables($serviceUser): array
+    {
+        return match ((int) ($serviceUser->package?->platform ?? 0)) {
+            PlatformType::META->value => ['meta_ads_account_insights'],
+            PlatformType::GOOGLE->value => ['google_ads_account_insights'],
+            default => ['meta_ads_account_insights', 'google_ads_account_insights'],
+        };
+    }
+
+    private function profitPeriod(Carbon $date, string $groupBy): string
+    {
+        return match ($groupBy) {
+            'week' => $date->isoWeekYear() . '-W' . str_pad((string) $date->isoWeek(), 2, '0', STR_PAD_LEFT),
+            'month' => $date->format('Y-m'),
+            default => $date->format('Y-m-d'),
+        };
+    }
+
+    private function addProfitToBucket(array &$buckets, string $period, float $revenue, float $cost): void
+    {
+        if (!isset($buckets[$period])) {
+            $buckets[$period] = [
+                'revenue' => 0.0,
+                'cost' => 0.0,
+            ];
+        }
+
+        $buckets[$period]['revenue'] += $revenue;
+        $buckets[$period]['cost'] += $cost;
+    }
+
+    private function serviceUserConfig($serviceUser): array
+    {
+        return is_array($serviceUser->config_account ?? null) ? $serviceUser->config_account : [];
+    }
+
+    private function serviceUserCreatedInRange($serviceUser, ?Carbon $startDate = null, ?Carbon $endDate = null): bool
+    {
+        if (!$startDate || !$endDate) {
+            return true;
+        }
+
+        $createdAt = $serviceUser->created_at instanceof Carbon
+            ? $serviceUser->created_at
+            : Carbon::parse($serviceUser->created_at);
+
+        return $createdAt->betweenIncluded(
+            $startDate->copy()->startOfDay(),
+            $endDate->copy()->endOfDay()
+        );
+    }
+
+    private function configuredAccountsCount(array $config): int
+    {
+        return isset($config['accounts']) && is_array($config['accounts']) && count($config['accounts']) > 0
+            ? count($config['accounts'])
+            : 1;
+    }
+
+    private function configuredTopUpAmount(array $config): float
+    {
+        return isset($config['top_up_amount']) && is_numeric($config['top_up_amount'])
+            ? max(0.0, (float) $config['top_up_amount'])
+            : 0.0;
+    }
+
+    private function resolveBillingSource($serviceUser, array $config): string
+    {
+        $source = $serviceUser->package?->billing_source
+            ?? $config['billing_source']
+            ?? $config['payment_source']
+            ?? null;
+
+        if (in_array($source, AccountBillingSource::getValues(), true)) {
+            return $source;
+        }
+
+        if (!empty($serviceUser->package?->supplier_id)) {
+            return AccountBillingSource::SUPPLIER_CREDIT_LINE->value;
+        }
+
+        if ($this->resolvePaymentType($serviceUser) === ServicePackagePaymentType::POSTPAY->value) {
+            return AccountBillingSource::CUSTOMER_CARD->value;
+        }
+
+        return AccountBillingSource::ADVIET_CARD->value;
+    }
+
+    private function resolvePaymentType($serviceUser): string
+    {
+        $config = $this->serviceUserConfig($serviceUser);
+        $paymentType = $config['payment_type'] ?? $serviceUser->package?->payment_type ?? ServicePackagePaymentType::PREPAY->value;
+
+        return in_array($paymentType, ServicePackagePaymentType::getValues(), true)
+            ? $paymentType
+            : ServicePackagePaymentType::PREPAY->value;
+    }
+
+    private function usesTopUpBilling(string $billingSource): bool
+    {
+        return in_array($billingSource, [
+            AccountBillingSource::ADVIET_CARD->value,
+            AccountBillingSource::SUPPLIER_CREDIT_LINE->value,
+        ], true);
+    }
+
+    private function shouldChargeSpendingFee($serviceUser, string $billingSource): bool
+    {
+        $spendingFeePercent = (float) ($serviceUser->package?->spending_fee ?? 0);
+        if ($spendingFeePercent <= 0) {
+            return false;
+        }
+
+        return $billingSource === AccountBillingSource::CUSTOMER_CARD->value
+            || $this->resolvePaymentType($serviceUser) === ServicePackagePaymentType::POSTPAY->value;
+    }
+
+    private function shouldApplySupplierPostpayCost($serviceUser): bool
+    {
+        $supplierPostpayFeePercent = (float) ($serviceUser->package?->supplier?->postpay_fee ?? 0);
+
+        return $supplierPostpayFeePercent > 0
+            && $this->resolvePaymentType($serviceUser) === ServicePackagePaymentType::POSTPAY->value;
+    }
+
+    private function resolveSupplierFeePercent($package): float
+    {
+        $supplier = $package->supplier ?? null;
+        if ($supplier && isset($supplier->supplier_fee_percent)) {
+            return (float) $supplier->supplier_fee_percent;
+        }
+
+        return (float) ($package->supplier_fee_percent ?? 0);
+    }
+
+    private function calculatePercentAmount(float $amount, float $percent): float
+    {
+        return $percent > 0 ? $amount * $percent / 100 : 0.0;
     }
 }

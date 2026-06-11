@@ -53,8 +53,8 @@ class ServicePurchaseController extends Controller
         $walletResult = $this->walletService->getWalletForUser((int) $user->id);
         $wallet = $walletResult->isSuccess() ? $walletResult->getData() : null;
         $walletBalance = $wallet ? (float) $wallet['balance'] : 0;
-        $postpayMinBalanceRaw = $this->configService->getValue(ConfigName::POSTPAY_MIN_BALANCE, 200);
-        $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 200;
+        $postpayMinBalanceRaw = $this->configService->getValue(ConfigName::POSTPAY_MIN_BALANCE, 100);
+        $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 100;
 
         return $this->rendering(
             view: 'service-purchase/index',
@@ -104,11 +104,6 @@ class ServicePurchaseController extends Controller
 
         if (isset($data['payment_type'])) {
             $configAccount['payment_type'] = $data['payment_type'];
-        }
-
-        // Thêm postpay_days nếu có
-        if (isset($data['postpay_days'])) {
-            $configAccount['postpay_days'] = $data['postpay_days'];
         }
 
         $result = $this->servicePurchaseService->createPurchaseOrder(

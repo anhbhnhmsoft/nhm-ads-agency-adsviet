@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServicePackage\AccountBillingSource;
 use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Common\Constants\User\UserRole;
 use App\Core\Logging;
@@ -98,6 +99,7 @@ class ServiceUserService
             $platform = $serviceUser->package->platform ?? null;
             $packagePaymentType = $this->resolvePackagePaymentType($serviceUser->package?->payment_type);
             $paymentType = $this->resolveConfigPaymentType($currentConfig['payment_type'] ?? null, $packagePaymentType);
+            $billingSource = $this->resolvePackageBillingSource($serviceUser->package?->billing_source);
 
             if (is_array($config['accounts']) && !empty($config['accounts'])) {
                 $accounts = $config['accounts'];
@@ -105,7 +107,7 @@ class ServiceUserService
                 $newConfig = array_merge($currentConfig, [
                     'accounts' => $accounts,
                     'payment_type' => $paymentType,
-                    'billing_source' => $config['billing_source'] ?? ($currentConfig['billing_source'] ?? null),
+                    'billing_source' => $billingSource,
                 ]);
                 
                 // Lưu bm_id vào google_manager_id nếu là Google Ads
@@ -146,7 +148,7 @@ class ServiceUserService
                     'account_name' => $config['account_name'] ?? ($currentConfig['account_name'] ?? null),
                     'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
                     'payment_type' => $paymentType,
-                    'billing_source' => $config['billing_source'] ?? ($currentConfig['billing_source'] ?? null),
+                    'billing_source' => $billingSource,
                 ]);
 
                 if ($platform === PlatformType::GOOGLE->value) {
@@ -388,12 +390,13 @@ class ServiceUserService
 
             $packagePaymentType = $this->resolvePackagePaymentType($serviceUser->package?->payment_type);
             $paymentType = $this->resolveConfigPaymentType($currentConfig['payment_type'] ?? null, $packagePaymentType);
+            $billingSource = $this->resolvePackageBillingSource($serviceUser->package?->billing_source);
 
             if (is_array($config['accounts']) && !empty($config['accounts'])) {
                 $serviceUser->config_account = array_merge($currentConfig, array_filter([
                     'accounts' => $config['accounts'],
                     'payment_type' => $paymentType,
-                    'billing_source' => $config['billing_source'] ?? null,
+                    'billing_source' => $billingSource,
                 ], fn($value) => $value !== null));
             } else {
                 $serviceUser->config_account = array_merge($currentConfig, array_filter([
@@ -406,7 +409,7 @@ class ServiceUserService
                     'info_fanpage' => $config['info_fanpage'] ?? null,
                     'info_website' => $config['info_website'] ?? null,
                     'payment_type' => $paymentType,
-                    'billing_source' => $config['billing_source'] ?? null,
+                    'billing_source' => $billingSource,
                 ], fn($value) => $value !== null));
             }
             $serviceUser->save();
@@ -507,6 +510,15 @@ class ServiceUserService
         }
 
         return $fallback;
+    }
+
+    private function resolvePackageBillingSource(?string $billingSource): string
+    {
+        if (in_array($billingSource, AccountBillingSource::getValues(), true)) {
+            return $billingSource;
+        }
+
+        return AccountBillingSource::ADVIET_CARD->value;
     }
 
 }

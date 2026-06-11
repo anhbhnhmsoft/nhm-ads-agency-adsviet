@@ -60,7 +60,7 @@ const ServicePurchaseIndex = ({
     const { t } = useTranslation();
     const page = usePage();
     const postpayMinBalance =
-        typeof postpay_min_balance === 'number' ? postpay_min_balance : 200;
+        typeof postpay_min_balance === 'number' ? postpay_min_balance : 100;
     const [selectedPackage, setSelectedPackage] =
         useState<ServicePackage | null>(null);
     const [showCalculator, setShowCalculator] = useState(false);
@@ -144,7 +144,6 @@ const ServicePurchaseIndex = ({
         : requestedPaymentType;
     const topUpAmount = top_up_amount || '';
     const budgetValue = budget || '';
-    const [postpayDays, setPostpayDays] = useState<number>(7);
 
     useEffect(() => {
         const currentPlatform = selectedPackage?.platform;
@@ -279,7 +278,8 @@ const ServicePurchaseIndex = ({
 
     // Calculate service fee
     const calculateServiceFee = (topUpAmount: number, feePercent: number) => {
-        return (topUpAmount * feePercent) / 100;
+        const normalizedFeePercent = Number(feePercent || 0);
+        return (topUpAmount * normalizedFeePercent) / 100;
     };
 
     // Validate top-up amount
@@ -308,7 +308,9 @@ const ServicePurchaseIndex = ({
                 : 1;
         const chargeOpenFee = openFee * normalizedAccountsCount;
         const serviceFee =
-            topUpNum > 0 ? calculateServiceFee(topUpNum, pkg.top_up_fee) : 0;
+            topUpNum > 0
+                ? calculateServiceFee(topUpNum, Number(pkg.top_up_fee || 0))
+                : 0;
         const totalCost = chargeOpenFee + topUpNum + serviceFee;
         return { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum };
     };
@@ -375,7 +377,6 @@ const ServicePurchaseIndex = ({
             info_fanpage: info_fanpage || undefined,
             info_website: info_website || undefined,
             payment_type: paymentType,
-            postpay_days: paymentType === 'postpay' ? postpayDays : undefined,
             asset_access: asset_access || 'full_asset',
         };
 
@@ -410,7 +411,6 @@ const ServicePurchaseIndex = ({
                     top_up_amount: '',
                     asset_access: 'full_asset',
                 });
-                setPostpayDays(7); // Reset về mặc định
             },
         );
     };
@@ -496,7 +496,7 @@ const ServicePurchaseIndex = ({
                     <p className="text-sm text-gray-600">{pkg.description}</p>
 
                     {/* Pricing Info */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                         <div className="rounded-lg bg-orange-50 p-3 text-center">
                             <div className="text-xl font-bold text-[#4285f4]">
                                 {formatUSDT(parseFloat(pkg.open_fee))}
@@ -511,6 +511,14 @@ const ServicePurchaseIndex = ({
                             </div>
                             <div className="text-xs text-gray-600">
                                 {t('service_purchase.service_fee_pct')}
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-blue-50 p-3 text-center">
+                            <div className="text-base font-bold text-blue-600 sm:text-xl">
+                                {Number(pkg.spending_fee || 0)}%
+                            </div>
+                            <div className="text-xs text-gray-600">
+                                {t('service_purchase.spending_fee_pct')}
                             </div>
                         </div>
                     </div>
@@ -608,6 +616,7 @@ const ServicePurchaseIndex = ({
                 : null;
 
         const previewAccountsCount = accounts.length > 0 ? accounts.length : 1;
+        const spendingFeePercent = Number(selectedPackage.spending_fee || 0);
 
         const { serviceFee, totalCost, chargeOpenFee, topUpNum } =
             calculateTotalCost(
@@ -670,7 +679,7 @@ const ServicePurchaseIndex = ({
                     </div>
 
                     {/* Service Details */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                         <div className="rounded-lg bg-gray-50 p-3">
                             <div className="text-sm text-gray-600">
                                 {t('service_purchase.account_opening_fee')}
@@ -696,6 +705,14 @@ const ServicePurchaseIndex = ({
                             </div>
                             <div className="text-base font-bold sm:text-lg">
                                 {selectedPackage.top_up_fee}%
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-gray-50 p-3">
+                            <div className="text-sm text-gray-600">
+                                {t('service_purchase.spending_fee_pct')}
+                            </div>
+                            <div className="text-base font-bold sm:text-lg">
+                                {spendingFeePercent}%
                             </div>
                         </div>
                     </div>
@@ -905,67 +922,6 @@ const ServicePurchaseIndex = ({
                         </div>
                         {paymentType === 'postpay' && (
                             <div className="space-y-3">
-                                {/* Chọn số ngày trả sau */}
-                                <div className="space-y-2">
-                                    <Label>
-                                        {t(
-                                            'service_purchase.postpay_days_label',
-                                            {
-                                                defaultValue:
-                                                    'Chọn số ngày trả sau',
-                                            },
-                                        )}
-                                    </Label>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                postpayDays === 1
-                                                    ? 'default'
-                                                    : 'outline'
-                                            }
-                                            size="sm"
-                                            onClick={() => setPostpayDays(1)}
-                                        >
-                                            1{' '}
-                                            {t('service_purchase.days', {
-                                                defaultValue: 'ngày',
-                                            })}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                postpayDays === 3
-                                                    ? 'default'
-                                                    : 'outline'
-                                            }
-                                            size="sm"
-                                            onClick={() => setPostpayDays(3)}
-                                        >
-                                            3{' '}
-                                            {t('service_purchase.days', {
-                                                defaultValue: 'ngày',
-                                            })}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                postpayDays === 7
-                                                    ? 'default'
-                                                    : 'outline'
-                                            }
-                                            size="sm"
-                                            onClick={() => setPostpayDays(7)}
-                                        >
-                                            7{' '}
-                                            {t('service_purchase.days', {
-                                                defaultValue: 'ngày',
-                                            })}
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* Thông tin */}
                                 <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
                                     <div className="flex items-start gap-2">
                                         <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
@@ -982,47 +938,31 @@ const ServicePurchaseIndex = ({
                                             <ul className="list-inside list-disc space-y-1 text-xs text-blue-700">
                                                 <li>
                                                     {t(
-                                                        'service_purchase.postpay_info_1',
-                                                        {
-                                                            defaultValue:
-                                                                'Phí dịch vụ sẽ được tính dựa trên chi tiêu thực tế hàng tháng',
-                                                        },
-                                                    )}
-                                                </li>
+                                                    'service_purchase.postpay_info_1',
+                                                    {
+                                                        defaultValue:
+                                                                'Phí spending sẽ tự trừ khi chi tiêu quảng cáo mới đạt từ 100 USD',
+                                                    },
+                                                )}
+                                            </li>
                                                 <li>
                                                     {t(
-                                                        'service_purchase.postpay_info_2',
-                                                        {
-                                                            defaultValue:
-                                                                'Ngày thanh toán dự kiến: {{date}} (sau {{days}} ngày kể từ ngày tạo)',
-                                                            date: new Date(
-                                                                Date.now() +
-                                                                    postpayDays *
-                                                                        24 *
-                                                                        60 *
-                                                                        60 *
-                                                                        1000,
-                                                            ).toLocaleDateString(
-                                                                'vi-VN',
-                                                                {
-                                                                    year: 'numeric',
-                                                                    month: 'long',
-                                                                    day: 'numeric',
-                                                                },
-                                                            ),
-                                                            days: postpayDays,
-                                                        },
-                                                    )}
-                                                </li>
+                                                    'service_purchase.postpay_info_2',
+                                                    {
+                                                        defaultValue:
+                                                                'Ví cần duy trì tối thiểu 100 USDT để dịch vụ tiếp tục chạy',
+                                                    },
+                                                )}
+                                            </li>
                                                 <li>
                                                     {t(
-                                                        'service_purchase.postpay_info_3',
-                                                        {
-                                                            defaultValue:
-                                                                'Hệ thống sẽ tự động trừ tiền từ ví vào ngày đến hạn',
-                                                        },
-                                                    )}
-                                                </li>
+                                                    'service_purchase.postpay_info_3',
+                                                    {
+                                                        defaultValue:
+                                                                'Cashback là khoản hoàn riêng, tính theo chi tiêu từ đầu tháng đến cuối tháng',
+                                                    },
+                                                )}
+                                            </li>
                                                 <li>
                                                     {t(
                                                         'service_purchase.postpay_info_4',
@@ -1181,15 +1121,38 @@ const ServicePurchaseIndex = ({
                                         {formatUSDT(topUpNum)}
                                     </span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>
-                                        {t('service_purchase.service_fee')} (
-                                        {selectedPackage.top_up_fee}%):
-                                    </span>
-                                    <span className="font-medium">
-                                        {formatUSDT(serviceFee)}
-                                    </span>
-                                </div>
+                                {paymentType === 'prepay' && (
+                                    <div className="flex justify-between">
+                                        <span>
+                                            {t(
+                                                'service_purchase.top_up_fee_amount',
+                                            )}{' '}
+                                            ({selectedPackage.top_up_fee}%):
+                                        </span>
+                                        <span className="font-medium">
+                                            {formatUSDT(serviceFee)}
+                                        </span>
+                                    </div>
+                                )}
+                                {paymentType === 'postpay' && (
+                                    <div className="col-span-2 flex justify-between gap-4">
+                                        <span>
+                                            {t(
+                                                'service_purchase.spending_fee_amount',
+                                            )}{' '}
+                                            ({spendingFeePercent}%):
+                                        </span>
+                                        <span className="text-right font-medium">
+                                            {t(
+                                                    'service_purchase.spending_fee_deferred',
+                                                {
+                                                    defaultValue:
+                                                        'Tự trừ khi chi tiêu mới đạt từ 100 USD',
+                                                },
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div className="border-t pt-2">
                                 <div className="text-md flex justify-between font-bold sm:text-lg">

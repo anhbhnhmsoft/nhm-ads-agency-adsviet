@@ -18,6 +18,7 @@ return [
         'campaign_end_meta' => 'End Meta Ads campaign',
         'account_top_up_google' => 'Google Ads account top-up',
         'account_top_up_meta' => 'Meta Ads account top-up',
+        'spending_fee' => 'Spending fee',
     ],
     'transaction_status' => [
         'unknown' => 'Unknown',
@@ -69,8 +70,8 @@ return [
         'low_balance' => "⚠️ Your wallet only has :balance USDT (threshold :threshold USDT).\nPlease top up to avoid service interruption.",
         'deposit_group_alert' => "⚠️ <b>Deposit notification</b> ⚠️\n<b>Name:</b>:name\n<b>Network:</b> :network\n<b>Amount:</b> :amount\n<b>Transaction:</b> :transaction_code\n<b>Order:</b> :order_code\n<b>Time:</b> :time",
     ],
-    'postpay_charge_insufficient' => 'Hello :name, this postpaid billing is :charge USDT (open fee: :open_fee, monthly fee: :monthly_fee) but your wallet balance is :balance USDT. Please top up to keep services running.',
-    'postpay_charge_label' => 'Postpay charge',
+    'postpay_charge_insufficient' => 'Hello :name, the spending fee due is :charge USDT, but your wallet balance is :balance USDT or below the required minimum :min_wallet USDT. Please top up to keep services running.',
+    'postpay_charge_label' => 'Postpaid spending fee',
     'notifications' => [
         'title' => '🔔 :type',
         'amount' => 'Amount: :amount USDT',
@@ -98,7 +99,9 @@ return [
         'campaign_end_cancelled_admin' => 'Admin cancelled the end campaign request',
         'account_top_up_created' => 'User requested an ad account top-up',
         'account_top_up_detail' => 'User requested a top-up for account :account (:account_id)',
+        'account_top_up_fee_detail' => 'Top-up fee :fee USDT (:percent%)',
         'account_top_up_cancelled_admin' => 'Admin cancelled the ad account top-up request',
+        'cashback' => 'Cashback :percent% based on total spend in period :period.',
     ],
     'error' => [
         'wallet_not_found' => 'Wallet not found',

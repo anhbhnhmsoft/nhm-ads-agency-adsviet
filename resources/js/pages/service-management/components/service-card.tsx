@@ -53,6 +53,15 @@ const ServiceCard = ({ service, onView, renderConfigInfo }: Props) => {
                         </span>{' '}
                         {service.top_up_fee ?? 0}%
                     </div>
+                    <div>
+                        <span className="font-medium text-foreground">
+                            {t('service_management.spending_fee', {
+                                defaultValue: 'Phí spending',
+                            })}
+                            :
+                        </span>{' '}
+                        {service.spending_fee ?? 0}%
+                    </div>
                 </div>
                 <Button onClick={() => onView(service)}>
                     {t('service_management.view_campaigns')}

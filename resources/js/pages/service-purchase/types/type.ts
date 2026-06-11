@@ -15,6 +15,7 @@ export type ServicePackage = {
     features: ServicePackageFeatureValue[];
     open_fee: string;
     top_up_fee: number;
+    spending_fee: number | string;
     set_up_time: number;
     range_min_top_up: string;
     disabled: boolean;

@@ -128,6 +128,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/platform/{platform}', [PlatformSettingController::class, 'getByPlatform'])->name('platform_settings_get_by_platform');
         Route::post('/', [PlatformSettingController::class, 'store'])->name('platform_settings_store');
         Route::put('/{id}', [PlatformSettingController::class, 'update'])->name('platform_settings_update');
+        Route::post('/{id}/check-token', [PlatformSettingController::class, 'checkToken'])->name('platform_settings_check_token');
         Route::post('/{id}/toggle', [PlatformSettingController::class, 'toggle'])->name('platform_settings_toggle');
         Route::delete('/{id}', [PlatformSettingController::class, 'destroy'])->name('platform_settings_destroy');
         Route::post('/switch', [PlatformSettingController::class, 'switchContext'])->name('platform_settings_switch');

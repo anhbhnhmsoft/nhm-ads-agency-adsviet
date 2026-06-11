@@ -18,7 +18,6 @@ class ServicePurchaseRequest extends FormRequest
             'top_up_amount' => ['nullable', 'numeric', 'min:0'],
             // 'budget' => ['nullable', 'numeric', 'min:0'],
             'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],
-            'postpay_days' => ['nullable', 'integer', 'in:1,3,7'],
             'meta_email' => ['nullable', 'string', 'email', 'max:255'],
             'display_name' => ['nullable', 'string', 'max:255'],
             'bm_id' => ['nullable', 'string', 'max:255'],
@@ -56,5 +55,4 @@ class ServicePurchaseRequest extends FormRequest
         ];
     }
 }
-
 

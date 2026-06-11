@@ -421,6 +421,9 @@ const Edit = ({
                             setData('payment_type', paymentType);
                             if (paymentType === 'postpay') {
                                 setData('allowed_user_ids', []);
+                                setData('billing_source', 'customer_card');
+                            } else if (data.billing_source === 'customer_card') {
+                                setData('billing_source', 'adviet_card');
                             }
                         }}
                         required
@@ -444,6 +447,53 @@ const Edit = ({
                     {errors.payment_type && (
                         <span className="text-sm text-red-500">
                             {errors.payment_type}
+                        </span>
+                    )}
+                </div>
+
+                {/* Billing source */}
+                <div className="flex flex-col gap-2">
+                    <Label>{t('service_packages.billing_source')}</Label>
+                    <Select
+                        value={data.billing_source}
+                        onValueChange={(value) => {
+                            setData(
+                                'billing_source',
+                                value as
+                                    | 'customer_card'
+                                    | 'adviet_card'
+                                    | 'supplier_credit_line',
+                            );
+                        }}
+                        required
+                    >
+                        <SelectTrigger>
+                            <SelectValue
+                                placeholder={t(
+                                    'service_packages.billing_source',
+                                )}
+                            />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                <SelectItem value="adviet_card">
+                                    {t('service_packages.billing_sources.adviet_card')}
+                                </SelectItem>
+                                <SelectItem value="customer_card">
+                                    {t('service_packages.billing_sources.customer_card')}
+                                </SelectItem>
+                                <SelectItem value="supplier_credit_line">
+                                    {t('service_packages.billing_sources.supplier_credit_line')}
+                                </SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    <span className="text-sm text-slate-400">
+                        {t('service_packages.billing_source_desc')}
+                    </span>
+                    {errors.billing_source && (
+                        <span className="text-sm text-red-500">
+                            {errors.billing_source}
                         </span>
                     )}
                 </div>
@@ -687,6 +737,31 @@ const Edit = ({
                     {errors.top_up_fee && (
                         <span className="text-sm text-red-500">
                             {errors.top_up_fee}
+                        </span>
+                    )}
+                </div>
+
+                {/* Spending fee */}
+                <div className="flex flex-col gap-2">
+                    <Label>{t('service_packages.spending_fee')}</Label>
+                    <Input
+                        value={data.spending_fee}
+                        placeholder={t('service_packages.spending_fee')}
+                        type="number"
+                        step={'any'}
+                        min="0"
+                        max="100"
+                        onChange={(e) => {
+                            const stringValue = e.target.value;
+                            setData('spending_fee', stringValue);
+                        }}
+                    />
+                    <span className="text-sm text-slate-400">
+                        {t('service_packages.spending_fee_desc')}
+                    </span>
+                    {errors.spending_fee && (
+                        <span className="text-sm text-red-500">
+                            {errors.spending_fee}
                         </span>
                     )}
                 </div>

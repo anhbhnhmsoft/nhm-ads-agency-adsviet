@@ -53,35 +53,28 @@ class CashbackService
     public function payoutCashbackForService(ServiceUser $service): ServiceReturn
     {
         $now = Carbon::now();
-        $startDate = $service->created_at;
-        $daysActive = $now->diffInDays($startDate);
+        $periodStart = $now->copy()->subMonthNoOverflow()->startOfMonth();
+        $periodEnd = $now->copy()->subMonthNoOverflow()->endOfMonth();
+        $period = $periodStart->format('Y-m');
 
-        // Phải đạt tối thiểu 30 ngày sử dụng
-        if ($daysActive < 30) {
-            return ServiceReturn::error("Service hasn't reached 30 days yet.");
+        if ($service->created_at->gt($periodEnd)) {
+            return ServiceReturn::error('Service was not active in cashback period.');
         }
 
-        // Tìm giao dịch cashback gần nhất cho dịch vụ này
-        $lastCashback = $this->transactionRepository->getLastCashbackForService(
-            $service->id,
-            WalletTransactionType::CASHBACK->value
-        );
-
-        $calculationStartDate = null;
-        $calculationEndDate = $now->copy()->startOfDay();
-
-        if (!$lastCashback) {
-             $calculationStartDate = $startDate->copy()->startOfDay();
-        } else {
-            $lastProcessedDate = $lastCashback->created_at;
-            if ($now->diffInDays($lastProcessedDate) < 30) {
-                return ServiceReturn::error("Last cashback was less than 30 days ago.");
-            }
-            $calculationStartDate = $lastProcessedDate->copy()->startOfDay();
+        $existingCashback = $this->transactionRepository->query()
+            ->where('reference_id', (string) $service->id)
+            ->where('type', WalletTransactionType::CASHBACK->value)
+            ->where('withdraw_info->period', $period)
+            ->first();
+        if ($existingCashback) {
+            return ServiceReturn::error('Cashback already paid for this period.');
         }
 
-        // Tính tổng chi tiêu trong kỳ
-        $totalSpend = $this->calculateTotalSpend($service, $calculationStartDate, $calculationEndDate);
+        $calculationStartDate = $service->created_at->gt($periodStart)
+            ? $service->created_at->copy()->startOfDay()
+            : $periodStart;
+
+        $totalSpend = $this->calculateTotalSpend($service, $calculationStartDate, $periodEnd);
 
         if ($totalSpend <= 0) {
             return ServiceReturn::error("No spend found for calculation period.");
@@ -98,7 +91,15 @@ class CashbackService
             return ServiceReturn::error("Calculated cashback amount is 0.");
         }
 
-        return $this->executePayout($service, $cashbackAmount, $cashbackPercent);
+        return $this->executePayout(
+            $service,
+            $cashbackAmount,
+            $cashbackPercent,
+            $period,
+            $calculationStartDate,
+            $periodEnd,
+            $totalSpend
+        );
     }
 
     /**
@@ -118,7 +119,7 @@ class CashbackService
     }
 
     /**
-     * Tìm tỷ lệ cashback theo tier chi tiêu 30 ngày.
+     * Tìm tỷ lệ cashback theo tier chi tiêu tháng.
      * Dữ liệu vẫn dùng key fee_percent để tương thích cấu trúc JSON hiện có.
      */
     protected function resolveCashbackPercent(float $spending, array $tiers): ?float
@@ -176,9 +177,17 @@ class CashbackService
     /**
      * Thực hiện cộng tiền vào ví và tạo giao dịch.
      */
-    protected function executePayout(ServiceUser $service, float $amount, float $percent): ServiceReturn
+    protected function executePayout(
+        ServiceUser $service,
+        float $amount,
+        float $percent,
+        string $period,
+        Carbon $periodStart,
+        Carbon $periodEnd,
+        float $totalSpend
+    ): ServiceReturn
     {
-        return DB::transaction(function () use ($service, $amount, $percent) {
+        return DB::transaction(function () use ($service, $amount, $percent, $period, $periodStart, $periodEnd, $totalSpend) {
             $wallet = $this->walletRepository->findByUserId($service->user_id);
             if (!$wallet) {
                 $walletResult = $this->walletService->createForUser($service->user_id);
@@ -196,7 +205,19 @@ class CashbackService
                 'type' => WalletTransactionType::CASHBACK->value,
                 'status' => WalletTransactionStatus::COMPLETED->value,
                 'reference_id' => $service->id,
-                'description' => __('wallet.transaction_description.cashback', ['percent' => $percent]),
+                'description' => __('wallet.transaction_description.cashback', [
+                    'percent' => $percent,
+                    'period' => $period,
+                ]),
+                'withdraw_info' => [
+                    'purpose' => 'cashback',
+                    'period' => $period,
+                    'period_start' => $periodStart->toDateString(),
+                    'period_end' => $periodEnd->toDateString(),
+                    'total_spend' => $totalSpend,
+                    'cashback_percent' => $percent,
+                    'cashback_amount' => $amount,
+                ],
                 'customer_name' => $service->user->name,
                 'customer_email' => $service->user->username,
             ]);

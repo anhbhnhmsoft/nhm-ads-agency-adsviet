@@ -49,6 +49,8 @@ export type ServiceOrder = {
         payment_type?: 'prepay' | 'postpay' | null;
         platform_label?: string | null;
         billing_source?: string | null;
+        top_up_fee?: number | string | null;
+        spending_fee?: number | string | null;
     };
     user?: {
         referrer?: {
@@ -58,6 +60,7 @@ export type ServiceOrder = {
     budget: string;
     open_fee?: string;
     top_up_fee?: number;
+    spending_fee?: number;
     total_cost?: number; // Tổng chi phí được tính ở backend
     config_account?: ServiceOrderConfigAccount | null;
     description?: string | null;

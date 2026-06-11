@@ -104,6 +104,7 @@ class ServicePackageController extends Controller
             'open_fee' => ['required', 'numeric', 'min:0'],
             'range_min_top_up' => ['required', 'numeric', 'min:0'],
             'top_up_fee' => ['required', 'numeric', 'min:0'],
+            'spending_fee' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'supplier_fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'supplier_id' => ['nullable', 'string', 'exists:suppliers,id'],
             'set_up_time' => ['required', 'numeric', 'min:0'],
@@ -127,6 +128,9 @@ class ServicePackageController extends Controller
             'open_fee.required' => __('services.validation.open_fee_invalid'),
             'range_min_top_up.required' => __('services.validation.range_min_top_up_invalid'),
             'top_up_fee.required' => __('services.validation.top_up_fee_invalid'),
+            'spending_fee.numeric' => __('services.validation.spending_fee_invalid', ['default' => 'Phí spending phải là số']),
+            'spending_fee.min' => __('services.validation.spending_fee_invalid', ['default' => 'Phí spending không được nhỏ hơn 0']),
+            'spending_fee.max' => __('services.validation.spending_fee_invalid', ['default' => 'Phí spending không được lớn hơn 100']),
             'supplier_fee_percent.numeric' => __('services.validation.supplier_fee_percent_invalid', ['default' => 'Chi phí nhà cung cấp phải là số']),
             'supplier_fee_percent.min' => __('services.validation.supplier_fee_percent_min', ['default' => 'Chi phí nhà cung cấp không được nhỏ hơn 0']),
             'supplier_fee_percent.max' => __('services.validation.supplier_fee_percent_max', ['default' => 'Chi phí nhà cung cấp không được lớn hơn 100']),
@@ -256,6 +260,7 @@ class ServicePackageController extends Controller
                 'open_fee' => ['required', 'numeric', 'min:0'],
                 'range_min_top_up' => ['required', 'numeric', 'min:0'],
                 'top_up_fee' => ['required', 'numeric', 'min:0'],
+                'spending_fee' => ['nullable', 'numeric', 'min:0', 'max:100'],
                 'supplier_fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
                 'supplier_id' => ['nullable', 'string', 'exists:suppliers,id'],
                 'set_up_time' => ['required', 'numeric', 'min:0'],
@@ -282,6 +287,9 @@ class ServicePackageController extends Controller
                 'range_min_top_up.numeric' => __('services.validation.range_min_top_up_invalid'),
                 'top_up_fee.required' => __('services.validation.top_up_fee_invalid'),
                 'top_up_fee.numeric' => __('services.validation.top_up_fee_invalid'),
+                'spending_fee.numeric' => __('services.validation.spending_fee_invalid', ['default' => 'Phí spending phải là số']),
+                'spending_fee.min' => __('services.validation.spending_fee_invalid', ['default' => 'Phí spending không được nhỏ hơn 0']),
+                'spending_fee.max' => __('services.validation.spending_fee_invalid', ['default' => 'Phí spending không được lớn hơn 100']),
                 'supplier_fee_percent.numeric' => __('services.validation.supplier_fee_percent_invalid', ['default' => 'Chi phí nhà cung cấp phải là số']),
                 'supplier_fee_percent.min' => __('services.validation.supplier_fee_percent_min', ['default' => 'Chi phí nhà cung cấp không được nhỏ hơn 0']),
                 'supplier_fee_percent.max' => __('services.validation.supplier_fee_percent_max', ['default' => 'Chi phí nhà cung cấp không được lớn hơn 100']),
@@ -384,12 +392,13 @@ class ServicePackageController extends Controller
     }
 
     /**
-     * Chuẩn hóa dữ liệu cashback theo bậc chi tiêu 30 ngày.
+     * Chuẩn hóa dữ liệu cashback theo bậc chi tiêu tháng.
      * Key fee_percent được giữ để tương thích cấu trúc JSON hiện có.
      */
     private function prepareMonthlySpendingData(array $form): array
     {
-        $form['billing_source'] = $form['billing_source'] ?? AccountBillingSource::ADVIET_CARD->value;
+        $form['billing_source'] = $form['billing_source'] ?? $this->defaultBillingSourceForPackage($form);
+        $form['spending_fee'] = $form['spending_fee'] ?? 0;
 
         $form['monthly_spending_fee_structure'] = collect($form['monthly_spending_fee_structure'] ?? [])
             ->map(function ($row) {
@@ -405,5 +414,14 @@ class ServicePackageController extends Controller
             ->all();
 
         return $form;
+    }
+
+    private function defaultBillingSourceForPackage(array $form): string
+    {
+        if (($form['payment_type'] ?? null) === ServicePackagePaymentType::POSTPAY->value) {
+            return AccountBillingSource::CUSTOMER_CARD->value;
+        }
+
+        return AccountBillingSource::ADVIET_CARD->value;
     }
 }

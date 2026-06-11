@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Common\Constants\ServiceUser\ServiceUserTransactionStatus;
 use App\Common\Constants\ServiceUser\ServiceUserTransactionType;
+use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Common\Constants\Google\GoogleCampaignStatus;
@@ -25,7 +26,10 @@ use Illuminate\Support\Facades\DB;
 class ServicesBillPostpay extends Command
 {
     protected $signature = 'services:bill-postpay';
-    protected $description = 'Tính phí postpay (30 ngày gần nhất) cho các dịch vụ payment_type = postpay';
+    protected $description = 'Tính phí spending trả sau khi chi tiêu mới đạt ngưỡng 100 USD';
+
+    private const SPENDING_FEE_CHARGE_THRESHOLD = 100.0;
+    private const MIN_WALLET_BALANCE = 100.0;
 
     public function __construct(
         protected ServiceUserRepository $serviceUserRepository,
@@ -47,64 +51,39 @@ class ServicesBillPostpay extends Command
 
         $this->serviceUserRepository->query()
             ->with('package')
-            ->where('config_account->payment_type', 'postpay')
+            ->where('status', ServiceUserStatus::ACTIVE->value)
+            ->whereHas('package', function ($query) {
+                $query->where('spending_fee', '>', 0);
+            })
             ->chunkById(100, function ($serviceUsers) use ($today) {
                 foreach ($serviceUsers as $serviceUser) {
                     try {
                         $config = $serviceUser->config_account ?? [];
-                        $postPaymentDate = $config['post_payment_date'] ?? null;
-                        $postpayDays = isset($config['postpay_days']) && is_numeric($config['postpay_days']) 
-                            ? (int) $config['postpay_days'] 
-                            : 30; // Mặc định 30 ngày
-
-                        if (!$postPaymentDate) {
-                            $baseDate = $serviceUser->last_postpay_billed_at 
-                                ? $serviceUser->last_postpay_billed_at 
-                                : $serviceUser->created_at;
-                            $postPaymentDate = $baseDate->copy()->addDays($postpayDays)->format('Y-m-d');
-                            $config['post_payment_date'] = $postPaymentDate;
-                            $config['postpay_days'] = $postpayDays;
-                            $serviceUser->config_account = $config;
-                            $serviceUser->save();
-                        }
-
-                        $postPaymentDateCarbon = Carbon::parse($postPaymentDate);
-                        
-                        // Chỉ bill khi đã đến hoặc quá ngày thanh toán
-                        if ($today->lt($postPaymentDateCarbon)) {
-                            continue;
-                        }
-
-                        $windowStartDate = $serviceUser->last_postpay_billed_at
-                            ? $serviceUser->last_postpay_billed_at->toDateString()
-                            : $serviceUser->created_at->toDateString();
-
-                        $spending = $this->getSpendingBetween($serviceUser->id, $windowStartDate, $today->toDateString());
                         $package = $serviceUser->package;
                         if (!$package) {
-                            $serviceUser->last_postpay_billed_at = $today;
-                            $serviceUser->save();
                             continue;
                         }
 
-                        $feePercent = (float) ($package->top_up_fee ?? 0);
-                        if ($feePercent === null || $feePercent <= 0 || $spending <= 0) {
-                            $serviceUser->last_postpay_billed_at = $today;
-                            $serviceUser->save();
+                        $feePercent = (float) ($package->spending_fee ?? 0);
+                        if ($feePercent <= 0 || !$this->shouldBillSpendingFee($serviceUser, $config)) {
                             continue;
                         }
 
-                        $monthlyFee = $spending * ($feePercent / 100);
+                        $spending = $this->getSpendingBetween(
+                            (string) $serviceUser->id,
+                            $serviceUser->created_at->toDateString(),
+                            $today->toDateString()
+                        );
+                        $billedSpend = $this->resolveBilledSpend($serviceUser, $config);
+                        $unbilledSpend = max(0.0, $spending - $billedSpend);
 
-                        // Thu phí mở tài khoản ở kỳ postpay đầu tiên
-                        $paymentType = $config['payment_type'] ?? 'prepay';
-                        $openFeePaid = true;
-                        $openFee = 0;
+                        if ($unbilledSpend < self::SPENDING_FEE_CHARGE_THRESHOLD) {
+                            continue;
+                        }
 
-                        $chargeAmount = $monthlyFee + $openFee;
+                        $spendingFee = $unbilledSpend * ($feePercent / 100);
+                        $chargeAmount = round($spendingFee, 2);
                         if ($chargeAmount <= 0) {
-                            $serviceUser->last_postpay_billed_at = $today;
-                            $serviceUser->save();
                             continue;
                         }
 
@@ -119,14 +98,16 @@ class ServicesBillPostpay extends Command
                             continue;
                         }
 
-                        if ((float) $wallet->balance < $chargeAmount) {
+                        $requiredWalletBalance = max($chargeAmount, self::MIN_WALLET_BALANCE);
+                        if ((float) $wallet->balance < $requiredWalletBalance) {
                             // Số dư không đủ: cảnh báo, pause campaign, và bỏ qua (không cập nhật last_postpay_billed_at để lần sau thử lại)
                             Logging::web('services:bill-postpay insufficient balance, pause campaigns', [
                                 'service_user_id' => $serviceUser->id,
                                 'user_id' => $serviceUser->user_id,
                                 'balance' => $wallet->balance,
-                                'monthly_fee' => $monthlyFee,
-                                'open_fee' => $openFee,
+                                'unbilled_spend' => $unbilledSpend,
+                                'spending_fee' => $chargeAmount,
+                                'minimum_wallet_balance' => self::MIN_WALLET_BALANCE,
                                 'charge_amount' => $chargeAmount,
                             ]);
 
@@ -139,14 +120,14 @@ class ServicesBillPostpay extends Command
                                 $shortName = $user->name ?? $user->username ?? 'Customer';
                                 $balanceFormatted = number_format((float) $wallet->balance, 2);
                                 $chargeFormatted = number_format($chargeAmount, 2);
-                                $openFeeFormatted = number_format($openFee, 2);
-                                $monthlyFeeFormatted = number_format($monthlyFee, 2);
+                                $spendingFeeFormatted = number_format($chargeAmount, 2);
                                 $message = __('wallet.postpay_charge_insufficient', [
                                     'name' => $shortName,
                                     'balance' => $balanceFormatted,
                                     'charge' => $chargeFormatted,
-                                    'monthly_fee' => $monthlyFeeFormatted,
-                                    'open_fee' => $openFeeFormatted,
+                                    'monthly_fee' => $spendingFeeFormatted,
+                                    'open_fee' => number_format(0, 2),
+                                    'min_wallet' => number_format(self::MIN_WALLET_BALANCE, 2),
                                 ]);
 
                                 if (!empty($user->telegram_id)) {
@@ -165,16 +146,25 @@ class ServicesBillPostpay extends Command
                             continue;
                         }
 
-                        DB::transaction(function () use ($wallet, $openFee, $chargeAmount, $package, $serviceUser, $today, $config, $openFeePaid) {
+                        DB::transaction(function () use ($wallet, $chargeAmount, $package, $serviceUser, $today, $config, $feePercent, $spending, $billedSpend, $unbilledSpend) {
                             $wallet->update(['balance' => (float) $wallet->balance - $chargeAmount]);
 
                             $walletTransaction = $this->walletTransactionRepository->create([
                                 'wallet_id' => $wallet->id,
                                 'amount' => -$chargeAmount,
-                                'type' => WalletTransactionType::SERVICE_PURCHASE->value,
+                                'type' => WalletTransactionType::SPENDING_FEE->value,
                                 'status' => WalletTransactionStatus::COMPLETED->value,
-                                'description' => "Postpay monthly fee: {$package->name}",
+                                'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend): {$package->name}",
                                 'reference_id' => (string) $serviceUser->id,
+                                'withdraw_info' => [
+                                    'purpose' => 'spending_fee',
+                                    'spend_amount' => $unbilledSpend,
+                                    'spending_fee_percent' => $feePercent,
+                                    'spending_fee_amount' => $chargeAmount,
+                                    'billed_spend_before' => $billedSpend,
+                                    'billed_spend_after' => $spending,
+                                    'threshold' => self::SPENDING_FEE_CHARGE_THRESHOLD,
+                                ],
                             ]);
 
                             ServiceUserTransactionLog::create([
@@ -183,21 +173,13 @@ class ServicesBillPostpay extends Command
                                 'type' => ServiceUserTransactionType::FEE->value,
                                 'status' => ServiceUserTransactionStatus::COMPLETED->value,
                                 'reference_id' => (string) $walletTransaction->id,
-                                'description' => "Postpay monthly fee (last 30d): {$package->name}",
+                                'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend): {$package->name}",
                             ]);
 
-                            // Đánh dấu đã thu phí mở tài khoản (chỉ một lần cho trả sau)
-                            if (!$openFeePaid && $openFee > 0) {
-                                $config['open_fee_paid'] = true;
-                            }
-
-                            // Cập nhật post_payment_date cho kỳ tiếp theo (dùng postpay_days từ config)
-                            $postpayDays = isset($config['postpay_days']) && is_numeric($config['postpay_days']) 
-                                ? (int) $config['postpay_days'] 
-                                : 30; // Mặc định 30 ngày nếu không có
-                            $config['post_payment_date'] = $today->copy()->addDays($postpayDays)->format('Y-m-d');
+                            $config['spending_fee_billed_spend'] = $spending;
+                            $config['spending_fee_last_charged_at'] = now()->toDateTimeString();
                             $serviceUser->config_account = $config;
-                            $serviceUser->last_postpay_billed_at = $today;
+                            $serviceUser->last_postpay_billed_at = now();
                             $serviceUser->save();
                         });
                     } catch (\Throwable $e) {
@@ -222,16 +204,43 @@ class ServicesBillPostpay extends Command
         // Meta spend
         $metaSpend = (float) DB::table('meta_ads_account_insights')
             ->where('service_user_id', $serviceUserId)
+            ->whereNull('deleted_at')
             ->whereBetween('date', [$fromDate, $toDate])
             ->sum(DB::raw('CAST(spend AS DECIMAL(18,4))'));
 
         // Google spend
         $googleSpend = (float) DB::table('google_ads_account_insights')
             ->where('service_user_id', $serviceUserId)
+            ->whereNull('deleted_at')
             ->whereBetween('date', [$fromDate, $toDate])
             ->sum(DB::raw('CAST(spend AS DECIMAL(18,4))'));
 
         return $metaSpend + $googleSpend;
+    }
+
+    private function shouldBillSpendingFee($serviceUser, array $config): bool
+    {
+        $paymentType = $serviceUser->package?->payment_type ?? $config['payment_type'] ?? 'prepay';
+        $billingSource = $serviceUser->package?->billing_source ?? $config['billing_source'] ?? null;
+
+        return $paymentType === 'postpay' || $billingSource === 'customer_card';
+    }
+
+    private function resolveBilledSpend($serviceUser, array $config): float
+    {
+        if (isset($config['spending_fee_billed_spend']) && is_numeric($config['spending_fee_billed_spend'])) {
+            return max(0.0, (float) $config['spending_fee_billed_spend']);
+        }
+
+        if (!$serviceUser->last_postpay_billed_at) {
+            return 0.0;
+        }
+
+        return $this->getSpendingBetween(
+            (string) $serviceUser->id,
+            $serviceUser->created_at->toDateString(),
+            $serviceUser->last_postpay_billed_at->toDateString()
+        );
     }
 
     /**

@@ -18,6 +18,7 @@ return [
         'campaign_end_meta' => 'Kết thúc chiến dịch Meta Ads',
         'account_top_up_google' => 'Nạp tiền tài khoản Google Ads',
         'account_top_up_meta' => 'Nạp tiền tài khoản Meta Ads',
+        'spending_fee' => 'Phí spending',
     ],
     'transaction_status' => [
         'unknown' => 'Không xác định',
@@ -69,8 +70,8 @@ return [
         'low_balance' => "⚠️ Ví của bạn chỉ còn :balance USDT (ngưỡng cảnh báo :threshold USDT).\nVui lòng nạp thêm để tránh gián đoạn dịch vụ.",
         'deposit_group_alert' => "⚠️ <b>Thông báo nạp</b> ⚠️\n<b>Name:</b>:name\n<b>Kiểu:</b> :network\n<b>Số tiền:</b> :amount\n<b>Mã giao dịch:</b> :transaction_code\n<b>Mã đơn:</b> :order_code\n<b>Thời gian:</b> :time",
     ],
-    'postpay_charge_insufficient' => 'Xin chào :name, phí trả sau kỳ này là :charge USDT (phí mở tài khoản: :open_fee, phí tháng: :monthly_fee) nhưng số dư ví hiện tại :balance USDT không đủ. Vui lòng nạp thêm để tiếp tục duy trì dịch vụ.',
-    'postpay_charge_label' => 'Thu phí trả sau',
+    'postpay_charge_insufficient' => 'Xin chào :name, phí spending cần thu là :charge USDT nhưng số dư ví hiện tại :balance USDT không đủ hoặc chưa đạt mức duy trì tối thiểu :min_wallet USDT. Vui lòng nạp thêm để tiếp tục duy trì dịch vụ.',
+    'postpay_charge_label' => 'Thu phí spending trả sau',
     'notifications' => [
         'title' => '🔔 :type',
         'amount' => 'Số tiền: :amount USDT',
@@ -98,8 +99,9 @@ return [
         'campaign_end_cancelled_admin' => 'Admin hủy yêu cầu kết thúc chiến dịch',
         'account_top_up_created' => 'User yêu cầu nạp tiền tài khoản quảng cáo',
         'account_top_up_detail' => 'User yêu cầu nạp tiền tài khoản :account (:account_id)',
+        'account_top_up_fee_detail' => 'Phí nạp tiền :fee USDT (:percent%)',
         'account_top_up_cancelled_admin' => 'Admin hủy yêu cầu nạp tiền tài khoản quảng cáo',
-        'cashback' => 'Hoàn tiền thưởng (Cashback) :percent% dựa trên tổng chi tiêu trong 30 ngày qua.',
+        'cashback' => 'Hoàn tiền thưởng (Cashback) :percent% dựa trên tổng chi tiêu kỳ :period.',
     ],
     'error' => [
         'wallet_not_found' => 'Ví không tồn tại',
