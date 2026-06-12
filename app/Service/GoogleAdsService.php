@@ -1168,6 +1168,11 @@ GAQL;
         string $googleAccountDbId,
         string $googleAccountId
     ): void {
+        // LAST_30_DAYS theo Google Ads KHONG bao gom hom nay, nen dung khoang ngay
+        // tuong minh tu 30 ngay truoc den het hom nay de lay ca chi tieu hom nay.
+        // Khong dung ngay tuong lai vi Google Ads se bao loi date trong tuong lai.
+        $endDate = Carbon::now(config('app.timezone'))->toDateString();
+        $startDate = Carbon::now(config('app.timezone'))->subDays(30)->toDateString();
         $query = <<<GAQL
 SELECT
   segments.date,
@@ -1180,7 +1185,7 @@ SELECT
   metrics.average_cpm,
   metrics.conversions_value
 FROM customer
-WHERE segments.date DURING LAST_30_DAYS
+WHERE segments.date BETWEEN '{$startDate}' AND '{$endDate}'
 GAQL;
 
         try {
