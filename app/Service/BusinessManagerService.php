@@ -1782,6 +1782,21 @@ class BusinessManagerService
                     $spendValue = $insight && isset($insight->total_spend) ? (string) $insight->total_spend : '0';
                     $lastSyncedAt = $insight?->last_synced_at ?? $account->last_synced_at;
 
+                    if (
+                        $dateStart
+                        && $dateEnd
+                        && (float) $spendValue <= 0
+                        && $this->isTodayDateRangeForGoogleAccount($dateStart, $dateEnd, $account->time_zone ?? null)
+                        && $account->last_synced_at
+                        && Carbon::parse($account->last_synced_at)
+                            ->timezone($account->time_zone ?: config('app.timezone'))
+                            ->isSameDay(Carbon::now($account->time_zone ?: config('app.timezone')))
+                        && is_numeric($account->amount_spent ?? null)
+                    ) {
+                        $spendValue = (string) $account->amount_spent;
+                        $lastSyncedAt = $account->last_synced_at;
+                    }
+
                     $balanceValue = (string) ($account->balance ?? '0');
                     $status = $account->account_status !== null ? (int) $account->account_status : null;
                     $isActive = $this->isAccountActive((int) $platform, $status);

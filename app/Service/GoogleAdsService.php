@@ -859,6 +859,7 @@ GAQL;
                         ],
                         exception: $exception
                     );
+                    $this->throwOnQuotaExhausted($exception);
                 }
             }
 
@@ -878,6 +879,7 @@ GAQL;
                 ],
                 exception: $exception
             );
+            $this->throwOnQuotaExhausted($exception);
             return ServiceReturn::error(message: __('google_ads.error.sync_failed'));
         }
     }
@@ -918,6 +920,7 @@ GAQL;
                 ],
                 exception: $exception
             );
+            $this->throwOnQuotaExhausted($exception);
             return ServiceReturn::error(message: __('google_ads.error.sync_failed'));
         }
     }
@@ -962,6 +965,7 @@ GAQL;
                 ],
                 exception: $exception
             );
+            $this->throwOnQuotaExhausted($exception);
             return ServiceReturn::error(message: __('google_ads.error.sync_failed'));
         }
     }
@@ -1019,6 +1023,7 @@ GAQL;
                 ],
                 exception: $exception
             );
+            $this->throwOnQuotaExhausted($exception);
         }
     }
 
@@ -1198,6 +1203,7 @@ GAQL;
                     'error' => $exception->getMessage(),
                 ]
             );
+            $this->throwOnQuotaExhausted($exception);
         }
     }
 
@@ -1703,43 +1709,48 @@ GAQL;
                             $rawStatus = $customerClient->getStatus();
                             $mappedStatus = $this->mapStatusToInt($rawStatus);
 
-                            $balance = null;
-                            $balanceExhausted = false;
-                            try {
-                                $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $customerManagerId);
-                                $balance = $balanceData['balance'] ?? null;
-                                $balanceExhausted = $balanceData['exhausted'] ?? false;
-                            } catch (\Throwable $balanceError) {
-                                Logging::error(
-                                    message: 'GoogleAdsService@syncFromManagerId: Failed to get account balance, but will still sync account',
-                                    context: [
-                                        'manager_id' => $customerManagerId,
-                                        'root_manager_id' => $managerId,
-                                        'account_id' => $accountId,
-                                        'error' => $balanceError->getMessage(),
-                                    ],
-                                    exception: $balanceError
-                                );
-                            }
-
                             $existingAccount = $this->googleAccountRepository->query()
                                 ->where('account_id', (string) $accountId)
                                 ->first();
 
+                            $hasServiceUser = (bool) ($existingAccount && $existingAccount->service_user_id);
+
+                            $balance = null;
+                            $balanceExhausted = false;
                             $todaySpend = 0.0;
-                            try {
-                                $todaySpend = $this->getCustomerTodaySpend($googleAdsService, (string) $accountId);
-                            } catch (\Throwable $spendError) {
-                                Logging::error(
-                                    message: 'GoogleAdsService@syncFromManagerId: Failed to get today spend, but will still sync account',
-                                    context: [
-                                        'manager_id' => $customerManagerId,
-                                        'root_manager_id' => $managerId,
-                                        'account_id' => $accountId,
-                                        'error' => $spendError->getMessage(),
-                                    ],
-                                    exception: $spendError
-                                );
+
+                            if ($hasServiceUser) {
+                                try {
+                                    $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $customerManagerId);
+                                    $balance = $balanceData['balance'] ?? null;
+                                    $balanceExhausted = $balanceData['exhausted'] ?? false;
+                                } catch (\Throwable $balanceError) {
+                                    Logging::error(
+                                        message: 'GoogleAdsService@syncFromManagerId: Failed to get account balance, but will still sync account',
+                                        context: [
+                                            'manager_id' => $customerManagerId,
+                                            'root_manager_id' => $managerId,
+                                            'account_id' => $accountId,
+                                            'error' => $balanceError->getMessage(),
+                                        ],
+                                        exception: $balanceError
+                                    );
+                                }
+
+                                try {
+                                    $todaySpend = $this->getCustomerTodaySpend($googleAdsService, (string) $accountId);
+                                } catch (\Throwable $spendError) {
+                                    Logging::error(
+                                        message: 'GoogleAdsService@syncFromManagerId: Failed to get today spend, but will still sync account',
+                                        context: [
+                                            'manager_id' => $customerManagerId,
+                                            'root_manager_id' => $managerId,
+                                            'account_id' => $accountId,
+                                            'error' => $spendError->getMessage(),
+                                        ],
+                                        exception: $spendError
+                                    );
+                                }
                             }
 
                             $updateData = [
@@ -1765,26 +1776,35 @@ GAQL;
                                 $updateData
                             );
 
-                            $this->persistTodaySpendInsight(
-                                $syncedAccount->service_user_id ? (string) $syncedAccount->service_user_id : null,
-                                (string) $syncedAccount->id,
-                                $todaySpend,
-                                $customerClient->getTimeZone() ?: config('app.timezone')
-                            );
+                            if ($hasServiceUser) {
+                                $this->persistTodaySpendInsight(
+                                    (string) $syncedAccount->service_user_id,
+                                    (string) $syncedAccount->id,
+                                    $todaySpend,
+                                    $customerClient->getTimeZone() ?: config('app.timezone')
+                                );
 
-                            $this->syncInsightsForAccount(
-                                $googleAdsService,
-                                $syncedAccount->service_user_id ? (string) $syncedAccount->service_user_id : null,
-                                (string) $syncedAccount->id,
-                                (string) $accountId
-                            );
+                                $this->syncInsightsForAccount(
+                                    $googleAdsService,
+                                    (string) $syncedAccount->service_user_id,
+                                    (string) $syncedAccount->id,
+                                    (string) $accountId
+                                );
 
-                            $this->syncCampaignsForAccount(
-                                $googleAdsService,
-                                $syncedAccount->service_user_id ? (string) $syncedAccount->service_user_id : null,
-                                (string) $syncedAccount->id,
-                                (string) $accountId
-                            );
+                                $this->syncCampaignsForAccount(
+                                    $googleAdsService,
+                                    (string) $syncedAccount->service_user_id,
+                                    (string) $syncedAccount->id,
+                                    (string) $accountId
+                                );
+                            } else {
+                                $this->persistTodaySpendInsight(
+                                    null,
+                                    (string) $syncedAccount->id,
+                                    $todaySpend,
+                                    $customerClient->getTimeZone() ?: config('app.timezone')
+                                );
+                            }
 
                             $syncedCount++;
                         }
@@ -1799,6 +1819,7 @@ GAQL;
                         ],
                         exception: $managerSyncError
                     );
+                    $this->throwOnQuotaExhausted($managerSyncError);
                 }
             }
 
@@ -1813,6 +1834,7 @@ GAQL;
                 ],
                 exception: $e
             );
+            $this->throwOnQuotaExhausted($e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -3345,6 +3367,16 @@ GAQL;
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    private function throwOnQuotaExhausted(\Throwable $e): void
+    {
+        if (
+            str_contains($e->getMessage(), 'RESOURCE_EXHAUSTED')
+            || str_contains($e->getMessage(), 'Resource has been exhausted')
+        ) {
+            throw $e;
         }
     }
 }
