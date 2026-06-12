@@ -466,6 +466,11 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
                                                             })}
                                                         </span>
                                                     )}
+                                                    {item.token_status?.message && (
+                                                        <span className="max-w-80 leading-5">
+                                                            {item.token_status.message}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 text-right">

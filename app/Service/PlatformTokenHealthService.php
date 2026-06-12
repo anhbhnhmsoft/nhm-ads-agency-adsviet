@@ -102,17 +102,18 @@ class PlatformTokenHealthService
 
         return [
             'status' => 'valid',
-            'message' => 'Google refresh token còn hiệu lực. Access token mới đã được cấp để kiểm tra.',
+            'message' => $expiresAt
+                ? 'Google đã xác thực refresh token thành công. Access token được cấp chỉ là token tạm thời để kiểm tra.'
+                : 'Google refresh token còn hiệu lực. Google không trả về hạn cố định của refresh token.',
             'checked_at' => now()->toIso8601String(),
             'expires_at' => $expiresAt?->toIso8601String(),
             'expires_in_seconds' => $expiresAt ? max(0, now()->diffInSeconds($expiresAt, false)) : null,
-            'expires_label' => $expiresAt
-                ? 'Access token kiểm tra còn ' . $this->humanTimeLeft($expiresAt)
-                : 'Refresh token còn hiệu lực, không có hạn cố định',
+            'expires_label' => 'Refresh token còn hiệu lực',
             'raw' => [
                 'token_type' => $response->json('token_type'),
                 'scope' => $response->json('scope'),
                 'refresh_token_status' => 'valid',
+                'access_token_expires_label' => $expiresAt ? $this->humanTimeLeft($expiresAt) : null,
             ],
         ];
     }

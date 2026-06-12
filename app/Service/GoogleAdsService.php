@@ -802,7 +802,20 @@ GAQL;
                             $balance = $balanceData['balance'] ?? null;
                             $balanceExhausted = $balanceData['exhausted'] ?? false;
 
-                            $this->googleAccountRepository->query()->updateOrCreate(
+                            $todaySpend = 0.0;
+                            try {
+                                $todaySpend = $this->getCustomerTodaySpend($googleAdsService, (string) $accountId);
+                            } catch (\Throwable $spendError) {
+                                Logging::error(
+                                    message: 'GoogleAdsService@syncGoogleAccounts: Failed to get today spend',
+                                    context: [
+                                        'account_id' => $accountId,
+                                        'error' => $spendError->getMessage(),
+                                    ]
+                                );
+                            }
+
+                            $syncedAccount = $this->googleAccountRepository->query()->updateOrCreate(
                                 [
                                     'account_id' => (string) $accountId,
                                 ],
@@ -815,8 +828,16 @@ GAQL;
                                     'time_zone' => $customer->getTimeZone(),
                                     'balance' => $balance,
                                     'balance_exhausted' => $balanceExhausted,
+                                    'amount_spent' => $todaySpend,
                                     'last_synced_at' => now(),
                                 ]
+                            );
+
+                            $this->persistTodaySpendInsight(
+                                $syncedAccount->service_user_id ? (string) $syncedAccount->service_user_id : null,
+                                (string) $syncedAccount->id,
+                                $todaySpend,
+                                $customer->getTimeZone() ?: config('app.timezone')
                             );
                             $accountCount++;
                             $syncedCount++;
@@ -1744,6 +1765,13 @@ GAQL;
                                 $updateData
                             );
 
+                            $this->persistTodaySpendInsight(
+                                $syncedAccount->service_user_id ? (string) $syncedAccount->service_user_id : null,
+                                (string) $syncedAccount->id,
+                                $todaySpend,
+                                $customerClient->getTimeZone() ?: config('app.timezone')
+                            );
+
                             $this->syncInsightsForAccount(
                                 $googleAdsService,
                                 $syncedAccount->service_user_id ? (string) $syncedAccount->service_user_id : null,
@@ -1935,6 +1963,33 @@ GAQL;
         }
 
         return $spend;
+    }
+
+    protected function persistTodaySpendInsight(?string $serviceUserId, string $googleAccountDbId, float $spend, ?string $timezone): void
+    {
+        $date = Carbon::now($timezone ?: config('app.timezone'))->toDateString();
+
+        $this->googleAdsAccountInsightRepository->query()->updateOrCreate(
+            [
+                'google_account_id' => $googleAccountDbId,
+                'date' => $date,
+            ],
+            [
+                'service_user_id' => $serviceUserId,
+                'spend' => $spend,
+                'impressions' => 0,
+                'clicks' => 0,
+                'conversions' => 0,
+                'ctr' => 0,
+                'cpc' => 0,
+                'cpm' => 0,
+                'conversion_actions' => [
+                    'source' => 'customer_today_spend',
+                ],
+                'roas' => 0,
+                'last_synced_at' => now(),
+            ]
+        );
     }
 
     protected function fetchCampaignDailyMetrics(

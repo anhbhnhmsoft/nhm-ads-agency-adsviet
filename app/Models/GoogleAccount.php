@@ -24,6 +24,7 @@ class GoogleAccount extends Model
         'primary_email',
         'balance',
         'balance_exhausted',
+        'amount_spent',
         'last_synced_at',
     ];
 
@@ -32,6 +33,7 @@ class GoogleAccount extends Model
         'service_user_id' => 'string',
         'balance' => 'decimal:2',
         'balance_exhausted' => 'boolean',
+        'amount_spent' => 'decimal:2',
         'last_synced_at' => 'datetime',
     ];
 
@@ -40,4 +42,3 @@ class GoogleAccount extends Model
         return $this->belongsTo(ServiceUser::class, 'service_user_id');
     }
 }
-

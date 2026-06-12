@@ -516,7 +516,7 @@
         "range_min_top_up_desc": "Số dư tối thiểu cần nạp để sử dụng gói dịch vụ ",
         "top_up_fee": "Phí nạp tiền (%)",
         "spending_fee": "Phí spending (%)",
-        "spending_fee_desc": "Phí trả sau, tự trừ khi chi tiêu quảng cáo mới đạt từ 100 USD.",
+        "spending_fee_desc": "Phí trả sau, tự trừ khi chi tiêu quảng cáo đạt 100 USD.",
         "set_up_time": "Thời gian thiết lập",
         "set_up_time_desc": "Thời gian thiết lập gói dịch vụ (tính theo giờ)",
         "disabled": "Khoá gói dịch vụ",
