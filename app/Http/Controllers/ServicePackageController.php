@@ -177,6 +177,7 @@ class ServicePackageController extends Controller
         // Lấy dữ liệu đã validate
         $form = $validator->validated();
         $form = $this->prepareMonthlySpendingData($form);
+        $form['supplier_id'] = !empty($form['supplier_id']) ? (string) $form['supplier_id'] : null;
 
         // Tự động lấy supplier_fee_percent từ supplier nếu có supplier_id
         if (!empty($form['supplier_id'])) {
@@ -337,6 +338,7 @@ class ServicePackageController extends Controller
         // Lấy dữ liệu đã validate
         $form = $validator->validated();
         $form = $this->prepareMonthlySpendingData($form);
+        $form['supplier_id'] = !empty($form['supplier_id']) ? (string) $form['supplier_id'] : null;
 
         // Tự động lấy supplier_fee_percent từ supplier nếu có supplier_id
         if (!empty($form['supplier_id'])) {
