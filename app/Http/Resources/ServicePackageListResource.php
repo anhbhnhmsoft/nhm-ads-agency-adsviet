@@ -30,7 +30,7 @@ class ServicePackageListResource extends JsonResource
             'inventory_total_count' => (int) ($this->inventory_total_count ?? 0),
             'inventory_available_count' => (int) ($this->inventory_available_count ?? 0),
             'supplier_fee_percent' => $this->supplier_fee_percent,
-            'supplier_id' => $this->supplier_id,
+            'supplier_id' => $this->supplier_id ? (string) $this->supplier_id : null,
             'set_up_time' => $this->set_up_time,
             'range_min_top_up' => $this->range_min_top_up,
             'disabled' => $this->disabled

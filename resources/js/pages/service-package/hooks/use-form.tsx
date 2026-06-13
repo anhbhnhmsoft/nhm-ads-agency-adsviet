@@ -67,7 +67,7 @@ export const useFormEditServicePackage = (
         top_up_fee: item.top_up_fee,
         spending_fee: item.spending_fee || '0',
         supplier_fee_percent: item.supplier_fee_percent || '0',
-        supplier_id: item.supplier_id || null,
+        supplier_id: item.supplier_id ? String(item.supplier_id) : null,
         set_up_time: item.set_up_time.toString(),
         disabled: item.disabled,
         monthly_spending_fee_structure:
