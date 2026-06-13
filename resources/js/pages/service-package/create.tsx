@@ -314,9 +314,10 @@ const Create = ({
                             const paymentType = value as 'prepay' | 'postpay';
                             setData('payment_type', paymentType);
                             if (paymentType === 'postpay') {
-                                setData('allowed_user_ids', []);
                                 setData('billing_source', 'customer_card');
-                            } else if (data.billing_source === 'customer_card') {
+                            } else if (
+                                data.billing_source === 'customer_card'
+                            ) {
                                 setData('billing_source', 'adviet_card');
                             }
                         }}
@@ -371,13 +372,19 @@ const Create = ({
                         <SelectContent>
                             <SelectGroup>
                                 <SelectItem value="adviet_card">
-                                    {t('service_packages.billing_sources.adviet_card')}
+                                    {t(
+                                        'service_packages.billing_sources.adviet_card',
+                                    )}
                                 </SelectItem>
                                 <SelectItem value="customer_card">
-                                    {t('service_packages.billing_sources.customer_card')}
+                                    {t(
+                                        'service_packages.billing_sources.customer_card',
+                                    )}
                                 </SelectItem>
                                 <SelectItem value="supplier_credit_line">
-                                    {t('service_packages.billing_sources.supplier_credit_line')}
+                                    {t(
+                                        'service_packages.billing_sources.supplier_credit_line',
+                                    )}
                                 </SelectItem>
                             </SelectGroup>
                         </SelectContent>
@@ -392,26 +399,22 @@ const Create = ({
                     )}
                 </div>
 
-                {data.payment_type === 'prepay' && (
-                    <div className="flex flex-col gap-2 md:col-span-2">
-                        <Label>
-                            {t('service_packages.allowed_users_label')}
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                            {t('service_packages.allowed_users_description')}
-                        </p>
-                        <UserMultiSelect
-                            users={all_users}
-                            value={data.allowed_user_ids}
-                            onChange={(ids) => setData('allowed_user_ids', ids)}
-                        />
-                        {errors.allowed_user_ids && (
-                            <span className="text-sm text-red-500">
-                                {errors.allowed_user_ids}
-                            </span>
-                        )}
-                    </div>
-                )}
+                <div className="flex flex-col gap-2 md:col-span-2">
+                    <Label>{t('service_packages.allowed_users_label')}</Label>
+                    <p className="text-sm text-muted-foreground">
+                        {t('service_packages.allowed_users_description')}
+                    </p>
+                    <UserMultiSelect
+                        users={all_users}
+                        value={data.allowed_user_ids}
+                        onChange={(ids) => setData('allowed_user_ids', ids)}
+                    />
+                    {errors.allowed_user_ids && (
+                        <span className="text-sm text-red-500">
+                            {errors.allowed_user_ids}
+                        </span>
+                    )}
+                </div>
 
                 {/* Description */}
                 <div className="flex flex-col gap-2 md:col-span-2">

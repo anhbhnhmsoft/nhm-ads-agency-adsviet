@@ -58,6 +58,13 @@ class ServicePurchaseService
                     return ServiceReturn::error(message: __('Gói dịch vụ đã bị vô hiệu hóa'));
                 }
 
+                if (
+                    $this->servicePackageAllowedUserRepository->hasAllowedUsers($packageId)
+                    && !$this->servicePackageAllowedUserRepository->isUserAllowed($packageId, $userId)
+                ) {
+                    return ServiceReturn::error(message: __('Bạn không có quyền sử dụng gói dịch vụ này'));
+                }
+
                 $packagePaymentType = $package->payment_type ?? ServicePackagePaymentType::PREPAY->value;
                 if (!in_array($packagePaymentType, ServicePackagePaymentType::getValues(), true)) {
                     $packagePaymentType = ServicePackagePaymentType::PREPAY->value;
@@ -68,8 +75,7 @@ class ServicePurchaseService
                     $requestedPaymentType = $packagePaymentType;
                 }
 
-                $canUsePostpay = $packagePaymentType === ServicePackagePaymentType::POSTPAY->value
-                    || $this->servicePackageAllowedUserRepository->isUserAllowed($packageId, $userId);
+                $canUsePostpay = $packagePaymentType === ServicePackagePaymentType::POSTPAY->value;
                 if ($requestedPaymentType === ServicePackagePaymentType::POSTPAY->value && !$canUsePostpay) {
                     return ServiceReturn::error(message: __('services.validation.postpay_not_allowed'));
                 }

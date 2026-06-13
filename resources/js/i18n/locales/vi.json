@@ -496,8 +496,8 @@
             "customer_card": "Your Card / Thẻ khách",
             "supplier_credit_line": "Credit Line Account"
         },
-        "allowed_users_label": "Khách hàng được phép trả sau",
-        "allowed_users_description": "Chỉ áp dụng cho gói trả trước. Khách hàng được chọn sẽ có thêm lựa chọn thanh toán trả sau khi mua gói này.",
+        "allowed_users_label": "Khách hàng được xem và sử dụng dịch vụ",
+        "allowed_users_description": "Chọn khách hàng cho dịch vụ riêng. Nếu không chọn khách hàng nào, gói sẽ hiển thị công khai như gói dịch vụ chung.",
         "allowed_users_search": "Tìm khách hàng",
         "allowed_users_empty": "Không có khách hàng phù hợp",
         "allowed_users_selected": "Đã chọn {{count}} khách hàng",

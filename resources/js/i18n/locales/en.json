@@ -631,8 +631,8 @@
             "customer_card": "Your Card / Customer card",
             "supplier_credit_line": "Credit Line Account"
         },
-        "allowed_users_label": "Customers allowed to use postpaid",
-        "allowed_users_description": "Only applies to prepaid packages. Selected customers will see postpaid as an extra payment option for this package.",
+        "allowed_users_label": "Customers allowed to view and use this service",
+        "allowed_users_description": "Select customers for a private service. If no customer is selected, this package remains public like a regular service package.",
         "allowed_users_search": "Search customers",
         "allowed_users_empty": "No matching customers",
         "allowed_users_selected": "{{count}} customers selected",

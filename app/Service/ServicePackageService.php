@@ -70,11 +70,7 @@ class ServicePackageService
             unset($form['allowed_user_ids']);
 
             $data = $this->servicePackageRepository->create($form);
-            $this->syncAllowedUsersForPaymentType(
-                servicePackageId: $data->id,
-                paymentType: $data->payment_type,
-                allowedUserIds: $allowedUserIds
-            );
+            $this->servicePackageAllowedUserRepository->syncAllowedUsers($data->id, $allowedUserIds);
 
             return ServiceReturn::success(
                 data: $data,
@@ -132,11 +128,7 @@ class ServicePackageService
             unset($form['allowed_user_ids']);
 
             $data->update($form);
-            $this->syncAllowedUsersForPaymentType(
-                servicePackageId: $data->id,
-                paymentType: $data->payment_type,
-                allowedUserIds: $allowedUserIds
-            );
+            $this->servicePackageAllowedUserRepository->syncAllowedUsers($data->id, $allowedUserIds);
 
             return ServiceReturn::success(data: $data);
         } catch (\Exception $exception) {
@@ -216,7 +208,12 @@ class ServicePackageService
     public function canUserUsePostpay(object $package, int|string $userId): bool
     {
         $paymentType = $package->payment_type ?? ServicePackagePaymentType::PREPAY->value;
-        if ($paymentType === ServicePackagePaymentType::POSTPAY->value) {
+        return $paymentType === ServicePackagePaymentType::POSTPAY->value;
+    }
+
+    public function canUserAccessPackage(object $package, int|string $userId): bool
+    {
+        if (!$this->servicePackageAllowedUserRepository->hasAllowedUsers($package->id)) {
             return true;
         }
 
@@ -226,6 +223,7 @@ class ServicePackageService
     public function filterPackagesForUser(iterable $packages, int|string $userId): Collection
     {
         return collect($packages)
+            ->filter(fn ($package) => $this->canUserAccessPackage($package, $userId))
             ->map(function ($package) use ($userId) {
                 $package->setAttribute('can_use_postpay', $this->canUserUsePostpay($package, $userId));
 
@@ -243,14 +241,4 @@ class ServicePackageService
             ->values()
             ->all();
     }
-
-    private function syncAllowedUsersForPaymentType(int|string $servicePackageId, ?string $paymentType, array $allowedUserIds): void
-    {
-        if ($paymentType !== ServicePackagePaymentType::PREPAY->value) {
-            $allowedUserIds = [];
-        }
-
-        $this->servicePackageAllowedUserRepository->syncAllowedUsers($servicePackageId, $allowedUserIds);
-    }
-
 }
