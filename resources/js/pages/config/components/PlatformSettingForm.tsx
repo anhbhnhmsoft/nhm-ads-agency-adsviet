@@ -46,6 +46,66 @@ export default function PlatformSettingForm({
         return data.platform === 1 ? googleFields : metaFields;
     }, [data.platform, googleFields, metaFields]);
 
+    const platformGuide = useMemo(() => {
+        if (data.platform === 1) {
+            return {
+                title: t('platform.guide.google.title', {
+                    defaultValue: 'Hướng dẫn lấy cấu hình Google Ads',
+                }),
+                items: [
+                    t('platform.guide.google.developer_token', {
+                        defaultValue:
+                            'Developer Token: vào Google Ads MCC > Công cụ và cài đặt > Thiết lập > Trung tâm API, sau đó copy Developer Token đã được duyệt.',
+                    }),
+                    t('platform.guide.google.oauth_client', {
+                        defaultValue:
+                            'Client ID và Client Secret: vào Google Cloud Console > APIs & Services > Credentials, tạo OAuth Client ID rồi copy thông tin ứng dụng.',
+                    }),
+                    t('platform.guide.google.refresh_token', {
+                        defaultValue:
+                            'Refresh Token: dùng OAuth Playground hoặc luồng OAuth nội bộ với scope https://www.googleapis.com/auth/adwords, đăng nhập bằng tài khoản có quyền MCC rồi exchange authorization code để lấy refresh_token.',
+                    }),
+                    t('platform.guide.google.login_customer_id', {
+                        defaultValue:
+                            'Login Customer ID (MCC): lấy ID MCC gốc trong Google Ads, nhập dạng số liền không có dấu gạch ngang.',
+                    }),
+                ],
+                note: t('platform.guide.google.note', {
+                    defaultValue:
+                        'Lưu ý: Google refresh token thường không có hạn cố định. Hệ thống kiểm tra bằng cách dùng refresh token xin access token tạm thời.',
+                }),
+            };
+        }
+
+        return {
+            title: t('platform.guide.meta.title', {
+                defaultValue: 'Hướng dẫn lấy cấu hình Meta Ads',
+            }),
+            items: [
+                t('platform.guide.meta.app_info', {
+                    defaultValue:
+                        'App ID và App Secret: vào Meta for Developers > My Apps > chọn app > Settings > Basic để copy thông tin ứng dụng.',
+                }),
+                t('platform.guide.meta.access_token', {
+                    defaultValue:
+                        'Access Token: tạo long-lived User Access Token hoặc System User Token có quyền ads_read, ads_management và business_management.',
+                }),
+                t('platform.guide.meta.sync_all', {
+                    defaultValue:
+                        'Nếu muốn đồng bộ tất cả Business portfolios mà VIA/User truy cập được, dùng User Access Token và bật tùy chọn đồng bộ tất cả Business portfolios.',
+                }),
+                t('platform.guide.meta.business_manager_id', {
+                    defaultValue:
+                        'Business Manager ID: lấy trong Business Settings > Business Info. Có thể để trống khi đồng bộ tất cả BM từ User token.',
+                }),
+            ],
+            note: t('platform.guide.meta.note', {
+                defaultValue:
+                    'Lưu ý: Meta token có thể trả về thời điểm hết hạn, hệ thống sẽ hiển thị số ngày còn lại sau khi kiểm tra token/key.',
+            }),
+        };
+    }, [data.platform, t]);
+
     const handleConfigChange = (key: string, value: any) => {
         const newConfig = { ...data.config, [key]: value };
         setData('config', newConfig);
@@ -248,6 +308,18 @@ export default function PlatformSettingForm({
                 {errors.name && (
                     <span className="text-sm text-red-500">{errors.name}</span>
                 )}
+            </div>
+
+            <div className="col-span-full rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                <div className="mb-2 font-semibold">{platformGuide.title}</div>
+                <ol className="list-inside list-decimal space-y-1 leading-6">
+                    {platformGuide.items.map((item, index) => (
+                        <li key={index}>{item}</li>
+                    ))}
+                </ol>
+                <p className="mt-2 text-xs leading-5 text-blue-700">
+                    {platformGuide.note}
+                </p>
             </div>
 
             {currentFields.map(renderField)}

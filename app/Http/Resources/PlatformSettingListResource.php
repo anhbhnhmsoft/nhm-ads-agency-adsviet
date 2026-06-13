@@ -20,14 +20,12 @@ class PlatformSettingListResource extends JsonResource
         $tokenStatus = (array) (($this->config ?? [])['token_status'] ?? []);
 
         if (
-            empty($tokenStatus['expires_at'])
-            && (int) $this->platform === PlatformType::GOOGLE->value
+            (int) $this->platform === PlatformType::GOOGLE->value
             && ($tokenStatus['status'] ?? null) === 'valid'
-            && !empty($tokenStatus['checked_at'])
         ) {
-            $tokenStatus['expires_at'] = Carbon::parse($tokenStatus['checked_at'])
-                ->addDays(30)
-                ->toIso8601String();
+            $tokenStatus['expires_at'] = null;
+            $tokenStatus['expires_in_seconds'] = null;
+            $tokenStatus['expires_label'] = 'Không có hạn cố định';
             $tokenStatus['message'] = 'Google token còn hiệu lực.';
         }
 

@@ -99,15 +99,14 @@ class PlatformTokenHealthService
 
         $expiresIn = (int) $response->json('expires_in', 0);
         $accessTokenExpiresAt = $expiresIn > 0 ? now()->addSeconds($expiresIn) : null;
-        $healthExpiresAt = now()->addDays(30);
 
         return [
             'status' => 'valid',
             'message' => 'Google token còn hiệu lực.',
             'checked_at' => now()->toIso8601String(),
-            'expires_at' => $healthExpiresAt->toIso8601String(),
-            'expires_in_seconds' => max(0, now()->diffInSeconds($healthExpiresAt, false)),
-            'expires_label' => $this->humanTimeLeft($healthExpiresAt),
+            'expires_at' => null,
+            'expires_in_seconds' => null,
+            'expires_label' => 'Không có hạn cố định',
             'raw' => [
                 'token_type' => $response->json('token_type'),
                 'scope' => $response->json('scope'),
