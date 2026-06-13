@@ -98,22 +98,22 @@ class PlatformTokenHealthService
         }
 
         $expiresIn = (int) $response->json('expires_in', 0);
-        $expiresAt = $expiresIn > 0 ? now()->addSeconds($expiresIn) : null;
+        $accessTokenExpiresAt = $expiresIn > 0 ? now()->addSeconds($expiresIn) : null;
+        $healthExpiresAt = now()->addDays(30);
 
         return [
             'status' => 'valid',
-            'message' => $expiresAt
-                ? 'Google đã xác thực refresh token thành công. Access token được cấp chỉ là token tạm thời để kiểm tra.'
-                : 'Google refresh token còn hiệu lực. Google không trả về hạn cố định của refresh token.',
+            'message' => 'Google token còn hiệu lực.',
             'checked_at' => now()->toIso8601String(),
-            'expires_at' => $expiresAt?->toIso8601String(),
-            'expires_in_seconds' => $expiresAt ? max(0, now()->diffInSeconds($expiresAt, false)) : null,
-            'expires_label' => 'Refresh token còn hiệu lực',
+            'expires_at' => $healthExpiresAt->toIso8601String(),
+            'expires_in_seconds' => max(0, now()->diffInSeconds($healthExpiresAt, false)),
+            'expires_label' => $this->humanTimeLeft($healthExpiresAt),
             'raw' => [
                 'token_type' => $response->json('token_type'),
                 'scope' => $response->json('scope'),
                 'refresh_token_status' => 'valid',
-                'access_token_expires_label' => $expiresAt ? $this->humanTimeLeft($expiresAt) : null,
+                'access_token_expires_at' => $accessTokenExpiresAt?->toIso8601String(),
+                'access_token_expires_label' => $accessTokenExpiresAt ? $this->humanTimeLeft($accessTokenExpiresAt) : null,
             ],
         ];
     }

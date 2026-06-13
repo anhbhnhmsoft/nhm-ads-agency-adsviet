@@ -13,6 +13,9 @@ Schedule::command('app:sync-ads-service-user')->everyThirtyMinutes();
 // Gửi cảnh báo ví thấp mỗi ngày lúc 09:00
 Schedule::command('notifications:wallet-low-balance')->dailyAt('09:00');
 
+// Tự động kiểm tra token/key nền tảng mỗi ngày
+Schedule::command('platform-settings:check-tokens')->dailyAt('00:10');
+
 // Kiểm tra và auto-pause accounts nếu balance dương và vượt ngưỡng mỗi 2 phút
 Schedule::command('accounts:check-and-auto-pause')->everyTwoMinutes();
 
