@@ -664,7 +664,7 @@ class ProfitService
 
         $spend = $this->getServiceUserSpend($serviceUser, $startDate, $endDate);
         if ($spend > 0 && $this->shouldChargeSpendingFee($serviceUser, $billingSource)) {
-            $revenue += $this->calculatePercentAmount($spend, (float) ($package->spending_fee ?? 0));
+            $revenue += $this->calculatePercentAmount($spend, $this->resolveSpendingFeePercent($serviceUser, $billingSource));
         }
 
         if ($spend > 0 && $this->shouldApplySupplierPostpayCost($serviceUser)) {
@@ -685,7 +685,10 @@ class ProfitService
 
         $revenue = (float) ($package->open_fee ?? 0) * $accountsCount;
         if ($topUpAmount > 0) {
-            $revenue += $topUpAmount + $this->calculatePercentAmount($topUpAmount, (float) ($package->top_up_fee ?? 0));
+            $revenue += $topUpAmount;
+            if ($this->usesTopUpBilling($billingSource)) {
+                $revenue += $this->calculatePercentAmount($topUpAmount, (float) ($package->top_up_fee ?? 0));
+            }
         }
 
         $cost = 0.0;
@@ -823,7 +826,7 @@ class ProfitService
             return;
         }
 
-        $spendingFeePercent = (float) ($serviceUser->package?->spending_fee ?? 0);
+        $spendingFeePercent = $this->resolveSpendingFeePercent($serviceUser, $billingSource);
         $supplierPostpayFeePercent = (float) ($serviceUser->package?->supplier?->postpay_fee ?? 0);
 
         foreach ($this->serviceUserInsightTables($serviceUser) as $table) {
@@ -990,13 +993,27 @@ class ProfitService
 
     private function shouldChargeSpendingFee($serviceUser, string $billingSource): bool
     {
-        $spendingFeePercent = (float) ($serviceUser->package?->spending_fee ?? 0);
+        $spendingFeePercent = $this->resolveSpendingFeePercent($serviceUser, $billingSource);
         if ($spendingFeePercent <= 0) {
             return false;
         }
 
         return $billingSource === AccountBillingSource::CUSTOMER_CARD->value
             || $this->resolvePaymentType($serviceUser) === ServicePackagePaymentType::POSTPAY->value;
+    }
+
+    private function resolveSpendingFeePercent($serviceUser, string $billingSource): float
+    {
+        $spendingFee = (float) ($serviceUser->package?->spending_fee ?? 0);
+        if ($spendingFee > 0) {
+            return $spendingFee;
+        }
+
+        if ($billingSource === AccountBillingSource::CUSTOMER_CARD->value) {
+            return (float) ($serviceUser->package?->top_up_fee ?? 0);
+        }
+
+        return 0.0;
     }
 
     private function shouldApplySupplierPostpayCost($serviceUser): bool

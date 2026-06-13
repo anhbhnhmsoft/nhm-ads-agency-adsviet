@@ -8,6 +8,7 @@ use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Common\Constants\Google\GoogleCampaignStatus;
+use App\Common\Constants\ServicePackage\AccountBillingSource;
 use App\Core\Logging;
 use App\Models\ServiceUserTransactionLog;
 use App\Repositories\ServiceUserRepository;
@@ -53,7 +54,11 @@ class ServicesBillPostpay extends Command
             ->with('package')
             ->where('status', ServiceUserStatus::ACTIVE->value)
             ->whereHas('package', function ($query) {
-                $query->where('spending_fee', '>', 0);
+                $query->where('spending_fee', '>', 0)
+                    ->orWhere(function ($subQuery) {
+                        $subQuery->where('billing_source', AccountBillingSource::CUSTOMER_CARD->value)
+                            ->where('top_up_fee', '>', 0);
+                    });
             })
             ->chunkById(100, function ($serviceUsers) use ($today) {
                 foreach ($serviceUsers as $serviceUser) {
@@ -64,7 +69,7 @@ class ServicesBillPostpay extends Command
                             continue;
                         }
 
-                        $feePercent = (float) ($package->spending_fee ?? 0);
+                        $feePercent = $this->resolveSpendingFeePercent($package, $config);
                         if ($feePercent <= 0 || !$this->shouldBillSpendingFee($serviceUser, $config)) {
                             continue;
                         }
@@ -224,6 +229,21 @@ class ServicesBillPostpay extends Command
         $billingSource = $serviceUser->package?->billing_source ?? $config['billing_source'] ?? null;
 
         return $paymentType === 'postpay' || $billingSource === 'customer_card';
+    }
+
+    private function resolveSpendingFeePercent($package, array $config): float
+    {
+        $spendingFee = (float) ($package?->spending_fee ?? 0);
+        if ($spendingFee > 0) {
+            return $spendingFee;
+        }
+
+        $billingSource = $package?->billing_source ?? $config['billing_source'] ?? null;
+        if ($billingSource === AccountBillingSource::CUSTOMER_CARD->value) {
+            return (float) ($package?->top_up_fee ?? 0);
+        }
+
+        return 0.0;
     }
 
     private function resolveBilledSpend($serviceUser, array $config): float

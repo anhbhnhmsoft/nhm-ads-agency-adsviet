@@ -11,6 +11,7 @@ export type ServicePackage = {
     description: string;
     platform: number;
     payment_type: 'prepay' | 'postpay';
+    billing_source?: 'customer_card' | 'adviet_card' | 'supplier_credit_line';
     can_use_postpay?: boolean;
     features: ServicePackageFeatureValue[];
     open_fee: string;

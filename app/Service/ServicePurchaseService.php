@@ -78,7 +78,8 @@ class ServicePurchaseService
                     ? ServicePackagePaymentType::POSTPAY->value
                     : $requestedPaymentType;
                 $configAccount['payment_type'] = $paymentType;
-                $configAccount['billing_source'] = $this->resolvePackageBillingSource($package, $packagePaymentType);
+                $billingSource = $this->resolvePackageBillingSource($package, $packagePaymentType);
+                $configAccount['billing_source'] = $billingSource;
                 $isPrepay = $paymentType === ServicePackagePaymentType::PREPAY->value;
                 $topUpAmount = $isPrepay ? max(0, $topUpAmount) : 0;
                 $minTopUp = (float) $package->range_min_top_up;
@@ -93,7 +94,9 @@ class ServicePurchaseService
                 }
 
                 $openFee = (float) $package->open_fee;
-                $serviceFeePercent = (float) $package->top_up_fee;
+                $serviceFeePercent = $billingSource === AccountBillingSource::CUSTOMER_CARD->value
+                    ? 0.0
+                    : (float) $package->top_up_fee;
                 $serviceFee = $topUpAmount > 0 ? ($topUpAmount * $serviceFeePercent / 100) : 0;
 
                 $accountsCount = 1;

@@ -276,6 +276,20 @@ const ServicePurchaseIndex = ({
         );
     };
 
+    const isCustomerCardPackage = (pkg: ServicePackage) =>
+        pkg.billing_source === 'customer_card';
+
+    const getEffectiveTopUpFeePercent = (pkg: ServicePackage) =>
+        isCustomerCardPackage(pkg) ? 0 : Number(pkg.top_up_fee || 0);
+
+    const getEffectiveSpendingFeePercent = (pkg: ServicePackage) => {
+        const spendingFee = Number(pkg.spending_fee || 0);
+        if (spendingFee > 0) return spendingFee;
+
+        // Legacy packages used top_up_fee for Your Card. Treat it as spending fee.
+        return isCustomerCardPackage(pkg) ? Number(pkg.top_up_fee || 0) : 0;
+    };
+
     // Calculate service fee
     const calculateServiceFee = (topUpAmount: number, feePercent: number) => {
         const normalizedFeePercent = Number(feePercent || 0);
@@ -309,7 +323,7 @@ const ServicePurchaseIndex = ({
         const chargeOpenFee = openFee * normalizedAccountsCount;
         const serviceFee =
             topUpNum > 0
-                ? calculateServiceFee(topUpNum, Number(pkg.top_up_fee || 0))
+                ? calculateServiceFee(topUpNum, getEffectiveTopUpFeePercent(pkg))
                 : 0;
         const totalCost = chargeOpenFee + topUpNum + serviceFee;
         return { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum };
@@ -507,7 +521,7 @@ const ServicePurchaseIndex = ({
                         </div>
                         <div className="rounded-lg bg-green-50 p-3 text-center">
                             <div className="text-base font-bold text-green-600 sm:text-xl">
-                                {pkg.top_up_fee}%
+                                {getEffectiveTopUpFeePercent(pkg)}%
                             </div>
                             <div className="text-xs text-gray-600">
                                 {t('service_purchase.service_fee_pct')}
@@ -515,7 +529,7 @@ const ServicePurchaseIndex = ({
                         </div>
                         <div className="rounded-lg bg-blue-50 p-3 text-center">
                             <div className="text-base font-bold text-blue-600 sm:text-xl">
-                                {Number(pkg.spending_fee || 0)}%
+                                {getEffectiveSpendingFeePercent(pkg)}%
                             </div>
                             <div className="text-xs text-gray-600">
                                 {t('service_purchase.spending_fee_pct')}
@@ -616,7 +630,8 @@ const ServicePurchaseIndex = ({
                 : null;
 
         const previewAccountsCount = accounts.length > 0 ? accounts.length : 1;
-        const spendingFeePercent = Number(selectedPackage.spending_fee || 0);
+        const topUpFeePercent = getEffectiveTopUpFeePercent(selectedPackage);
+        const spendingFeePercent = getEffectiveSpendingFeePercent(selectedPackage);
 
         const { serviceFee, totalCost, chargeOpenFee, topUpNum } =
             calculateTotalCost(
@@ -704,7 +719,7 @@ const ServicePurchaseIndex = ({
                                 {t('service_purchase.service_fee_pct')}
                             </div>
                             <div className="text-base font-bold sm:text-lg">
-                                {selectedPackage.top_up_fee}%
+                                {topUpFeePercent}%
                             </div>
                         </div>
                         <div className="rounded-lg bg-gray-50 p-3">
@@ -1127,20 +1142,25 @@ const ServicePurchaseIndex = ({
                                             {t(
                                                 'service_purchase.top_up_fee_amount',
                                             )}{' '}
-                                            ({selectedPackage.top_up_fee}%):
+                                            ({topUpFeePercent}%):
                                         </span>
                                         <span className="font-medium">
                                             {formatUSDT(serviceFee)}
                                         </span>
                                     </div>
                                 )}
-                                {paymentType === 'postpay' && (
-                                    <div className="col-span-2 flex justify-between gap-4">
+                                {(paymentType === 'postpay' ||
+                                    selectedPackage.billing_source ===
+                                        'customer_card') && (
+                                    <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
                                         <span>
                                             {t(
                                                 'service_purchase.spending_fee_amount',
-                                            )}{' '}
-                                            ({spendingFeePercent}%):
+                                            )}
+                                            :
+                                        </span>
+                                        <span className="font-medium">
+                                            {spendingFeePercent}%
                                         </span>
                                         <span className="text-right font-medium">
                                             {t(
