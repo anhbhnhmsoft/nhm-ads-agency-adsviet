@@ -202,9 +202,9 @@ export default function ProfitOverTime({
                                                 Cách tính Doanh thu:
                                             </div>
                                             <div className="leading-relaxed text-muted-foreground">
-                                                Phí mở TK + tiền nạp/top-up + phí
-                                                nạp tiền + phí spending theo chi
-                                                tiêu thực tế
+                                                Phí mở TK + tiền nạp/top-up +
+                                                phí nạp tiền + phí spending theo
+                                                chi tiêu thực tế
                                             </div>
                                         </div>
                                         <div>
@@ -213,8 +213,8 @@ export default function ProfitOverTime({
                                             </div>
                                             <div className="leading-relaxed text-muted-foreground">
                                                 Phí mở TK bên NCC + phí NCC trên
-                                                top-up + phí postpay NCC theo chi
-                                                tiêu
+                                                top-up + phí postpay NCC theo
+                                                chi tiêu
                                             </div>
                                         </div>
                                         <div className="border-t pt-2 font-medium text-foreground">
@@ -236,30 +236,18 @@ export default function ProfitOverTime({
                 )}
 
                 {/* Filters */}
-                <div className="flex flex-wrap items-end gap-4">
-                    <div className="min-w-[200px] flex-1">
-                        <label className="mb-2 block text-sm font-medium">
-                            {t('profit.date_range', {
-                                defaultValue: 'Khoảng thời gian',
-                            })}
-                        </label>
-                        <DateRangePicker
-                            date={dateRange}
-                            onDateChange={handleDateChange}
-                        />
-                    </div>
+                <div className="flex flex-wrap items-end justify-end gap-4">
                     <div className="w-[200px]">
-                        <label className="mb-2 block text-sm font-medium">
-                            {t('profit.group_by', {
-                                defaultValue: 'Nhóm theo',
-                            })}
-                        </label>
                         <Select
                             value={localGroupBy}
                             onValueChange={handleGroupByChange}
                         >
                             <SelectTrigger>
-                                <SelectValue />
+                                <SelectValue
+                                    placeholder={t('profit.group_by', {
+                                        defaultValue: 'Nhóm theo',
+                                    })}
+                                />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="day">
@@ -281,15 +269,16 @@ export default function ProfitOverTime({
                         </Select>
                     </div>
                     <div className="w-[200px]">
-                        <label className="mb-2 block text-sm font-medium">
-                            {t('profit.platform', { defaultValue: 'Nền tảng' })}
-                        </label>
                         <Select
                             value={localPlatform}
                             onValueChange={handlePlatformChange}
                         >
                             <SelectTrigger>
-                                <SelectValue />
+                                <SelectValue
+                                    placeholder={t('profit.platform', {
+                                        defaultValue: 'Nền tảng',
+                                    })}
+                                />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">
@@ -309,6 +298,12 @@ export default function ProfitOverTime({
                                 </SelectItem>
                             </SelectContent>
                         </Select>
+                    </div>
+                    <div>
+                        <DateRangePicker
+                            date={dateRange}
+                            onDateChange={handleDateChange}
+                        />
                     </div>
                 </div>
 

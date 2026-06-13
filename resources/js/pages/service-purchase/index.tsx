@@ -323,7 +323,10 @@ const ServicePurchaseIndex = ({
         const chargeOpenFee = openFee * normalizedAccountsCount;
         const serviceFee =
             topUpNum > 0
-                ? calculateServiceFee(topUpNum, getEffectiveTopUpFeePercent(pkg))
+                ? calculateServiceFee(
+                      topUpNum,
+                      getEffectiveTopUpFeePercent(pkg),
+                  )
                 : 0;
         const totalCost = chargeOpenFee + topUpNum + serviceFee;
         return { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum };
@@ -480,7 +483,10 @@ const ServicePurchaseIndex = ({
         const features = pkg.features || [];
 
         return (
-            <Card key={pkg.id} className="transition-shadow hover:shadow-lg">
+            <Card
+                key={pkg.id}
+                className="row-span-7 grid grid-rows-subgrid gap-y-4 py-6 transition-shadow hover:shadow-lg"
+            >
                 <CardHeader>
                     <div className="flex items-start justify-between">
                         <div className="flex min-w-0 items-start gap-3">
@@ -506,57 +512,57 @@ const ServicePurchaseIndex = ({
                     </div>
                 </CardHeader>
 
-                <CardContent className="space-y-4">
-                    <p className="text-sm text-gray-600">{pkg.description}</p>
+                <p className="px-6 text-sm text-gray-600">{pkg.description}</p>
 
-                    {/* Pricing Info */}
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                        <div className="rounded-lg bg-orange-50 p-3 text-center">
-                            <div className="text-xl font-bold text-[#4285f4]">
-                                {formatUSDT(parseFloat(pkg.open_fee))}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                                {t('service_purchase.account_opening_fee')}
-                            </div>
+                {/* Pricing Info */}
+                <div className="mx-6 grid grid-cols-2 gap-4 md:grid-cols-3">
+                    <div className="rounded-lg bg-orange-50 p-3 text-center">
+                        <div className="text-xl font-bold text-[#4285f4]">
+                            {formatUSDT(parseFloat(pkg.open_fee))}
                         </div>
-                        <div className="rounded-lg bg-green-50 p-3 text-center">
-                            <div className="text-base font-bold text-green-600 sm:text-xl">
-                                {getEffectiveTopUpFeePercent(pkg)}%
-                            </div>
-                            <div className="text-xs text-gray-600">
-                                {t('service_purchase.service_fee_pct')}
-                            </div>
-                        </div>
-                        <div className="rounded-lg bg-blue-50 p-3 text-center">
-                            <div className="text-base font-bold text-blue-600 sm:text-xl">
-                                {getEffectiveSpendingFeePercent(pkg)}%
-                            </div>
-                            <div className="text-xs text-gray-600">
-                                {t('service_purchase.spending_fee_pct')}
-                            </div>
+                        <div className="text-xs text-gray-600">
+                            {t('service_purchase.account_opening_fee')}
                         </div>
                     </div>
-
-                    {/* Limits */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <span className="text-gray-500">
-                                {t('service_purchase.min_top_up')}:
-                            </span>
-                            <span className="ml-2 font-medium">
-                                {formatUSD(pkg.range_min_top_up)}
-                            </span>
+                    <div className="rounded-lg bg-green-50 p-3 text-center">
+                        <div className="text-base font-bold text-green-600 sm:text-xl">
+                            {getEffectiveTopUpFeePercent(pkg)}%
                         </div>
-                        <div>
-                            <span className="text-gray-500">
-                                {t('service_purchase.setup_time')}:
-                            </span>
-                            <span className="ml-2 font-medium">
-                                {pkg.set_up_time} {t('service_purchase.hours')}
-                            </span>
+                        <div className="text-xs text-gray-600">
+                            {t('service_purchase.service_fee_pct')}
                         </div>
                     </div>
+                    <div className="rounded-lg bg-blue-50 p-3 text-center">
+                        <div className="text-base font-bold text-blue-600 sm:text-xl">
+                            {getEffectiveSpendingFeePercent(pkg)}%
+                        </div>
+                        <div className="text-xs text-gray-600">
+                            {t('service_purchase.spending_fee_pct')}
+                        </div>
+                    </div>
+                </div>
 
+                {/* Limits */}
+                <div className="grid grid-cols-2 gap-4 px-6 text-sm">
+                    <div>
+                        <span className="text-gray-500">
+                            {t('service_purchase.min_top_up')}:
+                        </span>
+                        <span className="ml-2 font-medium">
+                            {formatUSD(pkg.range_min_top_up)}
+                        </span>
+                    </div>
+                    <div>
+                        <span className="text-gray-500">
+                            {t('service_purchase.setup_time')}:
+                        </span>
+                        <span className="ml-2 font-medium">
+                            {pkg.set_up_time} {t('service_purchase.hours')}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="px-6">
                     {(pkg.inventory_total_count || 0) > 0 && (
                         <div className="rounded-md border bg-muted/30 p-3 text-sm">
                             <div className="font-medium">
@@ -578,10 +584,12 @@ const ServicePurchaseIndex = ({
                             </div>
                         </div>
                     )}
+                </div>
 
-                    {/* Features */}
+                {/* Features */}
+                <div className="px-6">
                     {features.length > 0 && (
-                        <div className="min-h-48">
+                        <>
                             <div className="mb-2 text-sm font-medium text-gray-700">
                                 {t('service_purchase.features')}:
                             </div>
@@ -603,9 +611,11 @@ const ServicePurchaseIndex = ({
                                     );
                                 })}
                             </div>
-                        </div>
+                        </>
                     )}
+                </div>
 
+                <div className="self-end px-6">
                     <Button
                         className="w-full"
                         onClick={() => setSelectedPackage(pkg)}
@@ -614,7 +624,7 @@ const ServicePurchaseIndex = ({
                         <ShoppingCart className="mr-2 h-4 w-4" />
                         {t('service_purchase.select_service')}
                     </Button>
-                </CardContent>
+                </div>
             </Card>
         );
     };
@@ -631,7 +641,8 @@ const ServicePurchaseIndex = ({
 
         const previewAccountsCount = accounts.length > 0 ? accounts.length : 1;
         const topUpFeePercent = getEffectiveTopUpFeePercent(selectedPackage);
-        const spendingFeePercent = getEffectiveSpendingFeePercent(selectedPackage);
+        const spendingFeePercent =
+            getEffectiveSpendingFeePercent(selectedPackage);
 
         const { serviceFee, totalCost, chargeOpenFee, topUpNum } =
             calculateTotalCost(
@@ -953,31 +964,31 @@ const ServicePurchaseIndex = ({
                                             <ul className="list-inside list-disc space-y-1 text-xs text-blue-700">
                                                 <li>
                                                     {t(
-                                                    'service_purchase.postpay_info_1',
-                                                    {
-                                                        defaultValue:
+                                                        'service_purchase.postpay_info_1',
+                                                        {
+                                                            defaultValue:
                                                                 'Phí spending sẽ tự trừ khi chi tiêu quảng cáo mới đạt từ 100 USD',
-                                                    },
-                                                )}
-                                            </li>
+                                                        },
+                                                    )}
+                                                </li>
                                                 <li>
                                                     {t(
-                                                    'service_purchase.postpay_info_2',
-                                                    {
-                                                        defaultValue:
+                                                        'service_purchase.postpay_info_2',
+                                                        {
+                                                            defaultValue:
                                                                 'Ví cần duy trì tối thiểu 100 USDT để dịch vụ tiếp tục chạy',
-                                                    },
-                                                )}
-                                            </li>
+                                                        },
+                                                    )}
+                                                </li>
                                                 <li>
                                                     {t(
-                                                    'service_purchase.postpay_info_3',
-                                                    {
-                                                        defaultValue:
+                                                        'service_purchase.postpay_info_3',
+                                                        {
+                                                            defaultValue:
                                                                 'Cashback là khoản hoàn riêng, tính theo chi tiêu từ đầu tháng đến cuối tháng',
-                                                    },
-                                                )}
-                                            </li>
+                                                        },
+                                                    )}
+                                                </li>
                                                 <li>
                                                     {t(
                                                         'service_purchase.postpay_info_4',
@@ -1152,22 +1163,24 @@ const ServicePurchaseIndex = ({
                                 {(paymentType === 'postpay' ||
                                     selectedPackage.billing_source ===
                                         'customer_card') && (
-                                    <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
-                                        <span>
-                                            {t(
-                                                'service_purchase.spending_fee_amount',
-                                            )}
-                                            :
-                                        </span>
-                                        <span className="font-medium">
-                                            {spendingFeePercent}%
-                                        </span>
+                                    <div className="col-span-2 grid grid-cols-2 gap-4">
+                                        <div className="flex justify-between">
+                                            <span>
+                                                {t(
+                                                    'service_purchase.spending_fee_amount',
+                                                )}
+                                                :
+                                            </span>
+                                            <span className="font-medium">
+                                                {spendingFeePercent}%
+                                            </span>
+                                        </div>
                                         <span className="text-right font-medium">
                                             {t(
-                                                    'service_purchase.spending_fee_deferred',
+                                                'service_purchase.spending_fee_deferred',
                                                 {
                                                     defaultValue:
-                                                        'Tự trừ khi chi tiêu mới đạt từ 100 USD',
+                                                        'Tự trừ khi chi tiêu đạt 100 USD',
                                                 },
                                             )}
                                         </span>
@@ -1324,7 +1337,7 @@ const ServicePurchaseIndex = ({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
                             {filteredPackages.map(renderServiceCard)}
                         </div>
 

@@ -691,7 +691,7 @@
         "service_fee": "Phí dịch vụ",
         "top_up_fee_amount": "Phí nạp tiền",
         "spending_fee_amount": "Phí spending",
-        "spending_fee_deferred": "Tự trừ khi chi tiêu mới đạt từ 100 USD",
+        "spending_fee_deferred": "Tự trừ khi chi tiêu đạt 100 USD",
         "top_up": "Top-up",
         "timezone_bm_label": "Múi giờ tài khoản",
         "timezone_mcc_label": "Múi giờ tài khoản",
