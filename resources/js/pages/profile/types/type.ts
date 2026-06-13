@@ -10,6 +10,7 @@ export type ProfileUser = Pick<
     | 'telegram_id'
     | 'whatsapp_id'
     | 'referral_code'
+    | 'role'
 > & {
     email_verified_at?: string | null;
 };

@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { _UserRole } from '@/lib/types/constants';
 import { profile_resend_email, profile_update } from '@/routes';
 import { router, useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
@@ -23,6 +24,7 @@ type Props = {
 
 const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
     const { t } = useTranslation();
+    const showReferralCode = user.role !== _UserRole.ADMIN;
 
     const form = useForm({
         name: user.name ?? '',
@@ -132,20 +134,22 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
                             )}
                         </div>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="referral_code">
-                                {t('profile.referral_code')}
-                            </Label>
-                            <Input
-                                id="referral_code"
-                                value={user.referral_code ?? ''}
-                                readOnly
-                                disabled
-                                className="bg-muted"
-                            />
+                    {showReferralCode && (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="referral_code">
+                                    {t('profile.referral_code')}
+                                </Label>
+                                <Input
+                                    id="referral_code"
+                                    value={user.referral_code ?? ''}
+                                    readOnly
+                                    disabled
+                                    className="bg-muted"
+                                />
+                            </div>
                         </div>
-                    </div>
+                    )}
                     <div className="flex justify-end">
                         <Button type="submit" disabled={form.processing}>
                             {t('common.save_changes')}

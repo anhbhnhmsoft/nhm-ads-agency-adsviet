@@ -206,48 +206,60 @@ const Index = ({ paginator }: Props) => {
                 cell: ({ row }) => {
                     const item = row.original;
                     return (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                    onClick={() =>
-                                        router.visit(
-                                            service_packages_edit_view(item.id)
-                                                .url,
-                                        )
-                                    }
-                                >
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    <span>{t('common.edit')}</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => handleToggleDisable(item)}
-                                >
-                                    {item.disabled ? (
-                                        <ToggleRight className="mr-2 h-4 w-4" />
-                                    ) : (
-                                        <ToggleLeft className="mr-2 h-4 w-4" />
-                                    )}
-                                    <span>{t('common.toggle_disable')}</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    className="text-red-600"
-                                    onClick={() => {
-                                        setItemToDelete(item);
-                                        setShowDeleteDialog(true);
-                                    }}
-                                >
-                                    <Trash className="mr-2 h-4 w-4" />
-                                    <span>{t('common.delete')}</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div onClick={(event) => event.stopPropagation()}>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                    >
+                                        <span className="sr-only">
+                                            Open menu
+                                        </span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            router.visit(
+                                                service_packages_edit_view(
+                                                    item.id,
+                                                ).url,
+                                            )
+                                        }
+                                    >
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        <span>{t('common.edit')}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            handleToggleDisable(item)
+                                        }
+                                    >
+                                        {item.disabled ? (
+                                            <ToggleRight className="mr-2 h-4 w-4" />
+                                        ) : (
+                                            <ToggleLeft className="mr-2 h-4 w-4" />
+                                        )}
+                                        <span>
+                                            {t('common.toggle_disable')}
+                                        </span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        className="text-red-600"
+                                        onClick={() => {
+                                            setItemToDelete(item);
+                                            setShowDeleteDialog(true);
+                                        }}
+                                    >
+                                        <Trash className="mr-2 h-4 w-4" />
+                                        <span>{t('common.delete')}</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     );
                 },
             },
@@ -260,7 +272,15 @@ const Index = ({ paginator }: Props) => {
                 <>
                     <ServicePackageListSearchForm />
                     <Separator className={'my-4'} />
-                    <DataTable columns={columns} paginator={paginator} />
+                    <DataTable
+                        columns={columns}
+                        paginator={paginator}
+                        onRowClick={(item) => {
+                            router.visit(
+                                service_packages_edit_view(item.id).url,
+                            );
+                        }}
+                    />
                 </>
             ) : (
                 <Empty>

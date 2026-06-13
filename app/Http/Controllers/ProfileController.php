@@ -42,6 +42,7 @@ class ProfileController extends Controller
                     'username' => $user->username,
                     'email' => $user->email,
                     'phone' => $user->phone,
+                    'role' => $user->role,
                     'telegram_id' => $user->telegram_id,
                     'whatsapp_id' => $user->whatsapp_id,
                     'email_verified_at' => $user->email_verified_at,
@@ -216,4 +217,3 @@ class ProfileController extends Controller
         }
     }
 }
-

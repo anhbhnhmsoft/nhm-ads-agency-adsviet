@@ -68,6 +68,10 @@ class UserService
                 UserRole::EMPLOYEE->value,
             ];
 
+            if ($currentUser) {
+                $filter['exclude_user_id'] = $currentUser->id;
+            }
+
             // Nếu là manager, chỉ lấy employees được gán cho manager đó
             if ($currentUser && $currentUser->role === UserRole::MANAGER->value) {
                 $filter['manager_id'] = $currentUser->id;
