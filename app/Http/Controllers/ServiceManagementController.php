@@ -11,9 +11,12 @@ use App\Service\BusinessManagerService;
 use App\Service\PlatformSettingService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 
 class ServiceManagementController extends Controller
 {
+    private const MANUAL_SYNC_COOLDOWN_SECONDS = 300;
+
     public function __construct(
         protected BusinessManagerService $businessManagerService,
         protected PlatformSettingService $platformSettingService,
@@ -150,6 +153,12 @@ class ServiceManagementController extends Controller
             ], 422);
         }
 
+        if (!$this->reserveSyncSlot('meta', $settingId ? (string) $settingId : ($bmId ?: 'default'))) {
+            return response()->json([
+                'message' => 'Dữ liệu Meta đang được cập nhật hoặc vừa được cập nhật gần đây. Vui lòng thử lại sau ít phút.',
+            ], 429);
+        }
+
         SyncMetaPlatformJob::dispatch($bmId !== '' ? $bmId : null, $settingId ? (string) $settingId : null);
 
         return response()->json([
@@ -179,11 +188,26 @@ class ServiceManagementController extends Controller
             ], 422);
         }
 
+        if (!$this->reserveSyncSlot('google', $settingId ? (string) $settingId : $mccId)) {
+            return response()->json([
+                'message' => 'Dữ liệu Google đang được cập nhật hoặc vừa được cập nhật gần đây. Vui lòng thử lại sau ít phút.',
+            ], 429);
+        }
+
         SyncGooglePlatformJob::dispatch($mccId, $settingId ? (string) $settingId : null);
 
         return response()->json([
             'message' => __('common.processing'),
         ]);
+    }
+
+    private function reserveSyncSlot(string $platform, string $scope): bool
+    {
+        return Cache::add(
+            "platform-sync-cooldown:{$platform}:{$scope}",
+            now()->toDateTimeString(),
+            self::MANUAL_SYNC_COOLDOWN_SECONDS,
+        );
     }
 
     public function getActiveServices(Request $request): \Illuminate\Http\JsonResponse
@@ -231,4 +255,3 @@ class ServiceManagementController extends Controller
         }
     }
 }
-

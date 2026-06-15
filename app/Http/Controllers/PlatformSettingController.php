@@ -24,9 +24,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use App\Core\Logging;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class PlatformSettingController extends Controller
 {
+    private const PLATFORM_SYNC_COOLDOWN_SECONDS = 300;
+
     public function __construct(
         protected PlatformSettingService $platformSettingService,
         protected AuthService $authService,
@@ -212,6 +215,14 @@ class PlatformSettingController extends Controller
     private function syncPlatformAccounts(int $platform, array $config, ?string $settingId = null): void
     {
         try {
+            if (!$this->reservePlatformSyncSlot($platform, $settingId ?: 'default')) {
+                Logging::web('PlatformSettingController@syncPlatformAccounts: skipped because sync cooldown is active', [
+                    'platform' => $platform,
+                    'setting_id' => $settingId,
+                ]);
+                return;
+            }
+
             if ($platform === PlatformType::GOOGLE->value) {
                 $loginCustomerId = $config['login_customer_id'] ?? null;
                 if ($loginCustomerId) {
@@ -235,5 +246,20 @@ class PlatformSettingController extends Controller
                 exception: $e
             );
         }
+    }
+
+    private function reservePlatformSyncSlot(int $platform, string $scope): bool
+    {
+        $platformKey = match ($platform) {
+            PlatformType::META->value => 'meta',
+            PlatformType::GOOGLE->value => 'google',
+            default => (string) $platform,
+        };
+
+        return Cache::add(
+            "platform-sync-cooldown:{$platformKey}:{$scope}",
+            now()->toDateTimeString(),
+            self::PLATFORM_SYNC_COOLDOWN_SECONDS,
+        );
     }
 }
