@@ -10,10 +10,14 @@ use App\Repositories\WalletRepository;
 use App\Repositories\UserReferralRepository;
 use App\Repositories\UserWalletTransactionRepository;
 use App\Common\Constants\Wallet\WalletStatus;
+use App\Common\Constants\Wallet\WalletTransactionDescription;
+use App\Common\Constants\Wallet\WalletTransactionStatus;
+use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Common\Constants\User\UserRole;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class WalletService
 {
@@ -196,7 +200,21 @@ class WalletService
         $wallet = $this->walletRepository->findByUserId($userId);
         if (!$wallet) return ServiceReturn::error(message: __('common_error.data_not_found'));
         if ($wallet->status === WalletStatus::LOCKED->value) return ServiceReturn::error(message: __('Ví đang bị khóa'));
-        $wallet->update(['balance' => (float)$wallet->balance + $amount]);
+
+        DB::transaction(function () use ($wallet, $amount, $actor) {
+            $wallet->update(['balance' => (float)$wallet->balance + $amount]);
+
+            $this->transactionRepository->create([
+                'wallet_id' => $wallet->id,
+                'amount' => $amount,
+                'type' => WalletTransactionType::DEPOSIT->value,
+                'status' => WalletTransactionStatus::APPROVED->value,
+                'description' => WalletTransactionDescription::DEPOSIT_APPROVED->value,
+                'network' => 'MANUAL',
+                'reference_id' => sprintf('manual_top_up:%s:%s', $actor->id, now()->timestamp),
+            ]);
+        });
+
         return ServiceReturn::success();
     }
 

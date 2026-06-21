@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { _WalletStatus, userRolesLabel } from '@/lib/types/constants';
 import { useWallet } from '@/pages/user/hooks/use-wallet';
 import { CustomerListItem } from '@/pages/user/types/type';
-import { wallet_lock, wallet_reset_password, wallet_unlock } from '@/routes';
+import { wallet_lock, wallet_reset_password, wallet_top_up, wallet_unlock } from '@/routes';
 import { router, usePage } from '@inertiajs/react';
 import { Check, OctagonX } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -27,6 +27,7 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
     const globalWarningThreshold =
         (props as any)?.globalWarningThreshold?.value ?? '0';
     const [walletPassword, setWalletPassword] = useState('');
+    const [walletTopUpAmount, setWalletTopUpAmount] = useState('');
     const {
         wallet,
         loading: walletLoading,
@@ -37,6 +38,7 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
     useEffect(() => {
         if (!open) {
             setWalletPassword('');
+            setWalletTopUpAmount('');
         }
     }, [open]);
 
@@ -272,6 +274,42 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                                             {t('wallet.lock')}
                                         </Button>
                                     )}
+                                    <Input
+                                        placeholder={t('wallet.amount')}
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={walletTopUpAmount}
+                                        onChange={(e) =>
+                                            setWalletTopUpAmount(e.target.value)
+                                        }
+                                        className="w-36"
+                                    />
+                                    <Button
+                                        type="button"
+                                        onClick={() => {
+                                            const amount = Number(walletTopUpAmount);
+                                            if (amount > 0) {
+                                                router.post(
+                                                    wallet_top_up({
+                                                        userId: user.id,
+                                                    }).url,
+                                                    { amount },
+                                                    {
+                                                        preserveScroll: true,
+                                                        onSuccess: () => {
+                                                            setWalletTopUpAmount(
+                                                                '',
+                                                            );
+                                                            refetchWallet();
+                                                        },
+                                                    },
+                                                );
+                                            }
+                                        }}
+                                    >
+                                        {t('wallet.top_up')}
+                                    </Button>
                                     <Input
                                         placeholder={t('wallet.new_password')}
                                         type="password"
