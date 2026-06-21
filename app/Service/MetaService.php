@@ -1559,10 +1559,15 @@ class MetaService
                 continue;
             }
 
-            foreach ($batchResponse->getData() as $res) {
+            $responses = $batchResponse->getData();
+            foreach ($responses as $index => $res) {
                 if (($res['code'] ?? 0) === 200) {
+                    $reqName = $batchRequests[$index]['name'] ?? '';
+                    $parts = explode('_', $reqName);
+                    $bmId = $parts[1] ?? '';
+
                     $body = json_decode($res['body'] ?? '{}', true);
-                    $this->processAccountListData($body['data'] ?? [], (string) $res['headers'][0]['value'] ?? '');
+                    $this->processAccountListData($body['data'] ?? [], $bmId);
                 }
             }
             usleep(500000); // Nghỉ 0.5s giữa các mẻ

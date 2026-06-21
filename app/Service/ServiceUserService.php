@@ -191,9 +191,20 @@ class ServiceUserService
 
                 if (!empty($bmIdsForCustomer)) {
                     try {
-                        // Gán service_user_id cho các meta_accounts thuộc các BM này mà hiện chưa có chủ
-                        $updated = $this->metaAccountRepository->query()
-                            ->whereIn('business_manager_id', $bmIdsForCustomer)
+                        // Lấy danh sách account_id từ bảng access mapping mà các BM này được quyền truy cập
+                        $accessibleAccountIds = DB::table('meta_account_business_manager_accesses')
+                            ->whereIn('source_bm_id', $bmIdsForCustomer)
+                            ->pluck('account_id')
+                            ->toArray();
+
+                        // Gán service_user_id cho các meta_accounts thuộc các BM này hoặc được share quyền truy cập
+                        $this->metaAccountRepository->query()
+                            ->where(function ($query) use ($bmIdsForCustomer, $accessibleAccountIds) {
+                                $query->whereIn('business_manager_id', $bmIdsForCustomer);
+                                if (!empty($accessibleAccountIds)) {
+                                    $query->orWhereIn('account_id', $accessibleAccountIds);
+                                }
+                            })
                             ->update(['service_user_id' => $serviceUser->id]);
 
                     } catch (\Throwable $attachError) {
