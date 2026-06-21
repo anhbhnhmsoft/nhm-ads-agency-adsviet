@@ -182,12 +182,54 @@ class MetaService
         $serviceUser = $serviceUserResult->getData();
         try {
             $query = $this->metaAccountRepository->query();
-            $query = $this->metaAccountRepository->filterQuery(
-                $query,
-                [
-                    'service_user_id' => $serviceUser->id,
-                ]
-            );
+
+            $user = Auth::user();
+            $isAdminOrStaff = $user && in_array($user->role, [
+                UserRole::ADMIN->value,
+                UserRole::MANAGER->value,
+                UserRole::EMPLOYEE->value,
+            ]);
+
+            if ($isAdminOrStaff) {
+                $config = $serviceUser->config_account ?? [];
+                $bmIds = [];
+                if (!empty($config['bm_id'])) {
+                    $bmIds[] = (string) $config['bm_id'];
+                }
+                if (!empty($config['child_bm_id'])) {
+                    $bmIds[] = (string) $config['child_bm_id'];
+                }
+                if (isset($config['accounts']) && is_array($config['accounts'])) {
+                    foreach ($config['accounts'] as $accConf) {
+                        if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                            foreach ($accConf['bm_ids'] as $bmId) {
+                                $bmIds[] = (string) $bmId;
+                            }
+                        }
+                    }
+                }
+                $bmIds = array_values(array_unique(array_filter($bmIds)));
+
+                $query->where(function ($subQ) use ($serviceUser, $bmIds) {
+                    $subQ->where('service_user_id', $serviceUser->id);
+                    if (!empty($bmIds)) {
+                        $subQ->orWhereIn('business_manager_id', $bmIds);
+                        $subQ->orWhereIn('account_id', function ($accessQuery) use ($bmIds) {
+                            $accessQuery->select('account_id')
+                                ->from('meta_account_business_manager_accesses')
+                                ->whereIn('source_bm_id', $bmIds);
+                        });
+                    }
+                });
+            } else {
+                $query = $this->metaAccountRepository->filterQuery(
+                    $query,
+                    [
+                        'service_user_id' => $serviceUser->id,
+                    ]
+                );
+            }
+
             $query = $this->metaAccountRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
 
@@ -242,10 +284,7 @@ class MetaService
         $serviceUser = $serviceUserResult->getData();
         try {
             // get Ads Account
-            $adsAccount = $this->metaAccountRepository->query()
-                ->where('id', $accountId)
-                ->where('service_user_id', $serviceUser->id)
-                ->first();
+            $adsAccount = $this->findAdsAccountForServiceUser($serviceUser, $accountId);
             if (!$adsAccount) {
                 return ServiceReturn::error(__('meta.error.account_not_found'));
             }
@@ -497,11 +536,10 @@ class MetaService
         $serviceUser = $serviceUserResult->getData();
 
         try {
-            $campaign = $this->metaAdsCampaignRepository->query()
-                ->with('metaAccount')
-                ->where('service_user_id', $serviceUser->id)
-                ->where('id', $campaignId)
-                ->first();
+            $campaign = $this->findCampaignForServiceUser($serviceUser, $campaignId);
+            if ($campaign) {
+                $campaign->load('metaAccount');
+            }
 
             if (!$campaign) {
                 return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
@@ -592,10 +630,7 @@ class MetaService
         $serviceUser = $serviceUserResult->getData();
 
         try {
-            $campaign = $this->metaAdsCampaignRepository->query()
-                ->where('service_user_id', $serviceUser->id)
-                ->where('id', $campaignId)
-                ->first();
+            $campaign = $this->findCampaignForServiceUser($serviceUser, $campaignId);
 
             if (!$campaign) {
                 return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
@@ -648,10 +683,7 @@ class MetaService
             // Còn không có trong cache, thì lấy dữ liệu từ đầu
 
             // Lấy thông tin chi tiết chiến dịch từ database
-            $campaign = $this->metaAdsCampaignRepository->query()
-                ->where('service_user_id', $serviceUser->id)
-                ->where('id', $campaignId)
-                ->first();
+            $campaign = $this->findCampaignForServiceUser($serviceUser, $campaignId);
             if (!$campaign) {
                 return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
             }
@@ -2936,4 +2968,105 @@ class MetaService
         }
     }
 
+    private function findAdsAccountForServiceUser(ServiceUser $serviceUser, string $accountId): ?\App\Models\MetaAccount
+    {
+        $query = $this->metaAccountRepository->query()
+            ->where('id', $accountId);
+
+        $user = Auth::user();
+        $isAdminOrStaff = $user && in_array($user->role, [
+            UserRole::ADMIN->value,
+            UserRole::MANAGER->value,
+            UserRole::EMPLOYEE->value,
+        ]);
+
+        if ($isAdminOrStaff) {
+            $config = $serviceUser->config_account ?? [];
+            $bmIds = [];
+            if (!empty($config['bm_id'])) {
+                $bmIds[] = (string) $config['bm_id'];
+            }
+            if (!empty($config['child_bm_id'])) {
+                $bmIds[] = (string) $config['child_bm_id'];
+            }
+            if (isset($config['accounts']) && is_array($config['accounts'])) {
+                foreach ($config['accounts'] as $accConf) {
+                    if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                        foreach ($accConf['bm_ids'] as $bmId) {
+                            $bmIds[] = (string) $bmId;
+                        }
+                    }
+                }
+            }
+            $bmIds = array_values(array_unique(array_filter($bmIds)));
+
+            $query->where(function ($subQ) use ($serviceUser, $bmIds) {
+                $subQ->where('service_user_id', $serviceUser->id);
+                if (!empty($bmIds)) {
+                    $subQ->orWhereIn('business_manager_id', $bmIds);
+                    $subQ->orWhereIn('account_id', function ($accessQuery) use ($bmIds) {
+                        $accessQuery->select('account_id')
+                            ->from('meta_account_business_manager_accesses')
+                            ->whereIn('source_bm_id', $bmIds);
+                    });
+                }
+            });
+        } else {
+            $query->where('service_user_id', $serviceUser->id);
+        }
+
+        return $query->first();
+    }
+
+    private function findCampaignForServiceUser(ServiceUser $serviceUser, string $campaignId): ?\App\Models\MetaAdsCampaign
+    {
+        return $this->metaAdsCampaignRepository->query()
+            ->where('id', $campaignId)
+            ->whereHas('metaAccount', function ($accQ) use ($serviceUser) {
+                $user = Auth::user();
+                $isAdminOrStaff = $user && in_array($user->role, [
+                    UserRole::ADMIN->value,
+                    UserRole::MANAGER->value,
+                    UserRole::EMPLOYEE->value,
+                ]);
+
+                if ($isAdminOrStaff) {
+                    $config = $serviceUser->config_account ?? [];
+                    $bmIds = [];
+                    if (!empty($config['bm_id'])) {
+                        $bmIds[] = (string) $config['bm_id'];
+                    }
+                    if (!empty($config['child_bm_id'])) {
+                        $bmIds[] = (string) $config['child_bm_id'];
+                    }
+                    if (isset($config['accounts']) && is_array($config['accounts'])) {
+                        foreach ($config['accounts'] as $accConf) {
+                            if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                                foreach ($accConf['bm_ids'] as $bmId) {
+                                    $bmIds[] = (string) $bmId;
+                                }
+                            }
+                        }
+                    }
+                    $bmIds = array_values(array_unique(array_filter($bmIds)));
+
+                    $accQ->where(function ($subQ) use ($serviceUser, $bmIds) {
+                        $subQ->where('service_user_id', $serviceUser->id);
+                        if (!empty($bmIds)) {
+                            $subQ->orWhereIn('business_manager_id', $bmIds);
+                            $subQ->orWhereIn('account_id', function ($accessQuery) use ($bmIds) {
+                                $accessQuery->select('account_id')
+                                    ->from('meta_account_business_manager_accesses')
+                                    ->whereIn('source_bm_id', $bmIds);
+                            });
+                        }
+                    });
+                } else {
+                    $accQ->where('service_user_id', $serviceUser->id);
+                }
+            })
+            ->first();
+    }
+
 }
+

@@ -2322,10 +2322,7 @@ GAQL;
         $serviceUser = $serviceUserResult->getData();
         try {
             // get Google Ads Account
-            $adsAccount = $this->googleAccountRepository->query()
-                ->where('id', $accountId)
-                ->where('service_user_id', $serviceUser->id)
-                ->first();
+            $adsAccount = $this->findGoogleAccountForServiceUser($serviceUser, $accountId);
             if (!$adsAccount) {
                 return ServiceReturn::error(__('google_ads.error.account_not_found'));
             }
@@ -2479,12 +2476,49 @@ GAQL;
         $serviceUser = $serviceUserResult->getData();
         try {
             $query = $this->googleAccountRepository->query();
-            $query = $this->googleAccountRepository->filterQuery(
-                $query,
-                [
-                    'service_user_id' => $serviceUser->id,
-                ]
-            );
+
+            $user = Auth::user();
+            $isAdminOrStaff = $user && in_array($user->role, [
+                UserRole::ADMIN->value,
+                UserRole::MANAGER->value,
+                UserRole::EMPLOYEE->value,
+            ]);
+
+            if ($isAdminOrStaff) {
+                $config = $serviceUser->config_account ?? [];
+                $mccIds = [];
+                if (!empty($config['bm_id'])) {
+                    $mccIds[] = (string) $config['bm_id'];
+                }
+                if (!empty($config['google_manager_id'])) {
+                    $mccIds[] = (string) $config['google_manager_id'];
+                }
+                if (isset($config['accounts']) && is_array($config['accounts'])) {
+                    foreach ($config['accounts'] as $accConf) {
+                        if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                            foreach ($accConf['bm_ids'] as $mccId) {
+                                $mccIds[] = (string) $mccId;
+                            }
+                        }
+                    }
+                }
+                $mccIds = array_values(array_unique(array_filter($mccIds)));
+
+                $query->where(function ($subQ) use ($serviceUser, $mccIds) {
+                    $subQ->where('service_user_id', $serviceUser->id);
+                    if (!empty($mccIds)) {
+                        $subQ->orWhereIn('customer_manager_id', $mccIds);
+                    }
+                });
+            } else {
+                $query = $this->googleAccountRepository->filterQuery(
+                    $query,
+                    [
+                        'service_user_id' => $serviceUser->id,
+                    ]
+                );
+            }
+
             $query = $this->googleAccountRepository->sortQuery($query, $queryListDTO->sortBy, $queryListDTO->sortDirection);
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
 
@@ -2550,11 +2584,10 @@ GAQL;
                 return ServiceReturn::success(data: $data);
             }
 
-            $campaign = $this->googleAdsCampaignRepository->query()
-                ->with('googleAccount')
-                ->where('service_user_id', $serviceUser->id)
-                ->where('id', $campaignId)
-                ->first();
+            $campaign = $this->findGoogleCampaignForServiceUser($serviceUser, $campaignId);
+            if ($campaign) {
+                $campaign->load('googleAccount');
+            }
             if (!$campaign) {
                 return ServiceReturn::error(message: __('google_ads.error.campaign_not_found'));
             }
@@ -2713,11 +2746,10 @@ GAQL;
         $serviceUser = $serviceUserResult->getData();
 
         try {
-            $campaign = $this->googleAdsCampaignRepository->query()
-                ->with('googleAccount')
-                ->where('service_user_id', $serviceUser->id)
-                ->where('id', $campaignId)
-                ->first();
+            $campaign = $this->findGoogleCampaignForServiceUser($serviceUser, $campaignId);
+            if ($campaign) {
+                $campaign->load('googleAccount');
+            }
             if (!$campaign) {
                 return ServiceReturn::error(message: __('google_ads.error.campaign_not_found'));
             }
@@ -2872,11 +2904,10 @@ GAQL;
         }
 
         try {
-            $campaign = $this->googleAdsCampaignRepository->query()
-                ->with('googleAccount')
-                ->where('service_user_id', $serviceUser->id)
-                ->where('id', $campaignId)
-                ->first();
+            $campaign = $this->findGoogleCampaignForServiceUser($serviceUser, $campaignId);
+            if ($campaign) {
+                $campaign->load('googleAccount');
+            }
             if (!$campaign) {
                 return ServiceReturn::error(message: __('google_ads.error.campaign_not_found'));
             }
@@ -2994,15 +3025,51 @@ GAQL;
         }
 
         try {
-            $accountIdDigits = preg_replace('/[^0-9]/', '', (string) $accountId);
-            $googleAccount = $this->googleAccountRepository->query()
-                ->where('service_user_id', $serviceUser->id)
+            $query = $this->googleAccountRepository->query()
                 ->where(function ($query) use ($accountId, $accountIdDigits) {
                     $query->where('id', $accountId)
                         ->orWhere('account_id', $accountId)
                         ->orWhere('account_id', $accountIdDigits);
-                })
-                ->first();
+                });
+
+            $user = Auth::user();
+            $isAdminOrStaff = $user && in_array($user->role, [
+                UserRole::ADMIN->value,
+                UserRole::MANAGER->value,
+                UserRole::EMPLOYEE->value,
+            ]);
+
+            if ($isAdminOrStaff) {
+                $config = $serviceUser->config_account ?? [];
+                $mccIds = [];
+                if (!empty($config['bm_id'])) {
+                    $mccIds[] = (string) $config['bm_id'];
+                }
+                if (!empty($config['google_manager_id'])) {
+                    $mccIds[] = (string) $config['google_manager_id'];
+                }
+                if (isset($config['accounts']) && is_array($config['accounts'])) {
+                    foreach ($config['accounts'] as $accConf) {
+                        if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                            foreach ($accConf['bm_ids'] as $mccId) {
+                                $mccIds[] = (string) $mccId;
+                            }
+                        }
+                    }
+                }
+                $mccIds = array_values(array_unique(array_filter($mccIds)));
+
+                $query->where(function ($subQ) use ($serviceUser, $mccIds) {
+                    $subQ->where('service_user_id', $serviceUser->id);
+                    if (!empty($mccIds)) {
+                        $subQ->orWhereIn('customer_manager_id', $mccIds);
+                    }
+                });
+            } else {
+                $query->where('service_user_id', $serviceUser->id);
+            }
+
+            $googleAccount = $query->first();
 
             if (!$googleAccount || empty($googleAccount->account_id)) {
                 return ServiceReturn::error(message: __('google_ads.error.account_not_found'));
@@ -3134,11 +3201,10 @@ GAQL;
                 return ServiceReturn::success(data: $data);
             }
 
-            $campaign = $this->googleAdsCampaignRepository->query()
-                ->with('googleAccount')
-                ->where('service_user_id', $serviceUser->id)
-                ->where('id', $campaignId)
-                ->first();
+            $campaign = $this->findGoogleCampaignForServiceUser($serviceUser, $campaignId);
+            if ($campaign) {
+                $campaign->load('googleAccount');
+            }
             if (!$campaign) {
                 return ServiceReturn::error(message: __('google_ads.error.campaign_not_found'));
             }
@@ -3383,5 +3449,95 @@ GAQL;
         ) {
             throw $e;
         }
+    }
+
+    private function findGoogleAccountForServiceUser(ServiceUser $serviceUser, string $accountId): ?\App\Models\GoogleAccount
+    {
+        $query = $this->googleAccountRepository->query()
+            ->where('id', $accountId);
+
+        $user = Auth::user();
+        $isAdminOrStaff = $user && in_array($user->role, [
+            UserRole::ADMIN->value,
+            UserRole::MANAGER->value,
+            UserRole::EMPLOYEE->value,
+        ]);
+
+        if ($isAdminOrStaff) {
+            $config = $serviceUser->config_account ?? [];
+            $mccIds = [];
+            if (!empty($config['bm_id'])) {
+                $mccIds[] = (string) $config['bm_id'];
+            }
+            if (!empty($config['google_manager_id'])) {
+                $mccIds[] = (string) $config['google_manager_id'];
+            }
+            if (isset($config['accounts']) && is_array($config['accounts'])) {
+                foreach ($config['accounts'] as $accConf) {
+                    if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                        foreach ($accConf['bm_ids'] as $mccId) {
+                            $mccIds[] = (string) $mccId;
+                        }
+                    }
+                }
+            }
+            $mccIds = array_values(array_unique(array_filter($mccIds)));
+
+            $query->where(function ($subQ) use ($serviceUser, $mccIds) {
+                $subQ->where('service_user_id', $serviceUser->id);
+                if (!empty($mccIds)) {
+                    $subQ->orWhereIn('customer_manager_id', $mccIds);
+                }
+            });
+        } else {
+            $query->where('service_user_id', $serviceUser->id);
+        }
+
+        return $query->first();
+    }
+
+    private function findGoogleCampaignForServiceUser(ServiceUser $serviceUser, string $campaignId): ?\App\Models\GoogleAdsCampaign
+    {
+        return $this->googleAdsCampaignRepository->query()
+            ->where('id', $campaignId)
+            ->whereHas('googleAccount', function ($accQ) use ($serviceUser) {
+                $user = Auth::user();
+                $isAdminOrStaff = $user && in_array($user->role, [
+                    UserRole::ADMIN->value,
+                    UserRole::MANAGER->value,
+                    UserRole::EMPLOYEE->value,
+                ]);
+
+                if ($isAdminOrStaff) {
+                    $config = $serviceUser->config_account ?? [];
+                    $mccIds = [];
+                    if (!empty($config['bm_id'])) {
+                        $mccIds[] = (string) $config['bm_id'];
+                    }
+                    if (!empty($config['google_manager_id'])) {
+                        $mccIds[] = (string) $config['google_manager_id'];
+                    }
+                    if (isset($config['accounts']) && is_array($config['accounts'])) {
+                        foreach ($config['accounts'] as $accConf) {
+                            if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                                foreach ($accConf['bm_ids'] as $mccId) {
+                                    $mccIds[] = (string) $mccId;
+                                }
+                            }
+                        }
+                    }
+                    $mccIds = array_values(array_unique(array_filter($mccIds)));
+
+                    $accQ->where(function ($subQ) use ($serviceUser, $mccIds) {
+                        $subQ->where('service_user_id', $serviceUser->id);
+                        if (!empty($mccIds)) {
+                            $subQ->orWhereIn('customer_manager_id', $mccIds);
+                        }
+                    });
+                } else {
+                    $accQ->where('service_user_id', $serviceUser->id);
+                }
+            })
+            ->first();
     }
 }
