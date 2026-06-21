@@ -9,4 +9,5 @@ enum NotificationType: int
     case GOOGLE_ADS = 3;
     case META_ADS = 4;
     case WALLET = 5;
+    case SERVICE_ANNOUNCEMENT = 6;
 }

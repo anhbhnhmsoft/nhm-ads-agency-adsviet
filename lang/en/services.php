@@ -44,4 +44,9 @@ return [
         'order_delete_success' => 'Service order deleted.',
         'config_update_success' => 'Account configuration updated.',
     ],
+    'notifications' => [
+        'new_package_title' => 'New service package: :name',
+        'new_package_description' => 'We have launched a new service package: :name. Check it out and register now!',
+    ],
 ];
+

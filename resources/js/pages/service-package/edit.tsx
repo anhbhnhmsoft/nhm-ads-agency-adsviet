@@ -536,7 +536,10 @@ const Edit = ({
 
                 {/* Description */}
                 <div className="flex flex-col gap-2 md:col-span-2">
-                    <Label>{t('service_packages.description')}</Label>
+                    <Label>
+                        {t('service_packages.description')}{' '}
+                        <span className="text-red-500">*</span>
+                    </Label>
                     <Textarea
                         value={data.description || ''}
                         placeholder={t('service_packages.description')}

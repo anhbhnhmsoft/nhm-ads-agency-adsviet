@@ -50,4 +50,9 @@ return [
     'service_packages' => [
         'cashback_percent_tooltip' => 'Cashback dựa theo tổng chi tiêu của khách từ đầu tháng đến cuối tháng.',
     ],
+    'notifications' => [
+        'new_package_title' => 'Gói dịch vụ mới: :name',
+        'new_package_description' => 'Hệ thống vừa ra mắt gói dịch vụ mới: :name. Hãy tham khảo và đăng ký ngay!',
+    ],
 ];
+

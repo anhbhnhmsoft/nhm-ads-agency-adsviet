@@ -72,9 +72,13 @@ class ServicePackageService
             $data = $this->servicePackageRepository->create($form);
             $this->servicePackageAllowedUserRepository->syncAllowedUsers($data->id, $allowedUserIds);
 
+            // Gửi thông báo cho khách hàng
+            \App\Jobs\SendNewServicePackageNotificationJob::dispatch($data->id, $allowedUserIds);
+
             return ServiceReturn::success(
                 data: $data,
             );
+
         }catch (\Exception $exception){
             Logging::error(
                 message: 'Lỗi tạo gói dịch vụ ServicePackageService@createServicePackage: ' . $exception->getMessage(),
