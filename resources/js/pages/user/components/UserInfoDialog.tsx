@@ -232,121 +232,126 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="mt-4 flex items-center gap-2">
-                                    {walletStatus === _WalletStatus.LOCKED ? (
+                                <div className="mt-4 flex flex-col gap-4">
+                                    <div className="flex items-center gap-2">
+                                        {walletStatus === _WalletStatus.LOCKED ? (
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                onClick={() => {
+                                                    router.post(
+                                                        wallet_unlock({
+                                                            userId: user.id,
+                                                        }).url,
+                                                        {},
+                                                        {
+                                                            preserveScroll: true,
+                                                            onSuccess: () =>
+                                                                refetchWallet(),
+                                                        },
+                                                    );
+                                                }}
+                                            >
+                                                {t('wallet.unlock')}
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                onClick={() => {
+                                                    router.post(
+                                                        wallet_lock({
+                                                            userId: user.id,
+                                                        }).url,
+                                                        {},
+                                                        {
+                                                            preserveScroll: true,
+                                                            onSuccess: () =>
+                                                                refetchWallet(),
+                                                        },
+                                                    );
+                                                }}
+                                            >
+                                                {t('wallet.lock')}
+                                            </Button>
+                                        )}
+                                        <div className="h-4 w-px bg-gray-300 mx-2" />
+                                        <Input
+                                            placeholder={t('wallet.amount')}
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={walletTopUpAmount}
+                                            onChange={(e) =>
+                                                setWalletTopUpAmount(e.target.value)
+                                            }
+                                            className="w-48"
+                                        />
+                                        <Button
+                                            type="button"
+                                            onClick={() => {
+                                                const amount = Number(walletTopUpAmount);
+                                                if (amount > 0) {
+                                                    router.post(
+                                                        wallet_top_up({
+                                                            userId: user.id,
+                                                        }).url,
+                                                        { amount },
+                                                        {
+                                                            preserveScroll: true,
+                                                            onSuccess: () => {
+                                                                setWalletTopUpAmount(
+                                                                    '',
+                                                                );
+                                                                refetchWallet();
+                                                            },
+                                                        },
+                                                    );
+                                                }
+                                            }}
+                                        >
+                                            {t('wallet.top_up')}
+                                        </Button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            placeholder={t('wallet.new_password')}
+                                            type="password"
+                                            value={walletPassword}
+                                            onChange={(e) =>
+                                                setWalletPassword(e.target.value)
+                                            }
+                                            className="w-72"
+                                        />
                                         <Button
                                             type="button"
                                             variant="secondary"
                                             onClick={() => {
-                                                router.post(
-                                                    wallet_unlock({
-                                                        userId: user.id,
-                                                    }).url,
-                                                    {},
-                                                    {
-                                                        preserveScroll: true,
-                                                        onSuccess: () =>
-                                                            refetchWallet(),
-                                                    },
-                                                );
+                                                if (walletPassword) {
+                                                    router.post(
+                                                        wallet_reset_password({
+                                                            userId: user.id,
+                                                        }).url,
+                                                        {
+                                                            password:
+                                                                walletPassword,
+                                                        },
+                                                        {
+                                                            preserveScroll: true,
+                                                            onSuccess: () => {
+                                                                setWalletPassword(
+                                                                    '',
+                                                                );
+                                                                refetchWallet();
+                                                            },
+                                                        },
+                                                    );
+                                                }
                                             }}
                                         >
-                                            {t('wallet.unlock')}
+                                            {t('wallet.reset_password')}
                                         </Button>
-                                    ) : (
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            onClick={() => {
-                                                router.post(
-                                                    wallet_lock({
-                                                        userId: user.id,
-                                                    }).url,
-                                                    {},
-                                                    {
-                                                        preserveScroll: true,
-                                                        onSuccess: () =>
-                                                            refetchWallet(),
-                                                    },
-                                                );
-                                            }}
-                                        >
-                                            {t('wallet.lock')}
-                                        </Button>
-                                    )}
-                                    <Input
-                                        placeholder={t('wallet.amount')}
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={walletTopUpAmount}
-                                        onChange={(e) =>
-                                            setWalletTopUpAmount(e.target.value)
-                                        }
-                                        className="w-36"
-                                    />
-                                    <Button
-                                        type="button"
-                                        onClick={() => {
-                                            const amount = Number(walletTopUpAmount);
-                                            if (amount > 0) {
-                                                router.post(
-                                                    wallet_top_up({
-                                                        userId: user.id,
-                                                    }).url,
-                                                    { amount },
-                                                    {
-                                                        preserveScroll: true,
-                                                        onSuccess: () => {
-                                                            setWalletTopUpAmount(
-                                                                '',
-                                                            );
-                                                            refetchWallet();
-                                                        },
-                                                    },
-                                                );
-                                            }
-                                        }}
-                                    >
-                                        {t('wallet.top_up')}
-                                    </Button>
-                                    <Input
-                                        placeholder={t('wallet.new_password')}
-                                        type="password"
-                                        value={walletPassword}
-                                        onChange={(e) =>
-                                            setWalletPassword(e.target.value)
-                                        }
-                                        className="flex-1"
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={() => {
-                                            if (walletPassword) {
-                                                router.post(
-                                                    wallet_reset_password({
-                                                        userId: user.id,
-                                                    }).url,
-                                                    {
-                                                        password:
-                                                            walletPassword,
-                                                    },
-                                                    {
-                                                        preserveScroll: true,
-                                                        onSuccess: () => {
-                                                            setWalletPassword(
-                                                                '',
-                                                            );
-                                                            refetchWallet();
-                                                        },
-                                                    },
-                                                );
-                                            }
-                                        }}
-                                    >
-                                        {t('wallet.reset_password')}
-                                    </Button>
+                                    </div>
                                 </div>
                             </>
                         )}
