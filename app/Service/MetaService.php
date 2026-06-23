@@ -1626,7 +1626,9 @@ class MetaService
             $ownerBmName = $business['name'] ?? null;
 
             if ($ownerBmId && in_array((string) $ownerBmId, $hiddenBmIds, true)) {
-                continue;
+                if (!$bmIdFromRequest || in_array((string) $bmIdFromRequest, $hiddenBmIds, true)) {
+                    continue;
+                }
             }
 
             try {
