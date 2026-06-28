@@ -103,7 +103,7 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
                                     {form.errors.email}
                                 </p>
                             )}
-                            {user.email && !user.email_verified_at && (
+                            {user.email && !user.email_verified_at && user.auth_provider !== 'gmail' && (
                                 <Button
                                     type="button"
                                     size="sm"
@@ -156,7 +156,7 @@ const BasicInfoCard = ({ user, emailOtpSent, onOtpSentChange }: Props) => {
                         </Button>
                     </div>
                 </form>
-                {user.email && !user.email_verified_at && emailOtpSent && (
+                {user.email && !user.email_verified_at && user.auth_provider !== 'gmail' && emailOtpSent && (
                     <EmailOtpForm
                         user={user}
                         onVerified={() => onOtpSentChange(false)}

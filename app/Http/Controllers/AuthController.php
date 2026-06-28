@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Common\Constants\CommonConstant;
 use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Http\Requests\Auth\RegisterEmailOtpRequest;
@@ -107,29 +106,15 @@ class AuthController extends Controller
     public function sendRegisterEmailOtp(RegisterEmailOtpRequest $request): RedirectResponse
     {
         $email = $request->validated('email');
-        $otp = (string) rand(100000, 999999);
-        $expireMin = CommonConstant::OTP_EXPIRE_MIN;
 
-        session()->put('register_email_otp', [
-            'email' => $email,
-            'otp' => $otp,
-            'expired_at' => now()->addMinutes($expireMin),
+        Session::put('register_social', [
+            'type' => 'gmail',
+            'data' => [
+                'email' => $email,
+            ],
         ]);
 
-        $mailResult = $this->mailService->sendVerifyRegister(
-            email: $email,
-            username: $email,
-            otp: $otp,
-            expireMin: $expireMin,
-        );
-
-        if ($mailResult->isError()) {
-            FlashMessage::error(__('auth.register.email_otp_failed'));
-            return back()->withInput();
-        }
-
-        FlashMessage::success(__('auth.register.email_otp_sent', ['email' => $email]));
-        return back()->withInput();
+        return redirect()->route('auth_register_new_user_screen');
     }
 
     public function verifyRegisterEmailOtp(VerifyRegisterEmailOtpRequest $request): RedirectResponse

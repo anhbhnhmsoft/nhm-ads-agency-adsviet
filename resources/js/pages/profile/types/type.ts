@@ -13,6 +13,7 @@ export type ProfileUser = Pick<
     | 'role'
 > & {
     email_verified_at?: string | null;
+    auth_provider?: string | null;
 };
 
 export type ProfilePageProps = {

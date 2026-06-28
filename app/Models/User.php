@@ -35,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'referral_code',
         'email_verified_at',
         'warning_threshold',
+        'auth_provider',
     ];
 
     /**
@@ -62,6 +63,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'deleted_at' => 'datetime',
             'email_verified_at' => 'datetime',
             'warning_threshold' => 'decimal:2',
+            'auth_provider' => 'string',
         ];
     }
 

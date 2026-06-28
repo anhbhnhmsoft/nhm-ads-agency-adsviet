@@ -47,6 +47,7 @@ class ProfileController extends Controller
                     'whatsapp_id' => $user->whatsapp_id,
                     'email_verified_at' => $user->email_verified_at,
                     'referral_code' => $user->referral_code,
+                    'auth_provider' => $user->auth_provider,
                 ],
                     'telegram' => [
                         'bot_id' => config('services.telegram.bot_id'),

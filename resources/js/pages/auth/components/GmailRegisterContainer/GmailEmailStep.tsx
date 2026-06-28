@@ -6,11 +6,7 @@ import { useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-type Props = {
-    onSuccess: (email: string) => void;
-};
-
-export default function GmailEmailStep({ onSuccess }: Props) {
+export default function GmailEmailStep() {
     const { t } = useTranslation();
     const form = useForm({
         email: '',
@@ -21,9 +17,6 @@ export default function GmailEmailStep({ onSuccess }: Props) {
         form.post(auth_register_send_email_otp().url, {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => {
-                onSuccess(form.data.email);
-            },
         });
     };
 
@@ -45,7 +38,7 @@ export default function GmailEmailStep({ onSuccess }: Props) {
             <Button type="submit" disabled={form.processing}>
                 {form.processing
                     ? t('auth.register.sending')
-                    : t('auth.register.send_code')}
+                    : t('auth.register.continue_with_gmail')}
             </Button>
         </form>
     );

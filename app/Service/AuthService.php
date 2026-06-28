@@ -52,8 +52,10 @@ class AuthService
             }
             // Nếu customer/agency không có telegram và whatsapp thì bắt buộc phải xác thực email trước khi đăng nhập
             $isCustomerRole = in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value]);
+            $isSocialGmailUser = ($user->auth_provider ?? null) === 'gmail';
             if (
                 $isCustomerRole
+                && !$isSocialGmailUser
                 && empty($user->telegram_id)
                 && empty($user->whatsapp_id)
                 && empty($user->email_verified_at)
@@ -596,9 +598,10 @@ class AuthService
 
             if (!empty($data['email'])) {
                 $register['email'] = $data['email'];
-                if (($data['type'] ?? null) === 'gmail') {
-                    $register['email_verified_at'] = now();
-                }
+            }
+
+            if (($data['type'] ?? null) === 'gmail') {
+                $register['auth_provider'] = 'gmail';
             }
 
             // Thêm telegram_id nếu có
