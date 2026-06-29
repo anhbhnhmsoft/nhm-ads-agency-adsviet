@@ -10,6 +10,7 @@ use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\ServiceController;
 use App\Http\Controllers\API\TicketController;
+use App\Http\Controllers\API\ReferralController;
 use App\Http\Controllers\API\WalletController;
 use App\Http\Middleware\VerifyTelegramIp;
 use Illuminate\Support\Facades\Route;
@@ -114,6 +115,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
         Route::put('/{id}/read', [NotificationController::class, 'markAsRead']);
         Route::put('/read-all', [NotificationController::class, 'markAllAsRead']);
+    });
+
+    Route::prefix('referral')->group(function () {
+        Route::get('info', [ReferralController::class, 'info']);
+        Route::get('downline', [ReferralController::class, 'downline']);
+        Route::get('commissions', [ReferralController::class, 'commissions']);
     });
 
 });

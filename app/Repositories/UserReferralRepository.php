@@ -67,7 +67,30 @@ class UserReferralRepository extends BaseRepository
     }
 
     /**
-     * Lấy referrer của user (Manager hoặc Employee quản lý user này)
+     * Lấy danh sách referred_id mà userId đã mời
+     */
+    public function getDownlineIds(string $userId): array
+    {
+        return $this->query()
+            ->where('referrer_id', $userId)
+            ->whereNull('deleted_at')
+            ->pluck('referred_id')
+            ->toArray();
+    }
+
+    /**
+     * Đếm số người mà userId đã mời
+     */
+    public function getDownlineCount(string $userId): int
+    {
+        return $this->query()
+            ->where('referrer_id', $userId)
+            ->whereNull('deleted_at')
+            ->count();
+    }
+
+    /**
+     * Lấy referrer của user
      */
     public function getReferrerByReferredId(string $referredId): ?UserReferral
     {
@@ -81,14 +104,13 @@ class UserReferralRepository extends BaseRepository
     }
 
     /**
-     * Lấy tất cả referrer chain (nếu Employee quản lý Customer, thì cần cả Manager của Employee)
+     * Lấy referrer chain
      */
     public function getReferrerChain(string $referredId): array
     {
         $referrers = [];
         $currentReferredId = $referredId;
 
-        // Tìm tối đa 2 cấp: Employee -> Manager
         for ($i = 0; $i < 2; $i++) {
             $referral = $this->getReferrerByReferredId($currentReferredId);
             if (!$referral || !$referral->referrer) {

@@ -14,6 +14,7 @@ class CommissionTransaction extends Model
     protected $fillable = [
         'employee_id',
         'customer_id',
+        'referrer_id',
         'type',
         'reference_type',
         'reference_id',
@@ -30,6 +31,7 @@ class CommissionTransaction extends Model
         'id' => 'string',
         'employee_id' => 'string',
         'customer_id' => 'string',
+        'referrer_id' => 'string',
         'base_amount' => 'decimal:2',
         'commission_rate' => 'decimal:4',
         'commission_amount' => 'decimal:2',
