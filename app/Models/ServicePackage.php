@@ -29,6 +29,8 @@ class ServicePackage extends Model
         'description',
         'range_min_top_up',
         'cashback_percent',
+        'refund_open_fee',
+        'min_spend_for_refund',
     ];
 
     protected $casts = [
@@ -46,6 +48,8 @@ class ServicePackage extends Model
         'disabled' => 'boolean',
         'range_min_top_up' => 'decimal:8',
         'cashback_percent' => 'decimal:2',
+        'refund_open_fee' => 'boolean',
+        'min_spend_for_refund' => 'decimal:2',
     ];
 
     public function serviceUsers()

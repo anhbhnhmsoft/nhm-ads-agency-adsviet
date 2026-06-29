@@ -33,6 +33,8 @@ class ServicePackageResource extends JsonResource
             'supplier_fee_percent' => $this->supplier_fee_percent,
             'supplier_id' => $this->supplier_id ? (string) $this->supplier_id : null,
             'set_up_time' => $this->set_up_time,
+            'refund_open_fee' => $this->refund_open_fee ?? false,
+            'min_spend_for_refund' => $this->min_spend_for_refund,
             'disabled' => $this->disabled,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

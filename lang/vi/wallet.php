@@ -102,6 +102,7 @@ return [
         'account_top_up_fee_detail' => 'Phí nạp tiền :fee USDT (:percent%)',
         'account_top_up_cancelled_admin' => 'Admin hủy yêu cầu nạp tiền tài khoản quảng cáo',
         'cashback' => 'Hoàn tiền thưởng (Cashback) :percent% dựa trên tổng chi tiêu kỳ :period.',
+        'open_fee_refund' => 'Hoàn phí mở tài khoản :amount USD khi đạt ngưỡng chi tiêu.',
     ],
     'error' => [
         'wallet_not_found' => 'Ví không tồn tại',

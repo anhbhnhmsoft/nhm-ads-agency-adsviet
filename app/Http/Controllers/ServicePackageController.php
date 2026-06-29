@@ -109,6 +109,8 @@ class ServicePackageController extends Controller
             'supplier_id' => ['nullable', 'string', 'exists:suppliers,id'],
             'set_up_time' => ['required', 'numeric', 'min:0'],
             'disabled' => ['required', 'boolean'],
+            'refund_open_fee' => ['nullable', 'boolean'],
+            'min_spend_for_refund' => ['nullable', 'numeric', 'min:0', 'required_if:refund_open_fee,true'],
         ],
             [
             'name.required' => __('services.validation.name_invalid'),
@@ -137,6 +139,9 @@ class ServicePackageController extends Controller
             'set_up_time.required' => __('services.validation.set_up_time_invalid'),
             'disabled.required' => __('services.validation.disabled_invalid'),
             'disabled.boolean' => __('services.validation.disabled_invalid'),
+            'min_spend_for_refund.numeric' => __('services.validation.min_spend_for_refund_invalid', ['default' => 'Chi tiêu tối thiểu phải là số']),
+            'min_spend_for_refund.min' => __('services.validation.min_spend_for_refund_invalid', ['default' => 'Chi tiêu tối thiểu không được nhỏ hơn 0']),
+            'min_spend_for_refund.required_if' => __('services.validation.min_spend_for_refund_required', ['default' => 'Vui lòng nhập chi tiêu tối thiểu khi bật hoàn phí mở tài khoản']),
         ]
         );
         //logic validate features
@@ -156,7 +161,7 @@ class ServicePackageController extends Controller
             if (!$platformEnum) {
                 return; // Bỏ qua nếu platform không hợp lệ (đã bị bắt bởi Rule::in)
             }
-            
+
             if ($platformEnum === PlatformType::META || $platformEnum === PlatformType::GOOGLE) {
                 foreach ($features as $index => $feature) {
                     if (!isset($feature['key']) || !isset($feature['value'])) {
@@ -266,6 +271,8 @@ class ServicePackageController extends Controller
                 'supplier_id' => ['nullable', 'string', 'exists:suppliers,id'],
                 'set_up_time' => ['required', 'numeric', 'min:0'],
                 'disabled' => ['required', 'boolean'],
+                'refund_open_fee' => ['nullable', 'boolean'],
+                'min_spend_for_refund' => ['nullable', 'numeric', 'min:0', 'required_if:refund_open_fee,true'],
             ],
             [
                 'name.required' => __('services.validation.name_invalid'),
@@ -298,6 +305,9 @@ class ServicePackageController extends Controller
                 'set_up_time.numeric' => __('services.validation.set_up_time_invalid'),
                 'disabled.required' => __('services.validation.disabled_invalid'),
                 'disabled.boolean' => __('services.validation.disabled_invalid'),
+                'min_spend_for_refund.numeric' => __('services.validation.min_spend_for_refund_invalid', ['default' => 'Chi tiêu tối thiểu phải là số']),
+                'min_spend_for_refund.min' => __('services.validation.min_spend_for_refund_invalid', ['default' => 'Chi tiêu tối thiểu không được nhỏ hơn 0']),
+                'min_spend_for_refund.required_if' => __('services.validation.min_spend_for_refund_required', ['default' => 'Vui lòng nhập chi tiêu tối thiểu khi bật hoàn phí mở tài khoản']),
             ]
         );
         //logic validate features

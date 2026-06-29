@@ -36,6 +36,8 @@ export const useFormCreateServicePackage = () => {
         supplier_id: null,
         set_up_time: '0',
         disabled: false,
+        refund_open_fee: false,
+        min_spend_for_refund: '0',
         monthly_spending_fee_structure: DEFAULT_MONTHLY_SPENDING_FEE_STRUCTURE,
     });
 
@@ -70,6 +72,8 @@ export const useFormEditServicePackage = (
         supplier_id: item.supplier_id ? String(item.supplier_id) : null,
         set_up_time: item.set_up_time.toString(),
         disabled: item.disabled,
+        refund_open_fee: item.refund_open_fee ?? false,
+        min_spend_for_refund: item.min_spend_for_refund ?? '0',
         monthly_spending_fee_structure:
             item.monthly_spending_fee_structure &&
             item.monthly_spending_fee_structure.length > 0

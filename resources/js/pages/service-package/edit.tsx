@@ -807,6 +807,48 @@ const Edit = ({
                     )}
                 </div>
 
+                {/* Refund open fee */}
+                <div className="flex flex-col gap-2">
+                    <Label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 hover:bg-accent/50 has-aria-checked:border-orange-600 has-aria-checked:bg-orange-50">
+                        <Checkbox
+                            disabled={false}
+                            checked={data.refund_open_fee}
+                            onCheckedChange={(value) => {
+                                return setData('refund_open_fee', value as boolean);
+                            }}
+                            className="data-[state=checked]:border-orange-600 data-[state=checked]:bg-orange-600 data-[state=checked]:text-white"
+                        />
+                        <div className="grid gap-1.5 font-normal">
+                            <p className="text-sm leading-none font-medium">
+                                {t('service_packages.refund_open_fee', { defaultValue: 'Hoàn phí mở tài khoản khi đạt ngưỡng chi tiêu' })}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                {t('service_packages.refund_open_fee_desc', { defaultValue: 'Tự động hoàn lại phí mở tài khoản khi khách hàng đạt tổng chi tiêu yêu cầu.' })}
+                            </p>
+                        </div>
+                    </Label>
+                </div>
+                {data.refund_open_fee && (
+                    <div className="flex flex-col gap-2">
+                        <Label>{t('service_packages.min_spend_for_refund', { defaultValue: 'Chi tiêu tối thiểu để hoàn phí ($)' })}</Label>
+                        <Input
+                            value={data.min_spend_for_refund || '0'}
+                            placeholder={t('service_packages.min_spend_for_refund_placeholder', { defaultValue: 'Ví dụ: 10000' })}
+                            type="number"
+                            step="any"
+                            min="0"
+                            onChange={(e) => {
+                                setData('min_spend_for_refund', e.target.value);
+                            }}
+                        />
+                        {errors.min_spend_for_refund && (
+                            <span className="text-sm text-red-500">
+                                {errors.min_spend_for_refund}
+                            </span>
+                        )}
+                    </div>
+                )}
+
                 {/* Disabled */}
                 <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-aria-checked:border-red-600 has-aria-checked:bg-red-50">
                     <Checkbox

@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
@@ -41,6 +42,18 @@ class CashbackService
                 $this->payoutCashbackForService($service);
             } catch (\Throwable $e) {
                 Logging::error("CashbackService error for service {$service->id}", [
+                    'exception' => $e
+                ]);
+            }
+        }
+
+        // Xử lý hoàn phí mở tài khoản
+        $refundServices = $this->serviceUserRepository->getActiveServicesWithRefundOpenFee();
+        foreach ($refundServices as $service) {
+            try {
+                $this->checkAndRefundOpenFee($service);
+            } catch (\Throwable $e) {
+                Logging::error("CashbackService refund open fee error for service {$service->id}", [
                     'exception' => $e
                 ]);
             }
@@ -223,6 +236,94 @@ class CashbackService
             ]);
 
             return ServiceReturn::success(null, "Cashback payout successful.");
+        });
+    }
+
+    /**
+     * Kiểm tra và hoàn phí mở tài khoản khi tổng chi tiêu đạt ngưỡng.
+     * Hoàn 100% open_fee, chỉ 1 lần duy nhất cho mỗi service_user.
+     */
+    public function checkAndRefundOpenFee(ServiceUser $service): ServiceReturn
+    {
+        $package = $service->package;
+        if (!$package || !$package->refund_open_fee || !$package->min_spend_for_refund) {
+            return ServiceReturn::error('Package does not have refund open fee enabled.');
+        }
+
+        // Đã hoàn rồi thì skip
+        $existingRefund = $this->transactionRepository->query()
+            ->where('reference_id', (string) $service->id)
+            ->where('type', WalletTransactionType::REFUND->value)
+            ->where('withdraw_info->purpose', 'open_fee_refund')
+            ->first();
+        if ($existingRefund) {
+            return ServiceReturn::error('Open fee refund already paid for this service.');
+        }
+
+        // Tính tổng chi tiêu CUMULATIVE (từ khi tạo đến giờ)
+        $totalSpend = $this->calculateCumulativeSpend($service);
+
+        if ($totalSpend < (float) $package->min_spend_for_refund) {
+            return ServiceReturn::error('Minimum spend not reached for open fee refund.');
+        }
+
+        $openFeeAmount = (float) $package->open_fee;
+        if ($openFeeAmount <= 0) {
+            return ServiceReturn::error('Open fee is 0, nothing to refund.');
+        }
+
+        return $this->executeOpenFeeRefund($service, $openFeeAmount, $totalSpend);
+    }
+
+    protected function calculateCumulativeSpend(ServiceUser $service): float
+    {
+        $platform = (int) $service->package->platform;
+
+        if ($platform === PlatformType::META->value) {
+            return $this->metaInsightRepository->getCumulativeSpendForServiceUser($service->id);
+        } elseif ($platform === PlatformType::GOOGLE->value) {
+            return $this->googleInsightRepository->getCumulativeSpendForServiceUser($service->id);
+        }
+
+        return 0;
+    }
+
+    protected function executeOpenFeeRefund(
+        ServiceUser $service,
+        float $amount,
+        float $totalSpend
+    ): ServiceReturn {
+        return DB::transaction(function () use ($service, $amount, $totalSpend) {
+            $wallet = $this->walletRepository->findByUserId($service->user_id);
+            if (!$wallet) {
+                $walletResult = $this->walletService->createForUser($service->user_id);
+                $wallet = $walletResult->getData();
+            }
+
+            $wallet->balance += $amount;
+            $wallet->save();
+
+            $this->transactionRepository->create([
+                'wallet_id' => $wallet->id,
+                'amount' => $amount,
+                'type' => WalletTransactionType::REFUND->value,
+                'status' => WalletTransactionStatus::COMPLETED->value,
+                'reference_id' => $service->id,
+                'description' => __('wallet.transaction_description.open_fee_refund', [
+                    'amount' => $amount,
+                ]),
+                'withdraw_info' => [
+                    'purpose' => 'open_fee_refund',
+                    'total_spend' => $totalSpend,
+                    'min_spend_for_refund' => $service->package->min_spend_for_refund,
+                    'open_fee' => $service->package->open_fee,
+                    'refund_amount' => $amount,
+                ],
+                'customer_name' => $service->user->name,
+                'customer_email' => $service->user->username,
+            ]);
+
+            return ServiceReturn::success(null, "Open fee refund payout successful.");
         });
     }
 }

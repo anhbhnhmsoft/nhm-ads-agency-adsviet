@@ -19,4 +19,11 @@ class MetaAdsAccountInsightRepository extends BaseRepository
             ->whereBetween('date', [$startDate, $endDate])
             ->sum('spend');
     }
+
+    public function getCumulativeSpendForServiceUser(string $serviceUserId): float
+    {
+        return (float) $this->query()
+            ->where('service_user_id', $serviceUserId)
+            ->sum('spend');
+    }
 }

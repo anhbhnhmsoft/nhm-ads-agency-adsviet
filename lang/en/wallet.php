@@ -102,6 +102,7 @@ return [
         'account_top_up_fee_detail' => 'Top-up fee :fee USDT (:percent%)',
         'account_top_up_cancelled_admin' => 'Admin cancelled the ad account top-up request',
         'cashback' => 'Cashback :percent% based on total spend in period :period.',
+        'open_fee_refund' => 'Open fee refund :amount USD after reaching minimum spend threshold.',
     ],
     'error' => [
         'wallet_not_found' => 'Wallet not found',

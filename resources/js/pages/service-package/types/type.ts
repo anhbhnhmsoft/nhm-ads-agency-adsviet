@@ -32,6 +32,8 @@ export type CreateServicePackageForm = {
     supplier_id?: string | null;
     set_up_time: string;
     disabled: boolean;
+    refund_open_fee: boolean;
+    min_spend_for_refund: string;
     monthly_spending_fee_structure: MonthlySpendingFeeItem[];
 };
 
@@ -56,6 +58,8 @@ export type ServicePackageItem = {
     set_up_time: number;
     disabled: boolean;
     description: string;
+    refund_open_fee: boolean;
+    min_spend_for_refund: string | null;
     range_min_top_up: string;
     inventory_total_count?: number;
     inventory_available_count?: number;

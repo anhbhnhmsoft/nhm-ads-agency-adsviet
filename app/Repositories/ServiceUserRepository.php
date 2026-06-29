@@ -84,4 +84,17 @@ class ServiceUserRepository extends BaseRepository
             ->with(['package', 'user.wallet'])
             ->get();
     }
+
+    public function getActiveServicesWithRefundOpenFee(): Collection
+    {
+        return $this->query()
+            ->where('status', ServiceUserStatus::ACTIVE->value)
+            ->whereHas('package', function ($query) {
+                $query->where('refund_open_fee', true)
+                    ->whereNotNull('min_spend_for_refund')
+                    ->where('min_spend_for_refund', '>', 0);
+            })
+            ->with(['package', 'user.wallet'])
+            ->get();
+    }
 }
