@@ -892,7 +892,6 @@ const ServiceOrdersIndex = ({
                                                     )}
                                                 </div>
                                             )}
-                                            </div>
                                             {isApproveMeta &&
                                                 childBusinessManagers.length >
                                                     0 && (
