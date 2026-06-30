@@ -68,7 +68,6 @@ export const useServiceOrderAdminDialog = () => {
 
     // ---- Tab "Gán tài khoản" ----
     // accountIdInput = ID tài khoản nhập tay (như act_xxx)
-    // selectedAccountId = ID tài khoản chọn từ dropdown
 
     const form = useForm({
         meta_email: '',
@@ -273,20 +272,25 @@ export const useServiceOrderAdminDialog = () => {
     );
 
     // Determine account_id to send to backend
-    const getAccountIdToSubmit = useCallback((): string | null => {
+    const getAccountIdToSubmit = useCallback((overrideAccountId?: string | null): string | null => {
         if (assignMode === 'account') {
+            // Ưu tiên override từ component cha (currentAccountId từ accountIdList)
+            const fromOverride = overrideAccountId?.trim();
+            if (fromOverride) return fromOverride;
+            // Fallback: từ form data
             return form.data.account_id_input?.trim() || null;
         }
         return null;
     }, [assignMode, form.data.account_id_input]);
 
-    const handleSubmitApprove = useCallback(() => {
+    const handleSubmitApprove = useCallback((overrideAccountId?: string | null) => {
         if (!selectedOrder) return;
 
         // Validate: tab "Gán tài khoản" phải nhập ID
         if (assignMode === 'account') {
-            const manualInput = form.data.account_id_input?.trim();
-            if (!manualInput) {
+            const accountIdFromOverride = overrideAccountId?.trim();
+            const accountIdFromForm = form.data.account_id_input?.trim();
+            if (!accountIdFromOverride && !accountIdFromForm) {
                 form.setError('account_id', 'Vui lòng nhập ID tài khoản khi chọn tab Gán tài khoản');
                 return;
             }
@@ -312,7 +316,7 @@ export const useServiceOrderAdminDialog = () => {
         }
 
         // Xác định account_id gửi lên backend
-        const accountId = getAccountIdToSubmit();
+        const accountId = getAccountIdToSubmit(overrideAccountId);
 
         form.transform(() => ({
             ...form.data,

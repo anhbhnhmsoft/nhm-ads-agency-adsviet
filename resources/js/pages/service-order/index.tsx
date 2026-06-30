@@ -39,8 +39,8 @@ import {
 } from '@/routes';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Package, Pencil, Plus, ShoppingBag, Trash2 } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { Package, Pencil, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type TimezoneOption = {
@@ -78,6 +78,15 @@ const ServiceOrdersIndex = ({
         _UserRole.EMPLOYEE,
     ]);
     const orders = paginator?.data ?? [];
+
+    // Multi-input lists for approve dialog
+    const [bmIdList, setBmIdList] = useState<string[]>(['']);
+    const [accountIdList, setAccountIdList] = useState<string[]>(['']);
+    const [fanpageList, setFanpageList] = useState<string[]>(['']);
+    const [websiteList, setWebsiteList] = useState<string[]>(['']);
+
+    // Derived accountIdInput = first non-empty item in accountIdList
+    const currentAccountId = accountIdList.find(v => v.trim()) || '';
 
     const {
         dialogOpen,
@@ -151,6 +160,33 @@ const ServiceOrdersIndex = ({
 
     const isApproveMeta =
         selectedOrder?.package?.platform === _PlatformType.META;
+
+    // Helper: thêm vào list, bỏ trống đầu tiên, check trùng
+    const addToListUnique = (list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed) return;
+        setList(prev => {
+            const exists = prev.some(v => v.trim() === trimmed);
+            if (exists) return prev;
+            const firstEmpty = prev.findIndex(v => !v.trim());
+            if (firstEmpty >= 0) {
+                const newList = [...prev];
+                newList[firstEmpty] = trimmed;
+                return newList;
+            }
+            return [...prev, trimmed];
+        });
+    };
+
+    // Reset multi-input lists khi dialog mở
+    useEffect(() => {
+        if (dialogOpen) {
+            setBmIdList([bmId || '']);
+            setAccountIdList([accountIdInput || '']);
+            setFanpageList([infoFanpage || '']);
+            setWebsiteList([infoWebsite || '']);
+        }
+    }, [dialogOpen]);
     const isEditMeta =
         selectedEditOrder?.package?.platform === _PlatformType.META;
 
@@ -676,44 +712,79 @@ const ServiceOrdersIndex = ({
 
                                                     {/* Dropdown chọn BM có sẵn */}
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="select_bm_from_list">
+                                                        <Label>
                                                             {isApproveMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
                                                         </Label>
                                                         <Select
-                                                            value=""
-                                                            onValueChange={(value) => handleSelectBmFromList(value)}
+                                                            key={`bm-tab-bm-${bmIdList.join(',')}`}
+                                                            onValueChange={(value) => {
+                                                                if (value && value !== '__empty__') {
+                                                                    handleSelectBmFromList(value);
+                                                                    addToListUnique(bmIdList, setBmIdList, value);
+                                                                }
+                                                            }}
                                                             disabled={loadingBmList}
                                                         >
-                                                            <SelectTrigger id="select_bm_from_list">
+                                                            <SelectTrigger>
                                                                 <SelectValue
                                                                     placeholder={
                                                                         loadingBmList
-                                                                            ? 'Đang tải danh sách...'
+                                                                            ? 'Đang tải...'
                                                                             : (isApproveMeta ? 'Chọn BM từ danh sách...' : 'Chọn MCC từ danh sách...')
                                                                     }
                                                                 />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {bmList.map((bm) => (
-                                                                    <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
-                                                                        {bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})
-                                                                    </SelectItem>
-                                                                ))}
+                                                                {bmList
+                                                                    .filter((bm) => !bmIdList.some((id) => id.trim() === (bm.bm_ids?.[0] || bm.id)))
+                                                                    .map((bm) => (
+                                                                        <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
+                                                                            <span className="truncate block">{bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})</span>
+                                                                        </SelectItem>
+                                                                    ))}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
 
-                                                    {/* Input ID BM nhập tay */}
+                                                    {/* Input ID BM nhập tay + nút thêm */}
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="bm_id">
-                                                            {isApproveMeta ? 'ID BM' : 'ID MCC'}
-                                                        </Label>
-                                                        <Input
-                                                            id="bm_id"
-                                                            value={bmId}
-                                                            onChange={(e) => setBmId(e.target.value)}
-                                                            placeholder={isApproveMeta ? 'Nhập BM ID...' : 'Nhập MCC ID...'}
-                                                        />
+                                                        <div className="flex items-center justify-between">
+                                                            <Label>
+                                                                {isApproveMeta ? 'ID BM' : 'ID MCC'}
+                                                            </Label>
+                                                            {bmIdList.length < 3 && (
+                                                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                                                                    onClick={() => setBmIdList([...bmIdList, ''])}
+                                                                >
+                                                                    <Plus className="mr-1 h-3 w-3" />
+                                                                    Thêm {isApproveMeta ? 'BM' : 'MCC'}
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {bmIdList.map((val, idx) => (
+                                                                <div key={`bm-${idx}`} className="flex gap-2">
+                                                                    <Input
+                                                                        value={val}
+                                                                        onChange={(e) => {
+                                                                            const newList = [...bmIdList];
+                                                                            newList[idx] = e.target.value;
+                                                                            setBmIdList(newList);
+                                                                            if (idx === 0) setBmId(e.target.value);
+                                                                        }}
+                                                                        placeholder={isApproveMeta ? 'Nhập BM ID...' : 'Nhập MCC ID...'}
+                                                                    />
+                                                                    {bmIdList.length > 1 && (
+                                                                        <Button type="button" variant="ghost" size="sm"
+                                                                            className="text-red-600"
+                                                                            onClick={() => setBmIdList(bmIdList.filter((_, i) => i !== idx))}
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                         {formErrors.bm_id && (
                                                             <p className="text-xs text-red-500">{formErrors.bm_id}</p>
                                                         )}
@@ -761,8 +832,14 @@ const ServiceOrdersIndex = ({
                                                             {isApproveMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
                                                         </Label>
                                                         <Select
-                                                            value={bmId || ''}
-                                                            onValueChange={(value) => handleSelectBmFromList(value)}
+                                                            key={`account-tab-bm-${bmId}`}
+                                                            value={bmId || undefined}
+                                                            onValueChange={(value) => {
+                                                                if (value && value !== '__empty__') {
+                                                                    handleSelectBmFromList(value);
+                                                                    addToListUnique(bmIdList, setBmIdList, value);
+                                                                }
+                                                            }}
                                                             disabled={loadingBmList}
                                                         >
                                                             <SelectTrigger id="select_bm_from_list_account">
@@ -790,10 +867,10 @@ const ServiceOrdersIndex = ({
                                                             Chọn tài khoản * (bắt buộc)
                                                         </Label>
                                                         <Select
-                                                            value={accountIdInput || '__empty__'}
                                                             onValueChange={(value) => {
-                                                                if (value !== '__empty__') {
-                                                                    handleSelectAccountFromList(value);
+                                                                if (value && value !== '__empty__') {
+                                                                    addToListUnique(accountIdList, setAccountIdList, value);
+                                                                    setAccountIdInput(value);
                                                                 }
                                                             }}
                                                             disabled={loadingBmAccounts || !bmId}
@@ -810,14 +887,13 @@ const ServiceOrdersIndex = ({
                                                                 />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="__empty__" disabled>
-                                                                    -- Chọn tài khoản --
-                                                                </SelectItem>
-                                                                {bmAccounts.map((acc: BmAccount) => (
-                                                                    <SelectItem key={acc.account_id} value={acc.account_id}>
-                                                                        <span className="truncate block">{acc.account_name || acc.account_id} — {acc.account_id} ({acc.currency}){acc.service_user_id ? ' [Đã gán]' : ''}</span>
-                                                                    </SelectItem>
-                                                                ))}
+                                                                {bmAccounts
+                                                                    .filter((acc) => !accountIdList.some((id) => id.trim() === acc.account_id))
+                                                                    .map((acc: BmAccount) => (
+                                                                        <SelectItem key={acc.account_id} value={acc.account_id}>
+                                                                            <span className="truncate block">{acc.account_name || acc.account_id} — {acc.account_id} ({acc.currency}){acc.service_user_id ? ' [Đã gán]' : ''}</span>
+                                                                        </SelectItem>
+                                                                    ))}
                                                             </SelectContent>
                                                         </Select>
                                                         {formErrors.account_id && (
@@ -825,13 +901,57 @@ const ServiceOrdersIndex = ({
                                                         )}
                                                     </div>
 
-                                                    {/* 3. Input ID BM/MCC khách nhập (không bắt buộc) */}
+                                                    {/* 3. Input ID tài khoản nhập tay + nút thêm */}
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="bm_id_account">
+                                                        <div className="flex items-center justify-between">
+                                                            <Label className="text-destructive">
+                                                                ID tài khoản * (bắt buộc)
+                                                            </Label>
+                                                            {accountIdList.length < 3 && (
+                                                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                                                                    onClick={() => setAccountIdList([...accountIdList, ''])}
+                                                                >
+                                                                    <Plus className="mr-1 h-3 w-3" />
+                                                                    Thêm tài khoản
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {accountIdList.map((val, idx) => (
+                                                                <div key={`acc-${idx}`} className="flex gap-2">
+                                                                    <Input
+                                                                        value={val}
+                                                                        onChange={(e) => {
+                                                                            const newList = [...accountIdList];
+                                                                            newList[idx] = e.target.value;
+                                                                            setAccountIdList(newList);
+                                                                            setAccountIdInput(e.target.value);
+                                                                        }}
+                                                                        placeholder={isApproveMeta ? 'act_1234567890' : '123-456-7890'}
+                                                                        className={!val.trim() ? 'border-destructive' : ''}
+                                                                    />
+                                                                    {accountIdList.length > 1 && (
+                                                                        <Button type="button" variant="ghost" size="sm"
+                                                                            className="text-red-600"
+                                                                            onClick={() => setAccountIdList(accountIdList.filter((_, i) => i !== idx))}
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {isApproveMeta ? 'Account ID bắt đầu bằng act_' : 'Google Customer ID dạng xxx-xxx-xxxx'}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* 4. Input ID BM/MCC khách nhập */}
+                                                    <div className="space-y-2">
+                                                        <Label>
                                                             {isApproveMeta ? 'ID BM (khách nhập)' : 'ID MCC (khách nhập)'}
                                                         </Label>
                                                         <Input
-                                                            id="bm_id_account"
                                                             value={bmId}
                                                             onChange={(e) => {
                                                                 setBmId(e.target.value);
@@ -854,6 +974,84 @@ const ServiceOrdersIndex = ({
                                                     </p>
                                                 </>
                                             )}
+
+                                            {/* Fanpage multi-input */}
+                                            {isApproveMeta && (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label>Thông tin fanpage</Label>
+                                                        {fanpageList.length < 3 && (
+                                                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                                                                onClick={() => setFanpageList([...fanpageList, ''])}
+                                                            >
+                                                                <Plus className="mr-1 h-3 w-3" />
+                                                                Thêm fanpage
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {fanpageList.map((val, idx) => (
+                                                            <div key={`fp-${idx}`} className="flex gap-2">
+                                                                <Input
+                                                                    value={val}
+                                                                    onChange={(e) => {
+                                                                        const newList = [...fanpageList];
+                                                                        newList[idx] = e.target.value;
+                                                                        setFanpageList(newList);
+                                                                        if (idx === 0) setInfoFanpage(e.target.value);
+                                                                    }}
+                                                                    placeholder="Link hoặc tên fanpage"
+                                                                />
+                                                                {fanpageList.length > 1 && (
+                                                                    <Button type="button" variant="ghost" size="sm" className="text-red-600"
+                                                                        onClick={() => setFanpageList(fanpageList.filter((_, i) => i !== idx))}
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Website multi-input */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <Label>Thông tin website</Label>
+                                                    {websiteList.length < 3 && (
+                                                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                                                            onClick={() => setWebsiteList([...websiteList, ''])}
+                                                        >
+                                                            <Plus className="mr-1 h-3 w-3" />
+                                                            Thêm website
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {websiteList.map((val, idx) => (
+                                                        <div key={`ws-${idx}`} className="flex gap-2">
+                                                            <Input
+                                                                value={val}
+                                                                onChange={(e) => {
+                                                                    const newList = [...websiteList];
+                                                                    newList[idx] = e.target.value;
+                                                                    setWebsiteList(newList);
+                                                                    if (idx === 0) setInfoWebsite(e.target.value);
+                                                                }}
+                                                                placeholder="Link website"
+                                                            />
+                                                            {websiteList.length > 1 && (
+                                                                <Button type="button" variant="ghost" size="sm" className="text-red-600"
+                                                                    onClick={() => setWebsiteList(websiteList.filter((_, i) => i !== idx))}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
 
                                             <div className="space-y-2">
                                                 <Label htmlFor="approve_asset_access">
@@ -909,7 +1107,7 @@ const ServiceOrdersIndex = ({
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            handleSubmitApprove();
+                                            handleSubmitApprove(currentAccountId);
                                         }}
                                         disabled={approveProcessing}
                                     >
