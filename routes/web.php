@@ -229,6 +229,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
 
     Route::prefix('/business-managers')->group(function () {
         Route::get('/', [BusinessManagerController::class, 'index'])->name('business_managers_index');
+        Route::get('/list', [BusinessManagerController::class, 'getBmListJson'])->name('business_managers_list_json');
         Route::get('/{bmId}/accounts', [BusinessManagerController::class, 'getAccounts'])->name('business_managers_get_accounts');
         Route::get('/{parentBmId}/child-business-managers', [BusinessManagerController::class, 'getChildBusinessManagers'])->name('business_managers_get_child_bms');
         Route::post('/{bmId}/hide', [BusinessManagerController::class, 'hideMetaBusinessManager'])->name('business_managers_hide');

@@ -90,69 +90,102 @@ class ServiceUserService
                 return ServiceReturn::error(message: __('common_error.not_found'));
             }
 
-            // Merge config_account hiện tại với config mới
             $currentConfig = $serviceUser->config_account ?? [];
             if (!is_array($currentConfig)) {
                 $currentConfig = [];
             }
 
             $platform = $serviceUser->package->platform ?? null;
+            $assignMode = $config['assign_mode'] ?? 'bm';
+            $selectedAccountId = $config['account_id'] ?? null;
+            $bmIdSubmitted = trim((string) ($config['bm_id'] ?? ''));
+
             $packagePaymentType = $this->resolvePackagePaymentType($serviceUser->package?->payment_type);
             $paymentType = $this->resolveConfigPaymentType($currentConfig['payment_type'] ?? null, $packagePaymentType);
             $billingSource = $this->resolvePackageBillingSource($serviceUser->package?->billing_source);
 
+            // ── Validate trước khi thay đổi gì ──
+
+            // Validate BM đã có khách khác dùng chưa (chỉ khi có BM ID)
+            if (!empty($bmIdSubmitted)) {
+                $existingServiceUser = $this->serviceUserRepository->query()
+                    ->where('id', '!=', $serviceUser->id)
+                    ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
+                    ->where(function ($q) use ($bmIdSubmitted) {
+                        $q->whereJsonContains('config_account->bm_id', $bmIdSubmitted)
+                          ->orWhereJsonContains('config_account->child_bm_id', $bmIdSubmitted);
+                    })
+                    ->with('user:id,name,username')
+                    ->first();
+
+                if ($existingServiceUser && $existingServiceUser->user) {
+                    $customerName = $existingServiceUser->user->name ?? $existingServiceUser->user->username;
+                    return ServiceReturn::error(
+                        message: __('services.validation.bm_already_used_by_customer', ['name' => $customerName])
+                    );
+                }
+            }
+
+            // Validate account đã có ai dùng chưa (khi chọn tab Gán tài khoản)
+            if ($assignMode === 'account' && $selectedAccountId) {
+                if ($platform === PlatformType::META->value) {
+                    $existingOwner = $this->metaAccountRepository->query()
+                        ->where('account_id', $selectedAccountId)
+                        ->where('service_user_id', '!=', $serviceUser->id)
+                        ->whereNotNull('service_user_id')
+                        ->first();
+                    if ($existingOwner) {
+                        $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khác';
+                        return ServiceReturn::error(
+                            message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
+                        );
+                    }
+                } elseif ($platform === PlatformType::GOOGLE->value) {
+                    $existingOwner = $this->googleAccountRepository->query()
+                        ->where('account_id', $selectedAccountId)
+                        ->where('service_user_id', '!=', $serviceUser->id)
+                        ->whereNotNull('service_user_id')
+                        ->first();
+                    if ($existingOwner) {
+                        $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khác';
+                        return ServiceReturn::error(
+                            message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
+                        );
+                    }
+                }
+            }
+
+            // ── Xây config_account ──
             if (is_array($config['accounts']) && !empty($config['accounts'])) {
                 $accounts = $config['accounts'];
-                
                 $newConfig = array_merge($currentConfig, [
                     'accounts' => $accounts,
+                    'bm_id' => $bmIdSubmitted ?: ($currentConfig['bm_id'] ?? ''),
+                    'account_id' => $selectedAccountId,
+                    'assign_mode' => $assignMode,
                     'payment_type' => $paymentType,
                     'billing_source' => $billingSource,
                 ]);
-                
-                // Lưu bm_id vào google_manager_id nếu là Google Ads
+
                 if ($platform === PlatformType::GOOGLE->value) {
-                    $bmId = $config['bm_id'] ?? null;
-                    
-                    if (empty($bmId) && !empty($accounts[0]['bm_ids']) && is_array($accounts[0]['bm_ids']) && !empty($accounts[0]['bm_ids'][0])) {
-                        $bmId = trim((string) $accounts[0]['bm_ids'][0]);
-                    }
-                    
-                    if (!empty($bmId)) {
-                        $newConfig['google_manager_id'] = $bmId;
-                    } elseif (isset($currentConfig['google_manager_id'])) {
-                        $newConfig['google_manager_id'] = $currentConfig['google_manager_id'];
-                    }
-                }
-                
-                // Lưu bm_id vào config nếu có 
-                $bmIdForConfig = $config['bm_id'] ?? null;
-                if (empty($bmIdForConfig) && !empty($accounts[0]['bm_ids']) && is_array($accounts[0]['bm_ids']) && !empty($accounts[0]['bm_ids'][0])) {
-                    $bmIdForConfig = trim((string) $accounts[0]['bm_ids'][0]);
-                }
-                if (!empty($bmIdForConfig)) {
-                    $newConfig['bm_id'] = $bmIdForConfig;
-                } elseif (isset($currentConfig['bm_id'])) {
-                    $newConfig['bm_id'] = $currentConfig['bm_id'];
+                    $newConfig['google_manager_id'] = $bmIdSubmitted ?: ($currentConfig['google_manager_id'] ?? null);
                 }
             } else {
-                $bmIdValue = $config['bm_id'] ?? ($currentConfig['bm_id'] ?? '');
                 $childBmId = $config['child_bm_id'] ?? null;
-                
                 $newConfig = array_merge($currentConfig, [
                     'meta_email' => $config['meta_email'] ?? ($currentConfig['meta_email'] ?? ''),
                     'display_name' => $config['display_name'] ?? ($currentConfig['display_name'] ?? ''),
-                    'bm_id' => $bmIdValue,
+                    'bm_id' => $bmIdSubmitted ?: ($currentConfig['bm_id'] ?? ''),
                     'child_bm_id' => $childBmId,
-                    'uid' => $config['uid'] ?? ($currentConfig['uid'] ?? null),
-                    'account_name' => $config['account_name'] ?? ($currentConfig['account_name'] ?? null),
+                    'account_id' => $selectedAccountId,
+                    'assign_mode' => $assignMode,
                     'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
                     'payment_type' => $paymentType,
                     'billing_source' => $billingSource,
                 ]);
 
                 if ($platform === PlatformType::GOOGLE->value) {
-                    $newConfig['google_manager_id'] = $config['bm_id'] ?? ($currentConfig['google_manager_id'] ?? null);
+                    $newConfig['google_manager_id'] = $bmIdSubmitted ?: ($currentConfig['google_manager_id'] ?? null);
                 }
 
                 if ($platform === PlatformType::META->value) {
@@ -161,141 +194,49 @@ class ServiceUserService
                 }
             }
 
+            // ── Lưu config và cập nhật status ──
             $serviceUser->config_account = $newConfig;
             $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value;
             $serviceUser->save();
 
-            // Validate BM: Check xem BM đã có khách khác sử dụng tài khoản chưa
-            // Nếu BM đã có service_user khác đang dùng → báo lỗi
-            if ($platform === PlatformType::META->value && !empty($bmIdsForCustomer)) {
-                foreach ($bmIdsForCustomer as $bmIdToCheck) {
-                    $existingServiceUser = $this->serviceUserRepository->query()
-                        ->where('id', '!=', $serviceUser->id)
-                        ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
-                        ->where(function ($q) use ($bmIdToCheck) {
-                            $q->whereJsonContains('config_account->bm_id', $bmIdToCheck)
-                              ->orWhereJsonContains('config_account->child_bm_id', $bmIdToCheck);
-                        })
-                        ->with('user:id,name,username')
-                        ->first();
-
-                    if ($existingServiceUser && $existingServiceUser->user) {
-                        $customerName = $existingServiceUser->user->name ?? $existingServiceUser->user->username;
-                        return ServiceReturn::error(
-                            message: __('services.validation.bm_already_used_by_customer', ['name' => $customerName])
-                        );
-                    }
-                }
-            }
-
-            // Gán META tài khoản cụ thể cho service_user này
-            if ($platform === PlatformType::META->value) {
-                // Lấy account_id cụ thể từ config (admin chọn 1 TK)
-                $selectedAccountId = $newConfig['account_id'] ?? null;
-
-                if ($selectedAccountId) {
-                    // Kiểm tra TK đã có ai dùng chưa
-                    $existingAccountOwner = $this->metaAccountRepository->query()
-                        ->where('account_id', $selectedAccountId)
-                        ->where('service_user_id', '!=', $serviceUser->id)
-                        ->whereNotNull('service_user_id')
-                        ->first();
-
-                    if ($existingAccountOwner) {
-                        $ownerUser = $existingAccountOwner->serviceUser?->user;
-                        $ownerName = $ownerUser?->name ?? $ownerUser?->username ?? 'khác';
-                        return ServiceReturn::error(
-                            message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
-                        );
-                    }
-
-                    // Gán đúng 1 tài khoản được chọn
+            // ── Gán tài khoản cho service_user ──
+            if ($assignMode === 'account' && $selectedAccountId) {
+                // Gán đúng 1 tài khoản được chọn
+                if ($platform === PlatformType::META->value) {
                     $this->metaAccountRepository->query()
                         ->where('account_id', $selectedAccountId)
                         ->update(['service_user_id' => $serviceUser->id]);
-                } else {
-                    // Fallback: gán theo BM (cho backward compatibility)
-                    $bmIdsForCustomer = [];
-
-                    if (isset($newConfig['accounts']) && is_array($newConfig['accounts'])) {
-                        foreach ($newConfig['accounts'] as $accountConfig) {
-                            if (isset($accountConfig['bm_ids']) && is_array($accountConfig['bm_ids'])) {
-                                foreach ($accountConfig['bm_ids'] as $rawBmId) {
-                                    $bmId = trim((string) $rawBmId);
-                                    if ($bmId !== '') {
-                                        $bmIdsForCustomer[] = $bmId;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (empty($bmIdsForCustomer) && !empty($newConfig['bm_id'])) {
-                        $bmIdsForCustomer[] = (string) $newConfig['bm_id'];
-                    }
-
-                    $bmIdsForCustomer = array_values(array_unique($bmIdsForCustomer));
-
-                    if (!empty($bmIdsForCustomer)) {
-                        try {
-                            $this->metaAccountRepository->query()
-                                ->whereIn('business_manager_id', $bmIdsForCustomer)
-                                ->whereNull('service_user_id')
-                                ->update(['service_user_id' => $serviceUser->id]);
-                        } catch (\Throwable $e) {
-                            Logging::error('approveServiceUser: failed to attach meta accounts', ['error' => $e->getMessage()]);
-                        }
-                    }
-                }
-            }
-
-            // Gán Google tài khoản cụ thể cho service_user này
-            if ($platform === PlatformType::GOOGLE->value) {
-                $selectedAccountId = $newConfig['account_id'] ?? null;
-
-                if ($selectedAccountId) {
-                    // Gán đúng 1 tài khoản được chọn
+                } elseif ($platform === PlatformType::GOOGLE->value) {
                     $this->googleAccountRepository->query()
                         ->where('account_id', $selectedAccountId)
                         ->update(['service_user_id' => $serviceUser->id]);
-                } else {
-                    // Fallback: gán theo MCC (backward compatibility)
-                    $mccIdsForCustomer = [];
-
-                    if (isset($newConfig['accounts']) && is_array($newConfig['accounts'])) {
-                        foreach ($newConfig['accounts'] as $accountConfig) {
-                            if (isset($accountConfig['bm_ids']) && is_array($accountConfig['bm_ids'])) {
-                                foreach ($accountConfig['bm_ids'] as $rawMccId) {
-                                    $mccId = trim((string) $rawMccId);
-                                    if ($mccId !== '') {
-                                        $mccIdsForCustomer[] = $mccId;
-                                    }
-                                }
+                }
+            } elseif (!empty($bmIdSubmitted)) {
+                // Tab "Gán BM": gán tất cả TK chưa có ai dùng trong BM/MCC
+                if ($platform === PlatformType::META->value) {
+                    // Gán TK theo BM + BM share access
+                    $accessibleAccountIds = DB::table('meta_account_business_manager_accesses')
+                        ->where('source_bm_id', $bmIdSubmitted)
+                        ->pluck('account_id')
+                        ->toArray();
+                    $this->metaAccountRepository->query()
+                        ->where(function ($q) use ($bmIdSubmitted, $accessibleAccountIds) {
+                            $q->where('business_manager_id', $bmIdSubmitted);
+                            if (!empty($accessibleAccountIds)) {
+                                $q->orWhereIn('account_id', $accessibleAccountIds);
                             }
-                        }
-                    }
-
-                    if (empty($mccIdsForCustomer) && !empty($newConfig['google_manager_id'])) {
-                        $mccIdsForCustomer[] = (string) $newConfig['google_manager_id'];
-                    }
-
-                    $mccIdsForCustomer = array_values(array_unique($mccIdsForCustomer));
-
-                    if (!empty($mccIdsForCustomer)) {
-                        try {
-                            $this->googleAccountRepository->query()
-                                ->whereIn('customer_manager_id', $mccIdsForCustomer)
-                                ->whereNull('service_user_id')
-                                ->update(['service_user_id' => $serviceUser->id]);
-                        } catch (\Throwable $e) {
-                            Logging::error('approveServiceUser: failed to attach google accounts', ['error' => $e->getMessage()]);
-                        }
-                    }
+                        })
+                        ->whereNull('service_user_id')
+                        ->update(['service_user_id' => $serviceUser->id]);
+                } elseif ($platform === PlatformType::GOOGLE->value) {
+                    $this->googleAccountRepository->query()
+                        ->where('customer_manager_id', $bmIdSubmitted)
+                        ->whereNull('service_user_id')
+                        ->update(['service_user_id' => $serviceUser->id]);
                 }
             }
 
-            // Dispatch job sync dữ liệu từ API sau khi approve thành công
-            // Platform đã được load ở trên
+            // ── Dispatch sync jobs ──
             if ($platform === PlatformType::META->value) {
                 SyncMetaJob::dispatch($serviceUser);
             } elseif ($platform === PlatformType::GOOGLE->value) {

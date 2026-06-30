@@ -108,8 +108,14 @@ const ServiceOrdersIndex = ({
         loadingChildBMs,
         bmAccounts,
         loadingBmAccounts,
-        selectedAccountId,
-        setSelectedAccountId,
+        bmList,
+        loadingBmList,
+        handleSelectBmFromList,
+        accountIdInput,
+        setAccountIdInput,
+        handleSelectAccountFromList,
+        assignMode,
+        setAssignMode,
         openDialogForOrder,
         handleSubmitApprove,
         formErrors,
@@ -194,6 +200,22 @@ const ServiceOrdersIndex = ({
                         {String(getValue())}
                     </span>
                 ),
+            },
+            {
+                id: 'service_package',
+                header: t('service_orders.table.package', { defaultValue: 'Gói dịch vụ' }),
+                cell: ({ row }) => {
+                    const packageName = row.original.package?.name;
+                    const platformLabel = row.original.package?.platform_label;
+                    return (
+                        <span className="text-xs">
+                            {packageName || '-'}
+                            {platformLabel && (
+                                <span className="ml-1 text-muted-foreground">({platformLabel})</span>
+                            )}
+                        </span>
+                    );
+                },
             },
             {
                 id: 'referral',
@@ -592,518 +614,290 @@ const ServiceOrdersIndex = ({
                                         </div>
                                     </div>
 
-                                    {approveUseAccountsStructure ? (
-                                        <>
-                                            <div className="flex items-center justify-between">
-                                                <Label className="text-base font-semibold">
-                                                    {isApproveMeta
-                                                        ? t(
-                                                              'service_purchase.meta_account_info',
-                                                              {
-                                                                  defaultValue:
-                                                                      'Thông tin tài khoản Meta',
-                                                              },
-                                                          )
-                                                        : t(
-                                                              'service_purchase.google_account_info',
-                                                              {
-                                                                  defaultValue:
-                                                                      'Thông tin tài khoản Google',
-                                                              },
-                                                          )}
-                                                </Label>
-                                                {approveAccounts.length < 3 && (
-                                                    <Button
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="meta_email">
+                                                {t('service_purchase.meta_email')}
+                                            </Label>
+                                            <Input
+                                                id="meta_email"
+                                                type="email"
+                                                value={metaEmail}
+                                                onChange={(e) => setMetaEmail(e.target.value)}
+                                                placeholder={t('service_orders.form.meta_email_placeholder')}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="display_name">
+                                                {t('service_purchase.display_name')}
+                                            </Label>
+                                            <Input
+                                                id="display_name"
+                                                value={displayName}
+                                                onChange={(e) => setDisplayName(e.target.value)}
+                                                placeholder={t('service_orders.form.display_name_placeholder')}
+                                            />
+                                        </div>
+
+                                            {/* Tabs: Gán BM / Gán tài khoản */}
+                                            <div className="space-y-2">
+                                                <div className="flex gap-1 rounded-lg border p-1">
+                                                    <button
                                                         type="button"
-                                                        variant="outline"
-                                                        size="sm"
+                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                            assignMode === 'bm'
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'text-muted-foreground hover:bg-muted'
+                                                        }`}
+                                                        onClick={() => setAssignMode('bm')}
+                                                    >
+                                                        {isApproveMeta ? 'Gán BM' : 'Gán MCC'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                            assignMode === 'account'
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'text-muted-foreground hover:bg-muted'
+                                                        }`}
                                                         onClick={() => {
-                                                            setApproveAccounts([
-                                                                ...approveAccounts,
-                                                                {
-                                                                    meta_email:
-                                                                        '',
-                                                                    display_name:
-                                                                        '',
-                                                                    bm_ids: [],
-                                                                    fanpages:
-                                                                        isApproveMeta
-                                                                            ? []
-                                                                            : [],
-                                                                    websites:
-                                                                        [],
-                                                                    timezone_bm:
-                                                                        '',
-                                                                    asset_access:
-                                                                        'full_asset',
-                                                                },
-                                                            ]);
+                                                            setAssignMode('account');
+                                                            if (bmId) handleSelectBmFromList(bmId);
                                                         }}
                                                     >
-                                                        <Plus className="mr-2 h-4 w-4" />
-                                                        {t(
-                                                            'service_purchase.add_account',
-                                                            {
-                                                                defaultValue:
-                                                                    'Thêm tài khoản',
-                                                            },
-                                                        )}
-                                                    </Button>
-                                                )}
-                                            </div>
-                                            <div className="max-h-[60vh] space-y-4 overflow-y-auto">
-                                                {approveAccounts.map(
-                                                    (account, idx) => (
-                                                        <AccountFormEdit
-                                                            key={idx}
-                                                            account={account}
-                                                            accountIndex={idx}
-                                                            platform={
-                                                                selectedOrder
-                                                                    ?.package
-                                                                    ?.platform ||
-                                                                0
-                                                            }
-                                                            metaTimezones={
-                                                                meta_timezones
-                                                            }
-                                                            googleTimezones={
-                                                                google_timezones
-                                                            }
-                                                            onUpdate={(
-                                                                index,
-                                                                data,
-                                                            ) => {
-                                                                const newAccounts =
-                                                                    [
-                                                                        ...approveAccounts,
-                                                                    ];
-                                                                const updatedAccount =
-                                                                    {
-                                                                        ...data,
-                                                                        bm_ids: Array.isArray(
-                                                                            data.bm_ids,
-                                                                        )
-                                                                            ? data.bm_ids
-                                                                            : data.bm_ids
-                                                                              ? [
-                                                                                    data.bm_ids,
-                                                                                ]
-                                                                              : [],
-                                                                        fanpages:
-                                                                            Array.isArray(
-                                                                                data.fanpages,
-                                                                            )
-                                                                                ? data.fanpages
-                                                                                : data.fanpages
-                                                                                  ? [
-                                                                                        data.fanpages,
-                                                                                    ]
-                                                                                  : [],
-                                                                        websites:
-                                                                            Array.isArray(
-                                                                                data.websites,
-                                                                            )
-                                                                                ? data.websites
-                                                                                : data.websites
-                                                                                  ? [
-                                                                                        data.websites,
-                                                                                    ]
-                                                                                  : [],
-                                                                    };
-                                                                newAccounts[
-                                                                    index
-                                                                ] =
-                                                                    updatedAccount;
-                                                                setApproveAccounts(
-                                                                    newAccounts,
-                                                                );
-                                                            }}
-                                                            onRemove={(
-                                                                index,
-                                                            ) => {
-                                                                setApproveAccounts(
-                                                                    approveAccounts.filter(
-                                                                        (
-                                                                            _,
-                                                                            i,
-                                                                        ) =>
-                                                                            i !==
-                                                                            index,
-                                                                    ),
-                                                                );
-                                                            }}
-                                                            canRemove={
-                                                                approveAccounts.length >
-                                                                1
-                                                            }
-                                                        />
-                                                    ),
-                                                )}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="meta_email">
-                                                    {t(
-                                                        'service_purchase.meta_email',
-                                                    )}
-                                                </Label>
-                                                <Input
-                                                    id="meta_email"
-                                                    type="email"
-                                                    value={metaEmail}
-                                                    onChange={(e) =>
-                                                        setMetaEmail(
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    placeholder={t(
-                                                        'service_orders.form.meta_email_placeholder',
-                                                    )}
-                                                />
-                                                {formErrors.meta_email && (
-                                                    <p className="text-xs text-red-500">
-                                                        {formErrors.meta_email}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="display_name">
-                                                    {t(
-                                                        'service_purchase.display_name',
-                                                    )}
-                                                </Label>
-                                                <Input
-                                                    id="display_name"
-                                                    value={displayName}
-                                                    onChange={(e) =>
-                                                        setDisplayName(
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    placeholder={t(
-                                                        'service_orders.form.display_name_placeholder',
-                                                    )}
-                                                />
-                                                {formErrors.display_name && (
-                                                    <p className="text-xs text-red-500">
-                                                        {
-                                                            formErrors.display_name
-                                                        }
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="bm_id">
-                                                    {isApproveMeta
-                                                        ? t(
-                                                              'service_purchase.id_bm',
-                                                              {
-                                                                  defaultValue:
-                                                                      'ID BM',
-                                                              },
-                                                          )
-                                                        : t(
-                                                              'service_purchase.id_mcc',
-                                                              {
-                                                                  defaultValue:
-                                                                      'ID MCC',
-                                                              },
-                                                          )}
-                                                </Label>
-                                                <Input
-                                                    id="bm_id"
-                                                    value={bmId}
-                                                    onChange={(e) =>
-                                                        setBmId(e.target.value)
-                                                    }
-                                                    placeholder={t(
-                                                        'service_orders.form.bm_id_placeholder',
-                                                    )}
-                                                />
-                                                {formErrors.bm_id && (
-                                                    <p className="text-xs text-red-500">
-                                                        {formErrors.bm_id}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            {bmId && bmAccounts.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="select_account_id">
-                                                        {isApproveMeta
-                                                            ? t(
-                                                                  'service_orders.form.select_account',
-                                                                  {
-                                                                      defaultValue:
-                                                                          'Chọn tài khoản trong BM',
-                                                                  },
-                                                              )
-                                                            : t(
-                                                                  'service_orders.form.select_account',
-                                                                  {
-                                                                      defaultValue:
-                                                                          'Chọn tài khoản trong MCC',
-                                                                  },
-                                                              )}
-                                                    </Label>
-                                                    <Select
-                                                        value={selectedAccountId}
-                                                        onValueChange={(value) =>
-                                                            setSelectedAccountId(value)
-                                                        }
-                                                        disabled={loadingBmAccounts}
-                                                    >
-                                                        <SelectTrigger id="select_account_id">
-                                                            <SelectValue
-                                                                placeholder={
-                                                                    loadingBmAccounts
-                                                                        ? t('common.loading')
-                                                                        : t(
-                                                                              'service_orders.form.select_account_placeholder',
-                                                                              {
-                                                                                  defaultValue:
-                                                                                      'Chọn tài khoản',
-                                                                              },
-                                                                          )
-                                                                }
-                                                            />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {bmAccounts.map(
-                                                                (acc: any) => (
-                                                                    <SelectItem
-                                                                        key={acc.account_id}
-                                                                        value={acc.account_id}
-                                                                    >
-                                                                        {acc.account_name || acc.account_id} ({acc.currency})
-                                                                    </SelectItem>
-                                                                ),
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    {selectedAccountId && (
-                                                        <p className="text-xs text-green-600">
-                                                            {t('service_orders.form.selected_account', {
-                                                                defaultValue: 'Đã chọn: ' + (bmAccounts.find(a => a.account_id === selectedAccountId)?.account_name || selectedAccountId),
-                                                            })}
-                                                        </p>
-                                                    )}
+                                                        Gán tài khoản
+                                                    </button>
                                                 </div>
-                                            )}
-                                            {isApproveMeta &&
-                                                childBusinessManagers.length >
-                                                    0 && (
+                                            </div>
+
+                                            {assignMode === 'bm' ? (
+                                                <>
+                                                    {/* ==== TAB GÁN BM ==== */}
+
+                                                    {/* Dropdown chọn BM có sẵn */}
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="child_bm_id">
-                                                            {t(
-                                                                'service_orders.form.child_bm_label',
-                                                                {
-                                                                    defaultValue:
-                                                                        'Chọn BM con (tùy chọn)',
-                                                                },
-                                                            )}
+                                                        <Label htmlFor="select_bm_from_list">
+                                                            {isApproveMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
                                                         </Label>
                                                         <Select
-                                                            value={
-                                                                selectedChildBmId
-                                                            }
-                                                            onValueChange={(
-                                                                value,
-                                                            ) =>
-                                                                setSelectedChildBmId(
-                                                                    value,
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                loadingChildBMs
-                                                            }
+                                                            value=""
+                                                            onValueChange={(value) => handleSelectBmFromList(value)}
+                                                            disabled={loadingBmList}
                                                         >
-                                                            <SelectTrigger id="child_bm_id">
+                                                            <SelectTrigger id="select_bm_from_list">
                                                                 <SelectValue
                                                                     placeholder={
-                                                                        loadingChildBMs
-                                                                            ? t(
-                                                                                  'service_orders.form.loading_child_bms',
-                                                                                  {
-                                                                                      defaultValue:
-                                                                                          'Đang tải...',
-                                                                                  },
-                                                                              )
-                                                                            : t(
-                                                                                  'service_orders.form.select_child_bm',
-                                                                                  {
-                                                                                      defaultValue:
-                                                                                          'Chọn BM con',
-                                                                                  },
-                                                                              )
+                                                                        loadingBmList
+                                                                            ? 'Đang tải danh sách...'
+                                                                            : (isApproveMeta ? 'Chọn BM từ danh sách...' : 'Chọn MCC từ danh sách...')
                                                                     }
                                                                 />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="none">
-                                                                    {t(
-                                                                        'service_orders.form.use_parent_bm',
-                                                                        {
-                                                                            defaultValue:
-                                                                                'Sử dụng BM gốc',
-                                                                        },
-                                                                    )}
-                                                                </SelectItem>
-                                                                {childBusinessManagers.map(
-                                                                    (
-                                                                        childBM: ChildBusinessManager,
-                                                                    ) => (
-                                                                        <SelectItem
-                                                                            key={
-                                                                                childBM.bm_id
-                                                                            }
-                                                                            value={
-                                                                                childBM.bm_id
-                                                                            }
-                                                                        >
-                                                                            {childBM.name ||
-                                                                                childBM.bm_id}
-                                                                        </SelectItem>
-                                                                    ),
-                                                                )}
+                                                                {bmList.map((bm) => (
+                                                                    <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
+                                                                        {bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})
+                                                                    </SelectItem>
+                                                                ))}
                                                             </SelectContent>
                                                         </Select>
+                                                    </div>
+
+                                                    {/* Input ID BM nhập tay */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="bm_id">
+                                                            {isApproveMeta ? 'ID BM' : 'ID MCC'}
+                                                        </Label>
+                                                        <Input
+                                                            id="bm_id"
+                                                            value={bmId}
+                                                            onChange={(e) => setBmId(e.target.value)}
+                                                            placeholder={isApproveMeta ? 'Nhập BM ID...' : 'Nhập MCC ID...'}
+                                                        />
+                                                        {formErrors.bm_id && (
+                                                            <p className="text-xs text-red-500">{formErrors.bm_id}</p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Dropdown chọn BM con */}
+                                                    {isApproveMeta && childBusinessManagers.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="child_bm_id">
+                                                                BM con (tùy chọn)
+                                                            </Label>
+                                                            <Select
+                                                                value={selectedChildBmId}
+                                                                onValueChange={(value) => setSelectedChildBmId(value)}
+                                                                disabled={loadingChildBMs}
+                                                            >
+                                                                <SelectTrigger id="child_bm_id">
+                                                                    <SelectValue
+                                                                        placeholder={loadingChildBMs
+                                                                            ? 'Đang tải...'
+                                                                            : 'Chọn BM con'}
+                                                                    />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="none">
+                                                                        Sử dụng BM gốc
+                                                                    </SelectItem>
+                                                                    {childBusinessManagers.map((childBM: ChildBusinessManager) => (
+                                                                        <SelectItem key={childBM.bm_id} value={childBM.bm_id}>
+                                                                            {childBM.name || childBM.bm_id}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {/* ==== TAB GÁN TÀI KHOẢN ==== */}
+
+                                                    {/* 1. Dropdown chọn BM có sẵn */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="select_bm_from_list_account">
+                                                            {isApproveMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
+                                                        </Label>
+                                                        <Select
+                                                            value={bmId || ''}
+                                                            onValueChange={(value) => handleSelectBmFromList(value)}
+                                                            disabled={loadingBmList}
+                                                        >
+                                                            <SelectTrigger id="select_bm_from_list_account">
+                                                                <SelectValue
+                                                                    placeholder={
+                                                                        loadingBmList
+                                                                            ? 'Đang tải...'
+                                                                            : (isApproveMeta ? 'Chọn BM từ danh sách...' : 'Chọn MCC từ danh sách...')
+                                                                    }
+                                                                />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {bmList.map((bm) => (
+                                                                    <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
+                                                                        <span className="truncate block">{bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})</span>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* 2. Dropdown chọn tài khoản có sẵn - BẮT BUỘC */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="select_account_from_list" className="text-destructive">
+                                                            Chọn tài khoản * (bắt buộc)
+                                                        </Label>
+                                                        <Select
+                                                            value={accountIdInput || '__empty__'}
+                                                            onValueChange={(value) => {
+                                                                if (value !== '__empty__') {
+                                                                    handleSelectAccountFromList(value);
+                                                                }
+                                                            }}
+                                                            disabled={loadingBmAccounts || !bmId}
+                                                        >
+                                                            <SelectTrigger id="select_account_from_list">
+                                                                <SelectValue
+                                                                    placeholder={
+                                                                        !bmId
+                                                                            ? 'Chọn BM phía trên trước'
+                                                                            : loadingBmAccounts
+                                                                                ? 'Đang tải...'
+                                                                                : 'Chọn tài khoản trong BM/MCC'
+                                                                    }
+                                                                />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="__empty__" disabled>
+                                                                    -- Chọn tài khoản --
+                                                                </SelectItem>
+                                                                {bmAccounts.map((acc: BmAccount) => (
+                                                                    <SelectItem key={acc.account_id} value={acc.account_id}>
+                                                                        <span className="truncate block">{acc.account_name || acc.account_id} — {acc.account_id} ({acc.currency}){acc.service_user_id ? ' [Đã gán]' : ''}</span>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        {formErrors.account_id && (
+                                                            <p className="text-xs text-red-500">{formErrors.account_id}</p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* 3. Input ID BM/MCC khách nhập (không bắt buộc) */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="bm_id_account">
+                                                            {isApproveMeta ? 'ID BM (khách nhập)' : 'ID MCC (khách nhập)'}
+                                                        </Label>
+                                                        <Input
+                                                            id="bm_id_account"
+                                                            value={bmId}
+                                                            onChange={(e) => {
+                                                                setBmId(e.target.value);
+                                                                setAccountIdInput('');
+                                                            }}
+                                                            placeholder={isApproveMeta ? 'ID BM khách nhập vào form...' : 'ID MCC khách nhập vào form...'}
+                                                        />
                                                         <p className="text-xs text-muted-foreground">
-                                                            {t(
-                                                                'service_orders.form.child_bm_hint',
-                                                                {
-                                                                    defaultValue:
-                                                                        'Nếu không chọn, hệ thống sẽ sử dụng BM gốc',
-                                                                },
-                                                            )}
+                                                            {isApproveMeta ? 'BM ID khách điền khi mua gói, ví dụ: 1234567890' : 'MCC ID khách điền khi mua gói'}
                                                         </p>
                                                     </div>
-                                                )}
+
+                                                    {bmId && !loadingBmAccounts && bmAccounts.length === 0 && (
+                                                        <p className="text-xs text-orange-500">
+                                                            Không tìm thấy tài khoản nào trong {isApproveMeta ? 'BM' : 'MCC'} này
+                                                        </p>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground italic">
+                                                        Bắt buộc chọn 1 tài khoản để gán cho khách. ID BM khách nhập để lưu config.
+                                                    </p>
+                                                </>
+                                            )}
+
                                             <div className="space-y-2">
                                                 <Label htmlFor="approve_asset_access">
-                                                    {t(
-                                                        'service_purchase.asset_access_label',
-                                                    )}
+                                                    {t('service_purchase.asset_access_label')}
                                                 </Label>
                                                 <Select
-                                                    value={
-                                                        assetAccess ||
-                                                        'full_asset'
-                                                    }
-                                                    onValueChange={(
-                                                        value:
-                                                            | 'full_asset'
-                                                            | 'basic_asset',
-                                                    ) => setAssetAccess(value)}
+                                                    value={assetAccess || 'full_asset'}
+                                                    onValueChange={(value: 'full_asset' | 'basic_asset') => setAssetAccess(value)}
                                                 >
                                                     <SelectTrigger id="approve_asset_access">
-                                                        <SelectValue
-                                                            placeholder={t(
-                                                                'service_purchase.asset_access_placeholder',
-                                                            )}
-                                                        />
+                                                        <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="full_asset">
-                                                            {t(
-                                                                'service_purchase.asset_access_full',
-                                                            )}
-                                                        </SelectItem>
-                                                        <SelectItem value="basic_asset">
-                                                            {t(
-                                                                'service_purchase.asset_access_basic',
-                                                            )}
-                                                        </SelectItem>
+                                                        <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
+                                                        <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="approve_timezone_bm">
-                                                    {isApproveMeta
-                                                        ? t(
-                                                              'service_purchase.timezone_bm_label',
-                                                              {
-                                                                  defaultValue:
-                                                                      'Múi giờ BM',
-                                                              },
-                                                          )
-                                                        : t(
-                                                              'service_purchase.timezone_mcc_label',
-                                                              {
-                                                                  defaultValue:
-                                                                      'Múi giờ MCC',
-                                                              },
-                                                          )}
+                                                    {isApproveMeta ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' }) : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
                                                 </Label>
                                                 <TimezoneSelect
                                                     id="approve_timezone_bm"
                                                     value={timezoneBm || ''}
-                                                    onValueChange={(value) =>
-                                                        setTimezoneBm(value)
-                                                    }
-                                                    options={
-                                                        isApproveMeta
-                                                            ? meta_timezones
-                                                            : google_timezones
-                                                    }
-                                                    placeholder={t(
-                                                        'service_purchase.timezone_bm_placeholder',
-                                                        {
-                                                            defaultValue:
-                                                                'Chọn múi giờ',
-                                                        },
-                                                    )}
+                                                    onValueChange={(value) => setTimezoneBm(value)}
+                                                    options={isApproveMeta ? meta_timezones : google_timezones}
+                                                    placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
                                                 />
                                             </div>
 
                                             {isApproveMeta && (
                                                 <>
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="info_fanpage">
-                                                            {t(
-                                                                'service_orders.form.info_fanpage',
-                                                            )}
-                                                        </Label>
-                                                        <Input
-                                                            id="info_fanpage"
-                                                            value={infoFanpage}
-                                                            onChange={(e) =>
-                                                                setInfoFanpage(
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            placeholder={t(
-                                                                'service_orders.form.info_fanpage_placeholder',
-                                                            )}
-                                                        />
+                                                        <Label htmlFor="info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                                        <Input id="info_fanpage" value={infoFanpage} onChange={(e) => setInfoFanpage(e.target.value)} placeholder={t('service_orders.form.info_fanpage_placeholder')} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="info_website">
-                                                            {t(
-                                                                'service_orders.form.info_website',
-                                                            )}
-                                                        </Label>
-                                                        <Input
-                                                            id="info_website"
-                                                            value={infoWebsite}
-                                                            onChange={(e) =>
-                                                                setInfoWebsite(
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            placeholder={t(
-                                                                'service_orders.form.info_website_placeholder',
-                                                            )}
-                                                        />
+                                                        <Label htmlFor="info_website">{t('service_orders.form.info_website')}</Label>
+                                                        <Input id="info_website" value={infoWebsite} onChange={(e) => setInfoWebsite(e.target.value)} placeholder={t('service_orders.form.info_website_placeholder')} />
                                                     </div>
                                                 </>
                                             )}
-                                        </>
-                                    )}
+                                    </>
                                 </div>
 
                                 <DialogFooter>

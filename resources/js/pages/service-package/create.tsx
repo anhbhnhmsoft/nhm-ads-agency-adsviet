@@ -212,7 +212,7 @@ const Create = ({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* Name */}
                 <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.name')}</Label>
+                    <Label>{t('service_packages.name')} <span className="text-red-500">*</span></Label>
                     <Input
                         value={data.name}
                         placeholder={t('service_packages.name')}
@@ -228,7 +228,7 @@ const Create = ({
 
                 {/* Platform */}
                 <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.platform')}</Label>
+                    <Label>{t('service_packages.platform')} <span className="text-red-500">*</span></Label>
                     <Select
                         value={data.platform.toString()}
                         onValueChange={(value) => {
@@ -307,7 +307,7 @@ const Create = ({
 
                 {/* Payment type */}
                 <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.payment_type')}</Label>
+                    <Label>{t('service_packages.payment_type')} <span className="text-red-500">*</span></Label>
                     <Select
                         value={data.payment_type}
                         onValueChange={(value) => {
@@ -576,7 +576,7 @@ const Create = ({
 
                 {/* Open fee */}
                 <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.open_fee')}</Label>
+                    <Label>{t('service_packages.open_fee')} <span className="text-red-500">*</span></Label>
                     <Input
                         value={data.open_fee}
                         placeholder={t('service_packages.open_fee')}
@@ -598,7 +598,7 @@ const Create = ({
 
                 {/* Range min top up */}
                 <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.range_min_top_up')}</Label>
+                    <Label>{t('service_packages.range_min_top_up')} <span className="text-red-500">*</span></Label>
                     <Input
                         value={data.range_min_top_up}
                         placeholder={t('service_packages.range_min_top_up')}
@@ -623,7 +623,7 @@ const Create = ({
 
                 {/* Top up fee */}
                 <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.top_up_fee')}</Label>
+                    <Label>{t('service_packages.top_up_fee')} <span className="text-red-500">*</span></Label>
                     <Input
                         value={data.top_up_fee}
                         placeholder={t('service_packages.top_up_fee')}
@@ -667,7 +667,7 @@ const Create = ({
 
                 {/* Set up time */}
                 <div className="flex flex-col gap-2">
-                    <Label>{t('service_packages.set_up_time')}</Label>
+                    <Label>{t('service_packages.set_up_time')} <span className="text-red-500">*</span></Label>
                     <Input
                         value={data.set_up_time}
                         placeholder={t('service_packages.set_up_time')}
@@ -755,7 +755,8 @@ const Create = ({
             <h1 className="text-xl font-semibold">
                 {data.platform === _PlatformType.META
                     ? t('service_packages.meta_features')
-                    : t('service_packages.google_features')}
+                    : t('service_packages.google_features')}{' '}
+                <span className="text-red-500">*</span>
             </h1>
 
             {data.platform === _PlatformType.META ||

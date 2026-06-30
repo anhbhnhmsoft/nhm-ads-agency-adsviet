@@ -15,13 +15,28 @@ import { useForm } from '@inertiajs/react';
 import axios from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-type BmAccount = {
+export type BmAccount = {
     id: string;
     account_id: string;
     account_name: string;
     account_status: number | null;
     currency: string;
+    service_user_id: string | null;
+    owner_name: string | null;
 };
+
+export type BmListItem = {
+    id: string;
+    bm_ids: string[];
+    bm_name: string;
+    name: string;
+    platform: number;
+    owner_name: string | null;
+    total_accounts: number;
+    total_spend: string;
+};
+
+export type AssignMode = 'bm' | 'account';
 
 export const useServiceOrderAdminDialog = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,14 +51,30 @@ export const useServiceOrderAdminDialog = () => {
     >([]);
     const [selectedChildBmId, setSelectedChildBmId] = useState<string>('none');
     const [loadingChildBMs, setLoadingChildBMs] = useState(false);
+
+    // Assign mode: 'bm' = gán BM, 'account' = gán tài khoản cụ thể
+    const [assignMode, setAssignMode] = useState<AssignMode>('bm');
+
+    // BM/MCC list for dropdown
+    const [bmList, setBmList] = useState<BmListItem[]>([]);
+    const [loadingBmList, setLoadingBmList] = useState(false);
+
+    // Accounts in selected BM (for dropdown)
     const [bmAccounts, setBmAccounts] = useState<BmAccount[]>([]);
     const [loadingBmAccounts, setLoadingBmAccounts] = useState(false);
-    const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+
+    // ---- Tab "Gán BM" ----
+    // bmId = ID BM nhập tay hoặc chọn từ dropdown
+
+    // ---- Tab "Gán tài khoản" ----
+    // accountIdInput = ID tài khoản nhập tay (như act_xxx)
+    // selectedAccountId = ID tài khoản chọn từ dropdown
 
     const form = useForm({
         meta_email: '',
         display_name: '',
         bm_id: '',
+        account_id_input: '',
         info_fanpage: '',
         info_website: '',
         payment_type: '',
@@ -55,6 +86,29 @@ export const useServiceOrderAdminDialog = () => {
     useEffect(() => {
         accountsRef.current = accounts;
     }, [accounts]);
+
+    // Fetch BM/MCC list for dropdown
+    const fetchBmList = useCallback(async (platform?: number) => {
+        setLoadingBmList(true);
+        try {
+            const params: Record<string, string | number> = {
+                per_page: 200,
+            };
+            if (platform) params['filter[platform]'] = platform;
+            const response = await axios.get('/business-managers/list', { params });
+            const data = response.data;
+            if (data?.data && Array.isArray(data.data)) {
+                setBmList(data.data);
+            } else {
+                setBmList([]);
+            }
+        } catch (error) {
+            console.error('Error fetching BM list:', error);
+            setBmList([]);
+        } finally {
+            setLoadingBmList(false);
+        }
+    }, []);
 
     // Fetch child business managers when BM ID changes
     const fetchChildBusinessManagers = useCallback(
@@ -93,7 +147,6 @@ export const useServiceOrderAdminDialog = () => {
         async (bmId: string, platform?: number) => {
             if (!bmId || bmId.trim() === '') {
                 setBmAccounts([]);
-                setSelectedAccountId('');
                 return;
             }
 
@@ -134,7 +187,7 @@ export const useServiceOrderAdminDialog = () => {
             setChildBusinessManagers([]);
             setSelectedChildBmId('none');
             setBmAccounts([]);
-            setSelectedAccountId('');
+            setAssignMode('bm');
 
             const config = order.config_account || {};
             const typedConfig: ServiceOrderConfigAccount = config;
@@ -169,6 +222,7 @@ export const useServiceOrderAdminDialog = () => {
                     meta_email: '',
                     display_name: '',
                     bm_id: '',
+                    account_id_input: '',
                     info_fanpage: '',
                     info_website: '',
                     payment_type: packagePaymentType,
@@ -187,6 +241,7 @@ export const useServiceOrderAdminDialog = () => {
                     meta_email: typedConfig.meta_email || '',
                     display_name: typedConfig.display_name || '',
                     bm_id: bmIdValue,
+                    account_id_input: '',
                     info_fanpage: isGoogle
                         ? ''
                         : typedConfig.info_fanpage || '',
@@ -207,15 +262,35 @@ export const useServiceOrderAdminDialog = () => {
 
                 if (bmIdValue && !isGoogle) {
                     fetchChildBusinessManagers(bmIdValue);
+                    fetchBmAccounts(bmIdValue, order.package?.platform);
                 }
             }
+
+            fetchBmList(order.package?.platform ?? undefined);
             setDialogOpen(true);
         },
-        [form, fetchChildBusinessManagers],
+        [form, fetchChildBusinessManagers, fetchBmAccounts, fetchBmList],
     );
+
+    // Determine account_id to send to backend
+    const getAccountIdToSubmit = useCallback((): string | null => {
+        if (assignMode === 'account') {
+            return form.data.account_id_input?.trim() || null;
+        }
+        return null;
+    }, [assignMode, form.data.account_id_input]);
 
     const handleSubmitApprove = useCallback(() => {
         if (!selectedOrder) return;
+
+        // Validate: tab "Gán tài khoản" phải nhập ID
+        if (assignMode === 'account') {
+            const manualInput = form.data.account_id_input?.trim();
+            if (!manualInput) {
+                form.setError('account_id', 'Vui lòng nhập ID tài khoản khi chọn tab Gán tài khoản');
+                return;
+            }
+        }
 
         const currentAccounts = accountsRef.current;
 
@@ -236,14 +311,18 @@ export const useServiceOrderAdminDialog = () => {
             }));
         }
 
+        // Xác định account_id gửi lên backend
+        const accountId = getAccountIdToSubmit();
+
         form.transform(() => ({
             ...form.data,
-            bm_id: form.data.bm_id,
+            bm_id: form.data.bm_id || '',
             child_bm_id:
-                selectedChildBmId === 'none' || !selectedChildBmId
-                    ? null
-                    : selectedChildBmId,
-            account_id: selectedAccountId || null,
+                assignMode === 'bm' && selectedChildBmId !== 'none' && selectedChildBmId
+                    ? selectedChildBmId
+                    : null,
+            account_id: accountId,
+            assign_mode: assignMode,
             accounts: accountsToSubmit,
             payment_type:
                 selectedOrder.package?.payment_type === 'postpay'
@@ -261,6 +340,7 @@ export const useServiceOrderAdminDialog = () => {
                 setUseAccountsStructure(false);
                 setChildBusinessManagers([]);
                 setSelectedChildBmId('none');
+                setAssignMode('bm');
                 form.reset();
                 form.clearErrors();
             },
@@ -268,7 +348,14 @@ export const useServiceOrderAdminDialog = () => {
                 console.error('Approve error:', errors);
             },
         });
-    }, [form, selectedOrder, useAccountsStructure, selectedChildBmId, selectedAccountId]);
+    }, [
+        form,
+        selectedOrder,
+        useAccountsStructure,
+        selectedChildBmId,
+        assignMode,
+        getAccountIdToSubmit,
+    ]);
 
     const handleDialogOpenChange = useCallback(
         (open: boolean) => {
@@ -279,6 +366,8 @@ export const useServiceOrderAdminDialog = () => {
                 setUseAccountsStructure(false);
                 setChildBusinessManagers([]);
                 setSelectedChildBmId('none');
+                setAssignMode('bm');
+                setBmAccounts([]);
                 form.reset();
                 form.clearErrors();
             }
@@ -286,19 +375,35 @@ export const useServiceOrderAdminDialog = () => {
         [form],
     );
 
+    // Tab Gán BM: handle BM ID change
     const handleBmIdChange = useCallback(
         (value: string) => {
             form.setData('bm_id', value);
             setSelectedChildBmId('none');
-            setSelectedAccountId('');
+            setBmAccounts([]);
 
             if (selectedOrder?.package?.platform === _PlatformType.META) {
                 fetchChildBusinessManagers(value);
             }
-            // Fetch accounts in this BM
             fetchBmAccounts(value, selectedOrder?.package?.platform);
         },
         [form, selectedOrder, fetchChildBusinessManagers, fetchBmAccounts],
+    );
+
+    // Dropdown "Chọn BM có sẵn" → gán bmId
+    const handleSelectBmFromList = useCallback(
+        (bmId: string) => {
+            handleBmIdChange(bmId);
+        },
+        [handleBmIdChange],
+    );
+
+    // Dropdown "Chọn tài khoản" → gán accountId
+    const handleSelectAccountFromList = useCallback(
+        (accountId: string) => {
+            form.setData('account_id_input', accountId);
+        },
+        [form],
     );
 
     return {
@@ -312,8 +417,13 @@ export const useServiceOrderAdminDialog = () => {
         setMetaEmail: (value: string) => form.setData('meta_email', value),
         displayName: form.data.display_name,
         setDisplayName: (value: string) => form.setData('display_name', value),
+        // Tab Gán BM
         bmId: form.data.bm_id,
         setBmId: handleBmIdChange,
+        // Tab Gán tài khoản
+        accountIdInput: form.data.account_id_input,
+        setAccountIdInput: (value: string) => form.setData('account_id_input', value),
+        // Info
         infoFanpage: form.data.info_fanpage,
         setInfoFanpage: (value: string) => form.setData('info_fanpage', value),
         infoWebsite: form.data.info_website,
@@ -324,14 +434,21 @@ export const useServiceOrderAdminDialog = () => {
         setAssetAccess: (value: string) => form.setData('asset_access', value),
         timezoneBm: form.data.timezone_bm,
         setTimezoneBm: (value: string) => form.setData('timezone_bm', value),
+        // Assign mode
+        assignMode,
+        setAssignMode,
+        // BM list + child
         childBusinessManagers,
         selectedChildBmId,
         setSelectedChildBmId,
         loadingChildBMs,
+        bmList,
+        loadingBmList,
+        handleSelectBmFromList,
+        // BM accounts + selected account
         bmAccounts,
         loadingBmAccounts,
-        selectedAccountId,
-        setSelectedAccountId,
+        handleSelectAccountFromList,
         formErrors: form.errors,
         processing: form.processing,
         openDialogForOrder,
