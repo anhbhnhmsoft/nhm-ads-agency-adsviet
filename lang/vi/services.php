@@ -36,6 +36,7 @@ return [
         'package_not_allowed' => 'Bạn không được phép sử dụng gói dịch vụ này.',
         'postpay_min_wallet' => 'Ví của bạn cần tối thiểu :amount USDT để đăng ký trả sau.',
         'postpay_not_allowed' => 'Bạn không được phép sử dụng hình thức trả sau cho gói dịch vụ này.',
+        'bm_already_used_by_customer' => 'Business Manager này đã được gán cho khách hàng :name. Vui lòng chọn Business Manager khác.',
         'cashback_percent_numeric' => 'Tỉ lệ cashback phải là số',
         'cashback_percent_min' => 'Tỉ lệ cashback không được nhỏ hơn 0',
         'cashback_percent_max' => 'Tỉ lệ cashback không được lớn hơn 100',

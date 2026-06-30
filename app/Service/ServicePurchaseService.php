@@ -105,15 +105,17 @@ class ServicePurchaseService
                     : (float) $package->top_up_fee;
                 $serviceFee = $topUpAmount > 0 ? ($topUpAmount * $serviceFeePercent / 100) : 0;
 
-                $accountsCount = 1;
-                if (isset($configAccount['accounts']) && is_array($configAccount['accounts']) && count($configAccount['accounts']) > 0) {
-                    $accountsCount = count($configAccount['accounts']);
-                }
+                // Tạm ẩn: bỏ logic số lượng tài khoản - hiện tại mỗi đơn chỉ mua 1 TK
+                // $accountsCount = 1;
+                // if (isset($configAccount['accounts']) && is_array($configAccount['accounts']) && count($configAccount['accounts']) > 0) {
+                //     $accountsCount = count($configAccount['accounts']);
+                // }
+                // $openFeePayable = $openFee * $accountsCount;
 
-                // Phí mở tài khoản được tính theo số tài khoản nếu trả trước; trả sau không thu upfront
-                $openFeePayable = $openFee * $accountsCount;
+                // Phí mở tài khoản: chỉ tính 1 TK
+                $openFeePayable = $openFee;
 
-                // Tổng tiền phải trừ ví = (phí mở nếu trả trước * số tài khoản) + số tiền top-up + phí dịch vụ top-up
+                // Tổng tiền = phí mở + top-up + phí dịch vụ top-up
                 $totalCost = $openFeePayable + $topUpAmount + $serviceFee;
 
                 $wallet = $this->walletRepository->findByUserId($userId);
@@ -155,25 +157,27 @@ class ServicePurchaseService
 
                 $serviceUser->setRelation('package', $package);
 
-                $autoAssignResult = $this->serviceAccountInventoryService->assignAvailableAccounts(
-                    serviceUser: $serviceUser,
-                    quantity: $accountsCount,
-                    configAccount: $defaultConfig,
-                );
-
-                if ($autoAssignResult->isError()) {
-                    $currentConfig = $serviceUser->config_account ?? [];
-                    if (!is_array($currentConfig)) {
-                        $currentConfig = [];
-                    }
-                    $currentConfig['auto_fulfillment'] = [
-                        'status' => 'pending_manual',
-                        'message' => $autoAssignResult->getMessage(),
-                        'checked_at' => now()->toDateTimeString(),
-                    ];
-                    $serviceUser->config_account = $currentConfig;
-                    $serviceUser->save();
-                }
+                // TẠM ẨN: Tự động gán tài khoản từ kho - khách bỏ tính năng này
+                // Admin sẽ tự gán BM + tài khoản khi duyệt đơn
+                // $autoAssignResult = $this->serviceAccountInventoryService->assignAvailableAccounts(
+                //     serviceUser: $serviceUser,
+                //     quantity: $accountsCount,
+                //     configAccount: $defaultConfig,
+                // );
+                //
+                // if ($autoAssignResult->isError()) {
+                //     $currentConfig = $serviceUser->config_account ?? [];
+                //     if (!is_array($currentConfig)) {
+                //         $currentConfig = [];
+                //     }
+                //     $currentConfig['auto_fulfillment'] = [
+                //         'status' => 'pending_manual',
+                //         'message' => $autoAssignResult->getMessage(),
+                //         'checked_at' => now()->toDateTimeString(),
+                //     ];
+                //     $serviceUser->config_account = $currentConfig;
+                //     $serviceUser->save();
+                // }
 
                 // Lưu lịch sử ví: chỉ tạo giao dịch khi có thu tiền upfront
                 $walletTransaction = null;

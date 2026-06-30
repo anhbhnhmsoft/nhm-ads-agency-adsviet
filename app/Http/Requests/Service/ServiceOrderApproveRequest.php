@@ -19,6 +19,7 @@ class ServiceOrderApproveRequest extends FormRequest
             'display_name' => ['nullable', 'string', 'max:255'],
             'bm_id' => ['nullable', 'string', 'max:255'],
             'child_bm_id' => ['nullable', 'string', 'max:255'],
+            'account_id' => ['nullable', 'string', 'max:255'],
             'info_fanpage' => ['nullable', 'string', 'max:255'],
             'info_website' => ['nullable', 'string', 'max:255'],
             'timezone_bm' => ['nullable', 'string'],

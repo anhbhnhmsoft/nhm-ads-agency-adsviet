@@ -165,92 +165,131 @@ class ServiceUserService
             $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value;
             $serviceUser->save();
 
-            // Gán lại các meta_accounts (đã sync theo BM) cho service_user này
-            if ($platform === PlatformType::META->value) {
-                $bmIdsForCustomer = [];
+            // Validate BM: Check xem BM đã có khách khác sử dụng tài khoản chưa
+            // Nếu BM đã có service_user khác đang dùng → báo lỗi
+            if ($platform === PlatformType::META->value && !empty($bmIdsForCustomer)) {
+                foreach ($bmIdsForCustomer as $bmIdToCheck) {
+                    $existingServiceUser = $this->serviceUserRepository->query()
+                        ->where('id', '!=', $serviceUser->id)
+                        ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
+                        ->where(function ($q) use ($bmIdToCheck) {
+                            $q->whereJsonContains('config_account->bm_id', $bmIdToCheck)
+                              ->orWhereJsonContains('config_account->child_bm_id', $bmIdToCheck);
+                        })
+                        ->with('user:id,name,username')
+                        ->first();
 
-                if (isset($newConfig['accounts']) && is_array($newConfig['accounts'])) {
-                    foreach ($newConfig['accounts'] as $accountConfig) {
-                        if (!isset($accountConfig['bm_ids']) || !is_array($accountConfig['bm_ids'])) {
-                            continue;
-                        }
-                        foreach ($accountConfig['bm_ids'] as $rawBmId) {
-                            $bmId = trim((string) $rawBmId);
-                            if ($bmId !== '') {
-                                $bmIdsForCustomer[] = $bmId;
-                            }
-                        }
-                    }
-                }
-
-                if (empty($bmIdsForCustomer) && !empty($newConfig['bm_id'])) {
-                    $bmIdsForCustomer[] = (string) $newConfig['bm_id'];
-                }
-
-                $bmIdsForCustomer = array_values(array_unique($bmIdsForCustomer));
-
-                if (!empty($bmIdsForCustomer)) {
-                    try {
-                        // Lấy danh sách account_id từ bảng access mapping mà các BM này được quyền truy cập
-                        $accessibleAccountIds = DB::table('meta_account_business_manager_accesses')
-                            ->whereIn('source_bm_id', $bmIdsForCustomer)
-                            ->pluck('account_id')
-                            ->toArray();
-
-                        // Gán service_user_id cho các meta_accounts thuộc các BM này hoặc được share quyền truy cập
-                        $this->metaAccountRepository->query()
-                            ->where(function ($query) use ($bmIdsForCustomer, $accessibleAccountIds) {
-                                $query->whereIn('business_manager_id', $bmIdsForCustomer);
-                                if (!empty($accessibleAccountIds)) {
-                                    $query->orWhereIn('account_id', $accessibleAccountIds);
-                                }
-                            })
-                            ->update(['service_user_id' => $serviceUser->id]);
-
-                    } catch (\Throwable $attachError) {
-                        Logging::error(
-                            message: 'ServiceUserService@approveServiceUser: failed to attach existing meta accounts',
-                            exception: $attachError
+                    if ($existingServiceUser && $existingServiceUser->user) {
+                        $customerName = $existingServiceUser->user->name ?? $existingServiceUser->user->username;
+                        return ServiceReturn::error(
+                            message: __('services.validation.bm_already_used_by_customer', ['name' => $customerName])
                         );
                     }
                 }
             }
 
-            // Gán lại các google_accounts (đã sync theo MCC) cho service_user này
-            if ($platform === PlatformType::GOOGLE->value) {
-                $mccIdsForCustomer = [];
+            // Gán META tài khoản cụ thể cho service_user này
+            if ($platform === PlatformType::META->value) {
+                // Lấy account_id cụ thể từ config (admin chọn 1 TK)
+                $selectedAccountId = $newConfig['account_id'] ?? null;
 
-                if (isset($newConfig['accounts']) && is_array($newConfig['accounts'])) {
-                    foreach ($newConfig['accounts'] as $accountConfig) {
-                        if (!isset($accountConfig['bm_ids']) || !is_array($accountConfig['bm_ids'])) {
-                            continue;
-                        }
-                        foreach ($accountConfig['bm_ids'] as $rawMccId) {
-                            $mccId = trim((string) $rawMccId);
-                            if ($mccId !== '') {
-                                $mccIdsForCustomer[] = $mccId;
+                if ($selectedAccountId) {
+                    // Kiểm tra TK đã có ai dùng chưa
+                    $existingAccountOwner = $this->metaAccountRepository->query()
+                        ->where('account_id', $selectedAccountId)
+                        ->where('service_user_id', '!=', $serviceUser->id)
+                        ->whereNotNull('service_user_id')
+                        ->first();
+
+                    if ($existingAccountOwner) {
+                        $ownerUser = $existingAccountOwner->serviceUser?->user;
+                        $ownerName = $ownerUser?->name ?? $ownerUser?->username ?? 'khác';
+                        return ServiceReturn::error(
+                            message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
+                        );
+                    }
+
+                    // Gán đúng 1 tài khoản được chọn
+                    $this->metaAccountRepository->query()
+                        ->where('account_id', $selectedAccountId)
+                        ->update(['service_user_id' => $serviceUser->id]);
+                } else {
+                    // Fallback: gán theo BM (cho backward compatibility)
+                    $bmIdsForCustomer = [];
+
+                    if (isset($newConfig['accounts']) && is_array($newConfig['accounts'])) {
+                        foreach ($newConfig['accounts'] as $accountConfig) {
+                            if (isset($accountConfig['bm_ids']) && is_array($accountConfig['bm_ids'])) {
+                                foreach ($accountConfig['bm_ids'] as $rawBmId) {
+                                    $bmId = trim((string) $rawBmId);
+                                    if ($bmId !== '') {
+                                        $bmIdsForCustomer[] = $bmId;
+                                    }
+                                }
                             }
                         }
                     }
+
+                    if (empty($bmIdsForCustomer) && !empty($newConfig['bm_id'])) {
+                        $bmIdsForCustomer[] = (string) $newConfig['bm_id'];
+                    }
+
+                    $bmIdsForCustomer = array_values(array_unique($bmIdsForCustomer));
+
+                    if (!empty($bmIdsForCustomer)) {
+                        try {
+                            $this->metaAccountRepository->query()
+                                ->whereIn('business_manager_id', $bmIdsForCustomer)
+                                ->whereNull('service_user_id')
+                                ->update(['service_user_id' => $serviceUser->id]);
+                        } catch (\Throwable $e) {
+                            Logging::error('approveServiceUser: failed to attach meta accounts', ['error' => $e->getMessage()]);
+                        }
+                    }
                 }
+            }
 
-                if (empty($mccIdsForCustomer) && !empty($newConfig['google_manager_id'])) {
-                    $mccIdsForCustomer[] = (string) $newConfig['google_manager_id'];
-                }
+            // Gán Google tài khoản cụ thể cho service_user này
+            if ($platform === PlatformType::GOOGLE->value) {
+                $selectedAccountId = $newConfig['account_id'] ?? null;
 
-                $mccIdsForCustomer = array_values(array_unique($mccIdsForCustomer));
+                if ($selectedAccountId) {
+                    // Gán đúng 1 tài khoản được chọn
+                    $this->googleAccountRepository->query()
+                        ->where('account_id', $selectedAccountId)
+                        ->update(['service_user_id' => $serviceUser->id]);
+                } else {
+                    // Fallback: gán theo MCC (backward compatibility)
+                    $mccIdsForCustomer = [];
 
-                if (!empty($mccIdsForCustomer)) {
-                    try {
-                        // Gán service_user_id cho các google_accounts thuộc các MCC này mà hiện chưa có chủ
-                        $updated = $this->googleAccountRepository->query()
-                            ->whereIn('customer_manager_id', $mccIdsForCustomer)
-                            ->update(['service_user_id' => $serviceUser->id]);
-                    } catch (\Throwable $attachError) {
-                        Logging::error(
-                            message: 'ServiceUserService@approveServiceUser: failed to attach existing google accounts',
-                            exception: $attachError
-                        );
+                    if (isset($newConfig['accounts']) && is_array($newConfig['accounts'])) {
+                        foreach ($newConfig['accounts'] as $accountConfig) {
+                            if (isset($accountConfig['bm_ids']) && is_array($accountConfig['bm_ids'])) {
+                                foreach ($accountConfig['bm_ids'] as $rawMccId) {
+                                    $mccId = trim((string) $rawMccId);
+                                    if ($mccId !== '') {
+                                        $mccIdsForCustomer[] = $mccId;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (empty($mccIdsForCustomer) && !empty($newConfig['google_manager_id'])) {
+                        $mccIdsForCustomer[] = (string) $newConfig['google_manager_id'];
+                    }
+
+                    $mccIdsForCustomer = array_values(array_unique($mccIdsForCustomer));
+
+                    if (!empty($mccIdsForCustomer)) {
+                        try {
+                            $this->googleAccountRepository->query()
+                                ->whereIn('customer_manager_id', $mccIdsForCustomer)
+                                ->whereNull('service_user_id')
+                                ->update(['service_user_id' => $serviceUser->id]);
+                        } catch (\Throwable $e) {
+                            Logging::error('approveServiceUser: failed to attach google accounts', ['error' => $e->getMessage()]);
+                        }
                     }
                 }
             }
@@ -333,8 +372,8 @@ class ServiceUserService
                     }
                 }
 
-                // Cập nhật status sang FAILED
-                $this->serviceAccountInventoryService->releaseForServiceUser((string) $serviceUser->id);
+                // TẠM ẨN: Trả lại tài khoản về kho (không dùng kho tự động)
+                // $this->serviceAccountInventoryService->releaseForServiceUser((string) $serviceUser->id);
                 $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::FAILED->value;
                 $serviceUser->save();
 

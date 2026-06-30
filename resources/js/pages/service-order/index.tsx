@@ -106,6 +106,10 @@ const ServiceOrdersIndex = ({
         selectedChildBmId,
         setSelectedChildBmId,
         loadingChildBMs,
+        bmAccounts,
+        loadingBmAccounts,
+        selectedAccountId,
+        setSelectedAccountId,
         openDialogForOrder,
         handleSubmitApprove,
         formErrors,
@@ -824,6 +828,70 @@ const ServiceOrdersIndex = ({
                                                         {formErrors.bm_id}
                                                     </p>
                                                 )}
+                                            </div>
+                                            {bmId && bmAccounts.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="select_account_id">
+                                                        {isApproveMeta
+                                                            ? t(
+                                                                  'service_orders.form.select_account',
+                                                                  {
+                                                                      defaultValue:
+                                                                          'Chọn tài khoản trong BM',
+                                                                  },
+                                                              )
+                                                            : t(
+                                                                  'service_orders.form.select_account',
+                                                                  {
+                                                                      defaultValue:
+                                                                          'Chọn tài khoản trong MCC',
+                                                                  },
+                                                              )}
+                                                    </Label>
+                                                    <Select
+                                                        value={selectedAccountId}
+                                                        onValueChange={(value) =>
+                                                            setSelectedAccountId(value)
+                                                        }
+                                                        disabled={loadingBmAccounts}
+                                                    >
+                                                        <SelectTrigger id="select_account_id">
+                                                            <SelectValue
+                                                                placeholder={
+                                                                    loadingBmAccounts
+                                                                        ? t('common.loading')
+                                                                        : t(
+                                                                              'service_orders.form.select_account_placeholder',
+                                                                              {
+                                                                                  defaultValue:
+                                                                                      'Chọn tài khoản',
+                                                                              },
+                                                                          )
+                                                                }
+                                                            />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {bmAccounts.map(
+                                                                (acc: any) => (
+                                                                    <SelectItem
+                                                                        key={acc.account_id}
+                                                                        value={acc.account_id}
+                                                                    >
+                                                                        {acc.account_name || acc.account_id} ({acc.currency})
+                                                                    </SelectItem>
+                                                                ),
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {selectedAccountId && (
+                                                        <p className="text-xs text-green-600">
+                                                            {t('service_orders.form.selected_account', {
+                                                                defaultValue: 'Đã chọn: ' + (bmAccounts.find(a => a.account_id === selectedAccountId)?.account_name || selectedAccountId),
+                                                            })}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
                                             </div>
                                             {isApproveMeta &&
                                                 childBusinessManagers.length >
