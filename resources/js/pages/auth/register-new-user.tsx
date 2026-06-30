@@ -13,10 +13,10 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type Props = {
-    social_data: {
+    social_data?: {
         type: 'telegram' | 'gmail';
         data: TelegramUser | { email?: string };
-    };
+    } | null;
 };
 
 const RegisterNewUser = ({ social_data }: Props) => {
@@ -30,6 +30,7 @@ const RegisterNewUser = ({ social_data }: Props) => {
         useState(false);
 
     useEffect(() => {
+        if (!social_data) return;
         if (social_data.type === 'telegram') {
             const user = social_data.data as TelegramUser;
             setData('type', 'telegram');
@@ -44,6 +45,14 @@ const RegisterNewUser = ({ social_data }: Props) => {
             setData('email', gmailData.email ?? '');
         }
     }, [social_data, setData]);
+
+    if (!social_data) {
+        return (
+            <div className="flex min-h-[200px] items-center justify-center">
+                <Spinner />
+            </div>
+        );
+    }
 
     return (
         <div>

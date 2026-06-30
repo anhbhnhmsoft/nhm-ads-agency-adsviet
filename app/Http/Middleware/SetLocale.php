@@ -54,7 +54,7 @@ class SetLocale
 
     protected function supportedLocales(): array
     {
-        return ['vi', 'en'];
+        return ['en', 'vi', 'zh'];
     }
 }
 

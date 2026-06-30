@@ -72,6 +72,7 @@ class HandleInertiaRequests extends Middleware
             'locales' => [
                 ['code' => 'vi', 'label' => 'Tiếng Việt'],
                 ['code' => 'en', 'label' => 'English'],
+                ['code' => 'zh', 'label' => '中文'],
             ],
             'meta_settings' => $metaSettings,
             'google_settings' => $googleSettings,

@@ -10,7 +10,7 @@ class LocaleController extends Controller
 {
     public function update(Request $request): RedirectResponse
     {
-        $supported = ['vi', 'en'];
+        $supported = ['vi', 'en', 'zh'];
         $locale = $request->input('locale');
 
         if (!in_array($locale, $supported, true)) {
