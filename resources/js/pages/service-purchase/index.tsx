@@ -131,7 +131,7 @@ const ServicePurchaseIndex = ({
         : true;
     const canSelectPostpay = selectedPackage
         ? selectedPackage.payment_type === 'postpay' ||
-          selectedPackage.can_use_postpay === true
+        selectedPackage.can_use_postpay === true
         : payment_type === 'postpay';
     const defaultPaymentType: 'prepay' | 'postpay' =
         selectedPackage?.payment_type === 'postpay' ? 'postpay' : 'prepay';
@@ -183,6 +183,8 @@ const ServicePurchaseIndex = ({
             purchaseForm.setData('payment_type', nextPaymentType);
             if (nextPaymentType === 'postpay') {
                 purchaseForm.setData('top_up_amount', '');
+            } else {
+                purchaseForm.setData('top_up_amount', '0');
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -297,11 +299,23 @@ const ServicePurchaseIndex = ({
     };
 
     // Validate top-up amount
-    const validateTopUpAmount = (amount: string) => {
-        if (!amount) return null;
+    const validateTopUpAmount = (amount: string, minAmount: number = 0) => {
+        if (!amount) {
+            if (minAmount > 0) {
+                return t('service_purchase.min_top_up_hint', {
+                    amount: formatUSD(minAmount),
+                });
+            }
+            return null;
+        }
         const numAmount = parseCurrencyInput(amount);
         if (numAmount <= 0) {
             return t('service_purchase.invalid_amount');
+        }
+        if (minAmount > 0 && numAmount < minAmount) {
+            return t('service_purchase.min_top_up_hint', {
+                amount: formatUSD(minAmount),
+            });
         }
         return null;
     };
@@ -324,9 +338,9 @@ const ServicePurchaseIndex = ({
         const serviceFee =
             topUpNum > 0
                 ? calculateServiceFee(
-                      topUpNum,
-                      getEffectiveTopUpFeePercent(pkg),
-                  )
+                    topUpNum,
+                    getEffectiveTopUpFeePercent(pkg),
+                )
                 : 0;
         const totalCost = chargeOpenFee + topUpNum + serviceFee;
         return { serviceFee, totalCost, openFee, chargeOpenFee, topUpNum };
@@ -380,9 +394,13 @@ const ServicePurchaseIndex = ({
             return;
         }
 
-        if (isPrepay && topUpAmount && validateTopUpAmount(topUpAmount)) {
-            alert(validateTopUpAmount(topUpAmount));
-            return;
+        if (isPrepay) {
+            const minAmount = Number(selectedPackage.range_min_top_up || '0');
+            const validationError = validateTopUpAmount(topUpAmount, minAmount);
+            if (validationError) {
+                alert(validationError);
+                return;
+            }
         }
 
         const payloadBudget = '0';
@@ -425,7 +443,7 @@ const ServicePurchaseIndex = ({
                 purchaseForm.setData({
                     payment_type: 'prepay',
                     budget: '0',
-                    top_up_amount: '',
+                    top_up_amount: '0',
                     asset_access: 'full_asset',
                 });
             },
@@ -634,9 +652,10 @@ const ServicePurchaseIndex = ({
         if (!selectedPackage) return null;
 
         const platformInfo = getPlatformInfo(selectedPackage.platform);
+        const minTopUpAmount = Number(selectedPackage.range_min_top_up || '0');
         const topUpError =
-            touchedFields.topUpAmount && topUpAmount
-                ? validateTopUpAmount(topUpAmount)
+            touchedFields.topUpAmount
+                ? validateTopUpAmount(topUpAmount, minTopUpAmount)
                 : null;
 
         const previewAccountsCount = accounts.length > 0 ? accounts.length : 1;
@@ -651,7 +670,6 @@ const ServicePurchaseIndex = ({
                 paymentType,
                 previewAccountsCount,
             );
-        const minTopUpAmount = Number(selectedPackage.range_min_top_up || '0');
         const hasInsufficientBalance = wallet_balance < totalCost;
         const showAccountInfo =
             selectedPackage.platform === _PlatformType.META ||
@@ -659,11 +677,11 @@ const ServicePurchaseIndex = ({
         const accountInfoTitle =
             selectedPackage.platform === _PlatformType.META
                 ? t('service_purchase.meta_account_info', {
-                      defaultValue: 'Thông tin tài khoản Meta',
-                  })
+                    defaultValue: 'Thông tin tài khoản Meta',
+                })
                 : t('service_purchase.google_account_info', {
-                      defaultValue: 'Thông tin tài khoản Google',
-                  });
+                    defaultValue: 'Thông tin tài khoản Google',
+                });
         const monthlySpendingTiers =
             selectedPackage.monthly_spending_fee_structure || [];
 
@@ -763,7 +781,7 @@ const ServicePurchaseIndex = ({
                                                     bm_ids: [],
                                                     fanpages:
                                                         selectedPackage.platform ===
-                                                        _PlatformType.META
+                                                            _PlatformType.META
                                                             ? []
                                                             : [],
                                                     websites: [],
@@ -1062,8 +1080,12 @@ const ServicePurchaseIndex = ({
                     {paymentType !== 'postpay' && (
                         <div className="space-y-2">
                             <Label htmlFor="topUpAmount">
-                                {t('service_purchase.top_up_amount')} (
-                                {t('service_purchase.optional')})
+                                {t('service_purchase.top_up_amount')}
+                                {minTopUpAmount > 0 ? (
+                                    <span className="text-red-500 font-bold ml-1">*</span>
+                                ) : (
+                                    ` (${t('service_purchase.optional')})`
+                                )}
                             </Label>
                             <div className="flex gap-2">
                                 <Input
@@ -1072,7 +1094,7 @@ const ServicePurchaseIndex = ({
                                     placeholder={`${Math.ceil(
                                         Number(
                                             selectedPackage.range_min_top_up ||
-                                                '0',
+                                            '0',
                                         ),
                                     )} USDT`}
                                     value={topUpAmount}
@@ -1086,6 +1108,12 @@ const ServicePurchaseIndex = ({
                                                 'top_up_amount',
                                             );
                                         }
+                                    }}
+                                    onBlur={() => {
+                                        setTouchedFields((prev) => ({
+                                            ...prev,
+                                            topUpAmount: true,
+                                        }));
                                     }}
                                     step="1"
                                 />
@@ -1114,8 +1142,8 @@ const ServicePurchaseIndex = ({
                                 {t('service_purchase.top_up_amount_note')},
                                 {minTopUpAmount > 0
                                     ? t('service_purchase.min_top_up_hint', {
-                                          amount: formatUSD(minTopUpAmount),
-                                      })
+                                        amount: formatUSD(minTopUpAmount),
+                                    })
                                     : t('service_purchase.top_up_amount_note')}
                             </p>
                         </div>
@@ -1125,86 +1153,86 @@ const ServicePurchaseIndex = ({
                     {(showCalculator ||
                         topUpAmount ||
                         paymentType === 'postpay') && (
-                        <div className="space-y-3 rounded-lg bg-orange-50 p-4">
-                            <div className="font-medium text-[#4285f4]">
-                                {t('service_purchase.calculate_fee')}:
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div className="flex justify-between">
-                                    <span>
-                                        {t(
-                                            'service_purchase.account_opening_fee',
-                                        )}
-                                        :
-                                    </span>
-                                    <span className="font-medium">
-                                        {formatUSDT(chargeOpenFee)}
-                                    </span>
+                            <div className="space-y-3 rounded-lg bg-orange-50 p-4">
+                                <div className="font-medium text-[#4285f4]">
+                                    {t('service_purchase.calculate_fee')}:
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>{t('service_purchase.top_up')}:</span>
-                                    <span className="font-medium">
-                                        {formatUSDT(topUpNum)}
-                                    </span>
-                                </div>
-                                {paymentType === 'prepay' && (
+                                <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div className="flex justify-between">
                                         <span>
                                             {t(
-                                                'service_purchase.top_up_fee_amount',
-                                            )}{' '}
-                                            ({topUpFeePercent}%):
+                                                'service_purchase.account_opening_fee',
+                                            )}
+                                            :
                                         </span>
                                         <span className="font-medium">
-                                            {formatUSDT(serviceFee)}
+                                            {formatUSDT(chargeOpenFee)}
                                         </span>
                                     </div>
-                                )}
-                                {(paymentType === 'postpay' ||
-                                    selectedPackage.billing_source ===
-                                        'customer_card') && (
-                                    <div className="col-span-2 grid grid-cols-2 gap-4">
+                                    <div className="flex justify-between">
+                                        <span>{t('service_purchase.top_up')}:</span>
+                                        <span className="font-medium">
+                                            {formatUSDT(topUpNum)}
+                                        </span>
+                                    </div>
+                                    {paymentType === 'prepay' && (
                                         <div className="flex justify-between">
                                             <span>
                                                 {t(
-                                                    'service_purchase.spending_fee_amount',
-                                                )}
-                                                :
+                                                    'service_purchase.top_up_fee_amount',
+                                                )}{' '}
+                                                ({topUpFeePercent}%):
                                             </span>
                                             <span className="font-medium">
-                                                {spendingFeePercent}%
+                                                {formatUSDT(serviceFee)}
                                             </span>
                                         </div>
-                                        <span className="text-right font-medium">
-                                            {t(
-                                                'service_purchase.spending_fee_deferred',
-                                                {
-                                                    defaultValue:
-                                                        'Tự trừ khi chi tiêu đạt 100 USD',
-                                                },
-                                            )}
+                                    )}
+                                    {(paymentType === 'postpay' ||
+                                        selectedPackage.billing_source ===
+                                        'customer_card') && (
+                                            <div className="col-span-2 grid grid-cols-2 gap-4">
+                                                <div className="flex justify-between">
+                                                    <span>
+                                                        {t(
+                                                            'service_purchase.spending_fee_amount',
+                                                        )}
+                                                        :
+                                                    </span>
+                                                    <span className="font-medium">
+                                                        {spendingFeePercent}%
+                                                    </span>
+                                                </div>
+                                                <span className="text-right font-medium">
+                                                    {t(
+                                                        'service_purchase.spending_fee_deferred',
+                                                        {
+                                                            defaultValue:
+                                                                'Tự trừ khi chi tiêu đạt 100 USD',
+                                                        },
+                                                    )}
+                                                </span>
+                                            </div>
+                                        )}
+                                </div>
+                                <div className="border-t pt-2">
+                                    <div className="text-md flex justify-between font-bold sm:text-lg">
+                                        <span>
+                                            {t('service_purchase.total_cost')}:
+                                        </span>
+                                        <span
+                                            className={
+                                                hasInsufficientBalance
+                                                    ? 'text-red-600'
+                                                    : 'text-green-600'
+                                            }
+                                        >
+                                            {formatUSDT(totalCost)}
                                         </span>
                                     </div>
-                                )}
-                            </div>
-                            <div className="border-t pt-2">
-                                <div className="text-md flex justify-between font-bold sm:text-lg">
-                                    <span>
-                                        {t('service_purchase.total_cost')}:
-                                    </span>
-                                    <span
-                                        className={
-                                            hasInsufficientBalance
-                                                ? 'text-red-600'
-                                                : 'text-green-600'
-                                        }
-                                    >
-                                        {formatUSDT(totalCost)}
-                                    </span>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
                     {/* Insufficient Balance Warning */}
                     {hasInsufficientBalance && (

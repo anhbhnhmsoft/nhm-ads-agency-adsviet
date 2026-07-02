@@ -31,7 +31,7 @@ export const useServicePurchaseForm = () => {
     const page = usePage();
     const form = useForm<ServicePurchaseFormData>({
         package_id: '',
-        top_up_amount: '',
+        top_up_amount: '0',
         budget: '0',
         info_fanpage: '',
         info_website: '',

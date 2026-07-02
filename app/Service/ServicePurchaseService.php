@@ -33,8 +33,7 @@ class ServicePurchaseService
         protected UserWalletTransactionRepository $walletTransactionRepository,
         protected ConfigRepository $configRepository,
         protected ServiceAccountInventoryService $serviceAccountInventoryService,
-    ) {
-    }
+    ) {}
 
     // Tạo order mua dịch vụ và trừ tiền ví nội bộ
 
@@ -89,8 +88,8 @@ class ServicePurchaseService
                 $isPrepay = $paymentType === ServicePackagePaymentType::PREPAY->value;
                 $topUpAmount = $isPrepay ? max(0, $topUpAmount) : 0;
                 $minTopUp = (float) $package->range_min_top_up;
-                if ($topUpAmount > 0 && $minTopUp > 0 && $topUpAmount < $minTopUp) {
-                    Logging::error('Top-up amount too low:', [
+                if ($isPrepay && $minTopUp > 0 && $topUpAmount < $minTopUp) {
+                    Logging::error('Top-up amount too low or missing:', [
                         'topUpAmount' => $topUpAmount,
                         'minTopUp' => $minTopUp,
                     ]);
