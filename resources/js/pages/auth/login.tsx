@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
-import RoleSystemCard from '@/pages/auth/components/RoleSystemCard';
 import TelegramButton from '@/pages/auth/components/TelegramButton';
 import { useFormLogin } from '@/pages/auth/hooks/use-form';
 import { register } from '@/routes';
@@ -31,12 +30,6 @@ const Login = ({ bot_username }: Props) => {
             <Head title={t('auth.login.title')} />
 
             <div className={'flex flex-col gap-2'}>
-                <RoleSystemCard
-                    role={data.role}
-                    setRole={(role) => setData('role', role)}
-                />
-                <InputError message={errors.role} />
-
                 <form onSubmit={handleSubmit} className="grid gap-4">
                     <div className="grid gap-2">
                         <Label htmlFor="username">{t('common.username')}</Label>

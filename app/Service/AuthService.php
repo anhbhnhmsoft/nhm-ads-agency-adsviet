@@ -64,16 +64,34 @@ class AuthService
             }
 
             // Kiểm tra username tồn tại trong hệ thống phù hợp với role
-            if ($forApi || $data['role'] !== 'admin') {
+            if ($forApi) {
                 // api chỉ dùng cho khách hàng
                 // Kiểm tra username trong hệ thống khách hàng
                 if (!in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
                     return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
                 }
             } else {
-                // Kiểm tra username trong hệ thống admin
-                if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::EMPLOYEE->value, UserRole::MANAGER->value])) {
-                    return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+                $requestRole = $data['role'] ?? null;
+                if ($requestRole === 'admin') {
+                    if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::EMPLOYEE->value, UserRole::MANAGER->value])) {
+                        return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+                    }
+                } elseif ($requestRole === 'user') {
+                    if (!in_array($user->role, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
+                        return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+                    }
+                } else {
+                    // Tự động nhận diện role từ database
+                    $allowedRoles = [
+                        UserRole::CUSTOMER->value,
+                        UserRole::AGENCY->value,
+                        UserRole::ADMIN->value,
+                        UserRole::EMPLOYEE->value,
+                        UserRole::MANAGER->value
+                    ];
+                    if (!in_array($user->role, $allowedRoles)) {
+                        return ServiceReturn::error(message: __('auth.login.validation.invalid_credentials'));
+                    }
                 }
             }
             $rememberMe = isset($data['remember_me']) && $data['remember_me'] === true;
@@ -121,7 +139,7 @@ class AuthService
         return $this->handleLogin([
             'username' => $data['username'],
             'password' => $data['password'],
-            'role' => $data['role'],
+            'role' => $data['role'] ?? null,
             'remember_me' => $data['remember'] ?? false,
         ], forApi: false);
     }

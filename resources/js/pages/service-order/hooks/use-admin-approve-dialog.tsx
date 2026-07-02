@@ -74,6 +74,7 @@ export const useServiceOrderAdminDialog = () => {
         display_name: '',
         bm_id: '',
         account_id_input: '',
+        account_id: '',
         info_fanpage: '',
         info_website: '',
         payment_type: '',
@@ -261,7 +262,7 @@ export const useServiceOrderAdminDialog = () => {
 
                 if (bmIdValue && !isGoogle) {
                     fetchChildBusinessManagers(bmIdValue);
-                    fetchBmAccounts(bmIdValue, order.package?.platform);
+                    fetchBmAccounts(bmIdValue, order.package?.platform ?? undefined);
                 }
             }
 
@@ -389,7 +390,7 @@ export const useServiceOrderAdminDialog = () => {
             if (selectedOrder?.package?.platform === _PlatformType.META) {
                 fetchChildBusinessManagers(value);
             }
-            fetchBmAccounts(value, selectedOrder?.package?.platform);
+            fetchBmAccounts(value, selectedOrder?.package?.platform ?? undefined);
         },
         [form, selectedOrder, fetchChildBusinessManagers, fetchBmAccounts],
     );

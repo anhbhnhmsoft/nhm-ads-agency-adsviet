@@ -383,25 +383,43 @@ class ServiceUserService
             $paymentType = $this->resolveConfigPaymentType($currentConfig['payment_type'] ?? null, $packagePaymentType);
             $billingSource = $this->resolvePackageBillingSource($serviceUser->package?->billing_source);
 
-            if (is_array($config['accounts']) && !empty($config['accounts'])) {
+            if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
+                // Clear single-account fields to avoid hybrid configuration
+                $singleAccountFields = [
+                    'meta_email', 'display_name', 'bm_id', 'assign_mode', 'child_bm_id',
+                    'account_id', 'uid', 'account_name', 'timezone_bm', 'info_fanpage', 'info_website'
+                ];
+                foreach ($singleAccountFields as $field) {
+                    if (isset($currentConfig[$field])) {
+                        unset($currentConfig[$field]);
+                    }
+                }
+
                 $serviceUser->config_account = array_merge($currentConfig, array_filter([
                     'accounts' => $config['accounts'],
                     'payment_type' => $paymentType,
                     'billing_source' => $billingSource,
                 ], fn($value) => $value !== null));
             } else {
-                $serviceUser->config_account = array_merge($currentConfig, array_filter([
-                    'meta_email' => $config['meta_email'] ?? null,
-                    'display_name' => $config['display_name'] ?? null,
-                    'bm_id' => $config['bm_id'] ?? null,
-                    'uid' => $config['uid'] ?? null,
-                    'account_name' => $config['account_name'] ?? null,
-                    'timezone_bm' => $config['timezone_bm'] ?? null,
-                    'info_fanpage' => $config['info_fanpage'] ?? null,
-                    'info_website' => $config['info_website'] ?? null,
-                    'payment_type' => $paymentType,
-                    'billing_source' => $billingSource,
-                ], fn($value) => $value !== null));
+                $updateData = [];
+                $fields = [
+                    'meta_email', 'display_name', 'bm_id', 'assign_mode', 'child_bm_id',
+                    'account_id', 'uid', 'account_name', 'timezone_bm', 'info_fanpage', 'info_website'
+                ];
+                foreach ($fields as $field) {
+                    if (array_key_exists($field, $config)) {
+                        $updateData[$field] = $config[$field];
+                    }
+                }
+                $updateData['payment_type'] = $paymentType;
+                $updateData['billing_source'] = $billingSource;
+
+                // Clear accounts array to avoid hybrid configuration
+                if (isset($currentConfig['accounts'])) {
+                    unset($currentConfig['accounts']);
+                }
+
+                $serviceUser->config_account = array_merge($currentConfig, $updateData);
             }
             $serviceUser->save();
 

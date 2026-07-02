@@ -9,7 +9,6 @@ export const useFormLogin = () => {
     const form = useForm<LoginRequest>({
         username: '',
         password: '',
-        role: _RoleSystemRequest.USER,
         device: 'web',
     });
     const handleSubmit = (

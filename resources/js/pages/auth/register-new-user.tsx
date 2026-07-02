@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
-import CustomerRoleCard from '@/pages/auth/components/CustomerRoleCard';
 import { useFormRegister } from '@/pages/auth/hooks/use-form';
 import { TelegramUser } from '@/pages/auth/types/types';
 import { Head } from '@inertiajs/react';
@@ -230,17 +229,7 @@ const RegisterNewUser = ({ social_data }: Props) => {
                         />
                         <InputError message={errors.refer_code} />
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="role">
-                            <span className="text-red-500">*</span>
-                            {t('auth.register_new_user.role')}
-                        </Label>
-                        <CustomerRoleCard
-                            role={data.role}
-                            setRole={(role) => setData('role', role)}
-                        />
-                        <InputError message={errors.role} />
-                    </div>
+
 
                     <Button
                         onClick={handleSubmit}

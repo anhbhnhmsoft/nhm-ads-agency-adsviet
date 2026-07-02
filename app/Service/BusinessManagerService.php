@@ -78,6 +78,79 @@ class BusinessManagerService
     }
 
     /**
+     * Lấy danh sách BM/MCC con đã scope theo cấu hình active để làm dropdown
+     */
+    public function getScopedChildManagersForDropdown(?int $platform = null): array
+    {
+        $results = [];
+
+        // Meta BMs
+        if (!$platform || $platform === PlatformType::META->value) {
+            $activeMetaSetting = $this->resolveActivePlatformSetting(PlatformType::META->value);
+            $activeMetaBmId = $activeMetaSetting
+                ? $this->platformSettingService->getMetaScopedBusinessManagerId($activeMetaSetting->config ?? [])
+                : null;
+
+            $metaChildQuery = $this->metaBusinessManagerRepository->query()
+                ->whereNull('hidden_at');
+
+            if ($activeMetaSetting) {
+                if ($activeMetaBmId) {
+                    $metaChildQuery
+                        ->whereNotNull('parent_bm_id')
+                        ->where('parent_bm_id', $activeMetaBmId);
+                } else {
+                    $metaChildQuery->where('is_direct_access', true);
+                }
+            }
+
+            $metaBms = $metaChildQuery
+                ->select('bm_id', 'name', 'parent_bm_id', 'currency', 'is_direct_access')
+                ->orderBy('name')
+                ->get()
+                ->map(fn($bm) => [
+                    'id' => (string) $bm->bm_id,
+                    'bm_id' => (string) $bm->bm_id,
+                    'name' => $bm->name ?: (string) $bm->bm_id,
+                    'platform' => PlatformType::META->value,
+                    'parent_bm_id' => $bm->parent_bm_id ? (string) $bm->parent_bm_id : null,
+                    'currency' => $bm->currency ?? 'USD',
+                ]);
+            $results = array_merge($results, $metaBms->toArray());
+        }
+
+        // Google MCCs
+        if (!$platform || $platform === PlatformType::GOOGLE->value) {
+            $activeGoogleSetting = $this->resolveActivePlatformSetting(PlatformType::GOOGLE->value);
+            $activeGoogleManagerId = $activeGoogleSetting ? ($activeGoogleSetting->config['login_customer_id'] ?? null) : null;
+
+            $googleChildQuery = $this->googleMccManagerRepository->query();
+
+            if ($activeGoogleManagerId) {
+                $googleChildQuery
+                    ->whereNotNull('parent_mcc_id')
+                    ->where('parent_mcc_id', $activeGoogleManagerId);
+            }
+
+            $googleMccs = $googleChildQuery
+                ->select('mcc_id', 'name', 'parent_mcc_id', 'currency')
+                ->orderBy('name')
+                ->get()
+                ->map(fn($mcc) => [
+                    'id' => (string) $mcc->mcc_id,
+                    'bm_id' => (string) $mcc->mcc_id,
+                    'name' => $mcc->name ?: (string) $mcc->mcc_id,
+                    'platform' => PlatformType::GOOGLE->value,
+                    'parent_mcc_id' => $mcc->parent_mcc_id ? (string) $mcc->parent_mcc_id : null,
+                    'currency' => $mcc->currency ?? 'USD',
+                ]);
+            $results = array_merge($results, $googleMccs->toArray());
+        }
+
+        return $results;
+    }
+
+    /**
      * Lấy danh sách BM/MCC con
      */
     public function getChildManagersForFilter(): array

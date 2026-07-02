@@ -26,7 +26,7 @@ import { _PlatformType, _UserRole } from '@/lib/types/constants';
 import type { ChildBusinessManager } from '@/pages/business-manager/types/type';
 import { AccountFormEdit } from '@/pages/service-order/components/AccountFormEdit';
 import { AccountInfoCell } from '@/pages/service-order/components/AccountInfoCell';
-import { useServiceOrderAdminDialog } from '@/pages/service-order/hooks/use-admin-approve-dialog';
+import { useServiceOrderAdminDialog, type BmAccount } from '@/pages/service-order/hooks/use-admin-approve-dialog';
 import { useServiceOrderEditConfigDialog } from '@/pages/service-order/hooks/use-edit-config-dialog';
 import type {
     ServiceOrder,
@@ -84,6 +84,12 @@ const ServiceOrdersIndex = ({
     const [accountIdList, setAccountIdList] = useState<string[]>(['']);
     const [fanpageList, setFanpageList] = useState<string[]>(['']);
     const [websiteList, setWebsiteList] = useState<string[]>(['']);
+
+    // Multi-input lists for edit dialog
+    const [editBmIdList, setEditBmIdList] = useState<string[]>(['']);
+    const [editAccountIdList, setEditAccountIdList] = useState<string[]>(['']);
+    const [editFanpageList, setEditFanpageList] = useState<string[]>(['']);
+    const [editWebsiteList, setEditWebsiteList] = useState<string[]>(['']);
 
     // Derived accountIdInput = first non-empty item in accountIdList
     const currentAccountId = accountIdList.find(v => v.trim()) || '';
@@ -156,6 +162,20 @@ const ServiceOrdersIndex = ({
         setTimezoneBm: setEditTimezoneBm,
         openDialogForOrder: openEditDialogForOrder,
         handleSubmitUpdate,
+        assignMode: editAssignMode,
+        setAssignMode: setEditAssignMode,
+        childBusinessManagers: editChildBusinessManagers,
+        selectedChildBmId: editSelectedChildBmId,
+        setSelectedChildBmId: setEditSelectedChildBmId,
+        loadingChildBMs: editLoadingChildBMs,
+        bmList: editBmList,
+        loadingBmList: editLoadingBmList,
+        bmAccounts: editBmAccounts,
+        loadingBmAccounts: editLoadingBmAccounts,
+        accountIdInput: editAccountIdInput,
+        setAccountIdInput: setEditAccountIdInput,
+        handleSelectBmFromList: handleEditSelectBmFromList,
+        handleSelectAccountFromList: handleEditSelectAccountFromList,
     } = useServiceOrderEditConfigDialog();
 
     const isApproveMeta =
@@ -187,6 +207,17 @@ const ServiceOrdersIndex = ({
             setWebsiteList([infoWebsite || '']);
         }
     }, [dialogOpen]);
+
+    // Reset multi-input lists khi edit dialog mở
+    useEffect(() => {
+        if (editDialogOpen) {
+            setEditBmIdList([editBmId || '']);
+            setEditAccountIdList([editAccountIdInput || '']);
+            setEditFanpageList([editInfoFanpage || '']);
+            setEditWebsiteList([editInfoWebsite || '']);
+        }
+    }, [editDialogOpen]);
+
     const isEditMeta =
         selectedEditOrder?.package?.platform === _PlatformType.META;
 
@@ -651,30 +682,6 @@ const ServiceOrdersIndex = ({
                                     </div>
 
                                     <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="meta_email">
-                                                {t('service_purchase.meta_email')}
-                                            </Label>
-                                            <Input
-                                                id="meta_email"
-                                                type="email"
-                                                value={metaEmail}
-                                                onChange={(e) => setMetaEmail(e.target.value)}
-                                                placeholder={t('service_orders.form.meta_email_placeholder')}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="display_name">
-                                                {t('service_purchase.display_name')}
-                                            </Label>
-                                            <Input
-                                                id="display_name"
-                                                value={displayName}
-                                                onChange={(e) => setDisplayName(e.target.value)}
-                                                placeholder={t('service_orders.form.display_name_placeholder')}
-                                            />
-                                        </div>
-
                                             {/* Tabs: Gán BM / Gán tài khoản */}
                                             <div className="space-y-2">
                                                 <div className="flex gap-1 rounded-lg border p-1">
@@ -1345,167 +1352,399 @@ const ServiceOrdersIndex = ({
                                                     )}
                                                 />
                                             </div>
+
+                                            {/* Tabs: Gán BM / Gán tài khoản */}
                                             <div className="space-y-2">
-                                                <Label htmlFor="edit_bm_id">
-                                                    {isEditMeta
-                                                        ? t(
-                                                              'service_purchase.id_bm',
-                                                              {
-                                                                  defaultValue:
-                                                                      'ID BM',
-                                                              },
-                                                          )
-                                                        : t(
-                                                              'service_purchase.id_mcc',
-                                                              {
-                                                                  defaultValue:
-                                                                      'ID MCC',
-                                                              },
-                                                          )}
-                                                </Label>
-                                                <Input
-                                                    id="edit_bm_id"
-                                                    value={editBmId || ''}
-                                                    onChange={(e) =>
-                                                        setEditBmId(
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    placeholder={t(
-                                                        'service_orders.form.bm_id_placeholder',
-                                                    )}
-                                                />
+                                                <div className="flex gap-1 rounded-lg border p-1">
+                                                    <button
+                                                        type="button"
+                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                            editAssignMode === 'bm'
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'text-muted-foreground hover:bg-muted'
+                                                        }`}
+                                                        onClick={() => setEditAssignMode('bm')}
+                                                    >
+                                                        {isEditMeta ? 'Gán BM' : 'Gán MCC'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                            editAssignMode === 'account'
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'text-muted-foreground hover:bg-muted'
+                                                        }`}
+                                                        onClick={() => {
+                                                            setEditAssignMode('account');
+                                                            if (editBmId) handleEditSelectBmFromList(editBmId);
+                                                        }}
+                                                    >
+                                                        Gán tài khoản
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="edit_asset_access">
-                                                    {t(
-                                                        'service_purchase.asset_access_label',
-                                                    )}
-                                                </Label>
-                                                <Select
-                                                    value={
-                                                        editAssetAccess ??
-                                                        'full_asset'
-                                                    }
-                                                    onValueChange={(
-                                                        value:
-                                                            | 'full_asset'
-                                                            | 'basic_asset',
-                                                    ) =>
-                                                        setEditAssetAccess(
-                                                            value,
-                                                        )
-                                                    }
-                                                >
-                                                    <SelectTrigger id="edit_asset_access">
-                                                        <SelectValue
-                                                            placeholder={t(
-                                                                'service_purchase.asset_access_placeholder',
-                                                            )}
-                                                        />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="full_asset">
-                                                            {t(
-                                                                'service_purchase.asset_access_full',
-                                                            )}
-                                                        </SelectItem>
-                                                        <SelectItem value="basic_asset">
-                                                            {t(
-                                                                'service_purchase.asset_access_basic',
-                                                            )}
-                                                        </SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="edit_timezone_bm">
-                                                    {isEditMeta
-                                                        ? t(
-                                                              'service_purchase.timezone_bm_label',
-                                                              {
-                                                                  defaultValue:
-                                                                      'Múi giờ BM',
-                                                              },
-                                                          )
-                                                        : t(
-                                                              'service_purchase.timezone_mcc_label',
-                                                              {
-                                                                  defaultValue:
-                                                                      'Múi giờ MCC',
-                                                              },
-                                                          )}
-                                                </Label>
-                                                <TimezoneSelect
-                                                    id="edit_timezone_bm"
-                                                    value={editTimezoneBm || ''}
-                                                    onValueChange={(value) =>
-                                                        setEditTimezoneBm(value)
-                                                    }
-                                                    options={
-                                                        isEditMeta
-                                                            ? meta_timezones
-                                                            : google_timezones
-                                                    }
-                                                    placeholder={t(
-                                                        'service_purchase.timezone_bm_placeholder',
-                                                        {
-                                                            defaultValue:
-                                                                'Chọn múi giờ',
-                                                        },
-                                                    )}
-                                                />
-                                            </div>
-                                            {isEditMeta && (
+
+                                            {editAssignMode === 'bm' ? (
                                                 <>
+                                                    {/* ==== TAB GÁN BM ==== */}
+
+                                                    {/* Dropdown chọn BM có sẵn */}
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="edit_info_fanpage">
-                                                            {t(
-                                                                'service_orders.form.info_fanpage',
-                                                            )}
+                                                        <Label>
+                                                            {isEditMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
                                                         </Label>
-                                                        <Input
-                                                            id="edit_info_fanpage"
-                                                            value={
-                                                                editInfoFanpage ||
-                                                                ''
-                                                            }
-                                                            onChange={(e) =>
-                                                                setEditInfoFanpage(
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            placeholder={t(
-                                                                'service_orders.form.info_fanpage_placeholder',
-                                                            )}
-                                                        />
+                                                        <Select
+                                                            key={`edit-bm-tab-bm-${editBmIdList.join(',')}`}
+                                                            onValueChange={(value) => {
+                                                                if (value && value !== '__empty__') {
+                                                                    handleEditSelectBmFromList(value);
+                                                                    addToListUnique(editBmIdList, setEditBmIdList, value);
+                                                                }
+                                                            }}
+                                                            disabled={editLoadingBmList}
+                                                        >
+                                                            <SelectTrigger>
+                                                                 <SelectValue
+                                                                     placeholder={
+                                                                         editLoadingBmList
+                                                                             ? 'Đang tải...'
+                                                                             : (isEditMeta ? 'Chọn BM từ danh sách...' : 'Chọn MCC từ danh sách...')
+                                                                     }
+                                                                 />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {editBmList
+                                                                    .filter((bm) => !editBmIdList.some((id) => id.trim() === (bm.bm_ids?.[0] || bm.id)))
+                                                                    .map((bm) => (
+                                                                        <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
+                                                                            <span className="truncate block">{bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})</span>
+                                                                        </SelectItem>
+                                                                    ))}
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
+
+                                                    {/* Input ID BM nhập tay + nút thêm */}
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="edit_info_website">
-                                                            {t(
-                                                                'service_orders.form.info_website',
+                                                        <div className="flex items-center justify-between">
+                                                            <Label>
+                                                                {isEditMeta ? 'ID BM' : 'ID MCC'}
+                                                            </Label>
+                                                            {editBmIdList.length < 3 && (
+                                                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                                                                    onClick={() => setEditBmIdList([...editBmIdList, ''])}
+                                                                >
+                                                                    <Plus className="mr-1 h-3 w-3" />
+                                                                    Thêm {isEditMeta ? 'BM' : 'MCC'}
+                                                                </Button>
                                                             )}
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {editBmIdList.map((val, idx) => (
+                                                                <div key={`edit-bm-${idx}`} className="flex gap-2">
+                                                                    <Input
+                                                                        value={val}
+                                                                        onChange={(e) => {
+                                                                            const newList = [...editBmIdList];
+                                                                            newList[idx] = e.target.value;
+                                                                            setEditBmIdList(newList);
+                                                                            if (idx === 0) setEditBmId(e.target.value);
+                                                                        }}
+                                                                        placeholder={isEditMeta ? 'Nhập BM ID...' : 'Nhập MCC ID...'}
+                                                                    />
+                                                                    {editBmIdList.length > 1 && (
+                                                                        <Button type="button" variant="ghost" size="sm"
+                                                                            className="text-red-600"
+                                                                            onClick={() => setEditBmIdList(editBmIdList.filter((_, i) => i !== idx))}
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Dropdown chọn BM con */}
+                                                    {isEditMeta && editChildBusinessManagers.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="edit_child_bm_id">
+                                                                BM con (tùy chọn)
+                                                            </Label>
+                                                            <Select
+                                                                value={editSelectedChildBmId}
+                                                                onValueChange={(value) => setEditSelectedChildBmId(value)}
+                                                                disabled={editLoadingChildBMs}
+                                                            >
+                                                                <SelectTrigger id="edit_child_bm_id">
+                                                                    <SelectValue
+                                                                        placeholder={editLoadingChildBMs
+                                                                            ? 'Đang tải...'
+                                                                            : 'Chọn BM con'}
+                                                                    />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="none">
+                                                                        Sử dụng BM gốc
+                                                                    </SelectItem>
+                                                                    {editChildBusinessManagers.map((childBM: ChildBusinessManager) => (
+                                                                        <SelectItem key={childBM.bm_id} value={childBM.bm_id}>
+                                                                            {childBM.name || childBM.bm_id}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {/* ==== TAB GÁN TÀI KHOẢN ==== */}
+
+                                                    {/* 1. Dropdown chọn BM có sẵn */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="edit_select_bm_from_list_account">
+                                                            {isEditMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
+                                                        </Label>
+                                                        <Select
+                                                            key={`edit-account-tab-bm-${editBmId}`}
+                                                            value={editBmId || undefined}
+                                                            onValueChange={(value) => {
+                                                                if (value && value !== '__empty__') {
+                                                                    handleEditSelectBmFromList(value);
+                                                                    addToListUnique(editBmIdList, setEditBmIdList, value);
+                                                                }
+                                                            }}
+                                                            disabled={editLoadingBmList}
+                                                        >
+                                                            <SelectTrigger id="edit_select_bm_from_list_account">
+                                                                <SelectValue
+                                                                    placeholder={
+                                                                        editLoadingBmList
+                                                                            ? 'Đang tải...'
+                                                                            : (isEditMeta ? 'Chọn BM từ danh sách...' : 'Chọn MCC từ danh sách...')
+                                                                    }
+                                                                />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {editBmList.map((bm) => (
+                                                                    <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
+                                                                        <span className="truncate block">{bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})</span>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* 2. Dropdown chọn tài khoản có sẵn */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="edit_select_account_from_list" className="text-destructive">
+                                                            Chọn tài khoản * (bắt buộc)
+                                                        </Label>
+                                                        <Select
+                                                            onValueChange={(value) => {
+                                                                if (value && value !== '__empty__') {
+                                                                    addToListUnique(editAccountIdList, setEditAccountIdList, value);
+                                                                    setEditAccountIdInput(value);
+                                                                }
+                                                            }}
+                                                            disabled={editLoadingBmAccounts || !editBmId}
+                                                        >
+                                                            <SelectTrigger id="edit_select_account_from_list">
+                                                                <SelectValue
+                                                                    placeholder={
+                                                                        !editBmId
+                                                                            ? 'Chọn BM phía trên trước'
+                                                                            : editLoadingBmAccounts
+                                                                                ? 'Đang tải...'
+                                                                                : 'Chọn tài khoản trong BM/MCC'
+                                                                    }
+                                                                />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {editBmAccounts
+                                                                    .filter((acc) => !editAccountIdList.some((id) => id.trim() === acc.account_id))
+                                                                    .map((acc: BmAccount) => (
+                                                                        <SelectItem key={acc.account_id} value={acc.account_id}>
+                                                                            <span className="truncate block">{acc.account_name || acc.account_id} — {acc.account_id} ({acc.currency}){acc.service_user_id ? ' [Đã gán]' : ''}</span>
+                                                                        </SelectItem>
+                                                                    ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* 3. Input ID tài khoản nhập tay + nút thêm */}
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <Label className="text-destructive">
+                                                                ID tài khoản * (bắt buộc)
+                                                            </Label>
+                                                            {editAccountIdList.length < 3 && (
+                                                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                                                                    onClick={() => setEditAccountIdList([...editAccountIdList, ''])}
+                                                                >
+                                                                    <Plus className="mr-1 h-3 w-3" />
+                                                                    Thêm tài khoản
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {editAccountIdList.map((val, idx) => (
+                                                                <div key={`edit-acc-${idx}`} className="flex gap-2">
+                                                                    <Input
+                                                                        value={val}
+                                                                        onChange={(e) => {
+                                                                            const newList = [...editAccountIdList];
+                                                                            newList[idx] = e.target.value;
+                                                                            setEditAccountIdList(newList);
+                                                                            setEditAccountIdInput(e.target.value);
+                                                                        }}
+                                                                        placeholder={isEditMeta ? 'act_1234567890' : '123-456-7890'}
+                                                                        className={!val.trim() ? 'border-destructive' : ''}
+                                                                    />
+                                                                    {editAccountIdList.length > 1 && (
+                                                                        <Button type="button" variant="ghost" size="sm"
+                                                                            className="text-red-600"
+                                                                            onClick={() => setEditAccountIdList(editAccountIdList.filter((_, i) => i !== idx))}
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {isEditMeta ? 'Account ID bắt đầu bằng act_' : 'Google Customer ID dạng xxx-xxx-xxxx'}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* 4. Input ID BM khách nhập */}
+                                                    <div className="space-y-2">
+                                                        <Label>
+                                                            {isEditMeta ? 'ID BM (khách nhập)' : 'ID MCC (khách nhập)'}
                                                         </Label>
                                                         <Input
-                                                            id="edit_info_website"
-                                                            value={
-                                                                editInfoWebsite ||
-                                                                ''
-                                                            }
-                                                            onChange={(e) =>
-                                                                setEditInfoWebsite(
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            placeholder={t(
-                                                                'service_orders.form.info_website_placeholder',
-                                                            )}
+                                                            value={editBmId}
+                                                            onChange={(e) => {
+                                                                setEditBmId(e.target.value);
+                                                                setEditAccountIdInput('');
+                                                            }}
+                                                            placeholder={isEditMeta ? 'ID BM khách nhập vào form...' : 'ID MCC khách nhập vào form...'}
                                                         />
                                                     </div>
                                                 </>
                                             )}
+
+                                            {/* Fanpage multi-input */}
+                                            {isEditMeta && (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label>Thông tin fanpage</Label>
+                                                        {editFanpageList.length < 3 && (
+                                                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                                                                onClick={() => setEditFanpageList([...editFanpageList, ''])}
+                                                            >
+                                                                <Plus className="mr-1 h-3 w-3" />
+                                                                Thêm fanpage
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {editFanpageList.map((val, idx) => (
+                                                            <div key={`edit-fp-${idx}`} className="flex gap-2">
+                                                                <Input
+                                                                    value={val}
+                                                                    onChange={(e) => {
+                                                                        const newList = [...editFanpageList];
+                                                                        newList[idx] = e.target.value;
+                                                                        setEditFanpageList(newList);
+                                                                        if (idx === 0) setEditInfoFanpage(e.target.value);
+                                                                    }}
+                                                                    placeholder="Link hoặc tên fanpage"
+                                                                />
+                                                                {editFanpageList.length > 1 && (
+                                                                    <Button type="button" variant="ghost" size="sm" className="text-red-600"
+                                                                        onClick={() => setEditFanpageList(editFanpageList.filter((_, i) => i !== idx))}
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Website multi-input */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <Label>Thông tin website</Label>
+                                                    {editWebsiteList.length < 3 && (
+                                                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                                                            onClick={() => setEditWebsiteList([...editWebsiteList, ''])}
+                                                        >
+                                                            <Plus className="mr-1 h-3 w-3" />
+                                                            Thêm website
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {editWebsiteList.map((val, idx) => (
+                                                        <div key={`edit-ws-${idx}`} className="flex gap-2">
+                                                            <Input
+                                                                value={val}
+                                                                onChange={(e) => {
+                                                                    const newList = [...editWebsiteList];
+                                                                    newList[idx] = e.target.value;
+                                                                    setEditWebsiteList(newList);
+                                                                    if (idx === 0) setEditInfoWebsite(e.target.value);
+                                                                }}
+                                                                placeholder="Link website"
+                                                            />
+                                                            {editWebsiteList.length > 1 && (
+                                                                <Button type="button" variant="ghost" size="sm" className="text-red-600"
+                                                                    onClick={() => setEditWebsiteList(editWebsiteList.filter((_, i) => i !== idx))}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit_asset_access">
+                                                    {t('service_purchase.asset_access_label')}
+                                                </Label>
+                                                <Select
+                                                    value={editAssetAccess || 'full_asset'}
+                                                    onValueChange={(value: 'full_asset' | 'basic_asset') => setEditAssetAccess(value)}
+                                                >
+                                                    <SelectTrigger id="edit_asset_access">
+                                                        <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
+                                                        <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit_timezone_bm">
+                                                    {isEditMeta
+                                                        ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
+                                                        : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                                                </Label>
+                                                <TimezoneSelect
+                                                    id="edit_timezone_bm"
+                                                    value={editTimezoneBm || ''}
+                                                    onValueChange={(value) => setEditTimezoneBm(value)}
+                                                    options={isEditMeta ? meta_timezones : google_timezones}
+                                                    placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
+                                                />
+                                            </div>
                                         </>
                                     )}
                                 </div>

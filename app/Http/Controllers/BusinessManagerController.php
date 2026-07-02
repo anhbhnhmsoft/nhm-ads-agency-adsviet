@@ -142,42 +142,7 @@ class BusinessManagerController extends Controller
         $this->ensureInternalAccess();
 
         $platform = $request->input('platform') ? (int) $request->input('platform') : null;
-        $results = [];
-
-        // Meta BMs
-        if (!$platform || $platform === \App\Common\Constants\Platform\PlatformType::META->value) {
-            $metaBms = MetaBusinessManager::query()
-                ->whereNull('hidden_at')
-                ->select('bm_id', 'name', 'parent_bm_id', 'currency', 'is_direct_access')
-                ->orderBy('name')
-                ->get()
-                ->map(fn($bm) => [
-                    'id' => (string) $bm->bm_id,
-                    'bm_id' => (string) $bm->bm_id,
-                    'name' => $bm->name ?: (string) $bm->bm_id,
-                    'platform' => \App\Common\Constants\Platform\PlatformType::META->value,
-                    'parent_bm_id' => $bm->parent_bm_id ? (string) $bm->parent_bm_id : null,
-                    'currency' => $bm->currency ?? 'USD',
-                ]);
-            $results = array_merge($results, $metaBms->toArray());
-        }
-
-        // Google MCCs
-        if (!$platform || $platform === \App\Common\Constants\Platform\PlatformType::GOOGLE->value) {
-            $googleMccs = \App\Models\GoogleMccManager::query()
-                ->select('mcc_id', 'name', 'parent_mcc_id', 'currency')
-                ->orderBy('name')
-                ->get()
-                ->map(fn($mcc) => [
-                    'id' => (string) $mcc->mcc_id,
-                    'bm_id' => (string) $mcc->mcc_id,
-                    'name' => $mcc->name ?: (string) $mcc->mcc_id,
-                    'platform' => \App\Common\Constants\Platform\PlatformType::GOOGLE->value,
-                    'parent_mcc_id' => $mcc->parent_mcc_id ? (string) $mcc->parent_mcc_id : null,
-                    'currency' => $mcc->currency ?? 'USD',
-                ]);
-            $results = array_merge($results, $googleMccs->toArray());
-        }
+        $results = $this->businessManagerService->getScopedChildManagersForDropdown($platform);
 
         return response()->json(['data' => $results]);
     }
