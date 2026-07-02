@@ -871,7 +871,7 @@ const ServiceOrdersIndex = ({
                                                     {/* 2. Dropdown chọn tài khoản có sẵn - BẮT BUỘC */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="select_account_from_list" className="text-destructive">
-                                                            Chọn tài khoản * (bắt buộc)
+                                                            Chọn tài khoản *
                                                         </Label>
                                                         <Select
                                                             onValueChange={(value) => {
@@ -912,7 +912,7 @@ const ServiceOrdersIndex = ({
                                                     <div className="space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <Label className="text-destructive">
-                                                                ID tài khoản * (bắt buộc)
+                                                                ID tài khoản *
                                                             </Label>
                                                             {accountIdList.length < 3 && (
                                                                 <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
@@ -1539,7 +1539,7 @@ const ServiceOrdersIndex = ({
                                                     {/* 2. Dropdown chọn tài khoản có sẵn */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="edit_select_account_from_list" className="text-destructive">
-                                                            Chọn tài khoản * (bắt buộc)
+                                                            Chọn tài khoản *
                                                         </Label>
                                                         <Select
                                                             onValueChange={(value) => {
@@ -1577,7 +1577,7 @@ const ServiceOrdersIndex = ({
                                                     <div className="space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <Label className="text-destructive">
-                                                                ID tài khoản * (bắt buộc)
+                                                                ID tài khoản *
                                                             </Label>
                                                             {editAccountIdList.length < 3 && (
                                                                 <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
