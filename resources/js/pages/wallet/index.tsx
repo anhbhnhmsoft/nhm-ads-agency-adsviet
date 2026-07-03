@@ -11,6 +11,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import DashboardGuideCard from './components/DashboardGuideCard';
 import PendingDepositCard from './components/PendingDepositCard';
 import WalletActionsTabs from './components/WalletActionsTabs';
 import WalletInfoCard from './components/WalletInfoCard';
@@ -21,6 +22,7 @@ const WalletIndex = ({
     walletError,
     networks = [],
     pending_deposit = null,
+    dashboard_guide_content = '',
 }: WalletIndexProps) => {
     const { t } = useTranslation();
     const { props } = usePage();
@@ -45,7 +47,7 @@ const WalletIndex = ({
         account_number: '',
         crypto_address: '',
         network: undefined as 'TRC20' | 'BEP20' | undefined,
-        withdraw_type: 'bank' as 'bank' | 'usdt',
+        withdraw_type: 'usdt' as 'bank' | 'usdt',
     });
 
     const passwordForm = useForm({
@@ -68,7 +70,7 @@ const WalletIndex = ({
         e.preventDefault();
 
         // Gửi dữ liệu theo withdraw_type
-        const withdrawType = withdrawForm.data.withdraw_type || 'bank';
+        const withdrawType = withdrawForm.data.withdraw_type || 'usdt';
 
         const submitData: Record<string, any> = {
             amount: withdrawForm.data.amount,
@@ -104,8 +106,7 @@ const WalletIndex = ({
                     withdrawForm.setError(key as any, errors[key] as string);
                 });
                 const firstError = Object.values(errors)[0] as
-                    | string
-                    | undefined;
+                    string | undefined;
                 if (firstError) {
                     toast.error(firstError);
                 } else {
@@ -220,6 +221,13 @@ const WalletIndex = ({
                         <WalletTransactionsCard
                             t={t}
                             transactions={wallet.transactions ?? []}
+                        />
+                    </div>
+
+                    <div className="mt-4">
+                        <DashboardGuideCard
+                            t={t}
+                            content={dashboard_guide_content}
                         />
                     </div>
                 </>

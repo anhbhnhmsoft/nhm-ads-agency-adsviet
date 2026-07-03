@@ -100,10 +100,7 @@ export default function Index({
     const { props } = usePage();
     const authUser = useMemo(() => {
         const authProp = props.auth as
-            | { user?: IUser | null }
-            | IUser
-            | null
-            | undefined;
+            { user?: IUser | null } | IUser | null | undefined;
         if (authProp && typeof authProp === 'object' && 'user' in authProp) {
             return authProp.user ?? null;
         }
@@ -1000,7 +997,7 @@ export default function Index({
                             <div className="mt-4 flex gap-2 sm:mt-0">
                                 <Button asChild size="sm">
                                     <Link href={wallet_index().url}>
-                                        {t('service_user.title')}
+                                        {t('service_user.add_fund')}
                                     </Link>
                                 </Button>
                                 <Button asChild variant="outline" size="sm">

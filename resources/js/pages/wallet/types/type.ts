@@ -55,6 +55,7 @@ export interface WalletIndexProps {
     walletError?: string;
     networks?: Network[];
     pending_deposit?: PendingDeposit | null;
+    dashboard_guide_content?: string | null;
 }
 
 export type WalletTab = 'topup' | 'withdraw' | 'password';

@@ -80,6 +80,14 @@ const PendingDepositCard = ({ t, pending }: Props) => {
                                     {pending.pay_address ??
                                         pending.deposit_address}
                                 </div>
+                                {pending.network && (
+                                    <div className="mt-1 text-sm">
+                                        {t('wallet.network', {
+                                            defaultValue: 'Network',
+                                        })}
+                                        : {pending.network}
+                                    </div>
+                                )}
                             </div>
                         )}
                         {invoiceUrl && (
@@ -111,7 +119,7 @@ const PendingDepositCard = ({ t, pending }: Props) => {
                                 disabled={loading}
                             >
                                 {t('wallet.back_cancel', {
-                                    defaultValue: 'Hủy lệnh',
+                                    defaultValue: 'Cancel order',
                                 })}
                             </Button>
                         </div>

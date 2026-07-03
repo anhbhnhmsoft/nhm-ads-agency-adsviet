@@ -12,25 +12,26 @@ class ConfigService
 {
     public function __construct(
         protected ConfigRepository $configRepository,
-    ) {
-    }
+    ) {}
 
     public function getAll(): ServiceReturn
     {
         try {
             $configs = $this->configRepository->findAll();
-            $result = $configs->keyBy('key')->map(fn($config) => [
+            $result = $configs->keyBy('key')->map(fn ($config) => [
                 'id' => $config->id,
                 'key' => $config->key,
                 'type' => $config->type,
                 'value' => $config->value,
             ])->toArray();
+
             return ServiceReturn::success(data: $result);
         } catch (QueryException $e) {
             Logging::error(
-                message: 'Lỗi khi lấy danh sách cấu hình ConfigService@getAll: ' . $e->getMessage(),
+                message: 'Lỗi khi lấy danh sách cấu hình ConfigService@getAll: '.$e->getMessage(),
                 exception: $e
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -39,14 +40,28 @@ class ConfigService
     {
         try {
             $config = $this->configRepository->findByKey($key->value);
+
             return $config?->value ?? $default;
         } catch (QueryException $e) {
             Logging::error(
-                message: 'Lỗi khi lấy cấu hình ConfigService@getValue: ' . $e->getMessage(),
+                message: 'Lỗi khi lấy cấu hình ConfigService@getValue: '.$e->getMessage(),
                 exception: $e
             );
+
             return $default;
         }
+    }
+
+    public function getArrayValue(ConfigName $key): array
+    {
+        $value = $this->getValue($key, '[]');
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $decoded = json_decode((string) $value, true);
+
+        return is_array($decoded) ? array_values($decoded) : [];
     }
 
     public function update(array $data): ServiceReturn
@@ -56,19 +71,20 @@ class ConfigService
             $validKeys = array_column(ConfigName::cases(), 'value');
             $invalidKeys = array_diff(array_keys($data), $validKeys);
 
-            if (!empty($invalidKeys)) {
+            if (! empty($invalidKeys)) {
                 return ServiceReturn::error(message: __('Cấu hình không hợp lệ: :key', ['key' => implode(', ', $invalidKeys)]));
             }
 
             $this->configRepository->updateMany($data);
+
             return ServiceReturn::success();
         } catch (QueryException $e) {
             Logging::error(
-                message: 'Lỗi khi cập nhật cấu hình ConfigService@update: ' . $e->getMessage(),
+                message: 'Lỗi khi cập nhật cấu hình ConfigService@update: '.$e->getMessage(),
                 exception: $e
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 }
-

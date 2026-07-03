@@ -13,7 +13,7 @@ class WalletMyWithdrawRequest extends FormRequest
 
     public function rules(): array
     {
-        $withdrawType = $this->input('withdraw_type', 'bank');
+        $withdrawType = $this->input('withdraw_type', 'usdt');
         
         $rules = [
             'amount' => ['required', 'numeric', 'gt:0'],

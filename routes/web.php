@@ -137,6 +137,8 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::prefix('/config')->group(function (){
         Route::get('/', [ConfigController::class, 'index'])->name('config_index');
         Route::put('/', [ConfigController::class, 'update'])->name('config_update');
+        Route::get('/dashboard-guide', [ConfigController::class, 'dashboardGuide'])->name('config_dashboard_guide');
+        Route::put('/dashboard-guide', [ConfigController::class, 'updateDashboardGuide'])->name('config_dashboard_guide_update');
     });
 
     Route::prefix('/wallets')->group(function(){

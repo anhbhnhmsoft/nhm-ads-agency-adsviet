@@ -34,6 +34,7 @@ import {
 } from '@/routes';
 import { InertiaLinkProps, usePage } from '@inertiajs/react';
 import {
+    BookOpen,
     BookUser,
     Boxes,
     Building2,
@@ -393,6 +394,16 @@ const useMenu = () => {
                 icon: <Wallet />,
                 is_menu: true,
                 active: isActive(config_index()),
+                can_show: checkRole([_UserRole.ADMIN]),
+            },
+            {
+                title: t('menu.dashboard_guide', {
+                    defaultValue: 'Dashboard guide',
+                }),
+                url: '/config/dashboard-guide',
+                icon: <BookOpen />,
+                is_menu: true,
+                active: isActive('/config/dashboard-guide'),
                 can_show: checkRole([_UserRole.ADMIN]),
             },
             {
