@@ -622,7 +622,7 @@ const ServiceOrdersIndex = ({
                 {is_admin_view && (
                     <>
                         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                            <DialogContent>
+                            <DialogContent className="flex max-h-[90vh] flex-col">
                                 <DialogHeader>
                                     <DialogTitle>
                                         {t('service_orders.admin_form_title')}
@@ -634,7 +634,7 @@ const ServiceOrdersIndex = ({
                                     </DialogDescription>
                                 </DialogHeader>
 
-                                <div className="space-y-4 py-2">
+                                <div className="flex-1 space-y-4 overflow-y-auto py-2 pr-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="payment_type">
                                             {t('service_purchase.payment_type')}
@@ -1022,85 +1022,11 @@ const ServiceOrdersIndex = ({
                                                 </div>
                                             )}
 
-                                            {/* Website multi-input */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>Thông tin website</Label>
-                                                    {websiteList.length < 3 && (
-                                                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
-                                                            onClick={() => setWebsiteList([...websiteList, ''])}
-                                                        >
-                                                            <Plus className="mr-1 h-3 w-3" />
-                                                            Thêm website
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                                <div className="space-y-2">
-                                                    {websiteList.map((val, idx) => (
-                                                        <div key={`ws-${idx}`} className="flex gap-2">
-                                                            <Input
-                                                                value={val}
-                                                                onChange={(e) => {
-                                                                    const newList = [...websiteList];
-                                                                    newList[idx] = e.target.value;
-                                                                    setWebsiteList(newList);
-                                                                    if (idx === 0) setInfoWebsite(e.target.value);
-                                                                }}
-                                                                placeholder="Link website"
-                                                            />
-                                                            {websiteList.length > 1 && (
-                                                                <Button type="button" variant="ghost" size="sm" className="text-red-600"
-                                                                    onClick={() => setWebsiteList(websiteList.filter((_, i) => i !== idx))}
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label htmlFor="approve_asset_access">
-                                                    {t('service_purchase.asset_access_label')}
-                                                </Label>
-                                                <Select
-                                                    value={assetAccess || 'full_asset'}
-                                                    onValueChange={(value: 'full_asset' | 'basic_asset') => setAssetAccess(value)}
-                                                >
-                                                    <SelectTrigger id="approve_asset_access">
-                                                        <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
-                                                        <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="approve_timezone_bm">
-                                                    {isApproveMeta ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' }) : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
-                                                </Label>
-                                                <TimezoneSelect
-                                                    id="approve_timezone_bm"
-                                                    value={timezoneBm || ''}
-                                                    onValueChange={(value) => setTimezoneBm(value)}
-                                                    options={isApproveMeta ? meta_timezones : google_timezones}
-                                                    placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
-                                                />
-                                            </div>
-
                                             {isApproveMeta && (
-                                                <>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
-                                                        <Input id="info_fanpage" value={infoFanpage} onChange={(e) => setInfoFanpage(e.target.value)} placeholder={t('service_orders.form.info_fanpage_placeholder')} />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="info_website">{t('service_orders.form.info_website')}</Label>
-                                                        <Input id="info_website" value={infoWebsite} onChange={(e) => setInfoWebsite(e.target.value)} placeholder={t('service_orders.form.info_website_placeholder')} />
-                                                    </div>
-                                                </>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
+                                                    <Input id="info_fanpage" value={infoFanpage} onChange={(e) => setInfoFanpage(e.target.value)} placeholder={t('service_orders.form.info_fanpage_placeholder')} />
+                                                </div>
                                             )}
                                     </>
                                 </div>
@@ -1130,7 +1056,7 @@ const ServiceOrdersIndex = ({
                             open={editDialogOpen}
                             onOpenChange={setEditDialogOpen}
                         >
-                            <DialogContent>
+                            <DialogContent className="flex max-h-[90vh] flex-col">
                                 <DialogHeader>
                                     <DialogTitle>
                                         {t('service_orders.edit_config_title')}
@@ -1142,7 +1068,7 @@ const ServiceOrdersIndex = ({
                                     </DialogDescription>
                                 </DialogHeader>
 
-                                <div className="space-y-4 py-2">
+                                <div className="flex-1 space-y-4 overflow-y-auto py-2 pr-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="edit_payment_type">
                                             {t('service_purchase.payment_type')}

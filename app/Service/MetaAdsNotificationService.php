@@ -6,6 +6,7 @@ use App\Core\Cache\CacheKey;
 use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
+use App\Core\UserLocale;
 use App\Repositories\MetaAccountRepository;
 use Illuminate\Support\Carbon;
 
@@ -98,22 +99,36 @@ class MetaAdsNotificationService
                 $result = null;
                 $method = null;
 
-                if ($hasTelegram) {
-                    $message = __('meta.telegram.low_balance', [
-                        'accountName' => $account->account_name ?? $account->account_id,
-                        'balance' => $balanceFormatted,
-                        'currency' => $currency,
-                        'threshold' => $thresholdFormatted,
-                    ]);
-                    $result = $this->telegramService->sendNotification($user->telegram_id, $message);
-                    $method = 'telegram';
-
-                    if (!$result->isSuccess() && $hasVerifiedEmail) {
-                        Logging::web('MetaAdsNotificationService: Telegram failed, fallback email', [
-                            'account_id' => $account->id,
-                            'user_id' => $user->id,
-                            'telegram_error' => $result->getMessage(),
+                [$result, $method] = UserLocale::run($user, function () use ($user, $account, $hasTelegram, $hasVerifiedEmail, $balanceValue, $balanceFormatted, $thresholdFormatted, $thresholdUsd, $currency) {
+                    $result = null;
+                    $method = null;
+                    if ($hasTelegram) {
+                        $message = __('meta.telegram.low_balance', [
+                            'accountName' => $account->account_name ?? $account->account_id,
+                            'balance' => $balanceFormatted,
+                            'currency' => $currency,
+                            'threshold' => $thresholdFormatted,
                         ]);
+                        $result = $this->telegramService->sendNotification($user->telegram_id, $message);
+                        $method = 'telegram';
+
+                        if (!$result->isSuccess() && $hasVerifiedEmail) {
+                            Logging::web('MetaAdsNotificationService: Telegram failed, fallback email', [
+                                'account_id' => $account->id,
+                                'user_id' => $user->id,
+                                'telegram_error' => $result->getMessage(),
+                            ]);
+                            $result = $this->mailService->sendMetaAdsLowBalanceAlert(
+                                email: $user->email,
+                                username: $user->name ?? $user->username,
+                                accountName: $account->account_name ?? $account->account_id,
+                                balance: $balanceValue ?? 0,
+                                currency: $currency,
+                                threshold: $thresholdUsd,
+                            );
+                            $method = 'email (fallback)';
+                        }
+                    } elseif ($hasVerifiedEmail) {
                         $result = $this->mailService->sendMetaAdsLowBalanceAlert(
                             email: $user->email,
                             username: $user->name ?? $user->username,
@@ -122,19 +137,10 @@ class MetaAdsNotificationService
                             currency: $currency,
                             threshold: $thresholdUsd,
                         );
-                        $method = 'email (fallback)';
+                        $method = 'email';
                     }
-                } elseif ($hasVerifiedEmail) {
-                    $result = $this->mailService->sendMetaAdsLowBalanceAlert(
-                        email: $user->email,
-                        username: $user->name ?? $user->username,
-                        accountName: $account->account_name ?? $account->account_id,
-                        balance: $balanceValue ?? 0,
-                        currency: $currency,
-                        threshold: $thresholdUsd,
-                    );
-                    $method = 'email';
-                }
+                    return [$result, $method];
+                });
 
                 if ($result && $result->isSuccess()) {
                     Caching::setCache(CacheKey::CACHE_META_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, $cacheKey, $expireMinutes);
@@ -213,20 +219,31 @@ class MetaAdsNotificationService
             $thresholdFormatted = number_format($threshold, 2);
             $currency = $account->currency ?? 'USD';
 
-            $result = null;
-            $method = null;
+            [$result, $method] = UserLocale::run($user, function () use ($user, $account, $hasTelegram, $hasVerifiedEmail, $balance, $balanceFormatted, $threshold, $thresholdFormatted, $currency) {
+                $result = null;
+                $method = null;
+                if ($hasTelegram) {
+                    $message = __('meta.telegram.low_balance', [
+                        'accountName' => $account->account_name ?? $account->account_id,
+                        'balance' => $balanceFormatted,
+                        'currency' => $currency,
+                        'threshold' => $thresholdFormatted,
+                    ]);
+                    $result = $this->telegramService->sendNotification($user->telegram_id, $message);
+                    $method = 'telegram';
 
-            if ($hasTelegram) {
-                $message = __('meta.telegram.low_balance', [
-                    'accountName' => $account->account_name ?? $account->account_id,
-                    'balance' => $balanceFormatted,
-                    'currency' => $currency,
-                    'threshold' => $thresholdFormatted,
-                ]);
-                $result = $this->telegramService->sendNotification($user->telegram_id, $message);
-                $method = 'telegram';
-
-                if (!$result->isSuccess() && $hasVerifiedEmail) {
+                    if (!$result->isSuccess() && $hasVerifiedEmail) {
+                        $result = $this->mailService->sendMetaAdsLowBalanceAlert(
+                            email: $user->email,
+                            username: $user->name ?? $user->username,
+                            accountName: $account->account_name ?? $account->account_id,
+                            balance: $balance,
+                            currency: $currency,
+                            threshold: $threshold,
+                        );
+                        $method = 'email (fallback)';
+                    }
+                } elseif ($hasVerifiedEmail) {
                     $result = $this->mailService->sendMetaAdsLowBalanceAlert(
                         email: $user->email,
                         username: $user->name ?? $user->username,
@@ -235,19 +252,10 @@ class MetaAdsNotificationService
                         currency: $currency,
                         threshold: $threshold,
                     );
-                    $method = 'email (fallback)';
+                    $method = 'email';
                 }
-            } elseif ($hasVerifiedEmail) {
-                $result = $this->mailService->sendMetaAdsLowBalanceAlert(
-                    email: $user->email,
-                    username: $user->name ?? $user->username,
-                    accountName: $account->account_name ?? $account->account_id,
-                    balance: $balance,
-                    currency: $currency,
-                    threshold: $threshold,
-                );
-                $method = 'email';
-            }
+                return [$result, $method];
+            });
 
             if ($result && $result->isSuccess()) {
                 Caching::setCache(CacheKey::CACHE_META_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, $cacheKeyStr, $this->minutesUntilEndOfDay());
@@ -309,47 +317,49 @@ class MetaAdsNotificationService
             $limitFormatted = number_format($thresholdAmount, 2); // Giới hạn tổng (balance + threshold)
             $currency = $account->currency ?? 'USD';
 
-            $result = null;
-            $method = null;
+            [$result, $method] = UserLocale::run($user, function () use ($user, $account, $hasTelegram, $hasVerifiedEmail, $spending, $spendingFormatted, $balance, $balanceFormatted, $threshold, $thresholdFormatted, $thresholdAmount, $limitFormatted, $currency) {
+                $result = null;
+                $method = null;
+                if ($hasTelegram) {
+                    $message = __('meta.telegram.spending_exceeded', [
+                        'accountName' => $account->account_name ?? $account->account_id,
+                        'spending' => $spendingFormatted,
+                        'balance' => $balanceFormatted,
+                        'threshold' => $thresholdFormatted,
+                        'limit' => $limitFormatted,
+                        'currency' => $currency,
+                    ]);
+                    $result = $this->telegramService->sendNotification($user->telegram_id, $message);
+                    $method = 'telegram';
 
-            if ($hasTelegram) {
-                $message = __('meta.telegram.spending_exceeded', [
-                    'accountName' => $account->account_name ?? $account->account_id,
-                    'spending' => $spendingFormatted,
-                    'balance' => $balanceFormatted,
-                    'threshold' => $thresholdFormatted, // Ngưỡng an toàn (100)
-                    'limit' => $limitFormatted, // Giới hạn tổng (150)
-                    'currency' => $currency,
-                ]);
-                $result = $this->telegramService->sendNotification($user->telegram_id, $message);
-                $method = 'telegram';
-
-                if (!$result->isSuccess() && $hasVerifiedEmail) {
+                    if (!$result->isSuccess() && $hasVerifiedEmail) {
+                        $result = $this->mailService->sendMetaAdsSpendingExceededAlert(
+                            email: $user->email,
+                            username: $user->name ?? $user->username,
+                            accountName: $account->account_name ?? $account->account_id,
+                            spending: $spending,
+                            balance: $balance,
+                            threshold: $threshold,
+                            limit: $thresholdAmount,
+                            currency: $currency,
+                        );
+                        $method = 'email (fallback)';
+                    }
+                } elseif ($hasVerifiedEmail) {
                     $result = $this->mailService->sendMetaAdsSpendingExceededAlert(
                         email: $user->email,
                         username: $user->name ?? $user->username,
                         accountName: $account->account_name ?? $account->account_id,
                         spending: $spending,
                         balance: $balance,
-                        threshold: $threshold, // Ngưỡng an toàn (100)
-                        limit: $thresholdAmount, // Giới hạn tổng (150)
+                        threshold: $threshold,
+                        limit: $thresholdAmount,
                         currency: $currency,
                     );
-                    $method = 'email (fallback)';
+                    $method = 'email';
                 }
-            } elseif ($hasVerifiedEmail) {
-                $result = $this->mailService->sendMetaAdsSpendingExceededAlert(
-                    email: $user->email,
-                    username: $user->name ?? $user->username,
-                    accountName: $account->account_name ?? $account->account_id,
-                    spending: $spending,
-                    balance: $balance,
-                    threshold: $threshold, // Ngưỡng an toàn (100)
-                    limit: $thresholdAmount, // Giới hạn tổng (150)
-                    currency: $currency,
-                );
-                $method = 'email';
-            }
+                return [$result, $method];
+            });
 
             if ($result && $result->isSuccess()) {
                 Caching::setCache(CacheKey::CACHE_META_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, $cacheKeyStr, $this->minutesUntilEndOfDay());

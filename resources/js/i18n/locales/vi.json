@@ -133,7 +133,12 @@
         "financial_management": "Quản lý tài chính",
         "support": "Hỗ trợ",
         "support_customer": "Hỗ trợ khách hàng",
-        "transfer_money": "Chuyển tiền"
+        "transfer_money": "Chuyển tiền",
+        "profit": "Lợi nhuận",
+        "profit_by_customer": "Lợi nhuận theo khách hàng",
+        "profit_by_platform": "Lợi nhuận theo nền tảng",
+        "profit_over_time": "Lợi nhuận theo thời gian",
+        "profit_by_bm_mcc": "Lợi nhuận theo BM/MCC"
     },
     "profile": {
         "title": "Thông tin cá nhân",
@@ -608,7 +613,7 @@
         "display_name": "Tên hiển thị",
         "error": "Không thể lấy thông tin ví",
         "title": "Quản lý ví",
-        "add_fund": "Add Fund",
+        "add_fund": "Nạp tiền",
         "current_password": "Mật khẩu hiện tại",
         "enter_current_password": "Nhập mật khẩu hiện tại (nếu có)",
         "enter_new_password": "Nhập mật khẩu mới",
@@ -1082,6 +1087,7 @@
         "title": "Hướng dẫn sử dụng Dashboard",
         "admin_title": "Hướng dẫn Dashboard",
         "admin_description": "Tạo nội dung hướng dẫn khách hàng, hiển thị dưới lịch sử giao dịch ví.",
+        "customer_description": "Xem hướng dẫn sử dụng hệ thống và các thao tác quan trọng.",
         "content_title": "Nội dung hướng dẫn",
         "content_description": "Soạn nội dung rich text, chèn URL hình ảnh hoặc nhúng video YouTube.",
         "add_text": "Chữ",
@@ -1089,6 +1095,7 @@
         "add_youtube": "YouTube",
         "empty_editor": "Chưa có nội dung hướng dẫn. Thêm một block ở trên.",
         "empty_preview": "Preview sẽ hiển thị sau khi thêm nội dung hướng dẫn.",
+        "empty_customer": "Chưa có nội dung hướng dẫn.",
         "preview": "Xem trước",
         "block_text": "Chữ",
         "block_image": "Hình ảnh",

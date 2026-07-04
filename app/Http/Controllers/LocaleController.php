@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Core\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class LocaleController extends Controller
 {
@@ -18,6 +19,12 @@ class LocaleController extends Controller
         }
 
         session(['locale' => $locale]);
+
+        $user = Auth::user();
+        if ($user && $user->language !== $locale) {
+            $user->language = $locale;
+            $user->save();
+        }
 
         return back();
     }

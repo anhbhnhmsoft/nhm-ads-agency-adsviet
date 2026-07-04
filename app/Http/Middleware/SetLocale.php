@@ -15,6 +15,14 @@ class SetLocale
         // 1. Kiểm tra tham số URL ?lang=vi hoặc ?locale=vi
         $locale = $request->query('lang') ?: $request->query('locale');
 
+        // 1.5. Nếu user đã đăng nhập và có ngôn ngữ đã lưu, ưu tiên dùng
+        if (!$locale) {
+            $user = $request->user();
+            if ($user && !empty($user->language)) {
+                $locale = $user->language;
+            }
+        }
+
         // 2. Nếu không có, thử lấy từ Session (chỉ dành cho Web)
         if (!$locale && file_exists(storage_path('framework/sessions'))) {
             try {

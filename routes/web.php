@@ -1,32 +1,32 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ConfigController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ServicePackageController;
-use App\Http\Controllers\ServiceAccountInventoryController;
-use App\Http\Controllers\ServiceOrderController;
-use App\Http\Controllers\ServiceManagementController;
-use App\Http\Controllers\CoinRemitterWebhookController;
-use App\Http\Controllers\PaymentoWebhookController;
-// use App\Http\Controllers\NowPaymentsWebhookController;
-use App\Http\Controllers\LocaleController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\PlatformSettingController;
-use App\Http\Controllers\ServicePurchaseController;
-use App\Http\Controllers\WalletController;
-use App\Http\Controllers\WalletTransactionController;
 use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\SpendReportController;
-use App\Http\Controllers\TicketController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BusinessManagerController;
-use App\Http\Controllers\ContactController;
-use App\Http\Controllers\ProfitController;
-use App\Http\Controllers\SupplierController;
-use App\Http\Controllers\CommissionReportController;
+use App\Http\Controllers\CoinRemitterWebhookController;
 use App\Http\Controllers\CommissionController;
+use App\Http\Controllers\CommissionReportController;
+use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\ContactController;
+// use App\Http\Controllers\NowPaymentsWebhookController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\PaymentoWebhookController;
+use App\Http\Controllers\PlatformSettingController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProfitController;
+use App\Http\Controllers\ServiceAccountInventoryController;
+use App\Http\Controllers\ServiceManagementController;
+use App\Http\Controllers\ServiceOrderController;
+use App\Http\Controllers\ServicePackageController;
+use App\Http\Controllers\ServicePurchaseController;
+use App\Http\Controllers\SpendReportController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\TicketController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\WalletController;
+use App\Http\Controllers\WalletTransactionController;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -86,7 +86,6 @@ Route::middleware(['guest:web'])->group(function () {
     });
 });
 
-
 Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::redirect('/', '/dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -99,6 +98,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
     Route::put('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile_change_password');
 
     Route::get('/contact', [ContactController::class, 'index'])->name('contact_index');
+    Route::get('/guides/dashboard', [ConfigController::class, 'customerDashboardGuide'])->name('dashboard_guide_index');
 
     Route::prefix('user')->group(function () {
         Route::get('/list-employee', [UserController::class, 'listEmployee'])->name('user_list_employee');
@@ -114,7 +114,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/employee/unassign', [UserController::class, 'unassignEmployee'])->name('user_unassign_employee');
     });
 
-    Route::prefix('/customer')->group(function (){
+    Route::prefix('/customer')->group(function () {
         Route::get('/list', [UserController::class, 'listCustomer'])->name('user_list');
         Route::get('/{id}/edit', [UserController::class, 'editUserScreen'])->name('user_edit');
         Route::put('/{id}', [UserController::class, 'updateUser'])->name('user_update');
@@ -123,7 +123,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/{id}/warning-threshold', [UserController::class, 'updateWarningThreshold'])->name('user_warning_threshold');
     });
 
-    Route::prefix('/platform-settings')->group(function (){
+    Route::prefix('/platform-settings')->group(function () {
         Route::get('/', [PlatformSettingController::class, 'index'])->name('platform_settings_index');
         Route::get('/platform/{platform}', [PlatformSettingController::class, 'getByPlatform'])->name('platform_settings_get_by_platform');
         Route::post('/', [PlatformSettingController::class, 'store'])->name('platform_settings_store');
@@ -134,14 +134,14 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/switch', [PlatformSettingController::class, 'switchContext'])->name('platform_settings_switch');
     });
 
-    Route::prefix('/config')->group(function (){
+    Route::prefix('/config')->group(function () {
         Route::get('/', [ConfigController::class, 'index'])->name('config_index');
         Route::put('/', [ConfigController::class, 'update'])->name('config_update');
         Route::get('/dashboard-guide', [ConfigController::class, 'dashboardGuide'])->name('config_dashboard_guide');
         Route::put('/dashboard-guide', [ConfigController::class, 'updateDashboardGuide'])->name('config_dashboard_guide_update');
     });
 
-    Route::prefix('/wallets')->group(function(){
+    Route::prefix('/wallets')->group(function () {
         Route::get('/', [WalletController::class, 'index'])->name('wallet_index');
         Route::get('/me', [WalletController::class, 'me'])->name('wallet_me_json');
         Route::get('/customer-balance/{userId}', [WalletController::class, 'getCustomerBalance'])->name('wallet_customer_balance');
@@ -168,7 +168,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/{id}/cancel', [WalletTransactionController::class, 'cancel'])->name('transactions_cancel');
     });
 
-    Route::prefix('/service-packages')->group(function (){
+    Route::prefix('/service-packages')->group(function () {
         Route::get('/', [ServicePackageController::class, 'index'])->name('service_packages_index');
         Route::get('/create', [ServicePackageController::class, 'createView'])->name('service_packages_create_view');
         Route::post('/create', [ServicePackageController::class, 'create'])->name('service_packages_create');
@@ -181,7 +181,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/{id}/toggle-disable', [ServicePackageController::class, 'toggleDisable'])->name('service_packages_toggle_disable');
     });
 
-    Route::prefix('/suppliers')->group(function (){
+    Route::prefix('/suppliers')->group(function () {
         Route::get('/', [SupplierController::class, 'index'])->name('suppliers_index');
         Route::get('/create', [SupplierController::class, 'createView'])->name('suppliers_create_view');
         Route::post('/create', [SupplierController::class, 'create'])->name('suppliers_create');
@@ -191,7 +191,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/{id}/toggle-disable', [SupplierController::class, 'toggleDisable'])->name('suppliers_toggle_disable');
     });
 
-    Route::prefix('/commissions')->group(function (){
+    Route::prefix('/commissions')->group(function () {
         Route::get('/', [CommissionController::class, 'index'])->name('commissions_index');
         Route::get('/create', [CommissionController::class, 'createView'])->name('commissions_create_view');
         Route::post('/create', [CommissionController::class, 'create'])->name('commissions_create');
@@ -205,7 +205,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/mark-paid', [CommissionReportController::class, 'markAsPaid'])->name('commissions_report_mark_paid');
     });
 
-    Route::prefix('/service-purchase')->group(function (){
+    Route::prefix('/service-purchase')->group(function () {
         Route::get('/', [ServicePurchaseController::class, 'index'])->name('service_purchase_index');
         Route::post('/purchase', [ServicePurchaseController::class, 'purchase'])->name('service_purchase_purchase');
     });

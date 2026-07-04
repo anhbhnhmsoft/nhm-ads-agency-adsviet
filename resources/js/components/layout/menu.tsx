@@ -293,6 +293,24 @@ const useMenu = () => {
                 can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
             },
             {
+                title: t('menu.dashboard_guide', {
+                    defaultValue: 'Dashboard guide',
+                }),
+                url: checkRole([_UserRole.ADMIN])
+                    ? '/config/dashboard-guide'
+                    : '/guides/dashboard',
+                icon: <BookOpen />,
+                is_menu: true,
+                active:
+                    isActive('/config/dashboard-guide') ||
+                    isActive('/guides/dashboard'),
+                can_show: checkRole([
+                    _UserRole.ADMIN,
+                    _UserRole.CUSTOMER,
+                    _UserRole.AGENCY,
+                ]),
+            },
+            {
                 title: t('menu.user'),
                 is_menu: false,
                 can_show: checkRole([
@@ -394,16 +412,6 @@ const useMenu = () => {
                 icon: <Wallet />,
                 is_menu: true,
                 active: isActive(config_index()),
-                can_show: checkRole([_UserRole.ADMIN]),
-            },
-            {
-                title: t('menu.dashboard_guide', {
-                    defaultValue: 'Dashboard guide',
-                }),
-                url: '/config/dashboard-guide',
-                icon: <BookOpen />,
-                is_menu: true,
-                active: isActive('/config/dashboard-guide'),
                 can_show: checkRole([_UserRole.ADMIN]),
             },
             {

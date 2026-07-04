@@ -21,7 +21,7 @@ class MailService
     public function sendVerifyRegister(string $email, string $username, string $otp, int $expireMin): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new VerifyEmailRegister(
+            Mail::to($email)->locale(app()->getLocale())->queue(new VerifyEmailRegister(
                 otp: $otp,
                 username: $username,
                 expireTime: $expireMin
@@ -41,7 +41,7 @@ class MailService
     public function sendVerifyForgotPassword(string $email, string $username, string $otp, int $expireTime): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new VerifyEmailForgotPassword(
+            Mail::to($email)->locale(app()->getLocale())->queue(new VerifyEmailForgotPassword(
                 otp: $otp,
                 username: $username,
                 expireTime: $expireTime
@@ -61,7 +61,7 @@ class MailService
     public function sendWalletLowBalanceAlert(string $email, string $username, float $balance, float $threshold): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new WalletLowBalanceAlert(
+            Mail::to($email)->locale(app()->getLocale())->queue(new WalletLowBalanceAlert(
                 username: $username,
                 balance: number_format($balance, 2),
                 threshold: number_format($threshold, 2),
@@ -81,7 +81,7 @@ class MailService
     public function sendWalletTransactionAlert(string $email, string $username, string $typeLabel, float $amount, ?string $description = null): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new WalletTransactionAlert(
+            Mail::to($email)->locale(app()->getLocale())->queue(new WalletTransactionAlert(
                 username: $username,
                 typeLabel: $typeLabel,
                 amount: number_format($amount, 2),
@@ -102,7 +102,7 @@ class MailService
     public function sendAdminWalletTransactionAlert(string $email, string $adminName, string $customerName, string $typeLabel, float $amount, ?string $stage = null, ?string $description = null): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new AdminWalletTransactionAlert(
+            Mail::to($email)->locale(app()->getLocale())->queue(new AdminWalletTransactionAlert(
                 adminName: $adminName,
                 customerName: $customerName,
                 transactionType: $typeLabel,
@@ -125,7 +125,7 @@ class MailService
     public function sendServiceUserStatusAlert(string $email, string $username, string $packageName, string $statusKey): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new ServiceUserStatusAlert(
+            Mail::to($email)->locale(app()->getLocale())->queue(new ServiceUserStatusAlert(
                 username: $username,
                 packageName: $packageName,
                 statusKey: $statusKey,
@@ -145,7 +145,7 @@ class MailService
     public function sendGoogleAdsLowBalanceAlert(string $email, string $username, string $accountName, float $balance, string $currency, float $threshold): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new GoogleAdsLowBalanceAlert(
+            Mail::to($email)->locale(app()->getLocale())->queue(new GoogleAdsLowBalanceAlert(
                 username: $username,
                 accountName: $accountName,
                 balance: number_format($balance, 2),
@@ -167,7 +167,7 @@ class MailService
     public function sendMetaAdsLowBalanceAlert(string $email, string $username, string $accountName, float $balance, string $currency, float $threshold): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new MetaAdsLowBalanceAlert(
+            Mail::to($email)->locale(app()->getLocale())->queue(new MetaAdsLowBalanceAlert(
                 username: $username,
                 accountName: $accountName,
                 balance: number_format($balance, 2),
@@ -189,7 +189,7 @@ class MailService
     public function sendGoogleAdsSpendingExceededAlert(string $email, string $username, string $accountName, float $spending, float $balance, float $threshold, float $limit, string $currency): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new GoogleAdsSpendingExceededAlert(
+            Mail::to($email)->locale(app()->getLocale())->queue(new GoogleAdsSpendingExceededAlert(
                 username: $username,
                 accountName: $accountName,
                 spending: number_format($spending, 2),
@@ -213,7 +213,7 @@ class MailService
     public function sendMetaAdsSpendingExceededAlert(string $email, string $username, string $accountName, float $spending, float $balance, float $threshold, float $limit, string $currency): ServiceReturn
     {
         try {
-            Mail::to($email)->queue(new MetaAdsSpendingExceededAlert(
+            Mail::to($email)->locale(app()->getLocale())->queue(new MetaAdsSpendingExceededAlert(
                 username: $username,
                 accountName: $accountName,
                 spending: number_format($spending, 2),

@@ -133,6 +133,26 @@ class ConfigController extends Controller
         return redirect()->back();
     }
 
+    public function customerDashboardGuide()
+    {
+        $access = $this->authService->checkAccess([
+            UserRole::CUSTOMER->value,
+            UserRole::AGENCY->value,
+        ]);
+        if ($access->isError()) {
+            FlashMessage::error($access->getMessage());
+
+            return redirect()->back();
+        }
+
+        return $this->rendering(
+            view: 'dashboard-guide/index',
+            data: [
+                'content' => $this->configService->getValue(ConfigName::DASHBOARD_GUIDE_CONTENT, ''),
+            ],
+        );
+    }
+
     private function defaultValue(ConfigName $configName, array $configs = []): string
     {
         return match ($configName) {
