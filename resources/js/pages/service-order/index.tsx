@@ -89,6 +89,8 @@ const ServiceOrdersIndex = ({
     // Multi-input lists for edit dialog
     const [editBmIdList, setEditBmIdList] = useState<string[]>(['']);
     const [editAccountIdList, setEditAccountIdList] = useState<string[]>(['']);
+    const [editFanpageList, setEditFanpageList] = useState<string[]>(['']);
+    const [editWebsiteList, setEditWebsiteList] = useState<string[]>(['']);
 
     // Derived accountIdInput = first non-empty item in accountIdList
     const currentAccountId = accountIdList.find((v) => v.trim()) || '';
@@ -145,6 +147,10 @@ const ServiceOrdersIndex = ({
         setDisplayName: setEditDisplayName,
         bmId: editBmId,
         setBmId: setEditBmId,
+        infoFanpage: editInfoFanpage,
+        setInfoFanpage: setEditInfoFanpage,
+        infoWebsite: editInfoWebsite,
+        setInfoWebsite: setEditInfoWebsite,
         paymentType: editPaymentType,
         setPaymentType: setEditPaymentType,
         assetAccess: editAssetAccess,
@@ -206,6 +212,8 @@ const ServiceOrdersIndex = ({
         if (editDialogOpen) {
             setEditBmIdList([editBmId || '']);
             setEditAccountIdList([editAccountIdInput || '']);
+            setEditFanpageList([editInfoFanpage || '']);
+            setEditWebsiteList([editInfoWebsite || '']);
         }
     }, [editDialogOpen]);
 
@@ -1174,6 +1182,7 @@ const ServiceOrdersIndex = ({
                                                                                 {
                                                                                     acc.currency
                                                                                 }
+
                                                                                 )
                                                                                 {acc.service_user_id
                                                                                     ? ' [Đã gán]'
@@ -1761,6 +1770,7 @@ const ServiceOrdersIndex = ({
                                                                                     {bm
                                                                                         .bm_ids?.[0] ||
                                                                                         bm.id}
+
                                                                                     )
                                                                                 </span>
                                                                             </SelectItem>
@@ -2029,6 +2039,7 @@ const ServiceOrdersIndex = ({
                                                                                 {bm
                                                                                     .bm_ids?.[0] ||
                                                                                     bm.id}
+
                                                                                 )
                                                                             </span>
                                                                         </SelectItem>
@@ -2125,6 +2136,7 @@ const ServiceOrdersIndex = ({
                                                                                     {
                                                                                         acc.currency
                                                                                     }
+
                                                                                     )
                                                                                     {acc.service_user_id
                                                                                         ? ' [Đã gán]'
@@ -2284,6 +2296,204 @@ const ServiceOrdersIndex = ({
                                                     </div>
                                                 </>
                                             )}
+
+                                            {isEditMeta && (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label>
+                                                            {t(
+                                                                'service_orders.form.info_fanpage',
+                                                            )}
+                                                        </Label>
+                                                        {editFanpageList.length <
+                                                            3 && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 text-xs"
+                                                                onClick={() =>
+                                                                    setEditFanpageList(
+                                                                        [
+                                                                            ...editFanpageList,
+                                                                            '',
+                                                                        ],
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Plus className="mr-1 h-3 w-3" />
+                                                                {t(
+                                                                    'service_orders.form.add_fanpage',
+                                                                )}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {editFanpageList.map(
+                                                            (val, idx) => (
+                                                                <div
+                                                                    key={`edit-fp-${idx}`}
+                                                                    className="flex gap-2"
+                                                                >
+                                                                    <Input
+                                                                        value={
+                                                                            val
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) => {
+                                                                            const newList =
+                                                                                [
+                                                                                    ...editFanpageList,
+                                                                                ];
+                                                                            newList[
+                                                                                idx
+                                                                            ] =
+                                                                                e.target.value;
+                                                                            setEditFanpageList(
+                                                                                newList,
+                                                                            );
+                                                                            if (
+                                                                                idx ===
+                                                                                0
+                                                                            ) {
+                                                                                setEditInfoFanpage(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                );
+                                                                            }
+                                                                        }}
+                                                                        placeholder={t(
+                                                                            'service_orders.form.info_fanpage_placeholder',
+                                                                        )}
+                                                                    />
+                                                                    {editFanpageList.length >
+                                                                        1 && (
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="text-red-600"
+                                                                            onClick={() =>
+                                                                                setEditFanpageList(
+                                                                                    editFanpageList.filter(
+                                                                                        (
+                                                                                            _,
+                                                                                            i,
+                                                                                        ) =>
+                                                                                            i !==
+                                                                                            idx,
+                                                                                    ),
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <Label>
+                                                        {t(
+                                                            'service_orders.form.info_website',
+                                                        )}
+                                                    </Label>
+                                                    {editWebsiteList.length <
+                                                        3 && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-7 text-xs"
+                                                            onClick={() =>
+                                                                setEditWebsiteList(
+                                                                    [
+                                                                        ...editWebsiteList,
+                                                                        '',
+                                                                    ],
+                                                                )
+                                                            }
+                                                        >
+                                                            <Plus className="mr-1 h-3 w-3" />
+                                                            {t(
+                                                                'service_orders.form.add_website',
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {editWebsiteList.map(
+                                                        (val, idx) => (
+                                                            <div
+                                                                key={`edit-ws-${idx}`}
+                                                                className="flex gap-2"
+                                                            >
+                                                                <Input
+                                                                    value={val}
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) => {
+                                                                        const newList =
+                                                                            [
+                                                                                ...editWebsiteList,
+                                                                            ];
+                                                                        newList[
+                                                                            idx
+                                                                        ] =
+                                                                            e.target.value;
+                                                                        setEditWebsiteList(
+                                                                            newList,
+                                                                        );
+                                                                        if (
+                                                                            idx ===
+                                                                            0
+                                                                        ) {
+                                                                            setEditInfoWebsite(
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                    placeholder={t(
+                                                                        'service_orders.form.info_website_placeholder',
+                                                                    )}
+                                                                />
+                                                                {editWebsiteList.length >
+                                                                    1 && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="text-red-600"
+                                                                        onClick={() =>
+                                                                            setEditWebsiteList(
+                                                                                editWebsiteList.filter(
+                                                                                    (
+                                                                                        _,
+                                                                                        i,
+                                                                                    ) =>
+                                                                                        i !==
+                                                                                        idx,
+                                                                                ),
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            </div>
 
                                             <div className="space-y-2">
                                                 <Label htmlFor="edit_asset_access">
