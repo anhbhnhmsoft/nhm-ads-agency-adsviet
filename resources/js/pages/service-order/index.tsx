@@ -26,7 +26,10 @@ import { _PlatformType, _UserRole } from '@/lib/types/constants';
 import type { ChildBusinessManager } from '@/pages/business-manager/types/type';
 import { AccountFormEdit } from '@/pages/service-order/components/AccountFormEdit';
 import { AccountInfoCell } from '@/pages/service-order/components/AccountInfoCell';
-import { useServiceOrderAdminDialog, type BmAccount } from '@/pages/service-order/hooks/use-admin-approve-dialog';
+import {
+    useServiceOrderAdminDialog,
+    type BmAccount,
+} from '@/pages/service-order/hooks/use-admin-approve-dialog';
 import { useServiceOrderEditConfigDialog } from '@/pages/service-order/hooks/use-edit-config-dialog';
 import type {
     ServiceOrder,
@@ -82,17 +85,13 @@ const ServiceOrdersIndex = ({
     // Multi-input lists for approve dialog
     const [bmIdList, setBmIdList] = useState<string[]>(['']);
     const [accountIdList, setAccountIdList] = useState<string[]>(['']);
-    const [fanpageList, setFanpageList] = useState<string[]>(['']);
-    const [websiteList, setWebsiteList] = useState<string[]>(['']);
 
     // Multi-input lists for edit dialog
     const [editBmIdList, setEditBmIdList] = useState<string[]>(['']);
     const [editAccountIdList, setEditAccountIdList] = useState<string[]>(['']);
-    const [editFanpageList, setEditFanpageList] = useState<string[]>(['']);
-    const [editWebsiteList, setEditWebsiteList] = useState<string[]>(['']);
 
     // Derived accountIdInput = first non-empty item in accountIdList
-    const currentAccountId = accountIdList.find(v => v.trim()) || '';
+    const currentAccountId = accountIdList.find((v) => v.trim()) || '';
 
     const {
         dialogOpen,
@@ -107,10 +106,6 @@ const ServiceOrdersIndex = ({
         setDisplayName,
         bmId,
         setBmId,
-        infoFanpage,
-        setInfoFanpage,
-        infoWebsite,
-        setInfoWebsite,
         paymentType,
         setPaymentType,
         assetAccess,
@@ -150,10 +145,6 @@ const ServiceOrdersIndex = ({
         setDisplayName: setEditDisplayName,
         bmId: editBmId,
         setBmId: setEditBmId,
-        infoFanpage: editInfoFanpage,
-        setInfoFanpage: setEditInfoFanpage,
-        infoWebsite: editInfoWebsite,
-        setInfoWebsite: setEditInfoWebsite,
         paymentType: editPaymentType,
         setPaymentType: setEditPaymentType,
         assetAccess: editAssetAccess,
@@ -182,13 +173,17 @@ const ServiceOrdersIndex = ({
         selectedOrder?.package?.platform === _PlatformType.META;
 
     // Helper: thêm vào list, bỏ trống đầu tiên, check trùng
-    const addToListUnique = (list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
+    const addToListUnique = (
+        list: string[],
+        setList: React.Dispatch<React.SetStateAction<string[]>>,
+        value: string,
+    ) => {
         const trimmed = value.trim();
         if (!trimmed) return;
-        setList(prev => {
-            const exists = prev.some(v => v.trim() === trimmed);
+        setList((prev) => {
+            const exists = prev.some((v) => v.trim() === trimmed);
             if (exists) return prev;
-            const firstEmpty = prev.findIndex(v => !v.trim());
+            const firstEmpty = prev.findIndex((v) => !v.trim());
             if (firstEmpty >= 0) {
                 const newList = [...prev];
                 newList[firstEmpty] = trimmed;
@@ -203,8 +198,6 @@ const ServiceOrdersIndex = ({
         if (dialogOpen) {
             setBmIdList([bmId || '']);
             setAccountIdList([accountIdInput || '']);
-            setFanpageList([infoFanpage || '']);
-            setWebsiteList([infoWebsite || '']);
         }
     }, [dialogOpen]);
 
@@ -213,8 +206,6 @@ const ServiceOrdersIndex = ({
         if (editDialogOpen) {
             setEditBmIdList([editBmId || '']);
             setEditAccountIdList([editAccountIdInput || '']);
-            setEditFanpageList([editInfoFanpage || '']);
-            setEditWebsiteList([editInfoWebsite || '']);
         }
     }, [editDialogOpen]);
 
@@ -270,7 +261,9 @@ const ServiceOrdersIndex = ({
             },
             {
                 id: 'service_package',
-                header: t('service_orders.table.package', { defaultValue: 'Gói dịch vụ' }),
+                header: t('service_orders.table.package', {
+                    defaultValue: 'Gói dịch vụ',
+                }),
                 cell: ({ row }) => {
                     const packageName = row.original.package?.name;
                     const platformLabel = row.original.package?.platform_label;
@@ -278,7 +271,9 @@ const ServiceOrdersIndex = ({
                         <span className="text-xs">
                             {packageName || '-'}
                             {platformLabel && (
-                                <span className="ml-1 text-muted-foreground">({platformLabel})</span>
+                                <span className="ml-1 text-muted-foreground">
+                                    ({platformLabel})
+                                </span>
                             )}
                         </span>
                     );
@@ -315,7 +310,9 @@ const ServiceOrdersIndex = ({
                         <AccountInfoCell
                             config={row.original.config_account || null}
                             platform={row.original.package?.platform}
-                            packageBillingSource={row.original.package?.billing_source}
+                            packageBillingSource={
+                                row.original.package?.billing_source
+                            }
                         />
                     );
                 },
@@ -338,9 +335,7 @@ const ServiceOrdersIndex = ({
                         (config.payment_type as string) || ''
                     ).toLowerCase();
                     const topupRaw = config.top_up_amount as
-                        | number
-                        | string
-                        | undefined;
+                        number | string | undefined;
                     const isTopupMissing =
                         topupRaw === undefined ||
                         topupRaw === null ||
@@ -682,352 +677,696 @@ const ServiceOrdersIndex = ({
                                     </div>
 
                                     <>
-                                            {/* Tabs: Gán BM / Gán tài khoản */}
-                                            <div className="space-y-2">
-                                                <div className="flex gap-1 rounded-lg border p-1">
-                                                    <button
-                                                        type="button"
-                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                            assignMode === 'bm'
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : 'text-muted-foreground hover:bg-muted'
-                                                        }`}
-                                                        onClick={() => setAssignMode('bm')}
-                                                    >
-                                                        {isApproveMeta ? t('service_orders.form.assign_bm') : t('service_orders.form.assign_mcc')}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                            assignMode === 'account'
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : 'text-muted-foreground hover:bg-muted'
-                                                        }`}
-                                                        onClick={() => {
-                                                            setAssignMode('account');
-                                                            if (bmId) handleSelectBmFromList(bmId);
-                                                        }}
-                                                    >
-                                                        {t('service_orders.form.assign_account')}
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {assignMode === 'bm' ? (
-                                                <>
-                                                    {/* ==== TAB GÁN BM ==== */}
-
-                                                    {/* Dropdown chọn BM có sẵn */}
-                                                    <div className="space-y-2">
-                                                        <Label>
-                                                            {isApproveMeta ? t('service_orders.form.select_bm_available') : t('service_orders.form.select_mcc_available')}
-                                                        </Label>
-                                                        <Select
-                                                            key={`bm-tab-bm-${bmIdList.join(',')}`}
-                                                            onValueChange={(value) => {
-                                                                if (value && value !== '__empty__') {
-                                                                    handleSelectBmFromList(value);
-                                                                    addToListUnique(bmIdList, setBmIdList, value);
-                                                                }
-                                                            }}
-                                                            disabled={loadingBmList}
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue
-                                                                    placeholder={
-                                                                        loadingBmList
-                                                                            ? t('service_orders.form.loading_child_bms')
-                                                                            : (isApproveMeta ? t('service_orders.form.select_bm_from_list') : t('service_orders.form.select_mcc_from_list'))
-                                                                    }
-                                                                />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {bmList
-                                                                    .filter((bm) => !bmIdList.some((id) => id.trim() === (bm.bm_ids?.[0] || bm.id)))
-                                                                    .map((bm) => (
-                                                                        <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
-                                                                            <span className="truncate block">{bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})</span>
-                                                                        </SelectItem>
-                                                                    ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-
-                                                    {/* Input ID BM nhập tay + nút thêm */}
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>
-                                                                {isApproveMeta ? t('service_orders.form.bm_id_label') : t('service_orders.form.mcc_id_label')}
-                                                            </Label>
-                                                            {bmIdList.length < 3 && (
-                                                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
-                                                                    onClick={() => setBmIdList([...bmIdList, ''])}
-                                                                >
-                                                                    <Plus className="mr-1 h-3 w-3" />
-                                                                    {isApproveMeta ? t('service_orders.form.add_bm') : t('service_orders.form.add_mcc')}
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            {bmIdList.map((val, idx) => (
-                                                                <div key={`bm-${idx}`} className="flex gap-2">
-                                                                    <Input
-                                                                        value={val}
-                                                                        onChange={(e) => {
-                                                                            const newList = [...bmIdList];
-                                                                            newList[idx] = e.target.value;
-                                                                            setBmIdList(newList);
-                                                                            if (idx === 0) setBmId(e.target.value);
-                                                                        }}
-                                                                        placeholder={isApproveMeta ? t('service_orders.form.enter_bm_id') : t('service_orders.form.enter_mcc_id')}
-                                                                    />
-                                                                    {bmIdList.length > 1 && (
-                                                                        <Button type="button" variant="ghost" size="sm"
-                                                                            className="text-red-600"
-                                                                            onClick={() => setBmIdList(bmIdList.filter((_, i) => i !== idx))}
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        {formErrors.bm_id && (
-                                                            <p className="text-xs text-red-500">{formErrors.bm_id}</p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Dropdown chọn BM con */}
-                                                    {isApproveMeta && childBusinessManagers.length > 0 && (
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="child_bm_id">
-                                                                {t('service_orders.form.child_bm_label')}
-                                                            </Label>
-                                                            <Select
-                                                                value={selectedChildBmId}
-                                                                onValueChange={(value) => setSelectedChildBmId(value)}
-                                                                disabled={loadingChildBMs}
-                                                            >
-                                                                <SelectTrigger id="child_bm_id">
-                                                                    <SelectValue
-                                                                        placeholder={loadingChildBMs
-                                                                            ? t('service_orders.form.loading_child_bms')
-                                                                            : t('service_orders.form.select_child_bm')}
-                                                                    />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="none">
-                                                                        {t('service_orders.form.use_parent_bm')}
-                                                                    </SelectItem>
-                                                                    {childBusinessManagers.map((childBM: ChildBusinessManager) => (
-                                                                        <SelectItem key={childBM.bm_id} value={childBM.bm_id}>
-                                                                            {childBM.name || childBM.bm_id}
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
+                                        {/* Tabs: Gán BM / Gán tài khoản */}
+                                        <div className="space-y-2">
+                                            <div className="flex gap-1 rounded-lg border p-1">
+                                                <button
+                                                    type="button"
+                                                    className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                        assignMode === 'bm'
+                                                            ? 'bg-primary text-primary-foreground'
+                                                            : 'text-muted-foreground hover:bg-muted'
+                                                    }`}
+                                                    onClick={() =>
+                                                        setAssignMode('bm')
+                                                    }
+                                                >
+                                                    {isApproveMeta
+                                                        ? t(
+                                                              'service_orders.form.assign_bm',
+                                                          )
+                                                        : t(
+                                                              'service_orders.form.assign_mcc',
+                                                          )}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                        assignMode === 'account'
+                                                            ? 'bg-primary text-primary-foreground'
+                                                            : 'text-muted-foreground hover:bg-muted'
+                                                    }`}
+                                                    onClick={() => {
+                                                        setAssignMode(
+                                                            'account',
+                                                        );
+                                                        if (bmId)
+                                                            handleSelectBmFromList(
+                                                                bmId,
+                                                            );
+                                                    }}
+                                                >
+                                                    {t(
+                                                        'service_orders.form.assign_account',
                                                     )}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {/* ==== TAB GÁN TÀI KHOẢN ==== */}
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                                    {/* 1. Dropdown chọn BM có sẵn */}
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="select_bm_from_list_account">
-                                                            {isApproveMeta ? t('service_orders.form.select_bm_available') : t('service_orders.form.select_mcc_available')}
-                                                        </Label>
-                                                        <Select
-                                                            key={`account-tab-bm-${bmId}`}
-                                                            value={bmId || undefined}
-                                                            onValueChange={(value) => {
-                                                                if (value && value !== '__empty__') {
-                                                                    handleSelectBmFromList(value);
-                                                                    addToListUnique(bmIdList, setBmIdList, value);
+                                        {assignMode === 'bm' ? (
+                                            <>
+                                                {/* ==== TAB GÁN BM ==== */}
+
+                                                {/* Dropdown chọn BM có sẵn */}
+                                                <div className="space-y-2">
+                                                    <Label>
+                                                        {isApproveMeta
+                                                            ? t(
+                                                                  'service_orders.form.select_bm_available',
+                                                              )
+                                                            : t(
+                                                                  'service_orders.form.select_mcc_available',
+                                                              )}
+                                                    </Label>
+                                                    <Select
+                                                        key={`bm-tab-bm-${bmIdList.join(',')}`}
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
+                                                            if (
+                                                                value &&
+                                                                value !==
+                                                                    '__empty__'
+                                                            ) {
+                                                                handleSelectBmFromList(
+                                                                    value,
+                                                                );
+                                                                addToListUnique(
+                                                                    bmIdList,
+                                                                    setBmIdList,
+                                                                    value,
+                                                                );
+                                                            }
+                                                        }}
+                                                        disabled={loadingBmList}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue
+                                                                placeholder={
+                                                                    loadingBmList
+                                                                        ? t(
+                                                                              'service_orders.form.loading_child_bms',
+                                                                          )
+                                                                        : isApproveMeta
+                                                                          ? t(
+                                                                                'service_orders.form.select_bm_from_list',
+                                                                            )
+                                                                          : t(
+                                                                                'service_orders.form.select_mcc_from_list',
+                                                                            )
                                                                 }
-                                                            }}
-                                                            disabled={loadingBmList}
-                                                        >
-                                                            <SelectTrigger id="select_bm_from_list_account">
-                                                                <SelectValue
-                                                                    placeholder={
-                                                                        loadingBmList
-                                                                            ? t('service_orders.form.loading_child_bms')
-                                                                            : (isApproveMeta ? t('service_orders.form.select_bm_from_list') : t('service_orders.form.select_mcc_from_list'))
-                                                                    }
-                                                                />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {bmList.map((bm) => (
-                                                                    <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
-                                                                        <span className="truncate block">{bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})</span>
+                                                            />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {bmList
+                                                                .filter(
+                                                                    (bm) =>
+                                                                        !bmIdList.some(
+                                                                            (
+                                                                                id,
+                                                                            ) =>
+                                                                                id.trim() ===
+                                                                                (bm
+                                                                                    .bm_ids?.[0] ||
+                                                                                    bm.id),
+                                                                        ),
+                                                                )
+                                                                .map((bm) => (
+                                                                    <SelectItem
+                                                                        key={
+                                                                            bm.id
+                                                                        }
+                                                                        value={
+                                                                            bm
+                                                                                .bm_ids?.[0] ||
+                                                                            bm.id
+                                                                        }
+                                                                    >
+                                                                        <span className="block truncate">
+                                                                            {bm.bm_name ||
+                                                                                bm.name}{' '}
+                                                                            (
+                                                                            {bm
+                                                                                .bm_ids?.[0] ||
+                                                                                bm.id}
+                                                                            )
+                                                                        </span>
                                                                     </SelectItem>
                                                                 ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
 
-                                                    {/* 2. Dropdown chọn tài khoản có sẵn - BẮT BUỘC */}
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="select_account_from_list" className="text-destructive">
-                                                            {t('service_orders.form.select_account_label')} *
-                                                        </Label>
-                                                        <Select
-                                                            onValueChange={(value) => {
-                                                                if (value && value !== '__empty__') {
-                                                                    addToListUnique(accountIdList, setAccountIdList, value);
-                                                                    setAccountIdInput(value);
-                                                                }
-                                                            }}
-                                                            disabled={loadingBmAccounts || !bmId}
-                                                        >
-                                                            <SelectTrigger id="select_account_from_list">
-                                                                <SelectValue
-                                                                    placeholder={
-                                                                        !bmId
-                                                                            ? t('service_orders.form.select_bm_first')
-                                                                            : loadingBmAccounts
-                                                                                ? t('service_orders.form.loading_child_bms')
-                                                                                : t('service_orders.form.select_account_in_bm_mcc')
-                                                                    }
-                                                                />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {bmAccounts
-                                                                    .filter((acc) => !accountIdList.some((id) => id.trim() === acc.account_id))
-                                                                    .map((acc: BmAccount) => (
-                                                                        <SelectItem key={acc.account_id} value={acc.account_id}>
-                                                                            <span className="truncate block">{acc.account_name || acc.account_id} — {acc.account_id} ({acc.currency}){acc.service_user_id ? ' [Đã gán]' : ''}</span>
-                                                                        </SelectItem>
-                                                                    ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                        {formErrors.account_id && (
-                                                            <p className="text-xs text-red-500">{formErrors.account_id}</p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* 3. Input ID tài khoản nhập tay + nút thêm */}
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label className="text-destructive">
-                                                                {t('service_orders.form.account_id_label')} *
-                                                            </Label>
-                                                            {accountIdList.length < 3 && (
-                                                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
-                                                                    onClick={() => setAccountIdList([...accountIdList, ''])}
-                                                                >
-                                                                    <Plus className="mr-1 h-3 w-3" />
-                                                                    {t('service_orders.form.add_account')}
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            {accountIdList.map((val, idx) => (
-                                                                <div key={`acc-${idx}`} className="flex gap-2">
-                                                                    <Input
-                                                                        value={val}
-                                                                        onChange={(e) => {
-                                                                            const newList = [...accountIdList];
-                                                                            newList[idx] = e.target.value;
-                                                                            setAccountIdList(newList);
-                                                                            setAccountIdInput(e.target.value);
-                                                                        }}
-                                                                        placeholder={isApproveMeta ? 'act_1234567890' : '123-456-7890'}
-                                                                        className={!val.trim() ? 'border-destructive' : ''}
-                                                                    />
-                                                                    {accountIdList.length > 1 && (
-                                                                        <Button type="button" variant="ghost" size="sm"
-                                                                            className="text-red-600"
-                                                                            onClick={() => setAccountIdList(accountIdList.filter((_, i) => i !== idx))}
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {isApproveMeta ? t('service_orders.form.account_id_hint_meta') : t('service_orders.form.account_id_hint_google')}
-                                                        </p>
-                                                    </div>
-
-                                                    {/* 4. Input ID BM/MCC khách nhập */}
-                                                    <div className="space-y-2">
-                                                        <Label>
-                                                            {isApproveMeta ? t('service_orders.form.bm_id_customer_input') : t('service_orders.form.mcc_id_customer_input')}
-                                                        </Label>
-                                                        <Input
-                                                            value={bmId}
-                                                            onChange={(e) => {
-                                                                setBmId(e.target.value);
-                                                                setAccountIdInput('');
-                                                            }}
-                                                            placeholder={isApproveMeta ? t('service_orders.form.bm_id_customer_placeholder') : t('service_orders.form.mcc_id_customer_placeholder')}
-                                                        />
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {isApproveMeta ? t('service_orders.form.bm_id_customer_hint') : t('service_orders.form.mcc_id_customer_hint')}
-                                                        </p>
-                                                    </div>
-
-                                                    {bmId && !loadingBmAccounts && bmAccounts.length === 0 && (
-                                                        <p className="text-xs text-orange-500">
-                                                            {isApproveMeta ? t('service_orders.form.account_not_found_in_bm') : t('service_orders.form.account_not_found_in_mcc')}
-                                                        </p>
-                                                    )}
-                                                    <p className="text-xs text-muted-foreground italic">
-                                                        {t('service_orders.form.assign_note')}
-                                                    </p>
-                                                </>
-                                            )}
-
-                                            {/* Fanpage multi-input */}
-                                            {isApproveMeta && (
+                                                {/* Input ID BM nhập tay + nút thêm */}
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between">
-                                                        <Label>{t('service_orders.form.info_fanpage')}</Label>
-                                                        {fanpageList.length < 3 && (
-                                                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
-                                                                onClick={() => setFanpageList([...fanpageList, ''])}
+                                                        <Label>
+                                                            {isApproveMeta
+                                                                ? t(
+                                                                      'service_orders.form.bm_id_label',
+                                                                  )
+                                                                : t(
+                                                                      'service_orders.form.mcc_id_label',
+                                                                  )}
+                                                        </Label>
+                                                        {bmIdList.length <
+                                                            3 && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 text-xs"
+                                                                onClick={() =>
+                                                                    setBmIdList(
+                                                                        [
+                                                                            ...bmIdList,
+                                                                            '',
+                                                                        ],
+                                                                    )
+                                                                }
                                                             >
                                                                 <Plus className="mr-1 h-3 w-3" />
-                                                                {t('service_orders.form.add_fanpage')}
+                                                                {isApproveMeta
+                                                                    ? t(
+                                                                          'service_orders.form.add_bm',
+                                                                      )
+                                                                    : t(
+                                                                          'service_orders.form.add_mcc',
+                                                                      )}
                                                             </Button>
                                                         )}
                                                     </div>
                                                     <div className="space-y-2">
-                                                        {fanpageList.map((val, idx) => (
-                                                            <div key={`fp-${idx}`} className="flex gap-2">
-                                                                <Input
-                                                                    value={val}
-                                                                    onChange={(e) => {
-                                                                        const newList = [...fanpageList];
-                                                                        newList[idx] = e.target.value;
-                                                                        setFanpageList(newList);
-                                                                        if (idx === 0) setInfoFanpage(e.target.value);
-                                                                    }}
-                                                                    placeholder={t('service_orders.form.info_fanpage_placeholder')}
-                                                                />
-                                                                {fanpageList.length > 1 && (
-                                                                    <Button type="button" variant="ghost" size="sm" className="text-red-600"
-                                                                        onClick={() => setFanpageList(fanpageList.filter((_, i) => i !== idx))}
-                                                                    >
-                                                                        <X className="h-4 w-4" />
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        ))}
+                                                        {bmIdList.map(
+                                                            (val, idx) => (
+                                                                <div
+                                                                    key={`bm-${idx}`}
+                                                                    className="flex gap-2"
+                                                                >
+                                                                    <Input
+                                                                        value={
+                                                                            val
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) => {
+                                                                            const newList =
+                                                                                [
+                                                                                    ...bmIdList,
+                                                                                ];
+                                                                            newList[
+                                                                                idx
+                                                                            ] =
+                                                                                e.target.value;
+                                                                            setBmIdList(
+                                                                                newList,
+                                                                            );
+                                                                            if (
+                                                                                idx ===
+                                                                                0
+                                                                            )
+                                                                                setBmId(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                );
+                                                                        }}
+                                                                        placeholder={
+                                                                            isApproveMeta
+                                                                                ? t(
+                                                                                      'service_orders.form.enter_bm_id',
+                                                                                  )
+                                                                                : t(
+                                                                                      'service_orders.form.enter_mcc_id',
+                                                                                  )
+                                                                        }
+                                                                    />
+                                                                    {bmIdList.length >
+                                                                        1 && (
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="text-red-600"
+                                                                            onClick={() =>
+                                                                                setBmIdList(
+                                                                                    bmIdList.filter(
+                                                                                        (
+                                                                                            _,
+                                                                                            i,
+                                                                                        ) =>
+                                                                                            i !==
+                                                                                            idx,
+                                                                                    ),
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            ),
+                                                        )}
                                                     </div>
+                                                    {formErrors.bm_id && (
+                                                        <p className="text-xs text-red-500">
+                                                            {formErrors.bm_id}
+                                                        </p>
+                                                    )}
                                                 </div>
-                                            )}
 
-                                            {isApproveMeta && (
+                                                {/* Dropdown chọn BM con */}
+                                                {isApproveMeta &&
+                                                    childBusinessManagers.length >
+                                                        0 && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="child_bm_id">
+                                                                {t(
+                                                                    'service_orders.form.child_bm_label',
+                                                                )}
+                                                            </Label>
+                                                            <Select
+                                                                value={
+                                                                    selectedChildBmId
+                                                                }
+                                                                onValueChange={(
+                                                                    value,
+                                                                ) =>
+                                                                    setSelectedChildBmId(
+                                                                        value,
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    loadingChildBMs
+                                                                }
+                                                            >
+                                                                <SelectTrigger id="child_bm_id">
+                                                                    <SelectValue
+                                                                        placeholder={
+                                                                            loadingChildBMs
+                                                                                ? t(
+                                                                                      'service_orders.form.loading_child_bms',
+                                                                                  )
+                                                                                : t(
+                                                                                      'service_orders.form.select_child_bm',
+                                                                                  )
+                                                                        }
+                                                                    />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="none">
+                                                                        {t(
+                                                                            'service_orders.form.use_parent_bm',
+                                                                        )}
+                                                                    </SelectItem>
+                                                                    {childBusinessManagers.map(
+                                                                        (
+                                                                            childBM: ChildBusinessManager,
+                                                                        ) => (
+                                                                            <SelectItem
+                                                                                key={
+                                                                                    childBM.bm_id
+                                                                                }
+                                                                                value={
+                                                                                    childBM.bm_id
+                                                                                }
+                                                                            >
+                                                                                {childBM.name ||
+                                                                                    childBM.bm_id}
+                                                                            </SelectItem>
+                                                                        ),
+                                                                    )}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    )}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {/* ==== TAB GÁN TÀI KHOẢN ==== */}
+
+                                                {/* 1. Dropdown chọn BM có sẵn */}
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="info_fanpage">{t('service_orders.form.info_fanpage')}</Label>
-                                                    <Input id="info_fanpage" value={infoFanpage} onChange={(e) => setInfoFanpage(e.target.value)} placeholder={t('service_orders.form.info_fanpage_placeholder')} />
+                                                    <Label htmlFor="select_bm_from_list_account">
+                                                        {isApproveMeta
+                                                            ? t(
+                                                                  'service_orders.form.select_bm_available',
+                                                              )
+                                                            : t(
+                                                                  'service_orders.form.select_mcc_available',
+                                                              )}
+                                                    </Label>
+                                                    <Select
+                                                        key={`account-tab-bm-${bmId}`}
+                                                        value={
+                                                            bmId || undefined
+                                                        }
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
+                                                            if (
+                                                                value &&
+                                                                value !==
+                                                                    '__empty__'
+                                                            ) {
+                                                                handleSelectBmFromList(
+                                                                    value,
+                                                                );
+                                                                addToListUnique(
+                                                                    bmIdList,
+                                                                    setBmIdList,
+                                                                    value,
+                                                                );
+                                                            }
+                                                        }}
+                                                        disabled={loadingBmList}
+                                                    >
+                                                        <SelectTrigger id="select_bm_from_list_account">
+                                                            <SelectValue
+                                                                placeholder={
+                                                                    loadingBmList
+                                                                        ? t(
+                                                                              'service_orders.form.loading_child_bms',
+                                                                          )
+                                                                        : isApproveMeta
+                                                                          ? t(
+                                                                                'service_orders.form.select_bm_from_list',
+                                                                            )
+                                                                          : t(
+                                                                                'service_orders.form.select_mcc_from_list',
+                                                                            )
+                                                                }
+                                                            />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {bmList.map(
+                                                                (bm) => (
+                                                                    <SelectItem
+                                                                        key={
+                                                                            bm.id
+                                                                        }
+                                                                        value={
+                                                                            bm
+                                                                                .bm_ids?.[0] ||
+                                                                            bm.id
+                                                                        }
+                                                                    >
+                                                                        <span className="block truncate">
+                                                                            {bm.bm_name ||
+                                                                                bm.name}{' '}
+                                                                            (
+                                                                            {bm
+                                                                                .bm_ids?.[0] ||
+                                                                                bm.id}
+                                                                            )
+                                                                        </span>
+                                                                    </SelectItem>
+                                                                ),
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
-                                            )}
+
+                                                {/* 2. Dropdown chọn tài khoản có sẵn - BẮT BUỘC */}
+                                                <div className="space-y-2">
+                                                    <Label
+                                                        htmlFor="select_account_from_list"
+                                                        className="text-destructive"
+                                                    >
+                                                        {t(
+                                                            'service_orders.form.select_account_label',
+                                                        )}{' '}
+                                                        *
+                                                    </Label>
+                                                    <Select
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
+                                                            if (
+                                                                value &&
+                                                                value !==
+                                                                    '__empty__'
+                                                            ) {
+                                                                addToListUnique(
+                                                                    accountIdList,
+                                                                    setAccountIdList,
+                                                                    value,
+                                                                );
+                                                                setAccountIdInput(
+                                                                    value,
+                                                                );
+                                                            }
+                                                        }}
+                                                        disabled={
+                                                            loadingBmAccounts ||
+                                                            !bmId
+                                                        }
+                                                    >
+                                                        <SelectTrigger id="select_account_from_list">
+                                                            <SelectValue
+                                                                placeholder={
+                                                                    !bmId
+                                                                        ? t(
+                                                                              'service_orders.form.select_bm_first',
+                                                                          )
+                                                                        : loadingBmAccounts
+                                                                          ? t(
+                                                                                'service_orders.form.loading_child_bms',
+                                                                            )
+                                                                          : t(
+                                                                                'service_orders.form.select_account_in_bm_mcc',
+                                                                            )
+                                                                }
+                                                            />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {bmAccounts
+                                                                .filter(
+                                                                    (acc) =>
+                                                                        !accountIdList.some(
+                                                                            (
+                                                                                id,
+                                                                            ) =>
+                                                                                id.trim() ===
+                                                                                acc.account_id,
+                                                                        ),
+                                                                )
+                                                                .map(
+                                                                    (
+                                                                        acc: BmAccount,
+                                                                    ) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                acc.account_id
+                                                                            }
+                                                                            value={
+                                                                                acc.account_id
+                                                                            }
+                                                                        >
+                                                                            <span className="block truncate">
+                                                                                {acc.account_name ||
+                                                                                    acc.account_id}{' '}
+                                                                                —{' '}
+                                                                                {
+                                                                                    acc.account_id
+                                                                                }{' '}
+                                                                                (
+                                                                                {
+                                                                                    acc.currency
+                                                                                }
+                                                                                )
+                                                                                {acc.service_user_id
+                                                                                    ? ' [Đã gán]'
+                                                                                    : ''}
+                                                                            </span>
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {formErrors.account_id && (
+                                                        <p className="text-xs text-red-500">
+                                                            {
+                                                                formErrors.account_id
+                                                            }
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* 3. Input ID tài khoản nhập tay + nút thêm */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label className="text-destructive">
+                                                            {t(
+                                                                'service_orders.form.account_id_label',
+                                                            )}{' '}
+                                                            *
+                                                        </Label>
+                                                        {accountIdList.length <
+                                                            3 && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 text-xs"
+                                                                onClick={() =>
+                                                                    setAccountIdList(
+                                                                        [
+                                                                            ...accountIdList,
+                                                                            '',
+                                                                        ],
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Plus className="mr-1 h-3 w-3" />
+                                                                {t(
+                                                                    'service_orders.form.add_account',
+                                                                )}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {accountIdList.map(
+                                                            (val, idx) => (
+                                                                <div
+                                                                    key={`acc-${idx}`}
+                                                                    className="flex gap-2"
+                                                                >
+                                                                    <Input
+                                                                        value={
+                                                                            val
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) => {
+                                                                            const newList =
+                                                                                [
+                                                                                    ...accountIdList,
+                                                                                ];
+                                                                            newList[
+                                                                                idx
+                                                                            ] =
+                                                                                e.target.value;
+                                                                            setAccountIdList(
+                                                                                newList,
+                                                                            );
+                                                                            setAccountIdInput(
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            );
+                                                                        }}
+                                                                        placeholder={
+                                                                            isApproveMeta
+                                                                                ? 'act_1234567890'
+                                                                                : '123-456-7890'
+                                                                        }
+                                                                        className={
+                                                                            !val.trim()
+                                                                                ? 'border-destructive'
+                                                                                : ''
+                                                                        }
+                                                                    />
+                                                                    {accountIdList.length >
+                                                                        1 && (
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="text-red-600"
+                                                                            onClick={() =>
+                                                                                setAccountIdList(
+                                                                                    accountIdList.filter(
+                                                                                        (
+                                                                                            _,
+                                                                                            i,
+                                                                                        ) =>
+                                                                                            i !==
+                                                                                            idx,
+                                                                                    ),
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {isApproveMeta
+                                                            ? t(
+                                                                  'service_orders.form.account_id_hint_meta',
+                                                              )
+                                                            : t(
+                                                                  'service_orders.form.account_id_hint_google',
+                                                              )}
+                                                    </p>
+                                                </div>
+
+                                                {/* 4. Input ID BM/MCC khách nhập */}
+                                                <div className="space-y-2">
+                                                    <Label>
+                                                        {isApproveMeta
+                                                            ? t(
+                                                                  'service_orders.form.bm_id_customer_input',
+                                                              )
+                                                            : t(
+                                                                  'service_orders.form.mcc_id_customer_input',
+                                                              )}
+                                                    </Label>
+                                                    <Input
+                                                        value={bmId}
+                                                        onChange={(e) => {
+                                                            setBmId(
+                                                                e.target.value,
+                                                            );
+                                                            setAccountIdInput(
+                                                                '',
+                                                            );
+                                                        }}
+                                                        placeholder={
+                                                            isApproveMeta
+                                                                ? t(
+                                                                      'service_orders.form.bm_id_customer_placeholder',
+                                                                  )
+                                                                : t(
+                                                                      'service_orders.form.mcc_id_customer_placeholder',
+                                                                  )
+                                                        }
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {isApproveMeta
+                                                            ? t(
+                                                                  'service_orders.form.bm_id_customer_hint',
+                                                              )
+                                                            : t(
+                                                                  'service_orders.form.mcc_id_customer_hint',
+                                                              )}
+                                                    </p>
+                                                </div>
+
+                                                {bmId &&
+                                                    !loadingBmAccounts &&
+                                                    bmAccounts.length === 0 && (
+                                                        <p className="text-xs text-orange-500">
+                                                            {isApproveMeta
+                                                                ? t(
+                                                                      'service_orders.form.account_not_found_in_bm',
+                                                                  )
+                                                                : t(
+                                                                      'service_orders.form.account_not_found_in_mcc',
+                                                                  )}
+                                                        </p>
+                                                    )}
+                                                <p className="text-xs text-muted-foreground italic">
+                                                    {t(
+                                                        'service_orders.form.assign_note',
+                                                    )}
+                                                </p>
+                                            </>
+                                        )}
                                     </>
                                 </div>
 
@@ -1040,7 +1379,9 @@ const ServiceOrdersIndex = ({
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            handleSubmitApprove(currentAccountId);
+                                            handleSubmitApprove(
+                                                currentAccountId,
+                                            );
                                         }}
                                         disabled={approveProcessing}
                                     >
@@ -1285,27 +1626,46 @@ const ServiceOrdersIndex = ({
                                                     <button
                                                         type="button"
                                                         className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                            editAssignMode === 'bm'
+                                                            editAssignMode ===
+                                                            'bm'
                                                                 ? 'bg-primary text-primary-foreground'
                                                                 : 'text-muted-foreground hover:bg-muted'
                                                         }`}
-                                                        onClick={() => setEditAssignMode('bm')}
+                                                        onClick={() =>
+                                                            setEditAssignMode(
+                                                                'bm',
+                                                            )
+                                                        }
                                                     >
-                                                        {isEditMeta ? t('service_orders.form.assign_bm') : t('service_orders.form.assign_mcc')}
+                                                        {isEditMeta
+                                                            ? t(
+                                                                  'service_orders.form.assign_bm',
+                                                              )
+                                                            : t(
+                                                                  'service_orders.form.assign_mcc',
+                                                              )}
                                                     </button>
                                                     <button
                                                         type="button"
                                                         className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                            editAssignMode === 'account'
+                                                            editAssignMode ===
+                                                            'account'
                                                                 ? 'bg-primary text-primary-foreground'
                                                                 : 'text-muted-foreground hover:bg-muted'
                                                         }`}
                                                         onClick={() => {
-                                                            setEditAssignMode('account');
-                                                            if (editBmId) handleEditSelectBmFromList(editBmId);
+                                                            setEditAssignMode(
+                                                                'account',
+                                                            );
+                                                            if (editBmId)
+                                                                handleEditSelectBmFromList(
+                                                                    editBmId,
+                                                                );
                                                         }}
                                                     >
-                                                        {t('service_orders.form.assign_account')}
+                                                        {t(
+                                                            'service_orders.form.assign_account',
+                                                        )}
                                                     </button>
                                                 </div>
                                             </div>
@@ -1317,35 +1677,95 @@ const ServiceOrdersIndex = ({
                                                     {/* Dropdown chọn BM có sẵn */}
                                                     <div className="space-y-2">
                                                         <Label>
-                                                            {isEditMeta ? t('service_orders.form.select_bm_available') : t('service_orders.form.select_mcc_available')}
+                                                            {isEditMeta
+                                                                ? t(
+                                                                      'service_orders.form.select_bm_available',
+                                                                  )
+                                                                : t(
+                                                                      'service_orders.form.select_mcc_available',
+                                                                  )}
                                                         </Label>
                                                         <Select
                                                             key={`edit-bm-tab-bm-${editBmIdList.join(',')}`}
-                                                            onValueChange={(value) => {
-                                                                if (value && value !== '__empty__') {
-                                                                    handleEditSelectBmFromList(value);
-                                                                    addToListUnique(editBmIdList, setEditBmIdList, value);
+                                                            onValueChange={(
+                                                                value,
+                                                            ) => {
+                                                                if (
+                                                                    value &&
+                                                                    value !==
+                                                                        '__empty__'
+                                                                ) {
+                                                                    handleEditSelectBmFromList(
+                                                                        value,
+                                                                    );
+                                                                    addToListUnique(
+                                                                        editBmIdList,
+                                                                        setEditBmIdList,
+                                                                        value,
+                                                                    );
                                                                 }
                                                             }}
-                                                            disabled={editLoadingBmList}
+                                                            disabled={
+                                                                editLoadingBmList
+                                                            }
                                                         >
                                                             <SelectTrigger>
-                                                                 <SelectValue
-                                                                     placeholder={
-                                                                         editLoadingBmList
-                                                                             ? t('service_orders.form.loading_child_bms')
-                                                                             : (isEditMeta ? t('service_orders.form.select_bm_from_list') : t('service_orders.form.select_mcc_from_list'))
-                                                                     }
-                                                                 />
+                                                                <SelectValue
+                                                                    placeholder={
+                                                                        editLoadingBmList
+                                                                            ? t(
+                                                                                  'service_orders.form.loading_child_bms',
+                                                                              )
+                                                                            : isEditMeta
+                                                                              ? t(
+                                                                                    'service_orders.form.select_bm_from_list',
+                                                                                )
+                                                                              : t(
+                                                                                    'service_orders.form.select_mcc_from_list',
+                                                                                )
+                                                                    }
+                                                                />
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 {editBmList
-                                                                    .filter((bm) => !editBmIdList.some((id) => id.trim() === (bm.bm_ids?.[0] || bm.id)))
-                                                                    .map((bm) => (
-                                                                        <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
-                                                                            <span className="truncate block">{bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})</span>
-                                                                        </SelectItem>
-                                                                    ))}
+                                                                    .filter(
+                                                                        (bm) =>
+                                                                            !editBmIdList.some(
+                                                                                (
+                                                                                    id,
+                                                                                ) =>
+                                                                                    id.trim() ===
+                                                                                    (bm
+                                                                                        .bm_ids?.[0] ||
+                                                                                        bm.id),
+                                                                            ),
+                                                                    )
+                                                                    .map(
+                                                                        (
+                                                                            bm,
+                                                                        ) => (
+                                                                            <SelectItem
+                                                                                key={
+                                                                                    bm.id
+                                                                                }
+                                                                                value={
+                                                                                    bm
+                                                                                        .bm_ids?.[0] ||
+                                                                                    bm.id
+                                                                                }
+                                                                            >
+                                                                                <span className="block truncate">
+                                                                                    {bm.bm_name ||
+                                                                                        bm.name}{' '}
+                                                                                    (
+                                                                                    {bm
+                                                                                        .bm_ids?.[0] ||
+                                                                                        bm.id}
+                                                                                    )
+                                                                                </span>
+                                                                            </SelectItem>
+                                                                        ),
+                                                                    )}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
@@ -1354,74 +1774,180 @@ const ServiceOrdersIndex = ({
                                                     <div className="space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <Label>
-                                                                {isEditMeta ? t('service_orders.form.bm_id_label') : t('service_orders.form.mcc_id_label')}
+                                                                {isEditMeta
+                                                                    ? t(
+                                                                          'service_orders.form.bm_id_label',
+                                                                      )
+                                                                    : t(
+                                                                          'service_orders.form.mcc_id_label',
+                                                                      )}
                                                             </Label>
-                                                            {editBmIdList.length < 3 && (
-                                                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
-                                                                    onClick={() => setEditBmIdList([...editBmIdList, ''])}
+                                                            {editBmIdList.length <
+                                                                3 && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-7 text-xs"
+                                                                    onClick={() =>
+                                                                        setEditBmIdList(
+                                                                            [
+                                                                                ...editBmIdList,
+                                                                                '',
+                                                                            ],
+                                                                        )
+                                                                    }
                                                                 >
                                                                     <Plus className="mr-1 h-3 w-3" />
-                                                                    {isEditMeta ? t('service_orders.form.add_bm') : t('service_orders.form.add_mcc')}
+                                                                    {isEditMeta
+                                                                        ? t(
+                                                                              'service_orders.form.add_bm',
+                                                                          )
+                                                                        : t(
+                                                                              'service_orders.form.add_mcc',
+                                                                          )}
                                                                 </Button>
                                                             )}
                                                         </div>
                                                         <div className="space-y-2">
-                                                            {editBmIdList.map((val, idx) => (
-                                                                <div key={`edit-bm-${idx}`} className="flex gap-2">
-                                                                    <Input
-                                                                        value={val}
-                                                                        onChange={(e) => {
-                                                                            const newList = [...editBmIdList];
-                                                                            newList[idx] = e.target.value;
-                                                                            setEditBmIdList(newList);
-                                                                            if (idx === 0) setEditBmId(e.target.value);
-                                                                        }}
-                                                                        placeholder={isEditMeta ? t('service_orders.form.enter_bm_id') : t('service_orders.form.enter_mcc_id')}
-                                                                    />
-                                                                    {editBmIdList.length > 1 && (
-                                                                        <Button type="button" variant="ghost" size="sm"
-                                                                            className="text-red-600"
-                                                                            onClick={() => setEditBmIdList(editBmIdList.filter((_, i) => i !== idx))}
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                            ))}
+                                                            {editBmIdList.map(
+                                                                (val, idx) => (
+                                                                    <div
+                                                                        key={`edit-bm-${idx}`}
+                                                                        className="flex gap-2"
+                                                                    >
+                                                                        <Input
+                                                                            value={
+                                                                                val
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) => {
+                                                                                const newList =
+                                                                                    [
+                                                                                        ...editBmIdList,
+                                                                                    ];
+                                                                                newList[
+                                                                                    idx
+                                                                                ] =
+                                                                                    e.target.value;
+                                                                                setEditBmIdList(
+                                                                                    newList,
+                                                                                );
+                                                                                if (
+                                                                                    idx ===
+                                                                                    0
+                                                                                )
+                                                                                    setEditBmId(
+                                                                                        e
+                                                                                            .target
+                                                                                            .value,
+                                                                                    );
+                                                                            }}
+                                                                            placeholder={
+                                                                                isEditMeta
+                                                                                    ? t(
+                                                                                          'service_orders.form.enter_bm_id',
+                                                                                      )
+                                                                                    : t(
+                                                                                          'service_orders.form.enter_mcc_id',
+                                                                                      )
+                                                                            }
+                                                                        />
+                                                                        {editBmIdList.length >
+                                                                            1 && (
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="text-red-600"
+                                                                                onClick={() =>
+                                                                                    setEditBmIdList(
+                                                                                        editBmIdList.filter(
+                                                                                            (
+                                                                                                _,
+                                                                                                i,
+                                                                                            ) =>
+                                                                                                i !==
+                                                                                                idx,
+                                                                                        ),
+                                                                                    )
+                                                                                }
+                                                                            >
+                                                                                <X className="h-4 w-4" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                ),
+                                                            )}
                                                         </div>
                                                     </div>
 
                                                     {/* Dropdown chọn BM con */}
-                                                    {isEditMeta && editChildBusinessManagers.length > 0 && (
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="edit_child_bm_id">
-                                                                {t('service_orders.form.child_bm_label')}
-                                                            </Label>
-                                                            <Select
-                                                                value={editSelectedChildBmId}
-                                                                onValueChange={(value) => setEditSelectedChildBmId(value)}
-                                                                disabled={editLoadingChildBMs}
-                                                            >
-                                                                <SelectTrigger id="edit_child_bm_id">
-                                                                    <SelectValue
-                                                                        placeholder={editLoadingChildBMs
-                                                                            ? t('service_orders.form.loading_child_bms')
-                                                                            : t('service_orders.form.select_child_bm')}
-                                                                    />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="none">
-                                                                        {t('service_orders.form.use_parent_bm')}
-                                                                    </SelectItem>
-                                                                    {editChildBusinessManagers.map((childBM: ChildBusinessManager) => (
-                                                                        <SelectItem key={childBM.bm_id} value={childBM.bm_id}>
-                                                                            {childBM.name || childBM.bm_id}
+                                                    {isEditMeta &&
+                                                        editChildBusinessManagers.length >
+                                                            0 && (
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="edit_child_bm_id">
+                                                                    {t(
+                                                                        'service_orders.form.child_bm_label',
+                                                                    )}
+                                                                </Label>
+                                                                <Select
+                                                                    value={
+                                                                        editSelectedChildBmId
+                                                                    }
+                                                                    onValueChange={(
+                                                                        value,
+                                                                    ) =>
+                                                                        setEditSelectedChildBmId(
+                                                                            value,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        editLoadingChildBMs
+                                                                    }
+                                                                >
+                                                                    <SelectTrigger id="edit_child_bm_id">
+                                                                        <SelectValue
+                                                                            placeholder={
+                                                                                editLoadingChildBMs
+                                                                                    ? t(
+                                                                                          'service_orders.form.loading_child_bms',
+                                                                                      )
+                                                                                    : t(
+                                                                                          'service_orders.form.select_child_bm',
+                                                                                      )
+                                                                            }
+                                                                        />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="none">
+                                                                            {t(
+                                                                                'service_orders.form.use_parent_bm',
+                                                                            )}
                                                                         </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                    )}
+                                                                        {editChildBusinessManagers.map(
+                                                                            (
+                                                                                childBM: ChildBusinessManager,
+                                                                            ) => (
+                                                                                <SelectItem
+                                                                                    key={
+                                                                                        childBM.bm_id
+                                                                                    }
+                                                                                    value={
+                                                                                        childBM.bm_id
+                                                                                    }
+                                                                                >
+                                                                                    {childBM.name ||
+                                                                                        childBM.bm_id}
+                                                                                </SelectItem>
+                                                                            ),
+                                                                        )}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        )}
                                                 </>
                                             ) : (
                                                 <>
@@ -1430,71 +1956,183 @@ const ServiceOrdersIndex = ({
                                                     {/* 1. Dropdown chọn BM có sẵn */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="edit_select_bm_from_list_account">
-                                                            {isEditMeta ? t('service_orders.form.select_bm_available') : t('service_orders.form.select_mcc_available')}
+                                                            {isEditMeta
+                                                                ? t(
+                                                                      'service_orders.form.select_bm_available',
+                                                                  )
+                                                                : t(
+                                                                      'service_orders.form.select_mcc_available',
+                                                                  )}
                                                         </Label>
                                                         <Select
                                                             key={`edit-account-tab-bm-${editBmId}`}
-                                                            value={editBmId || undefined}
-                                                            onValueChange={(value) => {
-                                                                if (value && value !== '__empty__') {
-                                                                    handleEditSelectBmFromList(value);
-                                                                    addToListUnique(editBmIdList, setEditBmIdList, value);
+                                                            value={
+                                                                editBmId ||
+                                                                undefined
+                                                            }
+                                                            onValueChange={(
+                                                                value,
+                                                            ) => {
+                                                                if (
+                                                                    value &&
+                                                                    value !==
+                                                                        '__empty__'
+                                                                ) {
+                                                                    handleEditSelectBmFromList(
+                                                                        value,
+                                                                    );
+                                                                    addToListUnique(
+                                                                        editBmIdList,
+                                                                        setEditBmIdList,
+                                                                        value,
+                                                                    );
                                                                 }
                                                             }}
-                                                            disabled={editLoadingBmList}
+                                                            disabled={
+                                                                editLoadingBmList
+                                                            }
                                                         >
                                                             <SelectTrigger id="edit_select_bm_from_list_account">
                                                                 <SelectValue
                                                                     placeholder={
                                                                         editLoadingBmList
-                                                                            ? t('service_orders.form.loading_child_bms')
-                                                                            : (isEditMeta ? t('service_orders.form.select_bm_from_list') : t('service_orders.form.select_mcc_from_list'))
+                                                                            ? t(
+                                                                                  'service_orders.form.loading_child_bms',
+                                                                              )
+                                                                            : isEditMeta
+                                                                              ? t(
+                                                                                    'service_orders.form.select_bm_from_list',
+                                                                                )
+                                                                              : t(
+                                                                                    'service_orders.form.select_mcc_from_list',
+                                                                                )
                                                                     }
                                                                 />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {editBmList.map((bm) => (
-                                                                    <SelectItem key={bm.id} value={bm.bm_ids?.[0] || bm.id}>
-                                                                        <span className="truncate block">{bm.bm_name || bm.name} ({bm.bm_ids?.[0] || bm.id})</span>
-                                                                    </SelectItem>
-                                                                ))}
+                                                                {editBmList.map(
+                                                                    (bm) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                bm.id
+                                                                            }
+                                                                            value={
+                                                                                bm
+                                                                                    .bm_ids?.[0] ||
+                                                                                bm.id
+                                                                            }
+                                                                        >
+                                                                            <span className="block truncate">
+                                                                                {bm.bm_name ||
+                                                                                    bm.name}{' '}
+                                                                                (
+                                                                                {bm
+                                                                                    .bm_ids?.[0] ||
+                                                                                    bm.id}
+                                                                                )
+                                                                            </span>
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
 
                                                     {/* 2. Dropdown chọn tài khoản có sẵn */}
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="edit_select_account_from_list" className="text-destructive">
-                                                            {t('service_orders.form.select_account_label')} *
+                                                        <Label
+                                                            htmlFor="edit_select_account_from_list"
+                                                            className="text-destructive"
+                                                        >
+                                                            {t(
+                                                                'service_orders.form.select_account_label',
+                                                            )}{' '}
+                                                            *
                                                         </Label>
                                                         <Select
-                                                            onValueChange={(value) => {
-                                                                if (value && value !== '__empty__') {
-                                                                    addToListUnique(editAccountIdList, setEditAccountIdList, value);
-                                                                    setEditAccountIdInput(value);
+                                                            onValueChange={(
+                                                                value,
+                                                            ) => {
+                                                                if (
+                                                                    value &&
+                                                                    value !==
+                                                                        '__empty__'
+                                                                ) {
+                                                                    addToListUnique(
+                                                                        editAccountIdList,
+                                                                        setEditAccountIdList,
+                                                                        value,
+                                                                    );
+                                                                    setEditAccountIdInput(
+                                                                        value,
+                                                                    );
                                                                 }
                                                             }}
-                                                            disabled={editLoadingBmAccounts || !editBmId}
+                                                            disabled={
+                                                                editLoadingBmAccounts ||
+                                                                !editBmId
+                                                            }
                                                         >
                                                             <SelectTrigger id="edit_select_account_from_list">
                                                                 <SelectValue
                                                                     placeholder={
                                                                         !editBmId
-                                                                            ? t('service_orders.form.select_bm_first')
+                                                                            ? t(
+                                                                                  'service_orders.form.select_bm_first',
+                                                                              )
                                                                             : editLoadingBmAccounts
-                                                                                ? t('service_orders.form.loading_child_bms')
-                                                                                : t('service_orders.form.select_account_in_bm_mcc')
+                                                                              ? t(
+                                                                                    'service_orders.form.loading_child_bms',
+                                                                                )
+                                                                              : t(
+                                                                                    'service_orders.form.select_account_in_bm_mcc',
+                                                                                )
                                                                     }
                                                                 />
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 {editBmAccounts
-                                                                    .filter((acc) => !editAccountIdList.some((id) => id.trim() === acc.account_id))
-                                                                    .map((acc: BmAccount) => (
-                                                                        <SelectItem key={acc.account_id} value={acc.account_id}>
-                                                                            <span className="truncate block">{acc.account_name || acc.account_id} — {acc.account_id} ({acc.currency}){acc.service_user_id ? ' [Đã gán]' : ''}</span>
-                                                                        </SelectItem>
-                                                                    ))}
+                                                                    .filter(
+                                                                        (acc) =>
+                                                                            !editAccountIdList.some(
+                                                                                (
+                                                                                    id,
+                                                                                ) =>
+                                                                                    id.trim() ===
+                                                                                    acc.account_id,
+                                                                            ),
+                                                                    )
+                                                                    .map(
+                                                                        (
+                                                                            acc: BmAccount,
+                                                                        ) => (
+                                                                            <SelectItem
+                                                                                key={
+                                                                                    acc.account_id
+                                                                                }
+                                                                                value={
+                                                                                    acc.account_id
+                                                                                }
+                                                                            >
+                                                                                <span className="block truncate">
+                                                                                    {acc.account_name ||
+                                                                                        acc.account_id}{' '}
+                                                                                    —{' '}
+                                                                                    {
+                                                                                        acc.account_id
+                                                                                    }{' '}
+                                                                                    (
+                                                                                    {
+                                                                                        acc.currency
+                                                                                    }
+                                                                                    )
+                                                                                    {acc.service_user_id
+                                                                                        ? ' [Đã gán]'
+                                                                                        : ''}
+                                                                                </span>
+                                                                            </SelectItem>
+                                                                        ),
+                                                                    )}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
@@ -1503,156 +2141,189 @@ const ServiceOrdersIndex = ({
                                                     <div className="space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <Label className="text-destructive">
-                                                                {t('service_orders.form.account_id_label')} *
+                                                                {t(
+                                                                    'service_orders.form.account_id_label',
+                                                                )}{' '}
+                                                                *
                                                             </Label>
-                                                            {editAccountIdList.length < 3 && (
-                                                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
-                                                                    onClick={() => setEditAccountIdList([...editAccountIdList, ''])}
+                                                            {editAccountIdList.length <
+                                                                3 && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-7 text-xs"
+                                                                    onClick={() =>
+                                                                        setEditAccountIdList(
+                                                                            [
+                                                                                ...editAccountIdList,
+                                                                                '',
+                                                                            ],
+                                                                        )
+                                                                    }
                                                                 >
                                                                     <Plus className="mr-1 h-3 w-3" />
-                                                                    {t('service_orders.form.add_account')}
+                                                                    {t(
+                                                                        'service_orders.form.add_account',
+                                                                    )}
                                                                 </Button>
                                                             )}
                                                         </div>
                                                         <div className="space-y-2">
-                                                            {editAccountIdList.map((val, idx) => (
-                                                                <div key={`edit-acc-${idx}`} className="flex gap-2">
-                                                                    <Input
-                                                                        value={val}
-                                                                        onChange={(e) => {
-                                                                            const newList = [...editAccountIdList];
-                                                                            newList[idx] = e.target.value;
-                                                                            setEditAccountIdList(newList);
-                                                                            setEditAccountIdInput(e.target.value);
-                                                                        }}
-                                                                        placeholder={isEditMeta ? 'act_1234567890' : '123-456-7890'}
-                                                                        className={!val.trim() ? 'border-destructive' : ''}
-                                                                    />
-                                                                    {editAccountIdList.length > 1 && (
-                                                                        <Button type="button" variant="ghost" size="sm"
-                                                                            className="text-red-600"
-                                                                            onClick={() => setEditAccountIdList(editAccountIdList.filter((_, i) => i !== idx))}
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                            ))}
+                                                            {editAccountIdList.map(
+                                                                (val, idx) => (
+                                                                    <div
+                                                                        key={`edit-acc-${idx}`}
+                                                                        className="flex gap-2"
+                                                                    >
+                                                                        <Input
+                                                                            value={
+                                                                                val
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) => {
+                                                                                const newList =
+                                                                                    [
+                                                                                        ...editAccountIdList,
+                                                                                    ];
+                                                                                newList[
+                                                                                    idx
+                                                                                ] =
+                                                                                    e.target.value;
+                                                                                setEditAccountIdList(
+                                                                                    newList,
+                                                                                );
+                                                                                setEditAccountIdInput(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                );
+                                                                            }}
+                                                                            placeholder={
+                                                                                isEditMeta
+                                                                                    ? 'act_1234567890'
+                                                                                    : '123-456-7890'
+                                                                            }
+                                                                            className={
+                                                                                !val.trim()
+                                                                                    ? 'border-destructive'
+                                                                                    : ''
+                                                                            }
+                                                                        />
+                                                                        {editAccountIdList.length >
+                                                                            1 && (
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="text-red-600"
+                                                                                onClick={() =>
+                                                                                    setEditAccountIdList(
+                                                                                        editAccountIdList.filter(
+                                                                                            (
+                                                                                                _,
+                                                                                                i,
+                                                                                            ) =>
+                                                                                                i !==
+                                                                                                idx,
+                                                                                        ),
+                                                                                    )
+                                                                                }
+                                                                            >
+                                                                                <X className="h-4 w-4" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                ),
+                                                            )}
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
-                                                            {isEditMeta ? t('service_orders.form.account_id_hint_meta') : t('service_orders.form.account_id_hint_google')}
+                                                            {isEditMeta
+                                                                ? t(
+                                                                      'service_orders.form.account_id_hint_meta',
+                                                                  )
+                                                                : t(
+                                                                      'service_orders.form.account_id_hint_google',
+                                                                  )}
                                                         </p>
                                                     </div>
 
                                                     {/* 4. Input ID BM khách nhập */}
                                                     <div className="space-y-2">
                                                         <Label>
-                                                            {isEditMeta ? t('service_orders.form.bm_id_customer_input') : t('service_orders.form.mcc_id_customer_input')}
+                                                            {isEditMeta
+                                                                ? t(
+                                                                      'service_orders.form.bm_id_customer_input',
+                                                                  )
+                                                                : t(
+                                                                      'service_orders.form.mcc_id_customer_input',
+                                                                  )}
                                                         </Label>
                                                         <Input
                                                             value={editBmId}
                                                             onChange={(e) => {
-                                                                setEditBmId(e.target.value);
-                                                                setEditAccountIdInput('');
+                                                                setEditBmId(
+                                                                    e.target
+                                                                        .value,
+                                                                );
+                                                                setEditAccountIdInput(
+                                                                    '',
+                                                                );
                                                             }}
-                                                            placeholder={isEditMeta ? t('service_orders.form.bm_id_customer_placeholder') : t('service_orders.form.mcc_id_customer_placeholder')}
+                                                            placeholder={
+                                                                isEditMeta
+                                                                    ? t(
+                                                                          'service_orders.form.bm_id_customer_placeholder',
+                                                                      )
+                                                                    : t(
+                                                                          'service_orders.form.mcc_id_customer_placeholder',
+                                                                      )
+                                                            }
                                                         />
                                                     </div>
                                                 </>
                                             )}
 
-                                            {/* Fanpage multi-input */}
-                                            {isEditMeta && (
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <Label>{t('service_orders.form.info_fanpage')}</Label>
-                                                        {editFanpageList.length < 3 && (
-                                                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
-                                                                onClick={() => setEditFanpageList([...editFanpageList, ''])}
-                                                            >
-                                                                <Plus className="mr-1 h-3 w-3" />
-                                                                {t('service_orders.form.add_fanpage')}
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        {editFanpageList.map((val, idx) => (
-                                                            <div key={`edit-fp-${idx}`} className="flex gap-2">
-                                                                <Input
-                                                                    value={val}
-                                                                    onChange={(e) => {
-                                                                        const newList = [...editFanpageList];
-                                                                        newList[idx] = e.target.value;
-                                                                        setEditFanpageList(newList);
-                                                                        if (idx === 0) setEditInfoFanpage(e.target.value);
-                                                                    }}
-                                                                    placeholder={t('service_orders.form.info_fanpage_placeholder')}
-                                                                />
-                                                                {editFanpageList.length > 1 && (
-                                                                    <Button type="button" variant="ghost" size="sm" className="text-red-600"
-                                                                        onClick={() => setEditFanpageList(editFanpageList.filter((_, i) => i !== idx))}
-                                                                    >
-                                                                        <X className="h-4 w-4" />
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Website multi-input */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <Label>{t('service_orders.form.info_website')}</Label>
-                                                    {editWebsiteList.length < 3 && (
-                                                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
-                                                            onClick={() => setEditWebsiteList([...editWebsiteList, ''])}
-                                                        >
-                                                            <Plus className="mr-1 h-3 w-3" />
-                                                            {t('service_orders.form.add_website')}
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                                <div className="space-y-2">
-                                                    {editWebsiteList.map((val, idx) => (
-                                                        <div key={`edit-ws-${idx}`} className="flex gap-2">
-                                                            <Input
-                                                                value={val}
-                                                                onChange={(e) => {
-                                                                    const newList = [...editWebsiteList];
-                                                                    newList[idx] = e.target.value;
-                                                                    setEditWebsiteList(newList);
-                                                                    if (idx === 0) setEditInfoWebsite(e.target.value);
-                                                                }}
-                                                                placeholder={t('service_orders.form.info_website_placeholder')}
-                                                            />
-                                                            {editWebsiteList.length > 1 && (
-                                                                <Button type="button" variant="ghost" size="sm" className="text-red-600"
-                                                                    onClick={() => setEditWebsiteList(editWebsiteList.filter((_, i) => i !== idx))}
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-
                                             <div className="space-y-2">
                                                 <Label htmlFor="edit_asset_access">
-                                                    {t('service_purchase.asset_access_label')}
+                                                    {t(
+                                                        'service_purchase.asset_access_label',
+                                                    )}
                                                 </Label>
                                                 <Select
-                                                    value={editAssetAccess || 'full_asset'}
-                                                    onValueChange={(value: 'full_asset' | 'basic_asset') => setEditAssetAccess(value)}
+                                                    value={
+                                                        editAssetAccess ||
+                                                        'full_asset'
+                                                    }
+                                                    onValueChange={(
+                                                        value:
+                                                            | 'full_asset'
+                                                            | 'basic_asset',
+                                                    ) =>
+                                                        setEditAssetAccess(
+                                                            value,
+                                                        )
+                                                    }
                                                 >
                                                     <SelectTrigger id="edit_asset_access">
-                                                        <SelectValue placeholder={t('service_purchase.asset_access_placeholder')} />
+                                                        <SelectValue
+                                                            placeholder={t(
+                                                                'service_purchase.asset_access_placeholder',
+                                                            )}
+                                                        />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="full_asset">{t('service_purchase.asset_access_full')}</SelectItem>
-                                                        <SelectItem value="basic_asset">{t('service_purchase.asset_access_basic')}</SelectItem>
+                                                        <SelectItem value="full_asset">
+                                                            {t(
+                                                                'service_purchase.asset_access_full',
+                                                            )}
+                                                        </SelectItem>
+                                                        <SelectItem value="basic_asset">
+                                                            {t(
+                                                                'service_purchase.asset_access_basic',
+                                                            )}
+                                                        </SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -1660,15 +2331,39 @@ const ServiceOrdersIndex = ({
                                             <div className="space-y-2">
                                                 <Label htmlFor="edit_timezone_bm">
                                                     {isEditMeta
-                                                        ? t('service_purchase.timezone_bm_label', { defaultValue: 'Múi giờ BM' })
-                                                        : t('service_purchase.timezone_mcc_label', { defaultValue: 'Múi giờ MCC' })}
+                                                        ? t(
+                                                              'service_purchase.timezone_bm_label',
+                                                              {
+                                                                  defaultValue:
+                                                                      'Múi giờ BM',
+                                                              },
+                                                          )
+                                                        : t(
+                                                              'service_purchase.timezone_mcc_label',
+                                                              {
+                                                                  defaultValue:
+                                                                      'Múi giờ MCC',
+                                                              },
+                                                          )}
                                                 </Label>
                                                 <TimezoneSelect
                                                     id="edit_timezone_bm"
                                                     value={editTimezoneBm || ''}
-                                                    onValueChange={(value) => setEditTimezoneBm(value)}
-                                                    options={isEditMeta ? meta_timezones : google_timezones}
-                                                    placeholder={t('service_purchase.timezone_bm_placeholder', { defaultValue: 'Chọn múi giờ' })}
+                                                    onValueChange={(value) =>
+                                                        setEditTimezoneBm(value)
+                                                    }
+                                                    options={
+                                                        isEditMeta
+                                                            ? meta_timezones
+                                                            : google_timezones
+                                                    }
+                                                    placeholder={t(
+                                                        'service_purchase.timezone_bm_placeholder',
+                                                        {
+                                                            defaultValue:
+                                                                'Chọn múi giờ',
+                                                        },
+                                                    )}
                                                 />
                                             </div>
                                         </>
