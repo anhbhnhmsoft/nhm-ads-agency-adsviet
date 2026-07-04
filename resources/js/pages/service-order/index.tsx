@@ -694,7 +694,7 @@ const ServiceOrdersIndex = ({
                                                         }`}
                                                         onClick={() => setAssignMode('bm')}
                                                     >
-                                                        {isApproveMeta ? 'Gán BM' : 'Gán MCC'}
+                                                        {isApproveMeta ? t('service_orders.form.assign_bm') : t('service_orders.form.assign_mcc')}
                                                     </button>
                                                     <button
                                                         type="button"
@@ -708,7 +708,7 @@ const ServiceOrdersIndex = ({
                                                             if (bmId) handleSelectBmFromList(bmId);
                                                         }}
                                                     >
-                                                        Gán tài khoản
+                                                        {t('service_orders.form.assign_account')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -720,7 +720,7 @@ const ServiceOrdersIndex = ({
                                                     {/* Dropdown chọn BM có sẵn */}
                                                     <div className="space-y-2">
                                                         <Label>
-                                                            {isApproveMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
+                                                            {isApproveMeta ? t('service_orders.form.select_bm_available') : t('service_orders.form.select_mcc_available')}
                                                         </Label>
                                                         <Select
                                                             key={`bm-tab-bm-${bmIdList.join(',')}`}
@@ -736,8 +736,8 @@ const ServiceOrdersIndex = ({
                                                                 <SelectValue
                                                                     placeholder={
                                                                         loadingBmList
-                                                                            ? 'Đang tải...'
-                                                                            : (isApproveMeta ? 'Chọn BM từ danh sách...' : 'Chọn MCC từ danh sách...')
+                                                                            ? t('service_orders.form.loading_child_bms')
+                                                                            : (isApproveMeta ? t('service_orders.form.select_bm_from_list') : t('service_orders.form.select_mcc_from_list'))
                                                                     }
                                                                 />
                                                             </SelectTrigger>
@@ -757,14 +757,14 @@ const ServiceOrdersIndex = ({
                                                     <div className="space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <Label>
-                                                                {isApproveMeta ? 'ID BM' : 'ID MCC'}
+                                                                {isApproveMeta ? t('service_orders.form.bm_id_label') : t('service_orders.form.mcc_id_label')}
                                                             </Label>
                                                             {bmIdList.length < 3 && (
                                                                 <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
                                                                     onClick={() => setBmIdList([...bmIdList, ''])}
                                                                 >
                                                                     <Plus className="mr-1 h-3 w-3" />
-                                                                    Thêm {isApproveMeta ? 'BM' : 'MCC'}
+                                                                    {isApproveMeta ? t('service_orders.form.add_bm') : t('service_orders.form.add_mcc')}
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -779,7 +779,7 @@ const ServiceOrdersIndex = ({
                                                                             setBmIdList(newList);
                                                                             if (idx === 0) setBmId(e.target.value);
                                                                         }}
-                                                                        placeholder={isApproveMeta ? 'Nhập BM ID...' : 'Nhập MCC ID...'}
+                                                                        placeholder={isApproveMeta ? t('service_orders.form.enter_bm_id') : t('service_orders.form.enter_mcc_id')}
                                                                     />
                                                                     {bmIdList.length > 1 && (
                                                                         <Button type="button" variant="ghost" size="sm"
@@ -801,7 +801,7 @@ const ServiceOrdersIndex = ({
                                                     {isApproveMeta && childBusinessManagers.length > 0 && (
                                                         <div className="space-y-2">
                                                             <Label htmlFor="child_bm_id">
-                                                                BM con (tùy chọn)
+                                                                {t('service_orders.form.child_bm_label')}
                                                             </Label>
                                                             <Select
                                                                 value={selectedChildBmId}
@@ -811,13 +811,13 @@ const ServiceOrdersIndex = ({
                                                                 <SelectTrigger id="child_bm_id">
                                                                     <SelectValue
                                                                         placeholder={loadingChildBMs
-                                                                            ? 'Đang tải...'
-                                                                            : 'Chọn BM con'}
+                                                                            ? t('service_orders.form.loading_child_bms')
+                                                                            : t('service_orders.form.select_child_bm')}
                                                                     />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
                                                                     <SelectItem value="none">
-                                                                        Sử dụng BM gốc
+                                                                        {t('service_orders.form.use_parent_bm')}
                                                                     </SelectItem>
                                                                     {childBusinessManagers.map((childBM: ChildBusinessManager) => (
                                                                         <SelectItem key={childBM.bm_id} value={childBM.bm_id}>
@@ -836,7 +836,7 @@ const ServiceOrdersIndex = ({
                                                     {/* 1. Dropdown chọn BM có sẵn */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="select_bm_from_list_account">
-                                                            {isApproveMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
+                                                            {isApproveMeta ? t('service_orders.form.select_bm_available') : t('service_orders.form.select_mcc_available')}
                                                         </Label>
                                                         <Select
                                                             key={`account-tab-bm-${bmId}`}
@@ -853,8 +853,8 @@ const ServiceOrdersIndex = ({
                                                                 <SelectValue
                                                                     placeholder={
                                                                         loadingBmList
-                                                                            ? 'Đang tải...'
-                                                                            : (isApproveMeta ? 'Chọn BM từ danh sách...' : 'Chọn MCC từ danh sách...')
+                                                                            ? t('service_orders.form.loading_child_bms')
+                                                                            : (isApproveMeta ? t('service_orders.form.select_bm_from_list') : t('service_orders.form.select_mcc_from_list'))
                                                                     }
                                                                 />
                                                             </SelectTrigger>
@@ -871,7 +871,7 @@ const ServiceOrdersIndex = ({
                                                     {/* 2. Dropdown chọn tài khoản có sẵn - BẮT BUỘC */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="select_account_from_list" className="text-destructive">
-                                                            Chọn tài khoản *
+                                                            {t('service_orders.form.select_account_label')} *
                                                         </Label>
                                                         <Select
                                                             onValueChange={(value) => {
@@ -886,10 +886,10 @@ const ServiceOrdersIndex = ({
                                                                 <SelectValue
                                                                     placeholder={
                                                                         !bmId
-                                                                            ? 'Chọn BM phía trên trước'
+                                                                            ? t('service_orders.form.select_bm_first')
                                                                             : loadingBmAccounts
-                                                                                ? 'Đang tải...'
-                                                                                : 'Chọn tài khoản trong BM/MCC'
+                                                                                ? t('service_orders.form.loading_child_bms')
+                                                                                : t('service_orders.form.select_account_in_bm_mcc')
                                                                     }
                                                                 />
                                                             </SelectTrigger>
@@ -912,14 +912,14 @@ const ServiceOrdersIndex = ({
                                                     <div className="space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <Label className="text-destructive">
-                                                                ID tài khoản *
+                                                                {t('service_orders.form.account_id_label')} *
                                                             </Label>
                                                             {accountIdList.length < 3 && (
                                                                 <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
                                                                     onClick={() => setAccountIdList([...accountIdList, ''])}
                                                                 >
                                                                     <Plus className="mr-1 h-3 w-3" />
-                                                                    Thêm tài khoản
+                                                                    {t('service_orders.form.add_account')}
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -949,14 +949,14 @@ const ServiceOrdersIndex = ({
                                                             ))}
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
-                                                            {isApproveMeta ? 'Account ID bắt đầu bằng act_' : 'Google Customer ID dạng xxx-xxx-xxxx'}
+                                                            {isApproveMeta ? t('service_orders.form.account_id_hint_meta') : t('service_orders.form.account_id_hint_google')}
                                                         </p>
                                                     </div>
 
                                                     {/* 4. Input ID BM/MCC khách nhập */}
                                                     <div className="space-y-2">
                                                         <Label>
-                                                            {isApproveMeta ? 'ID BM (khách nhập)' : 'ID MCC (khách nhập)'}
+                                                            {isApproveMeta ? t('service_orders.form.bm_id_customer_input') : t('service_orders.form.mcc_id_customer_input')}
                                                         </Label>
                                                         <Input
                                                             value={bmId}
@@ -964,20 +964,20 @@ const ServiceOrdersIndex = ({
                                                                 setBmId(e.target.value);
                                                                 setAccountIdInput('');
                                                             }}
-                                                            placeholder={isApproveMeta ? 'ID BM khách nhập vào form...' : 'ID MCC khách nhập vào form...'}
+                                                            placeholder={isApproveMeta ? t('service_orders.form.bm_id_customer_placeholder') : t('service_orders.form.mcc_id_customer_placeholder')}
                                                         />
                                                         <p className="text-xs text-muted-foreground">
-                                                            {isApproveMeta ? 'BM ID khách điền khi mua gói, ví dụ: 1234567890' : 'MCC ID khách điền khi mua gói'}
+                                                            {isApproveMeta ? t('service_orders.form.bm_id_customer_hint') : t('service_orders.form.mcc_id_customer_hint')}
                                                         </p>
                                                     </div>
 
                                                     {bmId && !loadingBmAccounts && bmAccounts.length === 0 && (
                                                         <p className="text-xs text-orange-500">
-                                                            Không tìm thấy tài khoản nào trong {isApproveMeta ? 'BM' : 'MCC'} này
+                                                            {isApproveMeta ? t('service_orders.form.account_not_found_in_bm') : t('service_orders.form.account_not_found_in_mcc')}
                                                         </p>
                                                     )}
                                                     <p className="text-xs text-muted-foreground italic">
-                                                        Bắt buộc chọn 1 tài khoản để gán cho khách. ID BM khách nhập để lưu config.
+                                                        {t('service_orders.form.assign_note')}
                                                     </p>
                                                 </>
                                             )}
@@ -986,13 +986,13 @@ const ServiceOrdersIndex = ({
                                             {isApproveMeta && (
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between">
-                                                        <Label>Thông tin fanpage</Label>
+                                                        <Label>{t('service_orders.form.info_fanpage')}</Label>
                                                         {fanpageList.length < 3 && (
                                                             <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
                                                                 onClick={() => setFanpageList([...fanpageList, ''])}
                                                             >
                                                                 <Plus className="mr-1 h-3 w-3" />
-                                                                Thêm fanpage
+                                                                {t('service_orders.form.add_fanpage')}
                                                             </Button>
                                                         )}
                                                     </div>
@@ -1007,7 +1007,7 @@ const ServiceOrdersIndex = ({
                                                                         setFanpageList(newList);
                                                                         if (idx === 0) setInfoFanpage(e.target.value);
                                                                     }}
-                                                                    placeholder="Link hoặc tên fanpage"
+                                                                    placeholder={t('service_orders.form.info_fanpage_placeholder')}
                                                                 />
                                                                 {fanpageList.length > 1 && (
                                                                     <Button type="button" variant="ghost" size="sm" className="text-red-600"
@@ -1291,7 +1291,7 @@ const ServiceOrdersIndex = ({
                                                         }`}
                                                         onClick={() => setEditAssignMode('bm')}
                                                     >
-                                                        {isEditMeta ? 'Gán BM' : 'Gán MCC'}
+                                                        {isEditMeta ? t('service_orders.form.assign_bm') : t('service_orders.form.assign_mcc')}
                                                     </button>
                                                     <button
                                                         type="button"
@@ -1305,7 +1305,7 @@ const ServiceOrdersIndex = ({
                                                             if (editBmId) handleEditSelectBmFromList(editBmId);
                                                         }}
                                                     >
-                                                        Gán tài khoản
+                                                        {t('service_orders.form.assign_account')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -1317,7 +1317,7 @@ const ServiceOrdersIndex = ({
                                                     {/* Dropdown chọn BM có sẵn */}
                                                     <div className="space-y-2">
                                                         <Label>
-                                                            {isEditMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
+                                                            {isEditMeta ? t('service_orders.form.select_bm_available') : t('service_orders.form.select_mcc_available')}
                                                         </Label>
                                                         <Select
                                                             key={`edit-bm-tab-bm-${editBmIdList.join(',')}`}
@@ -1333,8 +1333,8 @@ const ServiceOrdersIndex = ({
                                                                  <SelectValue
                                                                      placeholder={
                                                                          editLoadingBmList
-                                                                             ? 'Đang tải...'
-                                                                             : (isEditMeta ? 'Chọn BM từ danh sách...' : 'Chọn MCC từ danh sách...')
+                                                                             ? t('service_orders.form.loading_child_bms')
+                                                                             : (isEditMeta ? t('service_orders.form.select_bm_from_list') : t('service_orders.form.select_mcc_from_list'))
                                                                      }
                                                                  />
                                                             </SelectTrigger>
@@ -1354,14 +1354,14 @@ const ServiceOrdersIndex = ({
                                                     <div className="space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <Label>
-                                                                {isEditMeta ? 'ID BM' : 'ID MCC'}
+                                                                {isEditMeta ? t('service_orders.form.bm_id_label') : t('service_orders.form.mcc_id_label')}
                                                             </Label>
                                                             {editBmIdList.length < 3 && (
                                                                 <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
                                                                     onClick={() => setEditBmIdList([...editBmIdList, ''])}
                                                                 >
                                                                     <Plus className="mr-1 h-3 w-3" />
-                                                                    Thêm {isEditMeta ? 'BM' : 'MCC'}
+                                                                    {isEditMeta ? t('service_orders.form.add_bm') : t('service_orders.form.add_mcc')}
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -1376,7 +1376,7 @@ const ServiceOrdersIndex = ({
                                                                             setEditBmIdList(newList);
                                                                             if (idx === 0) setEditBmId(e.target.value);
                                                                         }}
-                                                                        placeholder={isEditMeta ? 'Nhập BM ID...' : 'Nhập MCC ID...'}
+                                                                        placeholder={isEditMeta ? t('service_orders.form.enter_bm_id') : t('service_orders.form.enter_mcc_id')}
                                                                     />
                                                                     {editBmIdList.length > 1 && (
                                                                         <Button type="button" variant="ghost" size="sm"
@@ -1395,7 +1395,7 @@ const ServiceOrdersIndex = ({
                                                     {isEditMeta && editChildBusinessManagers.length > 0 && (
                                                         <div className="space-y-2">
                                                             <Label htmlFor="edit_child_bm_id">
-                                                                BM con (tùy chọn)
+                                                                {t('service_orders.form.child_bm_label')}
                                                             </Label>
                                                             <Select
                                                                 value={editSelectedChildBmId}
@@ -1405,13 +1405,13 @@ const ServiceOrdersIndex = ({
                                                                 <SelectTrigger id="edit_child_bm_id">
                                                                     <SelectValue
                                                                         placeholder={editLoadingChildBMs
-                                                                            ? 'Đang tải...'
-                                                                            : 'Chọn BM con'}
+                                                                            ? t('service_orders.form.loading_child_bms')
+                                                                            : t('service_orders.form.select_child_bm')}
                                                                     />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
                                                                     <SelectItem value="none">
-                                                                        Sử dụng BM gốc
+                                                                        {t('service_orders.form.use_parent_bm')}
                                                                     </SelectItem>
                                                                     {editChildBusinessManagers.map((childBM: ChildBusinessManager) => (
                                                                         <SelectItem key={childBM.bm_id} value={childBM.bm_id}>
@@ -1430,7 +1430,7 @@ const ServiceOrdersIndex = ({
                                                     {/* 1. Dropdown chọn BM có sẵn */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="edit_select_bm_from_list_account">
-                                                            {isEditMeta ? 'Chọn BM có sẵn' : 'Chọn MCC có sẵn'}
+                                                            {isEditMeta ? t('service_orders.form.select_bm_available') : t('service_orders.form.select_mcc_available')}
                                                         </Label>
                                                         <Select
                                                             key={`edit-account-tab-bm-${editBmId}`}
@@ -1447,8 +1447,8 @@ const ServiceOrdersIndex = ({
                                                                 <SelectValue
                                                                     placeholder={
                                                                         editLoadingBmList
-                                                                            ? 'Đang tải...'
-                                                                            : (isEditMeta ? 'Chọn BM từ danh sách...' : 'Chọn MCC từ danh sách...')
+                                                                            ? t('service_orders.form.loading_child_bms')
+                                                                            : (isEditMeta ? t('service_orders.form.select_bm_from_list') : t('service_orders.form.select_mcc_from_list'))
                                                                     }
                                                                 />
                                                             </SelectTrigger>
@@ -1465,7 +1465,7 @@ const ServiceOrdersIndex = ({
                                                     {/* 2. Dropdown chọn tài khoản có sẵn */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="edit_select_account_from_list" className="text-destructive">
-                                                            Chọn tài khoản *
+                                                            {t('service_orders.form.select_account_label')} *
                                                         </Label>
                                                         <Select
                                                             onValueChange={(value) => {
@@ -1480,10 +1480,10 @@ const ServiceOrdersIndex = ({
                                                                 <SelectValue
                                                                     placeholder={
                                                                         !editBmId
-                                                                            ? 'Chọn BM phía trên trước'
+                                                                            ? t('service_orders.form.select_bm_first')
                                                                             : editLoadingBmAccounts
-                                                                                ? 'Đang tải...'
-                                                                                : 'Chọn tài khoản trong BM/MCC'
+                                                                                ? t('service_orders.form.loading_child_bms')
+                                                                                : t('service_orders.form.select_account_in_bm_mcc')
                                                                     }
                                                                 />
                                                             </SelectTrigger>
@@ -1503,14 +1503,14 @@ const ServiceOrdersIndex = ({
                                                     <div className="space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <Label className="text-destructive">
-                                                                ID tài khoản *
+                                                                {t('service_orders.form.account_id_label')} *
                                                             </Label>
                                                             {editAccountIdList.length < 3 && (
                                                                 <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
                                                                     onClick={() => setEditAccountIdList([...editAccountIdList, ''])}
                                                                 >
                                                                     <Plus className="mr-1 h-3 w-3" />
-                                                                    Thêm tài khoản
+                                                                    {t('service_orders.form.add_account')}
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -1540,14 +1540,14 @@ const ServiceOrdersIndex = ({
                                                             ))}
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
-                                                            {isEditMeta ? 'Account ID bắt đầu bằng act_' : 'Google Customer ID dạng xxx-xxx-xxxx'}
+                                                            {isEditMeta ? t('service_orders.form.account_id_hint_meta') : t('service_orders.form.account_id_hint_google')}
                                                         </p>
                                                     </div>
 
                                                     {/* 4. Input ID BM khách nhập */}
                                                     <div className="space-y-2">
                                                         <Label>
-                                                            {isEditMeta ? 'ID BM (khách nhập)' : 'ID MCC (khách nhập)'}
+                                                            {isEditMeta ? t('service_orders.form.bm_id_customer_input') : t('service_orders.form.mcc_id_customer_input')}
                                                         </Label>
                                                         <Input
                                                             value={editBmId}
@@ -1555,7 +1555,7 @@ const ServiceOrdersIndex = ({
                                                                 setEditBmId(e.target.value);
                                                                 setEditAccountIdInput('');
                                                             }}
-                                                            placeholder={isEditMeta ? 'ID BM khách nhập vào form...' : 'ID MCC khách nhập vào form...'}
+                                                            placeholder={isEditMeta ? t('service_orders.form.bm_id_customer_placeholder') : t('service_orders.form.mcc_id_customer_placeholder')}
                                                         />
                                                     </div>
                                                 </>
@@ -1565,13 +1565,13 @@ const ServiceOrdersIndex = ({
                                             {isEditMeta && (
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between">
-                                                        <Label>Thông tin fanpage</Label>
+                                                        <Label>{t('service_orders.form.info_fanpage')}</Label>
                                                         {editFanpageList.length < 3 && (
                                                             <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
                                                                 onClick={() => setEditFanpageList([...editFanpageList, ''])}
                                                             >
                                                                 <Plus className="mr-1 h-3 w-3" />
-                                                                Thêm fanpage
+                                                                {t('service_orders.form.add_fanpage')}
                                                             </Button>
                                                         )}
                                                     </div>
@@ -1586,7 +1586,7 @@ const ServiceOrdersIndex = ({
                                                                         setEditFanpageList(newList);
                                                                         if (idx === 0) setEditInfoFanpage(e.target.value);
                                                                     }}
-                                                                    placeholder="Link hoặc tên fanpage"
+                                                                    placeholder={t('service_orders.form.info_fanpage_placeholder')}
                                                                 />
                                                                 {editFanpageList.length > 1 && (
                                                                     <Button type="button" variant="ghost" size="sm" className="text-red-600"
@@ -1604,13 +1604,13 @@ const ServiceOrdersIndex = ({
                                             {/* Website multi-input */}
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between">
-                                                    <Label>Thông tin website</Label>
+                                                    <Label>{t('service_orders.form.info_website')}</Label>
                                                     {editWebsiteList.length < 3 && (
                                                         <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
                                                             onClick={() => setEditWebsiteList([...editWebsiteList, ''])}
                                                         >
                                                             <Plus className="mr-1 h-3 w-3" />
-                                                            Thêm website
+                                                            {t('service_orders.form.add_website')}
                                                         </Button>
                                                     )}
                                                 </div>
@@ -1625,7 +1625,7 @@ const ServiceOrdersIndex = ({
                                                                     setEditWebsiteList(newList);
                                                                     if (idx === 0) setEditInfoWebsite(e.target.value);
                                                                 }}
-                                                                placeholder="Link website"
+                                                                placeholder={t('service_orders.form.info_website_placeholder')}
                                                             />
                                                             {editWebsiteList.length > 1 && (
                                                                 <Button type="button" variant="ghost" size="sm" className="text-red-600"
