@@ -41,5 +41,7 @@ return [
     ],
     'telegram' => [
         'low_balance' => "⚠️ Google Ads 余额不足提醒\n\n帐户“:accountName”只剩下:balance:currency（阈值:threshold:currency）。\n请为您的 Google Ads 帐户充值以避免中断。",
+        'low_balance_batch' => "⚠️ *Google Ads 余额不足提醒*\n\n以下帐户余额低于 :threshold USD 阈值：\n:accounts\n请及时充值以免广告中断。",
+        'spending_exceeded' => "⚠️ Google Ads 支出超出警报\n\n帐户“:accountName”已支出:spending:currency（阈值:threshold:currency，限额:limit:currency）。\n请为您的 Google Ads 帐户充值以避免中断。",
     ],
 ];

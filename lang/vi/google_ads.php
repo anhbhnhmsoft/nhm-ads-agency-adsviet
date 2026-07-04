@@ -41,5 +41,7 @@ return [
     ],
     'telegram' => [
         'low_balance' => "⚠️ Cảnh báo số dư Google Ads thấp\n\nTài khoản \":accountName\" hiện chỉ còn :balance :currency (ngưỡng cảnh báo :threshold :currency).\nVui lòng nạp thêm tiền vào tài khoản Google Ads để tránh bị tạm dừng quảng cáo.",
+        'low_balance_batch' => "⚠️ *Cảnh báo số dư thấp (Google Ads)*\n\nCác tài khoản sau có số dư dưới ngưỡng :threshold USD:\n:accounts\nVui lòng nạp thêm tiền để tránh gián đoạn quảng cáo.",
+        'spending_exceeded' => "⚠️ Cảnh báo chi tiêu Google Ads vượt quá\n\nTài khoản \":accountName\" đã chi :spending :currency (ngưỡng cảnh báo :threshold :currency, giới hạn :limit :currency).\nVui lòng nạp thêm tiền vào tài khoản Google Ads để tránh bị tạm dừng quảng cáo.",
     ],
 ];

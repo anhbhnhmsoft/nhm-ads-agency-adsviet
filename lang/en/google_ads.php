@@ -41,5 +41,7 @@ return [
     ],
     'telegram' => [
         'low_balance' => "⚠️ Google Ads low balance alert\n\nAccount \":accountName\" only has :balance :currency left (threshold :threshold :currency).\nPlease top up your Google Ads account to avoid interruptions.",
+        'low_balance_batch' => "⚠️ *Google Ads low balance alert*\n\nThe following accounts are below the :threshold USD threshold:\n:accounts\nPlease top up to avoid ad interruptions.",
+        'spending_exceeded' => "⚠️ Google Ads spending exceeded alert\n\nAccount \":accountName\" has spent :spending :currency (threshold :threshold :currency, limit :limit :currency).\nPlease top up your Google Ads account to avoid interruptions.",
     ],
 ];

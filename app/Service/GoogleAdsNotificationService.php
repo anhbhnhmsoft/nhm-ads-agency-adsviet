@@ -6,6 +6,7 @@ use App\Core\Cache\CacheKey;
 use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
+use App\Core\UserLocale;
 use App\Models\GoogleAccount;
 use App\Repositories\GoogleAccountRepository;
 use Illuminate\Support\Carbon;
@@ -63,9 +64,9 @@ class GoogleAdsNotificationService
                     continue;
                 }
 
-                $balanceFormatted = "";
+                $accountsList = "";
                 foreach ($userAccounts as $acc) {
-                    $balanceFormatted .= sprintf(
+                    $accountsList .= sprintf(
                         "- %s: %s %s\n",
                         $acc->account_name ?? $acc->account_id,
                         number_format((float) $acc->balance, 2),
@@ -73,19 +74,36 @@ class GoogleAdsNotificationService
                     );
                 }
 
-                $result = null;
-                $method = null;
+                [$result, $method] = UserLocale::run($user, function () use ($user, $userAccounts, $hasTelegram, $hasVerifiedEmail, $accountsList, $thresholdUsd) {
+                    $result = null;
+                    $method = null;
+                    if ($hasTelegram) {
+                        $message = __('google_ads.telegram.low_balance_batch', [
+                            'accounts' => $accountsList,
+                            'threshold' => number_format($thresholdUsd, 2),
+                        ]);
+                        $result = $this->telegramService->sendNotification($user->telegram_id, $message);
+                        $method = 'telegram';
 
-                if ($hasTelegram) {
-                    $message = "⚠️ *Cảnh báo số dư thấp (Google Ads)*\n\n";
-                    $message .= "Các tài khoản sau có số dư dưới ngưỡng " . number_format($thresholdUsd, 2) . " USD:\n";
-                    $message .= $balanceFormatted;
-                    $message .= "\nVui lòng nạp thêm tiền để tránh gián đoạn quảng cáo.";
-
-                    $result = $this->telegramService->sendNotification($user->telegram_id, $message);
-                    $method = 'telegram';
-
-                    if (!$result->isSuccess() && $hasVerifiedEmail) {
+                        if (!$result->isSuccess() && $hasVerifiedEmail) {
+                            $anySuccess = false;
+                            foreach ($userAccounts as $acc) {
+                                $res = $this->mailService->sendGoogleAdsLowBalanceAlert(
+                                    email: $user->email,
+                                    username: $user->name ?? $user->username,
+                                    accountName: $acc->account_name ?? $acc->account_id,
+                                    balance: (float) ($acc->balance ?? 0),
+                                    currency: $acc->currency ?? 'USD',
+                                    threshold: $thresholdUsd
+                                );
+                                if ($res->isSuccess()) {
+                                    $anySuccess = true;
+                                }
+                            }
+                            $result = $anySuccess ? ServiceReturn::success() : ServiceReturn::error(message: 'Email fallback failed');
+                            $method = 'email (fallback)';
+                        }
+                    } elseif ($hasVerifiedEmail) {
                         $anySuccess = false;
                         foreach ($userAccounts as $acc) {
                             $res = $this->mailService->sendGoogleAdsLowBalanceAlert(
@@ -96,29 +114,15 @@ class GoogleAdsNotificationService
                                 currency: $acc->currency ?? 'USD',
                                 threshold: $thresholdUsd
                             );
-                            if ($res->isSuccess())
+                            if ($res->isSuccess()) {
                                 $anySuccess = true;
+                            }
                         }
-                        $result = $anySuccess ? ServiceReturn::success() : ServiceReturn::error(message: 'Email fallback failed');
-                        $method = 'email (fallback)';
+                        $result = $anySuccess ? ServiceReturn::success() : ServiceReturn::error(message: 'Email failed');
+                        $method = 'email';
                     }
-                } elseif ($hasVerifiedEmail) {
-                    $anySuccess = false;
-                    foreach ($userAccounts as $acc) {
-                        $res = $this->mailService->sendGoogleAdsLowBalanceAlert(
-                            email: $user->email,
-                            username: $user->name ?? $user->username,
-                            accountName: $acc->account_name ?? $acc->account_id,
-                            balance: (float) ($acc->balance ?? 0),
-                            currency: $acc->currency ?? 'USD',
-                            threshold: $thresholdUsd
-                        );
-                        if ($res->isSuccess())
-                            $anySuccess = true;
-                    }
-                    $result = $anySuccess ? ServiceReturn::success() : ServiceReturn::error(message: 'Email failed');
-                    $method = 'email';
-                }
+                    return [$result, $method];
+                });
 
                 if ($result && $result->isSuccess()) {
                     Caching::setCache(CacheKey::CACHE_GOOGLE_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, $cacheKey, $expireMinutes);
@@ -183,20 +187,31 @@ class GoogleAdsNotificationService
             $thresholdFormatted = number_format($threshold, 2);
             $currency = $account->currency ?? 'USD';
 
-            $result = null;
-            $method = null;
+            [$result, $method] = UserLocale::run($user, function () use ($user, $account, $hasTelegram, $hasVerifiedEmail, $balance, $balanceFormatted, $threshold, $thresholdFormatted, $currency) {
+                $result = null;
+                $method = null;
+                if ($hasTelegram) {
+                    $message = __('google_ads.telegram.low_balance', [
+                        'accountName' => $account->account_name ?? $account->account_id,
+                        'balance' => $balanceFormatted,
+                        'currency' => $currency,
+                        'threshold' => $thresholdFormatted,
+                    ]);
+                    $result = $this->telegramService->sendNotification($user->telegram_id, $message);
+                    $method = 'telegram';
 
-            if ($hasTelegram) {
-                $message = __('google_ads.telegram.low_balance', [
-                    'accountName' => $account->account_name ?? $account->account_id,
-                    'balance' => $balanceFormatted,
-                    'currency' => $currency,
-                    'threshold' => $thresholdFormatted,
-                ]);
-                $result = $this->telegramService->sendNotification($user->telegram_id, $message);
-                $method = 'telegram';
-
-                if (!$result->isSuccess() && $hasVerifiedEmail) {
+                    if (!$result->isSuccess() && $hasVerifiedEmail) {
+                        $result = $this->mailService->sendGoogleAdsLowBalanceAlert(
+                            email: $user->email,
+                            username: $user->name ?? $user->username,
+                            accountName: $account->account_name ?? $account->account_id,
+                            balance: $balance,
+                            currency: $currency,
+                            threshold: $threshold,
+                        );
+                        $method = 'email (fallback)';
+                    }
+                } elseif ($hasVerifiedEmail) {
                     $result = $this->mailService->sendGoogleAdsLowBalanceAlert(
                         email: $user->email,
                         username: $user->name ?? $user->username,
@@ -205,19 +220,10 @@ class GoogleAdsNotificationService
                         currency: $currency,
                         threshold: $threshold,
                     );
-                    $method = 'email (fallback)';
+                    $method = 'email';
                 }
-            } elseif ($hasVerifiedEmail) {
-                $result = $this->mailService->sendGoogleAdsLowBalanceAlert(
-                    email: $user->email,
-                    username: $user->name ?? $user->username,
-                    accountName: $account->account_name ?? $account->account_id,
-                    balance: $balance,
-                    currency: $currency,
-                    threshold: $threshold,
-                );
-                $method = 'email';
-            }
+                return [$result, $method];
+            });
 
             if ($result && $result->isSuccess()) {
                 Caching::setCache(CacheKey::CACHE_GOOGLE_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, $cacheKeyStr, $this->minutesUntilEndOfDay());
@@ -279,47 +285,49 @@ class GoogleAdsNotificationService
             $limitFormatted = number_format($thresholdAmount, 2); // Giới hạn tổng (balance + threshold)
             $currency = $account->currency ?? 'USD';
 
-            $result = null;
-            $method = null;
+            [$result, $method] = UserLocale::run($user, function () use ($user, $account, $hasTelegram, $hasVerifiedEmail, $spending, $spendingFormatted, $balance, $balanceFormatted, $threshold, $thresholdFormatted, $thresholdAmount, $limitFormatted, $currency) {
+                $result = null;
+                $method = null;
+                if ($hasTelegram) {
+                    $message = __('google_ads.telegram.spending_exceeded', [
+                        'accountName' => $account->account_name ?? $account->account_id,
+                        'spending' => $spendingFormatted,
+                        'balance' => $balanceFormatted,
+                        'threshold' => $thresholdFormatted,
+                        'limit' => $limitFormatted,
+                        'currency' => $currency,
+                    ]);
+                    $result = $this->telegramService->sendNotification($user->telegram_id, $message);
+                    $method = 'telegram';
 
-            if ($hasTelegram) {
-                $message = __('google_ads.telegram.spending_exceeded', [
-                    'accountName' => $account->account_name ?? $account->account_id,
-                    'spending' => $spendingFormatted,
-                    'balance' => $balanceFormatted,
-                    'threshold' => $thresholdFormatted, // Ngưỡng an toàn (100)
-                    'limit' => $limitFormatted, // Giới hạn tổng (150)
-                    'currency' => $currency,
-                ]);
-                $result = $this->telegramService->sendNotification($user->telegram_id, $message);
-                $method = 'telegram';
-
-                if (!$result->isSuccess() && $hasVerifiedEmail) {
+                    if (!$result->isSuccess() && $hasVerifiedEmail) {
+                        $result = $this->mailService->sendGoogleAdsSpendingExceededAlert(
+                            email: $user->email,
+                            username: $user->name ?? $user->username,
+                            accountName: $account->account_name ?? $account->account_id,
+                            spending: $spending,
+                            balance: $balance,
+                            threshold: $threshold,
+                            limit: $thresholdAmount,
+                            currency: $currency,
+                        );
+                        $method = 'email (fallback)';
+                    }
+                } elseif ($hasVerifiedEmail) {
                     $result = $this->mailService->sendGoogleAdsSpendingExceededAlert(
                         email: $user->email,
                         username: $user->name ?? $user->username,
                         accountName: $account->account_name ?? $account->account_id,
                         spending: $spending,
                         balance: $balance,
-                        threshold: $threshold, // Ngưỡng an toàn (100)
-                        limit: $thresholdAmount, // Giới hạn tổng (150)
+                        threshold: $threshold,
+                        limit: $thresholdAmount,
                         currency: $currency,
                     );
-                    $method = 'email (fallback)';
+                    $method = 'email';
                 }
-            } elseif ($hasVerifiedEmail) {
-                $result = $this->mailService->sendGoogleAdsSpendingExceededAlert(
-                    email: $user->email,
-                    username: $user->name ?? $user->username,
-                    accountName: $account->account_name ?? $account->account_id,
-                    spending: $spending,
-                    balance: $balance,
-                    threshold: $threshold, // Ngưỡng an toàn (100)
-                    limit: $thresholdAmount, // Giới hạn tổng (150)
-                    currency: $currency,
-                );
-                $method = 'email';
-            }
+                return [$result, $method];
+            });
 
             if ($result && $result->isSuccess()) {
                 Caching::setCache(CacheKey::CACHE_GOOGLE_ACCOUNT_LOW_BALANCE_NOTIFIED, $today, $cacheKeyStr, $this->minutesUntilEndOfDay());

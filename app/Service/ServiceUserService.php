@@ -9,6 +9,7 @@ use App\Common\Constants\User\UserRole;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
+use App\Core\UserLocale;
 use App\Models\ServiceUser;
 use App\Common\Constants\ServiceUser\ServiceUserTransactionStatus;
 use App\Common\Constants\ServiceUser\ServiceUserTransactionType;
@@ -340,23 +341,25 @@ class ServiceUserService
                 return;
             }
 
-            $packageName = $serviceUser->package?->name ?? __('service_user.notifications.unknown_package');
-            $message = __('service_user.notifications.' . $statusKey, [
-                'package' => $packageName,
-            ]);
+            UserLocale::run($user, function () use ($user, $serviceUser, $statusKey) {
+                $packageName = $serviceUser->package?->name ?? __('service_user.notifications.unknown_package');
+                $message = __('service_user.notifications.' . $statusKey, [
+                    'package' => $packageName,
+                ]);
 
-            $this->userAlertService->sendPlainText(
-                $user,
-                $message,
-                function (MailService $mailService, \App\Models\User $u) use ($packageName, $statusKey) {
-                    return $mailService->sendServiceUserStatusAlert(
-                        email: $u->email,
-                        username: $u->name ?? $u->username,
-                        packageName: $packageName,
-                        statusKey: $statusKey,
-                    );
-                }
-            );
+                $this->userAlertService->sendPlainText(
+                    $user,
+                    $message,
+                    function (MailService $mailService, \App\Models\User $u) use ($packageName, $statusKey) {
+                        return $mailService->sendServiceUserStatusAlert(
+                            email: $u->email,
+                            username: $u->name ?? $u->username,
+                            packageName: $packageName,
+                            statusKey: $statusKey,
+                        );
+                    }
+                );
+            });
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'ServiceUserService@notifyServiceStatus error: '.$e->getMessage(),

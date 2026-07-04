@@ -6,6 +6,7 @@ use App\Core\Cache\CacheKey;
 use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
+use App\Core\UserLocale;
 use App\Repositories\WalletRepository;
 use Illuminate\Support\Carbon;
 
@@ -50,23 +51,25 @@ class WalletNotificationService
 
                 $balanceFormatted = number_format((float) $wallet->balance, 2);
                 $thresholdFormatted = number_format($thresholdUsd, 2);
-                $result = null;
-
-                if ($hasTelegram) {
-                    $message = __('wallet.telegram.low_balance', [
-                        'name' => $user->name ?? $user->username,
-                        'balance' => $balanceFormatted,
-                        'threshold' => $thresholdFormatted,
-                    ]);
-                    $result = $this->telegramService->sendNotification($user->telegram_id, $message);
-                } elseif ($hasVerifiedEmail) {
-                    $result = $this->mailService->sendWalletLowBalanceAlert(
-                        email: $user->email,
-                        username: $user->name ?? $user->username,
-                        balance: (float) $wallet->balance,
-                        threshold: $thresholdUsd,
-                    );
-                }
+                $result = UserLocale::run($user, function () use ($user, $wallet, $hasTelegram, $hasVerifiedEmail, $balanceFormatted, $thresholdFormatted, $thresholdUsd) {
+                    if ($hasTelegram) {
+                        $message = __('wallet.telegram.low_balance', [
+                            'name' => $user->name ?? $user->username,
+                            'balance' => $balanceFormatted,
+                            'threshold' => $thresholdFormatted,
+                        ]);
+                        return $this->telegramService->sendNotification($user->telegram_id, $message);
+                    }
+                    if ($hasVerifiedEmail) {
+                        return $this->mailService->sendWalletLowBalanceAlert(
+                            email: $user->email,
+                            username: $user->name ?? $user->username,
+                            balance: (float) $wallet->balance,
+                            threshold: $thresholdUsd,
+                        );
+                    }
+                    return null;
+                });
 
                 if ($result && $result->isSuccess()) {
                     Caching::setCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, $today, (string) $user->id, $expireMinutes);
