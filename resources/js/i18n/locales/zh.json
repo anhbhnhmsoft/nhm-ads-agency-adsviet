@@ -850,6 +850,7 @@
         "table": {
             "stt": "不。",
             "order_id": "订单号",
+            "customer_name": "申请账户",
             "referral": "推荐人",
             "account_info": "账户信息",
             "info_fanpage": "粉丝专页",

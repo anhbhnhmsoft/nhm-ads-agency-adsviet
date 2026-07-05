@@ -36,6 +36,8 @@ return [
         'package_not_allowed' => 'You are not allowed to use this service package.',
         'postpay_min_wallet' => 'Your wallet must have at least :amount USDT to use postpaid.',
         'postpay_not_allowed' => 'You are not allowed to use postpaid payment for this service package.',
+        'bm_already_used_by_customer' => 'This Business Manager is already assigned to customer :name. Please choose another Business Manager.',
+        'account_already_used_by_customer' => 'This account is already assigned to customer :name. Please choose another account.',
     ],
     'flash' => [
         'purchase_success' => 'Successfully created the order and deducted from the wallet.',

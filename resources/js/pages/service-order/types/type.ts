@@ -55,6 +55,7 @@ export type ServiceOrder = {
         spending_fee?: number | string | null;
     };
     user?: {
+        name?: string | null;
         referrer?: {
             name?: string | null;
         } | null;

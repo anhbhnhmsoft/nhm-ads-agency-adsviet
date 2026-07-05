@@ -167,11 +167,6 @@ const ServiceManagementIndex = ({
     );
 
     // Dialog & Submit States cho Chiến dịch
-    const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
-    const [budgetAmount, setBudgetAmount] = useState('');
-    const [budgetSubmitting, setBudgetSubmitting] = useState(false);
-    const [budgetWalletPassword, setBudgetWalletPassword] = useState('');
-
     const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
     const [pauseSubmitting, setPauseSubmitting] = useState(false);
 
@@ -1519,27 +1514,6 @@ const ServiceManagementIndex = ({
                                                                 'service_management.campaign_end',
                                                             )}
                                                         </Button>
-                                                        <Button
-                                                            variant="default"
-                                                            onClick={async () => {
-                                                                setBudgetDialogOpen(
-                                                                    true,
-                                                                );
-                                                                if (
-                                                                    isAgencyOrCustomer &&
-                                                                    walletBalance ===
-                                                                    null
-                                                                ) {
-                                                                    await fetchWalletBalance();
-                                                                }
-                                                            }}
-                                                            disabled={isDeleted}
-                                                        >
-                                                            <Wallet className="mr-2 h-4 w-4" />
-                                                            {t(
-                                                                'service_management.campaign_update_budget',
-                                                            )}
-                                                        </Button>
                                                     </>
                                                 );
                                             })()}
@@ -2017,144 +1991,6 @@ const ServiceManagementIndex = ({
                             {t('service_management.account_top_up_submit', {
                                 defaultValue: 'Gửi yêu cầu',
                             })}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Dialog Cập nhật ngân sách */}
-            <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>
-                            {t('service_management.campaign_update_budget')}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {selectedAccount?.platform === _PlatformType.META
-                                ? t(
-                                    'service_management.campaign_update_budget_help_meta',
-                                )
-                                : t(
-                                    'service_management.campaign_update_budget_help_google',
-                                )}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        {isAgencyOrCustomer && (
-                            <div className="text-sm text-muted-foreground">
-                                {walletBalanceLoading
-                                    ? t(
-                                        'service_management.campaign_update_budget_wallet_balance_loading',
-                                    )
-                                    : walletBalance !== null
-                                        ? t(
-                                            'service_management.campaign_update_budget_wallet_balance',
-                                            {
-                                                balance:
-                                                    walletBalance.toLocaleString(),
-                                            },
-                                        )
-                                        : null}
-                            </div>
-                        )}
-                        <div className="space-y-2">
-                            <Label htmlFor="budget">
-                                {t(
-                                    'service_management.campaign_update_budget_amount_label',
-                                )}
-                            </Label>
-                            <Input
-                                id="budget"
-                                type="number"
-                                value={budgetAmount}
-                                onChange={(e) =>
-                                    setBudgetAmount(e.target.value)
-                                }
-                                placeholder="0.00"
-                            />
-                        </div>
-                        {isAgencyOrCustomer && (
-                            <div className="space-y-2">
-                                <Label htmlFor="password">
-                                    {t(
-                                        'service_management.campaign_update_budget_wallet_password_label',
-                                    )}
-                                </Label>
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    value={budgetWalletPassword}
-                                    onChange={(e) =>
-                                        setBudgetWalletPassword(e.target.value)
-                                    }
-                                />
-                            </div>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setBudgetDialogOpen(false)}
-                            disabled={budgetSubmitting}
-                        >
-                            {t('common.cancel')}
-                        </Button>
-                        <Button
-                            onClick={async () => {
-                                if (
-                                    !budgetAmount ||
-                                    Number(budgetAmount) <= 0
-                                ) {
-                                    toast.error(t('common.invalid_amount'));
-                                    return;
-                                }
-                                setBudgetSubmitting(true);
-                                try {
-                                    const platformPrefix =
-                                        selectedAccount?.platform ===
-                                            _PlatformType.GOOGLE
-                                            ? 'google-ads'
-                                            : 'meta';
-                                    const fieldName =
-                                        selectedAccount?.platform ===
-                                            _PlatformType.GOOGLE
-                                            ? 'budget'
-                                            : 'spend-cap';
-                                    await axios.post(
-                                        `/${platformPrefix}/${selectedAccount?.service_user_id}/${selectedCampaign?.id}/${fieldName}`,
-                                        {
-                                            amount: Number(budgetAmount),
-                                            wallet_password:
-                                                budgetWalletPassword,
-                                        },
-                                    );
-                                    toast.success(
-                                        t(
-                                            'service_management.campaign_update_budget_success',
-                                            { amount: budgetAmount },
-                                        ),
-                                    );
-                                    setBudgetDialogOpen(false);
-                                    setBudgetAmount('');
-                                    setBudgetWalletPassword('');
-                                    refreshCurrentCampaign();
-                                } catch (e: any) {
-                                    toast.error(
-                                        e?.response?.data?.message ||
-                                        t(
-                                            'service_management.campaign_update_budget_error',
-                                        ),
-                                    );
-                                } finally {
-                                    setBudgetSubmitting(false);
-                                }
-                            }}
-                            disabled={budgetSubmitting}
-                        >
-                            {budgetSubmitting && (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            )}
-                            {t('common.submit')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

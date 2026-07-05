@@ -288,6 +288,18 @@ const ServiceOrdersIndex = ({
                 },
             },
             {
+                id: 'customer_name',
+                header: t('service_orders.table.customer_name'),
+                cell: ({ row }) => {
+                    const name = row.original.user?.name || '';
+                    return name ? (
+                        <span className="text-xs">{name}</span>
+                    ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                    );
+                },
+            },
+            {
                 id: 'referral',
                 header: t('service_orders.table.referral'),
                 meta: {
@@ -638,6 +650,16 @@ const ServiceOrdersIndex = ({
                                 </DialogHeader>
 
                                 <div className="flex-1 space-y-4 overflow-y-auto py-2 pr-2">
+                                    {selectedOrder?.config_account?.top_up_amount != null && (
+                                        <div className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-sm">
+                                            <span className="font-medium text-muted-foreground">
+                                                {t('service_orders.table.top_up_amount')}:
+                                            </span>{' '}
+                                            <span className="font-semibold text-primary">
+                                                {Number(selectedOrder.config_account.top_up_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="space-y-2">
                                         <Label htmlFor="payment_type">
                                             {t('service_purchase.payment_type')}

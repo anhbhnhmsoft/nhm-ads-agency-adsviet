@@ -180,26 +180,4 @@ class MetaController extends Controller
 
         return RestResponse::success(data: $result->getData());
     }
-
-    /**
-     * Cập nhật spend_cap (giới hạn chi tiêu) cho chiến dịch Meta.
-     */
-    public function updateCampaignSpendCap(string $serviceUserId, string $campaignId, Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0'],
-        ]);
-
-        $result = $this->metaService->updateCampaignSpendCap(
-            serviceUserId: $serviceUserId,
-            campaignId: $campaignId,
-            amount: (float) $validated['amount'],
-        );
-
-        if ($result->isError()) {
-            return RestResponse::error(message: $result->getMessage());
-        }
-
-        return RestResponse::success(data: $result->getData());
-    }
 }

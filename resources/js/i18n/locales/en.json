@@ -850,6 +850,7 @@
         "table": {
             "stt": "No.",
             "order_id": "Order ID",
+            "customer_name": "Requesting account",
             "referral": "Referrer",
             "account_info": "Account info",
             "info_fanpage": "Fanpage",

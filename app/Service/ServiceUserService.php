@@ -46,6 +46,7 @@ class ServiceUserService
         protected MetaAccountRepository $metaAccountRepository,
         protected GoogleAccountRepository $googleAccountRepository,
         protected ServiceAccountInventoryService $serviceAccountInventoryService,
+        protected MetaBusinessService $metaBusinessService,
     )
     {
     }
@@ -107,10 +108,12 @@ class ServiceUserService
 
             // ── Validate trước khi thay đổi gì ──
 
-            // Validate BM đã có khách khác dùng chưa (chỉ khi có BM ID)
+            // Validate BM đã có khách KHÁC dùng chưa (chỉ khi có BM ID)
+            // Cùng 1 khách mua nhiều gói trùng cho cùng BM/MCC vẫn cho phép.
             if (!empty($bmIdSubmitted)) {
                 $existingServiceUser = $this->serviceUserRepository->query()
                     ->where('id', '!=', $serviceUser->id)
+                    ->where('user_id', '!=', $serviceUser->user_id)
                     ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
                     ->where(function ($q) use ($bmIdSubmitted) {
                         $q->whereJsonContains('config_account->bm_id', $bmIdSubmitted)
@@ -127,13 +130,21 @@ class ServiceUserService
                 }
             }
 
-            // Validate account đã có ai dùng chưa (khi chọn tab Gán tài khoản)
+            // Validate account đã có KHÁCH KHÁC dùng chưa (khi chọn tab Gán tài khoản)
+            // - Chỉ chặn nếu service_user đang liên kết còn ACTIVE và thuộc về khách KHÁC.
+            // - Cùng 1 khách mua nhiều gói trùng cho cùng account vẫn cho phép.
             if ($assignMode === 'account' && $selectedAccountId) {
+                $activeStatus = \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value;
+                $currentUserId = $serviceUser->user_id;
                 if ($platform === PlatformType::META->value) {
                     $existingOwner = $this->metaAccountRepository->query()
                         ->where('account_id', $selectedAccountId)
                         ->where('service_user_id', '!=', $serviceUser->id)
                         ->whereNotNull('service_user_id')
+                        ->whereHas('serviceUser', fn ($q) => $q
+                            ->where('status', $activeStatus)
+                            ->where('user_id', '!=', $currentUserId))
+                        ->with('serviceUser.user')
                         ->first();
                     if ($existingOwner) {
                         $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khác';
@@ -146,6 +157,10 @@ class ServiceUserService
                         ->where('account_id', $selectedAccountId)
                         ->where('service_user_id', '!=', $serviceUser->id)
                         ->whereNotNull('service_user_id')
+                        ->whereHas('serviceUser', fn ($q) => $q
+                            ->where('status', $activeStatus)
+                            ->where('user_id', '!=', $currentUserId))
+                        ->with('serviceUser.user')
                         ->first();
                     if ($existingOwner) {
                         $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khác';
@@ -213,7 +228,13 @@ class ServiceUserService
                         ->update(['service_user_id' => $serviceUser->id]);
                 }
             } elseif (!empty($bmIdSubmitted)) {
-                // Tab "Gán BM": gán tất cả TK chưa có ai dùng trong BM/MCC
+                // Tab "Gán BM": gán tất cả TK chưa có ai dùng, hoặc đang thuộc service_user khác
+                // của CÙNG khách (để duyệt đơn trùng của cùng khách vẫn nắm được các TK cũ).
+                $sameUserServiceUserIds = $this->serviceUserRepository->query()
+                    ->where('user_id', $serviceUser->user_id)
+                    ->where('id', '!=', $serviceUser->id)
+                    ->pluck('id')
+                    ->all();
                 if ($platform === PlatformType::META->value) {
                     // Gán TK theo BM + BM share access
                     $accessibleAccountIds = DB::table('meta_account_business_manager_accesses')
@@ -227,13 +248,40 @@ class ServiceUserService
                                 $q->orWhereIn('account_id', $accessibleAccountIds);
                             }
                         })
-                        ->whereNull('service_user_id')
+                        ->where(function ($q) use ($sameUserServiceUserIds) {
+                            $q->whereNull('service_user_id');
+                            if (!empty($sameUserServiceUserIds)) {
+                                $q->orWhereIn('service_user_id', $sameUserServiceUserIds);
+                            }
+                        })
                         ->update(['service_user_id' => $serviceUser->id]);
                 } elseif ($platform === PlatformType::GOOGLE->value) {
                     $this->googleAccountRepository->query()
                         ->where('customer_manager_id', $bmIdSubmitted)
-                        ->whereNull('service_user_id')
+                        ->where(function ($q) use ($sameUserServiceUserIds) {
+                            $q->whereNull('service_user_id');
+                            if (!empty($sameUserServiceUserIds)) {
+                                $q->orWhereIn('service_user_id', $sameUserServiceUserIds);
+                            }
+                        })
                         ->update(['service_user_id' => $serviceUser->id]);
+                }
+            }
+
+            // ── Nâng spend_cap Meta bằng top_up_amount khách đã điền ──
+            if ($platform === PlatformType::META->value) {
+                $topUpAmount = (float) ($newConfig['top_up_amount'] ?? $currentConfig['top_up_amount'] ?? 0);
+                if ($topUpAmount > 0 && !empty($selectedAccountId)) {
+                    $spendCapResult = $this->metaBusinessService->increaseAdAccountSpendCap(
+                        $selectedAccountId,
+                        $topUpAmount
+                    );
+                    if ($spendCapResult->isError()) {
+                        Logging::error(
+                            message: 'ServiceUserService@approveServiceUser increaseAdAccountSpendCap failed: '.$spendCapResult->getMessage(),
+                            context: ['account_id' => $selectedAccountId, 'top_up_amount' => $topUpAmount]
+                        );
+                    }
                 }
             }
 

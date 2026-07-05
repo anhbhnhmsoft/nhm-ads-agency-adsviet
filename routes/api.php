@@ -69,7 +69,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [MetaController::class, 'detailCampaign']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [MetaController::class, 'getCampaignInsights']);
         Route::post('/{serviceUserId}/{campaignId}/status', [MetaController::class, 'updateCampaignStatus']);
-        Route::post('/{serviceUserId}/{campaignId}/spend-cap', [MetaController::class, 'updateCampaignSpendCap']);
     });
 
     Route::prefix('google-ads')->group(function () {
@@ -79,7 +78,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign', [GoogleAdsController::class, 'detailCampaign']);
         Route::get('/{serviceUserId}/{campaignId}/detail-campaign-insight', [GoogleAdsController::class, 'getCampaignInsights']);
         Route::post('/{serviceUserId}/{campaignId}/status', [GoogleAdsController::class, 'updateCampaignStatus']);
-        Route::post('/{serviceUserId}/{campaignId}/budget', [GoogleAdsController::class, 'updateCampaignBudget']);
     });
 
     Route::prefix('wallet')->group(function () {

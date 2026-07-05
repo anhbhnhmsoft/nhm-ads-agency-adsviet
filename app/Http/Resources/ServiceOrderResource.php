@@ -64,6 +64,7 @@ class ServiceOrderResource extends JsonResource
                 'platform_label' => $package ? PlatformType::tryFrom((int) $package->platform)?->label() : null,
             ],
             'user' => [
+                'name' => $user?->name,
                 'referrer' => $referral ? [
                     'name' => $referral->name,
                 ] : null,

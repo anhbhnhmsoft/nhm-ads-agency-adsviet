@@ -793,6 +793,7 @@
         "table": {
             "stt": "STT",
             "order_id": "Mã đơn",
+            "customer_name": "Tài khoản yêu cầu",
             "referral": "Người giới thiệu",
             "account_info": "Thông tin tài khoản",
             "info_fanpage": "Fanpage",
