@@ -457,7 +457,7 @@ class WalletTransactionService
                     'wallet_id' => $wallet->id,
                     'amount' => -$totalChargeAmount,
                     'type' => $type->value,
-                    'status' => WalletTransactionStatus::PENDING->value,
+                    'status' => WalletTransactionStatus::COMPLETED->value,
                     'description' => $description,
                     'withdraw_info' => [
                         'purpose' => 'account_top_up',
@@ -472,6 +472,30 @@ class WalletTransactionService
                         'total_charge_amount' => $totalChargeAmount,
                     ],
                 ]);
+
+                // Tự động tăng spending limit ngay khi khách top-up
+                $autoIncreaseDescription = '';
+                if ($accountId) {
+                    if ((int) $platformType === \App\Common\Constants\Platform\PlatformType::META->value) {
+                        $autoResult = $this->metaBusinessService->increaseAdAccountSpendCap($accountId, $topUpAmount);
+                        if ($autoResult?->isSuccess()) {
+                            $autoIncreaseDescription = ' | Auto increased account spending limit.';
+                        } elseif ($autoResult?->isError()) {
+                            $autoIncreaseDescription = ' | Spending limit increase failed: ' . $autoResult->getMessage();
+                        }
+                    } elseif ((int) $platformType === \App\Common\Constants\Platform\PlatformType::GOOGLE->value && $serviceUserId) {
+                        $autoResult = $this->googleAdsService->increaseAccountSpendingLimit($serviceUserId, $accountId, $topUpAmount);
+                        if ($autoResult?->isSuccess()) {
+                            $autoIncreaseDescription = ' | Auto increased account spending limit.';
+                        } elseif ($autoResult?->isError()) {
+                            $autoIncreaseDescription = ' | Spending limit increase failed: ' . $autoResult->getMessage();
+                        }
+                    }
+                }
+
+                if ($autoIncreaseDescription) {
+                    $transaction->update(['description' => $transaction->description . $autoIncreaseDescription]);
+                }
 
                 $this->notifyTransaction($transaction, $wallet->user?->id);
 
