@@ -916,6 +916,10 @@ class MetaBusinessService
 
     /**
      * Tăng giới hạn chi tiêu ở cấp tài khoản quảng cáo Meta.
+     *
+     * Meta API v11.0+: spend_cap sử dụng major units (USD dollars).
+     * amount_spent vẫn dùng minor units (cents cho USD).
+     * POST spend_cap cũng expects major units.
      */
     public function increaseAdAccountSpendCap(?string $accountId, float $amountUsd): ServiceReturn
     {
@@ -941,20 +945,29 @@ class MetaBusinessService
             )->getContent();
 
             $currency = strtoupper((string) ($accountData['currency'] ?? 'USD'));
-            $currentSpendCap = $this->normalizeAccountMoney($accountData['spend_cap'] ?? null, $currency) ?? 0.0;
+
+            // spend_cap: Meta trả về major units (VD: $210 → "210"), KHÔNG cần /100
+            $currentSpendCap = isset($accountData['spend_cap']) && $accountData['spend_cap'] !== ''
+                ? (float) $accountData['spend_cap']
+                : 0.0;
+
+            // amount_spent: Meta trả về minor units (VD: $218.76 → "21876"), CẦN /100
             $amountSpent = $this->normalizeAccountMoney($accountData['amount_spent'] ?? null, $currency) ?? 0.0;
+
             $newSpendCap = max($currentSpendCap, $amountSpent) + $amountUsd;
-            $newSpendCapMinor = $this->toMetaMinorUnit($newSpendCap, $currency);
+
+            // POST spend_cap: Meta expects major units, KHÔNG nhân 100
+            $newSpendCapInt = (int) round($newSpendCap);
 
             $response = $this->api->call(
                 "/{$normalizedAccountId}",
                 'POST',
-                ['spend_cap' => $newSpendCapMinor]
+                ['spend_cap' => $newSpendCapInt]
             )->getContent();
 
             \App\Models\MetaAccount::query()
                 ->where('account_id', preg_replace('/^act_/', '', $normalizedAccountId))
-                ->update(['spend_cap' => (string) $newSpendCapMinor]);
+                ->update(['spend_cap' => (string) $newSpendCapInt]);
 
             return ServiceReturn::success(data: [
                 'response' => $response,

@@ -15,7 +15,11 @@ class MetaAdsAccountResource extends JsonResource
         $status = MetaAdsAccountStatus::fromValue($this->account_status);
 
         // Tính trạng thái hết tiền (không lưu DB, chỉ tính động)
-        $spendCap = $this->normalizeMetaAccountMoney($this->spend_cap, $this->currency);
+        // spend_cap: Meta API v11.0+ trả về major units (USD dollars), KHÔNG cần /100
+        // amount_spent: Meta API trả về minor units (cents cho USD), CẦN /100
+        $spendCap = isset($this->spend_cap) && $this->spend_cap !== ''
+            ? (float) $this->spend_cap
+            : null;
         $amountSpent = $this->normalizeMetaAccountMoney($this->amount_spent, $this->currency);
         $balance = $this->normalizeMetaAccountMoney($this->balance, $this->currency);
         $balanceExhausted = false;
