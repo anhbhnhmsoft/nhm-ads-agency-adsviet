@@ -945,17 +945,21 @@ class MetaBusinessService
             )->getContent();
 
             $currency = strtoupper((string) ($accountData['currency'] ?? 'USD'));
+            // GET: Meta trả spend_cap/amount_spent minor units (cents) → ÷100 → USD
             $currentSpendCap = $this->normalizeAccountMoney($accountData['spend_cap'] ?? null, $currency) ?? 0.0;
             $amountSpent = $this->normalizeAccountMoney($accountData['amount_spent'] ?? null, $currency) ?? 0.0;
             $newSpendCap = max($currentSpendCap, $amountSpent) + $amountUsd;
-            $newSpendCapMinor = $this->toMetaMinorUnit($newSpendCap, $currency);
+            // POST: Meta v24.0 expect account spend_cap major units (USD), NOT cents
+            $newSpendCapMajor = (int) round($newSpendCap);
 
             $response = $this->api->call(
                 "/{$normalizedAccountId}",
                 'POST',
-                ['spend_cap' => $newSpendCapMinor]
+                ['spend_cap' => $newSpendCapMajor]
             )->getContent();
 
+            // DB lưu cents (minor units) cho display consistency với MetaService sync
+            $newSpendCapMinor = $this->toMetaMinorUnit($newSpendCap, $currency);
             \App\Models\MetaAccount::query()
                 ->where('account_id', preg_replace('/^act_/', '', $normalizedAccountId))
                 ->update(['spend_cap' => (string) $newSpendCapMinor]);
