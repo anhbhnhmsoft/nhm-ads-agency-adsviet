@@ -917,9 +917,9 @@ class MetaBusinessService
     /**
      * Tăng giới hạn chi tiêu ở cấp tài khoản quảng cáo Meta.
      *
-     * Meta API v11.0+: spend_cap sử dụng major units (USD dollars).
-     * amount_spent vẫn dùng minor units (cents cho USD).
-     * POST spend_cap cũng expects major units.
+     * Meta API: cả spend_cap và amount_spent đều dùng minor units (cents cho USD).
+     * normalizeAccountMoney: ÷100 → USD.
+     * toMetaMinorUnit: ×100 → cents.
      */
     public function increaseAdAccountSpendCap(?string $accountId, float $amountUsd): ServiceReturn
     {
@@ -945,29 +945,20 @@ class MetaBusinessService
             )->getContent();
 
             $currency = strtoupper((string) ($accountData['currency'] ?? 'USD'));
-
-            // spend_cap: Meta trả về major units (VD: $210 → "210"), KHÔNG cần /100
-            $currentSpendCap = isset($accountData['spend_cap']) && $accountData['spend_cap'] !== ''
-                ? (float) $accountData['spend_cap']
-                : 0.0;
-
-            // amount_spent: Meta trả về minor units (VD: $218.76 → "21876"), CẦN /100
+            $currentSpendCap = $this->normalizeAccountMoney($accountData['spend_cap'] ?? null, $currency) ?? 0.0;
             $amountSpent = $this->normalizeAccountMoney($accountData['amount_spent'] ?? null, $currency) ?? 0.0;
-
             $newSpendCap = max($currentSpendCap, $amountSpent) + $amountUsd;
-
-            // POST spend_cap: Meta expects major units, KHÔNG nhân 100
-            $newSpendCapInt = (int) round($newSpendCap);
+            $newSpendCapMinor = $this->toMetaMinorUnit($newSpendCap, $currency);
 
             $response = $this->api->call(
                 "/{$normalizedAccountId}",
                 'POST',
-                ['spend_cap' => $newSpendCapInt]
+                ['spend_cap' => $newSpendCapMinor]
             )->getContent();
 
             \App\Models\MetaAccount::query()
                 ->where('account_id', preg_replace('/^act_/', '', $normalizedAccountId))
-                ->update(['spend_cap' => (string) $newSpendCapInt]);
+                ->update(['spend_cap' => (string) $newSpendCapMinor]);
 
             return ServiceReturn::success(data: [
                 'response' => $response,

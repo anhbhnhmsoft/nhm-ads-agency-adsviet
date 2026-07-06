@@ -1336,47 +1336,7 @@ const ServiceOrdersIndex = ({
                                                     </p>
                                                 </div>
 
-                                                {/* 4. Input ID BM/MCC khách nhập */}
-                                                <div className="space-y-2">
-                                                    <Label>
-                                                        {isApproveMeta
-                                                            ? t(
-                                                                  'service_orders.form.bm_id_customer_input',
-                                                              )
-                                                            : t(
-                                                                  'service_orders.form.mcc_id_customer_input',
-                                                              )}
-                                                    </Label>
-                                                    <Input
-                                                        value={bmId}
-                                                        onChange={(e) => {
-                                                            setBmId(
-                                                                e.target.value,
-                                                            );
-                                                            setAccountIdInput(
-                                                                '',
-                                                            );
-                                                        }}
-                                                        placeholder={
-                                                            isApproveMeta
-                                                                ? t(
-                                                                      'service_orders.form.bm_id_customer_placeholder',
-                                                                  )
-                                                                : t(
-                                                                      'service_orders.form.mcc_id_customer_placeholder',
-                                                                  )
-                                                        }
-                                                    />
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {isApproveMeta
-                                                            ? t(
-                                                                  'service_orders.form.bm_id_customer_hint',
-                                                              )
-                                                            : t(
-                                                                  'service_orders.form.mcc_id_customer_hint',
-                                                              )}
-                                                    </p>
-                                                </div>
+                                                {/* 4. Input ID BM/MCC khách nhập — ẩn ở form approve, chỉ hiện ở form edit */}
 
                                                 {bmId &&
                                                     !loadingBmAccounts &&

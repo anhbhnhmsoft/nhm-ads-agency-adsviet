@@ -1181,16 +1181,12 @@ class BusinessManagerService
 
     private function calculateRemainingAmount(mixed $spendCap, mixed $amountSpent, ?string $currency = null): ?float
     {
-        // spend_cap: Meta API v11.0+ major units (dollars) — stored as-is in DB
-        // amount_spent: BusinessManagerService normalizes to dollars before storing
-        $limit = ($spendCap !== null && $spendCap !== '' && is_numeric($spendCap))
-            ? (float) $spendCap : null;
+        $limit = $this->normalizeMetaAccountMoney($spendCap, $currency);
         if ($limit === null || $limit <= 0) {
             return null;
         }
 
-        $spent = ($amountSpent !== null && $amountSpent !== '' && is_numeric($amountSpent))
-            ? (float) $amountSpent : 0.0;
+        $spent = $this->normalizeMetaAccountMoney($amountSpent, $currency) ?? 0.0;
         return max(0.0, $limit - $spent);
     }
 
@@ -1535,9 +1531,7 @@ class BusinessManagerService
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
-                            // spend_cap: Meta API v11.0+ major units (USD dollars) — store as-is
-                            'spend_cap' => isset($account->spend_cap) && $account->spend_cap !== ''
-                                ? (float) $account->spend_cap : null,
+                            'spend_cap' => $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD'),
                             'amount_spent' => $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD'),
                             'balance' => $this->normalizeMetaAccountMoney($account->balance ?? null, $account->currency ?? 'USD'),
                             'currency' => $account->currency,
@@ -1599,9 +1593,7 @@ class BusinessManagerService
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
                         'service_user_id' => $account->service_user_id ? (string) $account->service_user_id : null,
-                        // spend_cap: Meta API v11.0+ major units — store as-is
-                        'spend_cap' => isset($account->spend_cap) && $account->spend_cap !== ''
-                            ? (float) $account->spend_cap : null,
+                        'spend_cap' => $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD'),
                         'amount_spent' => $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD'),
                         'balance' => $this->normalizeMetaAccountMoney($account->balance ?? null, $account->currency ?? 'USD'),
                         'currency' => $account->currency,
@@ -1810,9 +1802,7 @@ class BusinessManagerService
                         'disable_reason' => $this->getMetaDisableReasonLabel($account->disable_reason ?? null),
                         'disable_reason_code' => $account->disable_reason !== null && $account->disable_reason !== '' ? (int) $account->disable_reason : null,
                         'disable_reason_severity' => $this->getMetaDisableReasonSeverity($account->disable_reason ?? null),
-                        // spend_cap: Meta API v11.0+ major units — store as-is
-                        'spend_cap' => isset($account->spend_cap) && $account->spend_cap !== ''
-                            ? (float) $account->spend_cap : null,
+                        'spend_cap' => $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD'),
                         'amount_spent' => $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD'),
                         'remaining_amount' => $remainingAmount,
                         'created_time' => $account->created_time,
@@ -1984,9 +1974,8 @@ class BusinessManagerService
             'disable_reason_severity' => (int) $platform === PlatformType::META->value
                 ? $this->getMetaDisableReasonSeverity($account->disable_reason ?? null)
                 : null,
-            // spend_cap: Meta API v11.0+ major units — store as-is (no ÷100)
             'spend_cap' => (int) $platform === PlatformType::META->value
-                ? (isset($account->spend_cap) && $account->spend_cap !== '' ? (float) $account->spend_cap : null)
+                ? $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD')
                 : ($account->spend_cap ?? null),
             'amount_spent' => (int) $platform === PlatformType::META->value
                 ? $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD')
