@@ -19,6 +19,7 @@ return [
         'account_top_up_google' => 'Nạp tiền tài khoản Google Ads',
         'account_top_up_meta' => 'Nạp tiền tài khoản Meta Ads',
         'spending_fee' => 'Phí spending',
+        'account_refund' => 'Hoàn tiền dư tài khoản quảng cáo',
     ],
     'transaction_status' => [
         'unknown' => 'Không xác định',
@@ -47,6 +48,7 @@ return [
         'account_top_up_created' => 'Đã tạo yêu cầu nạp tiền tài khoản quảng cáo. Vui lòng chờ admin xử lý.',
         'campaign_pause_created' => 'Đã tạo yêu cầu tạm dừng chiến dịch. Vui lòng chờ admin xử lý.',
         'campaign_end_created' => 'Đã tạo yêu cầu kết thúc chiến dịch. Vui lòng chờ admin xử lý.',
+        'account_refund_success' => 'Đã hoàn tiền dư từ tài khoản quảng cáo về ví.',
     ],
     'deposit_disabled_temporarily' => 'Chức năng nạp tiền trực tuyến qua cổng thanh toán đang tạm tắt. Vui lòng chuyển USDT vào địa chỉ ví đã cấu hình và chờ admin duyệt.',
     'validation' => [
@@ -108,5 +110,8 @@ return [
         'wallet_not_found' => 'Ví không tồn tại',
         'wallet_password_invalid' => 'Mật khẩu ví không chính xác',
         'wallet_balance_not_enough' => 'Số dư không đủ',
+        'account_not_found' => 'Tài khoản quảng cáo không tồn tại',
+        'account_not_linked' => 'Tài khoản chưa được gán cho dịch vụ này',
+        'no_remaining_balance' => 'Tài khoản không có số dư tiền dư để hoàn',
     ],
 ];

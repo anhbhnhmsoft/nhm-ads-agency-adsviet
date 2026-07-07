@@ -85,8 +85,8 @@ class WalletTransactionController extends Controller
                 ]);
             }
         }
-        // Admin: xem tất cả, có thể filter theo user_id
-        elseif ($user->role === UserRole::ADMIN->value) {
+        // Admin/Manager/Employee: xem tất cả, có thể filter theo user_id
+        elseif (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
             if ($request->has('user_id') && $request->user_id) {
                 $walletId = $this->walletService->getWalletIdByUserId((int) $request->user_id);
                 if ($walletId) {
@@ -125,15 +125,15 @@ class WalletTransactionController extends Controller
                 'total' => $paginator->total(),
             ],
             'filters' => $request->only(['type', 'status', 'user_id']),
-            'canApprove' => $user->role === UserRole::ADMIN->value,
+            'canApprove' => in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]),
         ]);
     }
 
-    // Xác nhận giao dịch role:adminx
+    // Xác nhận giao dịch role:admin/manager/employee
     public function approve(int $id, Request $request)
     {
         $user = Auth::user();
-        if (!$user || $user->role !== UserRole::ADMIN->value) {
+        if (!$user || !in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
             FlashMessage::error(__('common_error.permission_denied'));
             return redirect()->back();
         }
@@ -213,11 +213,11 @@ class WalletTransactionController extends Controller
         return redirect()->back();
     }
 
-    // Hủy giao dịch role:admin
+    // Hủy giao dịch role:admin/manager/employee
     public function cancel(int $id, Request $request)
     {
         $user = Auth::user();
-        if (!$user || $user->role !== UserRole::ADMIN->value) {
+        if (!$user || !in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
             FlashMessage::error(__('common_error.permission_denied'));
             return redirect()->back();
         }

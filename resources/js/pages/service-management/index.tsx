@@ -4,13 +4,16 @@ import type { ColumnDef } from '@tanstack/react-table';
 import axios from 'axios';
 import {
     ArrowLeft,
+    Columns,
     Loader2,
     Pause,
     Play,
     RefreshCw,
+    RotateCcw,
     Trash2,
     TrendingDown,
     TrendingUp,
+    Unlink,
     Wallet,
 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
@@ -20,6 +23,14 @@ import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 import { toast } from 'sonner';
 
 import { DataTable } from '@/components/table/data-table';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -192,6 +203,44 @@ const ServiceManagementIndex = ({
     const [loadingServices, setLoadingServices] = useState(false);
     const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
+    // Refund dialog state
+    const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+    const [selectedAccountForRefund, setSelectedAccountForRefund] =
+        useState<BusinessManagerItem | null>(null);
+    const [refundWalletPassword, setRefundWalletPassword] = useState('');
+    const [refundSubmitting, setRefundSubmitting] = useState(false);
+
+    // Column visibility state (persisted in localStorage)
+    const COLUMN_VISIBILITY_KEY = 'service-management-columns';
+    const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+        try {
+            const saved = localStorage.getItem(COLUMN_VISIBILITY_KEY);
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    });
+    const handleColumnVisibilityChange = useCallback((updater: Record<string, boolean> | ((old: Record<string, boolean>) => Record<string, boolean>)) => {
+        setColumnVisibility((prev) => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            try {
+                localStorage.setItem(COLUMN_VISIBILITY_KEY, JSON.stringify(next));
+            } catch { /* ignore */ }
+            return next;
+        });
+    }, []);
+
+    // Unassign dialog state
+    const [unassignDialogOpen, setUnassignDialogOpen] = useState(false);
+    const [selectedAccountForUnassign, setSelectedAccountForUnassign] =
+        useState<BusinessManagerItem | null>(null);
+    const [unassignSubmitting, setUnassignSubmitting] = useState(false);
+
+    const openUnassignDialog = useCallback((account: BusinessManagerItem) => {
+        setSelectedAccountForUnassign(account);
+        setUnassignDialogOpen(true);
+    }, []);
+
     const selectedMetaBmId =
         query.platform === _PlatformType.META
             ? query.child_manager_id || query.manager_id
@@ -275,6 +324,18 @@ const ServiceManagementIndex = ({
             }
         },
         [activeServices, fetchWalletBalance],
+    );
+
+    const openAccountRefundDialog = useCallback(
+        async (account: BusinessManagerItem) => {
+            setSelectedAccountForRefund(account);
+            setRefundWalletPassword('');
+            setRefundDialogOpen(true);
+            if (isAgencyOrCustomer) {
+                await fetchWalletBalance();
+            }
+        },
+        [isAgencyOrCustomer, fetchWalletBalance],
     );
 
     const handleSyncMetaInsights = useCallback(async () => {
@@ -798,6 +859,26 @@ const ServiceManagementIndex = ({
                                     })}
                                 </Button>
                             )}
+                            {((isAgencyOrCustomer && !!account.service_user_id) || isStaff) &&
+                                (account as any).remaining_amount != null &&
+                                Number((account as any).remaining_amount) > 0 &&
+                                account.platform === _PlatformType.META &&
+                                (account.status_severity === 'error' || account.account_status === 2) && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        openAccountRefundDialog(account);
+                                    }}
+                                >
+                                    <RotateCcw className="mr-2 h-4 w-4" />
+                                    {t('service_management.account_refund', {
+                                        defaultValue: 'Hoàn tiền',
+                                    })}
+                                </Button>
+                            )}
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -828,6 +909,22 @@ const ServiceManagementIndex = ({
                                     defaultValue: 'Xem chiến dịch',
                                 })}
                             </Button>
+                            {isStaff && !!account.service_user_id && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 border-red-300 hover:bg-red-50"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        openUnassignDialog(account);
+                                    }}
+                                >
+                                    <Unlink className="mr-2 h-4 w-4" />
+                                    {t('service_management.unassign', {
+                                        defaultValue: 'Gỡ gán',
+                                    })}
+                                </Button>
+                            )}
                         </div>
                     );
                 },
@@ -1649,9 +1746,60 @@ const ServiceManagementIndex = ({
                                 </div>
                             )}
 
+                        {/* Column visibility toggle */}
+                        <div className="flex justify-end mb-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                        <Columns className="mr-2 h-4 w-4" />
+                                        {t('service_management.toggle_columns', {
+                                            defaultValue: 'Ẩn/Hiện cột',
+                                        })}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                    <DropdownMenuLabel>
+                                        {t('service_management.select_columns', {
+                                            defaultValue: 'Chọn cột hiển thị',
+                                        })}
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {accountColumns
+                                        .filter((col) => {
+                                            const id = typeof col.id === 'string' ? col.id : (col as any).accessorKey;
+                                            return id && id !== 'actions';
+                                        })
+                                        .map((col) => {
+                                            const colId = typeof col.id === 'string' ? col.id : (col as any).accessorKey;
+                                            if (!colId) return null;
+                                            const label = typeof col.header === 'string'
+                                                ? col.header
+                                                : t(`service_management.column.${colId}`, { defaultValue: String(colId) });
+                                            const isVisible = columnVisibility[colId] !== false;
+                                            return (
+                                                <DropdownMenuCheckboxItem
+                                                    key={colId}
+                                                    checked={isVisible}
+                                                    onCheckedChange={(checked) => {
+                                                        handleColumnVisibilityChange((prev) => ({
+                                                            ...prev,
+                                                            [colId]: checked,
+                                                        }));
+                                                    }}
+                                                >
+                                                    {label}
+                                                </DropdownMenuCheckboxItem>
+                                            );
+                                        })}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+
                         <DataTable
                             columns={accountColumns}
                             paginator={paginator}
+                            columnVisibility={columnVisibility}
+                            onColumnVisibilityChange={handleColumnVisibilityChange}
                             onRowClick={(account) => loadCampaigns(account)}
                             renderFooterRows={(columnCount) => (
                                 <TableRow className="bg-muted/40 font-medium">
@@ -1990,6 +2138,228 @@ const ServiceManagementIndex = ({
                             )}
                             {t('service_management.account_top_up_submit', {
                                 defaultValue: 'Gửi yêu cầu',
+                            })}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog Hoàn tiền dư tài khoản quảng cáo */}
+            <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {t('service_management.account_refund_title', {
+                                defaultValue: 'Hoàn tiền dư tài khoản quảng cáo',
+                            })}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {t(
+                                'service_management.account_refund_description',
+                                {
+                                    defaultValue:
+                                        'Hoàn số tiền dư (chưa sử dụng) từ tài khoản quảng cáo về ví của bạn.',
+                                },
+                            )}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="rounded-md bg-muted/50 p-3 text-sm">
+                            <div className="font-medium">
+                                {selectedAccountForRefund?.account_name || '-'}
+                            </div>
+                            <div className="text-muted-foreground">
+                                ID:{' '}
+                                {selectedAccountForRefund?.account_id ||
+                                    selectedAccountForRefund?.id ||
+                                    '-'}
+                            </div>
+                        </div>
+
+                        {/* Hiển thị breakdown hoàn tiền */}
+                        {(selectedAccountForRefund as any)?.remaining_amount != null && (
+                            <div className="rounded-md bg-orange-50 dark:bg-orange-950/30 p-3 text-sm space-y-1">
+                                <div className="font-medium text-orange-700 dark:text-orange-300">
+                                    {t('service_management.refund_breakdown_title', {
+                                        defaultValue: 'Chi tiết hoàn tiền',
+                                    })}
+                                </div>
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>{t('service_management.refund_remaining', { defaultValue: 'Tiền dư còn lại' })}</span>
+                                    <span>{Number((selectedAccountForRefund as any).remaining_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>{t('service_management.refund_fee', { defaultValue: 'Phí dịch vụ hoàn lại' })}</span>
+                                    <span>... USD</span>
+                                </div>
+                                <div className="flex justify-between font-semibold border-t pt-1">
+                                    <span>{t('service_management.refund_total', { defaultValue: 'Tổng hoàn' })}</span>
+                                    <span>... USD</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Wallet password */}
+                        {isAgencyOrCustomer && (
+                            <div className="space-y-2">
+                                <Label htmlFor="refund-wallet-password">
+                                    {t('service_management.campaign_update_budget_wallet_password_label', {
+                                        defaultValue: 'Mật khẩu ví',
+                                    })}
+                                </Label>
+                                <Input
+                                    id="refund-wallet-password"
+                                    type="password"
+                                    value={refundWalletPassword}
+                                    onChange={(e) =>
+                                        setRefundWalletPassword(e.target.value)
+                                    }
+                                    placeholder={t('service_management.campaign_update_budget_wallet_password_placeholder', {
+                                        defaultValue: 'Nhập mật khẩu ví',
+                                    })}
+                                />
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setRefundDialogOpen(false);
+                                setSelectedAccountForRefund(null);
+                                setRefundWalletPassword('');
+                            }}
+                        >
+                            {t('common.cancel', { defaultValue: 'Hủy' })}
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={async () => {
+                                if (!selectedAccountForRefund?.service_user_id) return;
+                                setRefundSubmitting(true);
+                                try {
+                                    const response = await axios.post(
+                                        '/wallets/account-refund',
+                                        {
+                                            service_user_id: selectedAccountForRefund.service_user_id,
+                                            account_id: selectedAccountForRefund.account_id || selectedAccountForRefund.id,
+                                            wallet_password: refundWalletPassword || undefined,
+                                        },
+                                    );
+                                    const data = response.data?.data;
+                                    toast.success(
+                                        t('service_management.account_refund_success', {
+                                            defaultValue: `Đã hoàn ${data?.total_refund?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '?'} USD về ví.`,
+                                        }),
+                                    );
+                                    setRefundDialogOpen(false);
+                                    setSelectedAccountForRefund(null);
+                                    setRefundWalletPassword('');
+                                    fetchWalletBalance();
+                                } catch (e: any) {
+                                    toast.error(
+                                        e?.response?.data?.message ||
+                                        t('service_management.account_refund_error', {
+                                            defaultValue: 'Không thể hoàn tiền. Vui lòng thử lại.',
+                                        }),
+                                    );
+                                } finally {
+                                    setRefundSubmitting(false);
+                                }
+                            }}
+                            disabled={refundSubmitting}
+                        >
+                            {refundSubmitting && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            {t('service_management.account_refund_submit', {
+                                defaultValue: 'Xác nhận hoàn tiền',
+                            })}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog Gỡ gán tài khoản */}
+            <Dialog open={unassignDialogOpen} onOpenChange={setUnassignDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {t('service_management.unassign_title', {
+                                defaultValue: 'Gỡ gán tài khoản',
+                            })}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {t('service_management.unassign_description', {
+                                defaultValue: 'Gỡ bỏ liên kết tài khoản này khỏi khách hàng. Tài khoản sẽ trở về khoAvailable.',
+                            })}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="rounded-md bg-red-50 dark:bg-red-950/30 p-3 text-sm">
+                            <div className="font-medium text-red-700 dark:text-red-300">
+                                {selectedAccountForUnassign?.account_name || '-'}
+                            </div>
+                            <div className="text-red-600/80 dark:text-red-400/80">
+                                ID: {selectedAccountForUnassign?.account_id || selectedAccountForUnassign?.id || '-'}
+                            </div>
+                            {selectedAccountForUnassign?.customer_name && (
+                                <div className="text-red-600/80 dark:text-red-400/80 mt-1">
+                                    Khách: {selectedAccountForUnassign.customer_name}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setUnassignDialogOpen(false);
+                                setSelectedAccountForUnassign(null);
+                            }}
+                        >
+                            {t('common.cancel', { defaultValue: 'Hủy' })}
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={async () => {
+                                if (!selectedAccountForUnassign?.service_user_id) return;
+                                setUnassignSubmitting(true);
+                                try {
+                                    await axios.post(
+                                        '/service-management/unassign-account',
+                                        {
+                                            service_user_id: selectedAccountForUnassign.service_user_id,
+                                            account_id: selectedAccountForUnassign.account_id || selectedAccountForUnassign.id,
+                                        },
+                                    );
+                                    toast.success(
+                                        t('service_management.unassign_success', {
+                                            defaultValue: 'Đã gỡ gán tài khoản thành công.',
+                                        }),
+                                    );
+                                    setUnassignDialogOpen(false);
+                                    setSelectedAccountForUnassign(null);
+                                    // Refresh data
+                                    handleSearch();
+                                } catch (e: any) {
+                                    toast.error(
+                                        e?.response?.data?.message ||
+                                        t('service_management.unassign_error', {
+                                            defaultValue: 'Không thể gỡ gán. Vui lòng thử lại.',
+                                        }),
+                                    );
+                                } finally {
+                                    setUnassignSubmitting(false);
+                                }
+                            }}
+                            disabled={unassignSubmitting}
+                        >
+                            {unassignSubmitting && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            {t('service_management.unassign_submit', {
+                                defaultValue: 'Xác nhận gỡ gán',
                             })}
                         </Button>
                     </DialogFooter>

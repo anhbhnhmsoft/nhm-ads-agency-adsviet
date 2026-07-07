@@ -147,6 +147,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/customer-balance/{userId}', [WalletController::class, 'getCustomerBalance'])->name('wallet_customer_balance');
         Route::post('/campaign-budget-update', [WalletController::class, 'campaignBudgetUpdate'])->name('wallet_campaign_budget_update');
         Route::post('/account-top-up', [WalletController::class, 'accountTopUp'])->name('wallet_account_top_up');
+        Route::post('/account-refund', [WalletController::class, 'accountRefund'])->name('wallet_account_refund');
         Route::post('/campaign-pause', [WalletController::class, 'campaignPause'])->name('wallet_campaign_pause');
         Route::post('/campaign-end', [WalletController::class, 'campaignEnd'])->name('wallet_campaign_end');
         Route::get('/min-amount/{network}', [WalletController::class, 'getMinimalAmount'])->name('wallet_min_amount');
@@ -223,6 +224,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::get('/active-services', [ServiceManagementController::class, 'getActiveServices'])->name('service_management_active_services');
         Route::post('/sync-meta-insights', [ServiceManagementController::class, 'syncMetaInsights'])->name('service_management_sync_meta_insights');
         Route::post('/sync-google-insights', [ServiceManagementController::class, 'syncGoogleInsights'])->name('service_management_sync_google_insights');
+        Route::post('/unassign-account', [ServiceManagementController::class, 'unassignAccount'])->name('service_management_unassign_account');
     });
 
     Route::prefix('/spend-report')->group(function () {

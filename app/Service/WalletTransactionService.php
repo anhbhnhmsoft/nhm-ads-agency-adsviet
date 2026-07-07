@@ -1484,4 +1484,176 @@ class WalletTransactionService
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
+
+    /**
+     * Hoàn tiền dư từ tài khoản quảng cáo về ví.
+     * Tính: remaining (spend_cap - amount_spent) + phí dịch vụ đã thu.
+     */
+    public function refundAdAccountBalance(
+        int $userId,
+        ?string $serviceUserId = null,
+        ?string $accountId = null,
+        ?string $walletPassword = null,
+    ): ServiceReturn {
+        try {
+            if (empty($accountId) || empty($serviceUserId)) {
+                return ServiceReturn::error(message: __('wallet.error.account_not_found'));
+            }
+
+            $wallet = $this->walletRepository->findByUserId($userId);
+            if (!$wallet) {
+                return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
+            }
+
+            if (!empty($wallet->password)) {
+                if (empty($walletPassword) || !\Illuminate\Support\Facades\Hash::check($walletPassword, $wallet->password)) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_password_invalid'));
+                }
+            }
+
+            $serviceUser = \App\Models\ServiceUser::with('package')->find($serviceUserId);
+            if (!$serviceUser) {
+                return ServiceReturn::error(message: __('wallet.error.account_not_linked'));
+            }
+
+            $platform = $serviceUser->package?->platform ?? null;
+
+            // Tìm account và tính remaining
+            $remaining = 0.0;
+            $accountCurrency = 'USD';
+            if ((int) $platform === PlatformType::META->value) {
+                $account = \App\Models\MetaAccount::query()
+                    ->where('account_id', preg_replace('/^act_/', '', $accountId))
+                    ->where('service_user_id', $serviceUserId)
+                    ->first();
+                if (!$account) {
+                    return ServiceReturn::error(message: __('wallet.error.account_not_linked'));
+                }
+                $accountCurrency = $account->currency ?? 'USD';
+                $spendCap = $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $accountCurrency) ?? 0.0;
+                $amountSpent = $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $accountCurrency) ?? 0.0;
+                $remaining = max(0.0, $spendCap - $amountSpent);
+            } elseif ((int) $platform === PlatformType::GOOGLE->value) {
+                $account = \App\Models\GoogleAccount::query()
+                    ->where('account_id', $accountId)
+                    ->where('service_user_id', $serviceUserId)
+                    ->first();
+                if (!$account) {
+                    return ServiceReturn::error(message: __('wallet.error.account_not_linked'));
+                }
+                $remaining = 0.0; // Google không có account-level spend_cap
+            }
+
+            if ($remaining <= 0) {
+                return ServiceReturn::error(message: __('wallet.error.no_remaining_balance'));
+            }
+
+            // Tính phí hoàn lại: remaining * feePercent / 100
+            $billingSource = $this->resolveAccountTopUpBillingSource($serviceUserId);
+            $feeData = $this->calculateAccountTopUpFee($serviceUserId, $remaining, $billingSource);
+            $feeRefund = $feeData['fee_amount'];
+            $totalRefund = $remaining + $feeRefund;
+
+            // Cộng tiền vào ví
+            $newBalance = (float) $wallet->balance + $totalRefund;
+            $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
+
+            // Tạo transaction REFUND
+            $description = __('wallet.transaction_description.account_top_up_detail', [
+                'account' => $account->account_name ?? '-',
+                'account_id' => $accountId,
+            ]) . " | Hoàn tiền dư: $remaining $accountCurrency";
+            if ($feeRefund > 0) {
+                $description .= " + phí hoàn: $feeRefund $accountCurrency";
+            }
+
+            $type = WalletTransactionType::ACCOUNT_REFUND;
+            if ((int) $platform === PlatformType::GOOGLE->value) {
+                $type = WalletTransactionType::ACCOUNT_REFUND;
+            }
+
+            $transaction = $this->transactionRepository->create([
+                'wallet_id' => $wallet->id,
+                'amount' => $totalRefund,
+                'type' => $type->value,
+                'status' => WalletTransactionStatus::COMPLETED->value,
+                'description' => $description,
+                'withdraw_info' => [
+                    'purpose' => 'account_refund',
+                    'platform_type' => $platform,
+                    'service_user_id' => $serviceUserId,
+                    'account_id' => $accountId,
+                    'account_name' => $account->account_name ?? null,
+                    'remaining_amount' => $remaining,
+                    'fee_refund' => $feeRefund,
+                    'total_refund' => $totalRefund,
+                    'currency' => $accountCurrency,
+                ],
+            ]);
+
+            // Reset spend_cap trên Meta về 0 + pause tất cả campaigns
+            if ((int) $platform === PlatformType::META->value) {
+                try {
+                    $normalizedId = str_starts_with($accountId, 'act_')
+                        ? $accountId
+                        : 'act_' . preg_replace('/[^0-9]/', '', $accountId);
+                    $this->metaBusinessService->initApi();
+                    $this->metaBusinessService->api->call(
+                        "/{$normalizedId}",
+                        'POST',
+                        ['spend_cap' => 0]
+                    );
+                } catch (\Throwable $e) {
+                    Logging::error('refundAdAccountBalance: failed to reset spend_cap: '.$e->getMessage());
+                }
+
+                // Pause tất cả campaigns đang ACTIVE trên Meta
+                try {
+                    $campaignModel = new \App\Models\MetaAdsCampaign();
+                    $activeCampaigns = $campaignModel->query()
+                        ->where('meta_account_id', $account->id)
+                        ->whereIn('status', ['ACTIVE'])
+                        ->pluck('campaign_id')
+                        ->all();
+                    foreach ($activeCampaigns as $campaignId) {
+                        try {
+                            $this->metaBusinessService->updateCampaignStatus($campaignId, 'PAUSED');
+                        } catch (\Throwable $e) {
+                            Logging::error('refundAdAccountBalance: failed to pause campaign '.$campaignId.': '.$e->getMessage());
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Logging::error('refundAdAccountBalance: failed to query/pause campaigns: '.$e->getMessage());
+                }
+            }
+
+            $this->notifyTransaction($transaction, $userId);
+
+            return ServiceReturn::success(data: [
+                'remaining' => $remaining,
+                'fee_refund' => $feeRefund,
+                'total_refund' => $totalRefund,
+                'currency' => $accountCurrency,
+                'new_balance' => $newBalance,
+            ]);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'WalletTransactionService@refundAdAccountBalance error: '.$e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    private function normalizeMetaAccountMoney(mixed $value, ?string $currency): ?float
+    {
+        if ($value === null || $value === '' || !is_numeric($value)) {
+            return null;
+        }
+        $amount = (float) $value;
+        $zeroDecimalCurrencies = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
+        return in_array(strtoupper($currency ?: 'USD'), $zeroDecimalCurrencies, true)
+            ? $amount
+            : $amount / 100;
+    }
 }

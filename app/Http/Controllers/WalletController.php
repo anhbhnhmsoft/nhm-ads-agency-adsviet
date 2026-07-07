@@ -406,6 +406,46 @@ class WalletController extends Controller
         ]);
     }
 
+    /**
+     * Web: Hoàn tiền dư từ tài khoản quảng cáo về ví.
+     */
+    public function accountRefund(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => __('common_error.permission_denied'),
+            ], 401);
+        }
+
+        $request->validate([
+            'service_user_id' => ['required', 'string'],
+            'account_id' => ['required', 'string'],
+            'wallet_password' => ['nullable', 'string'],
+        ]);
+
+        $result = $this->walletTransactionService->refundAdAccountBalance(
+            userId: (int) $user->id,
+            serviceUserId: $request->input('service_user_id'),
+            accountId: $request->input('account_id'),
+            walletPassword: $request->input('wallet_password'),
+        );
+
+        if ($result->isError()) {
+            return response()->json([
+                'success' => false,
+                'message' => $result->getMessage(),
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('wallet.flash.account_refund_success'),
+            'data' => $result->getData(),
+        ]);
+    }
+
     public function campaignPause(WalletCampaignPauseRequest $request): JsonResponse
     {
         $user = Auth::user();

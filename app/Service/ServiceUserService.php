@@ -217,12 +217,40 @@ class ServiceUserService
 
             // ── Gán tài khoản cho service_user ──
             if ($assignMode === 'account' && $selectedAccountId) {
-                // Gán đúng 1 tài khoản được chọn
+                // Defensive check: nếu account đã có service_user ACTIVE của KHÁC → chặn
                 if ($platform === PlatformType::META->value) {
+                    $conflictAccount = $this->metaAccountRepository->query()
+                        ->where('account_id', $selectedAccountId)
+                        ->whereNotNull('service_user_id')
+                        ->where('service_user_id', '!=', $serviceUser->id)
+                        ->whereHas('serviceUser', fn ($q) => $q
+                            ->where('status', ServiceUserStatus::ACTIVE->value)
+                            ->where('user_id', '!=', $serviceUser->user_id))
+                        ->first();
+                    if ($conflictAccount) {
+                        $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khác';
+                        return ServiceReturn::error(
+                            message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
+                        );
+                    }
                     $this->metaAccountRepository->query()
                         ->where('account_id', $selectedAccountId)
                         ->update(['service_user_id' => $serviceUser->id]);
                 } elseif ($platform === PlatformType::GOOGLE->value) {
+                    $conflictAccount = $this->googleAccountRepository->query()
+                        ->where('account_id', $selectedAccountId)
+                        ->whereNotNull('service_user_id')
+                        ->where('service_user_id', '!=', $serviceUser->id)
+                        ->whereHas('serviceUser', fn ($q) => $q
+                            ->where('status', ServiceUserStatus::ACTIVE->value)
+                            ->where('user_id', '!=', $serviceUser->user_id))
+                        ->first();
+                    if ($conflictAccount) {
+                        $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khác';
+                        return ServiceReturn::error(
+                            message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
+                        );
+                    }
                     $this->googleAccountRepository->query()
                         ->where('account_id', $selectedAccountId)
                         ->update(['service_user_id' => $serviceUser->id]);
@@ -374,6 +402,67 @@ class ServiceUserService
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'ServiceUserService@cancelServiceUser error: '.$e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Gỡ gán tài khoản khỏi service_user → trả account về kho available
+     */
+    public function unassignAccount(string $serviceUserId, string $accountId): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($serviceUserId, $accountId) {
+                $serviceUser = $this->serviceUserRepository->query()->find($serviceUserId);
+                if (!$serviceUser) {
+                    return ServiceReturn::error(message: __('common_error.not_found'));
+                }
+
+                $platform = $serviceUser->package?->platform ?? null;
+
+                // Tìm và gỡ account
+                $found = false;
+                if ((int) $platform === PlatformType::META->value) {
+                    $account = $this->metaAccountRepository->query()
+                        ->where('account_id', preg_replace('/^act_/', '', $accountId))
+                        ->where('service_user_id', $serviceUserId)
+                        ->first();
+                    if ($account) {
+                        $account->update(['service_user_id' => null]);
+                        $found = true;
+                    }
+                } elseif ((int) $platform === PlatformType::GOOGLE->value) {
+                    $account = $this->googleAccountRepository->query()
+                        ->where('account_id', $accountId)
+                        ->where('service_user_id', $serviceUserId)
+                        ->first();
+                    if ($account) {
+                        $account->update(['service_user_id' => null]);
+                        $found = true;
+                    }
+                }
+
+                if (!$found) {
+                    return ServiceReturn::error(message: __('services.validation.account_not_linked'));
+                }
+
+                // Clear config_account
+                $config = $serviceUser->config_account ?? [];
+                if (!is_array($config)) {
+                    $config = [];
+                }
+                unset($config['account_id'], $config['accounts'], $config['assign_mode']);
+                $serviceUser->config_account = $config;
+                $serviceUser->status = ServiceUserStatus::PENDING->value;
+                $serviceUser->save();
+
+                return ServiceReturn::success();
+            });
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'ServiceUserService@unassignAccount error: '.$e->getMessage(),
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));

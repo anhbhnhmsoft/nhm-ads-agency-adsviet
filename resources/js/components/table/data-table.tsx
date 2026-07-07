@@ -1,5 +1,6 @@
 import {
     ColumnDef,
+    ColumnVisibilityState,
     flexRender,
     getCoreRowModel,
     OnChangeFn,
@@ -36,6 +37,8 @@ interface DataTableProps<TData, TValue> {
     rowSelection?: RowSelectionState;
     onRowSelectionChange?: OnChangeFn<RowSelectionState>;
     renderFooterRows?: (columnCount: number) => ReactNode;
+    columnVisibility?: ColumnVisibilityState;
+    onColumnVisibilityChange?: OnChangeFn<ColumnVisibilityState>;
 }
 
 export function DataTable<TData, TValue>({
@@ -45,10 +48,14 @@ export function DataTable<TData, TValue>({
     rowSelection,
     onRowSelectionChange,
     renderFooterRows,
+    columnVisibility: externalColumnVisibility,
+    onColumnVisibilityChange: externalOnColumnVisibilityChange,
 }: DataTableProps<TData, TValue>) {
     const { t } = useTranslation();
     const [internalRowSelection, setInternalRowSelection] =
         useState<RowSelectionState>({});
+    const [internalColumnVisibility, setInternalColumnVisibility] =
+        useState<ColumnVisibilityState>({});
 
     const selectionState =
         rowSelection !== undefined ? rowSelection : internalRowSelection;
@@ -72,14 +79,35 @@ export function DataTable<TData, TValue>({
         );
     };
 
+    const columnVisibilityState =
+        externalColumnVisibility !== undefined
+            ? externalColumnVisibility
+            : internalColumnVisibility;
+
+    const handleColumnVisibilityChange: OnChangeFn<ColumnVisibilityState> = (
+        updaterOrValue,
+    ) => {
+        if (externalOnColumnVisibilityChange) {
+            externalOnColumnVisibilityChange(updaterOrValue);
+            return;
+        }
+        setInternalColumnVisibility((prev) =>
+            typeof updaterOrValue === 'function'
+                ? updaterOrValue(prev)
+                : updaterOrValue,
+        );
+    };
+
     const table = useReactTable({
         data: paginator.data,
         columns,
         getCoreRowModel: getCoreRowModel(),
         enableRowSelection: true,
         onRowSelectionChange: handleRowSelectionChange,
+        onColumnVisibilityChange: handleColumnVisibilityChange,
         state: {
             rowSelection: selectionState,
+            columnVisibility: columnVisibilityState,
         },
     });
 

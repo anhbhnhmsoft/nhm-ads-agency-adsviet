@@ -19,6 +19,7 @@ return [
         'account_top_up_google' => 'Google Ads account top-up',
         'account_top_up_meta' => 'Meta Ads account top-up',
         'spending_fee' => 'Spending fee',
+        'account_refund' => 'Ad account refund',
     ],
     'transaction_status' => [
         'unknown' => 'Unknown',
@@ -47,6 +48,7 @@ return [
         'account_top_up_created' => 'Ad account top-up request created. Please wait for admin to process.',
         'campaign_pause_created' => 'Campaign pause request created. Please wait for admin to process.',
         'campaign_end_created' => 'Campaign end request created. Please wait for admin to process.',
+        'account_refund_success' => 'Ad account balance refunded to wallet.',
     ],
     'deposit_disabled_temporarily' => 'Online deposit via payment gateway is temporarily disabled. Please transfer to the configured wallet address and wait for admin approval.',
     'validation' => [

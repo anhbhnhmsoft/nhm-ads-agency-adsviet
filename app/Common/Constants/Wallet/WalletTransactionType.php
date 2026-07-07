@@ -20,6 +20,7 @@ enum WalletTransactionType: int
     case ACCOUNT_TOP_UP_GOOGLE = 13; // Nạp tiền tài khoản Google Ads
     case ACCOUNT_TOP_UP_META = 14; // Nạp tiền tài khoản Meta Ads
     case SPENDING_FEE = 15; // Phí spending trả sau
+    case ACCOUNT_REFUND = 16; // Hoàn tiền dư từ tài khoản广告 về ví
 
     public static function getOptions(): array
     {
@@ -40,6 +41,7 @@ enum WalletTransactionType: int
             self::ACCOUNT_TOP_UP_GOOGLE->value => __('wallet.transaction_type.account_top_up_google'),
             self::ACCOUNT_TOP_UP_META->value => __('wallet.transaction_type.account_top_up_meta'),
             self::SPENDING_FEE->value => __('wallet.transaction_type.spending_fee'),
+            self::ACCOUNT_REFUND->value => __('wallet.transaction_type.account_refund'),
         ];
     }
 }

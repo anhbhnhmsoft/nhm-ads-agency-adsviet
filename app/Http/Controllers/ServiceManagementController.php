@@ -9,6 +9,7 @@ use App\Jobs\GoogleAds\SyncGooglePlatformJob;
 use App\Jobs\MetaApi\SyncMetaPlatformJob;
 use App\Service\BusinessManagerService;
 use App\Service\PlatformSettingService;
+use App\Service\ServiceUserService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
@@ -20,6 +21,7 @@ class ServiceManagementController extends Controller
     public function __construct(
         protected BusinessManagerService $businessManagerService,
         protected PlatformSettingService $platformSettingService,
+        protected ServiceUserService $serviceUserService,
     ) {
     }
 
@@ -253,5 +255,35 @@ class ServiceManagementController extends Controller
         ], true)) {
             abort(403);
         }
+    }
+
+    /**
+     * Gỡ gán tài khoản khỏi service_user
+     */
+    public function unassignAccount(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->ensureInternalAccess();
+
+        $request->validate([
+            'service_user_id' => ['required', 'string'],
+            'account_id' => ['required', 'string'],
+        ]);
+
+        $result = $this->serviceUserService->unassignAccount(
+            serviceUserId: $request->input('service_user_id'),
+            accountId: $request->input('account_id'),
+        );
+
+        if ($result->isError()) {
+            return response()->json([
+                'success' => false,
+                'message' => $result->getMessage(),
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('services.flash.account_unassigned'),
+        ]);
     }
 }
