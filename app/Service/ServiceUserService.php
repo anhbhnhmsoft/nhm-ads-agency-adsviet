@@ -11,6 +11,7 @@ use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Core\UserLocale;
 use App\Models\ServiceUser;
+use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\ServiceUser\ServiceUserTransactionStatus;
 use App\Common\Constants\ServiceUser\ServiceUserTransactionType;
 use App\Common\Constants\Wallet\WalletTransactionStatus;
@@ -84,237 +85,234 @@ class ServiceUserService
     public function approveServiceUser(string $id, array $config): ServiceReturn
     {
         try {
-            /** @var ServiceUser|null $serviceUser */
-            $serviceUser = $this->serviceUserRepository->query()
-                ->with('package')
-                ->find($id);
-            if (!$serviceUser) {
-                return ServiceReturn::error(message: __('common_error.not_found'));
-            }
-
-            $currentConfig = $serviceUser->config_account ?? [];
-            if (!is_array($currentConfig)) {
-                $currentConfig = [];
-            }
-
-            $platform = $serviceUser->package->platform ?? null;
-            $assignMode = $config['assign_mode'] ?? 'bm';
-            $selectedAccountId = $config['account_id'] ?? null;
-            $bmIdSubmitted = trim((string) ($config['bm_id'] ?? ''));
-
-            $packagePaymentType = $this->resolvePackagePaymentType($serviceUser->package?->payment_type);
-            $paymentType = $this->resolveConfigPaymentType($currentConfig['payment_type'] ?? null, $packagePaymentType);
-            $billingSource = $this->resolvePackageBillingSource($serviceUser->package?->billing_source);
-
-            // ── Validate trước khi thay đổi gì ──
-
-            // Validate BM đã có khách KHÁC dùng chưa (chỉ khi có BM ID)
-            // Cùng 1 khách mua nhiều gói trùng cho cùng BM/MCC vẫn cho phép.
-            if (!empty($bmIdSubmitted)) {
-                $existingServiceUser = $this->serviceUserRepository->query()
-                    ->where('id', '!=', $serviceUser->id)
-                    ->where('user_id', '!=', $serviceUser->user_id)
-                    ->where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
-                    ->where(function ($q) use ($bmIdSubmitted) {
-                        $q->whereJsonContains('config_account->bm_id', $bmIdSubmitted)
-                          ->orWhereJsonContains('config_account->child_bm_id', $bmIdSubmitted);
-                    })
-                    ->with('user:id,name,username')
-                    ->first();
-
-                if ($existingServiceUser && $existingServiceUser->user) {
-                    $customerName = $existingServiceUser->user->name ?? $existingServiceUser->user->username;
-                    return ServiceReturn::error(
-                        message: __('services.validation.bm_already_used_by_customer', ['name' => $customerName])
-                    );
-                }
-            }
-
-            // Validate account đã có KHÁCH KHÁC dùng chưa (khi chọn tab Gán tài khoản)
-            // - Chỉ chặn nếu service_user đang liên kết còn ACTIVE và thuộc về khách KHÁC.
-            // - Cùng 1 khách mua nhiều gói trùng cho cùng account vẫn cho phép.
-            if ($assignMode === 'account' && $selectedAccountId) {
-                $activeStatus = \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value;
-                $currentUserId = $serviceUser->user_id;
-                if ($platform === PlatformType::META->value) {
-                    $existingOwner = $this->metaAccountRepository->query()
-                        ->where('account_id', $selectedAccountId)
-                        ->where('service_user_id', '!=', $serviceUser->id)
-                        ->whereNotNull('service_user_id')
-                        ->whereHas('serviceUser', fn ($q) => $q
-                            ->where('status', $activeStatus)
-                            ->where('user_id', '!=', $currentUserId))
-                        ->with('serviceUser.user')
-                        ->first();
-                    if ($existingOwner) {
-                        $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khác';
-                        return ServiceReturn::error(
-                            message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
-                        );
-                    }
-                } elseif ($platform === PlatformType::GOOGLE->value) {
-                    $existingOwner = $this->googleAccountRepository->query()
-                        ->where('account_id', $selectedAccountId)
-                        ->where('service_user_id', '!=', $serviceUser->id)
-                        ->whereNotNull('service_user_id')
-                        ->whereHas('serviceUser', fn ($q) => $q
-                            ->where('status', $activeStatus)
-                            ->where('user_id', '!=', $currentUserId))
-                        ->with('serviceUser.user')
-                        ->first();
-                    if ($existingOwner) {
-                        $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khác';
-                        return ServiceReturn::error(
-                            message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
-                        );
-                    }
-                }
-            }
-
-            // ── Xây config_account ──
-            if (is_array($config['accounts']) && !empty($config['accounts'])) {
-                $accounts = $config['accounts'];
-                $newConfig = array_merge($currentConfig, [
-                    'accounts' => $accounts,
-                    'bm_id' => $bmIdSubmitted ?: ($currentConfig['bm_id'] ?? ''),
-                    'account_id' => $selectedAccountId,
-                    'assign_mode' => $assignMode,
-                    'payment_type' => $paymentType,
-                    'billing_source' => $billingSource,
-                ]);
-
-                if ($platform === PlatformType::GOOGLE->value) {
-                    $newConfig['google_manager_id'] = $bmIdSubmitted ?: ($currentConfig['google_manager_id'] ?? null);
-                }
-            } else {
-                $childBmId = $config['child_bm_id'] ?? null;
-                $newConfig = array_merge($currentConfig, [
-                    'meta_email' => $config['meta_email'] ?? ($currentConfig['meta_email'] ?? ''),
-                    'display_name' => $config['display_name'] ?? ($currentConfig['display_name'] ?? ''),
-                    'bm_id' => $bmIdSubmitted ?: ($currentConfig['bm_id'] ?? ''),
-                    'child_bm_id' => $childBmId,
-                    'account_id' => $selectedAccountId,
-                    'assign_mode' => $assignMode,
-                    'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
-                    'payment_type' => $paymentType,
-                    'billing_source' => $billingSource,
-                ]);
-
-                if ($platform === PlatformType::GOOGLE->value) {
-                    $newConfig['google_manager_id'] = $bmIdSubmitted ?: ($currentConfig['google_manager_id'] ?? null);
+            return DB::transaction(function () use ($id, $config) {
+                /** @var ServiceUser|null $serviceUser */
+                $serviceUser = $this->serviceUserRepository->query()
+                    ->with('package')
+                    ->find($id);
+                if (!$serviceUser) {
+                    return ServiceReturn::error(message: __('common_error.not_found'));
                 }
 
-                if ($platform === PlatformType::META->value) {
-                    $newConfig['info_fanpage'] = $config['info_fanpage'] ?? ($currentConfig['info_fanpage'] ?? '');
-                    $newConfig['info_website'] = $config['info_website'] ?? ($currentConfig['info_website'] ?? '');
+                $currentConfig = $serviceUser->config_account ?? [];
+                if (!is_array($currentConfig)) {
+                    $currentConfig = [];
                 }
-            }
 
-            // ── Lưu config và cập nhật status ──
-            $serviceUser->config_account = $newConfig;
-            $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value;
-            $serviceUser->save();
+                $platform = $serviceUser->package->platform ?? null;
+                $assignMode = $config['assign_mode'] ?? 'bm';
+                $selectedAccountId = $config['account_id'] ?? null;
+                $bmIdSubmitted = trim((string) ($config['bm_id'] ?? ''));
 
-            // ── Gán tài khoản cho service_user ──
-            if ($assignMode === 'account' && $selectedAccountId) {
-                // Defensive check: nếu account đã có service_user ACTIVE của KHÁC → chặn
-                if ($platform === PlatformType::META->value) {
-                    $conflictAccount = $this->metaAccountRepository->query()
-                        ->where('account_id', $selectedAccountId)
-                        ->whereNotNull('service_user_id')
-                        ->where('service_user_id', '!=', $serviceUser->id)
-                        ->whereHas('serviceUser', fn ($q) => $q
-                            ->where('status', ServiceUserStatus::ACTIVE->value)
-                            ->where('user_id', '!=', $serviceUser->user_id))
-                        ->first();
-                    if ($conflictAccount) {
-                        $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khác';
-                        return ServiceReturn::error(
-                            message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
-                        );
-                    }
-                    $this->metaAccountRepository->query()
-                        ->where('account_id', $selectedAccountId)
-                        ->update(['service_user_id' => $serviceUser->id]);
-                } elseif ($platform === PlatformType::GOOGLE->value) {
-                    $conflictAccount = $this->googleAccountRepository->query()
-                        ->where('account_id', $selectedAccountId)
-                        ->whereNotNull('service_user_id')
-                        ->where('service_user_id', '!=', $serviceUser->id)
-                        ->whereHas('serviceUser', fn ($q) => $q
-                            ->where('status', ServiceUserStatus::ACTIVE->value)
-                            ->where('user_id', '!=', $serviceUser->user_id))
-                        ->first();
-                    if ($conflictAccount) {
-                        $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khác';
-                        return ServiceReturn::error(
-                            message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
-                        );
-                    }
-                    $this->googleAccountRepository->query()
-                        ->where('account_id', $selectedAccountId)
-                        ->update(['service_user_id' => $serviceUser->id]);
-                }
-            } elseif (!empty($bmIdSubmitted)) {
-                // Tab "Gán BM": gán tất cả TK chưa có ai dùng, hoặc đang thuộc service_user khác
-                // của CÙNG khách (để duyệt đơn trùng của cùng khách vẫn nắm được các TK cũ).
-                $sameUserServiceUserIds = $this->serviceUserRepository->query()
-                    ->where('user_id', $serviceUser->user_id)
-                    ->where('id', '!=', $serviceUser->id)
-                    ->pluck('id')
-                    ->all();
-                if ($platform === PlatformType::META->value) {
-                    // Gán CHỈ các TK thuộc về BM này (business_manager_id = bmIdSubmitted)
-                    // KHÔNG gán TK shared từ BM khác
-                    $this->metaAccountRepository->query()
-                        ->where('business_manager_id', $bmIdSubmitted)
-                        ->where(function ($q) use ($sameUserServiceUserIds) {
-                            $q->whereNull('service_user_id');
-                            if (!empty($sameUserServiceUserIds)) {
-                                $q->orWhereIn('service_user_id', $sameUserServiceUserIds);
-                            }
+                $packagePaymentType = $this->resolvePackagePaymentType($serviceUser->package?->payment_type);
+                $paymentType = $this->resolveConfigPaymentType($currentConfig['payment_type'] ?? null, $packagePaymentType);
+                $billingSource = $this->resolvePackageBillingSource($serviceUser->package?->billing_source);
+
+                // ── Validate trước khi thay đổi gì ──
+
+                // Validate BM đã có khách KHÁC dùng chưa (chỉ khi có BM ID)
+                if (!empty($bmIdSubmitted)) {
+                    $existingServiceUser = $this->serviceUserRepository->query()
+                        ->where('id', '!=', $serviceUser->id)
+                        ->where('user_id', '!=', $serviceUser->user_id)
+                        ->where('status', ServiceUserStatus::ACTIVE->value)
+                        ->where(function ($q) use ($bmIdSubmitted) {
+                            $q->whereJsonContains('config_account->bm_id', $bmIdSubmitted)
+                              ->orWhereJsonContains('config_account->child_bm_id', $bmIdSubmitted);
                         })
-                        ->update(['service_user_id' => $serviceUser->id]);
-                } elseif ($platform === PlatformType::GOOGLE->value) {
-                    $this->googleAccountRepository->query()
-                        ->where('customer_manager_id', $bmIdSubmitted)
-                        ->where(function ($q) use ($sameUserServiceUserIds) {
-                            $q->whereNull('service_user_id');
-                            if (!empty($sameUserServiceUserIds)) {
-                                $q->orWhereIn('service_user_id', $sameUserServiceUserIds);
-                            }
-                        })
-                        ->update(['service_user_id' => $serviceUser->id]);
-                }
-            }
+                        ->with('user:id,name,username')
+                        ->first();
 
-            // ── Nâng spend_cap Meta bằng top_up_amount khách đã điền ──
-            if ($platform === PlatformType::META->value) {
-                $topUpAmount = (float) ($newConfig['top_up_amount'] ?? $currentConfig['top_up_amount'] ?? 0);
-                if ($topUpAmount > 0 && !empty($selectedAccountId)) {
-                    $spendCapResult = $this->metaBusinessService->increaseAdAccountSpendCap(
-                        $selectedAccountId,
-                        $topUpAmount
-                    );
-                    if ($spendCapResult->isError()) {
-                        Logging::error(
-                            message: 'ServiceUserService@approveServiceUser increaseAdAccountSpendCap failed: '.$spendCapResult->getMessage(),
-                            context: ['account_id' => $selectedAccountId, 'top_up_amount' => $topUpAmount]
+                    if ($existingServiceUser && $existingServiceUser->user) {
+                        $customerName = $existingServiceUser->user->name ?? $existingServiceUser->user->username;
+                        return ServiceReturn::error(
+                            message: __('services.validation.bm_already_used_by_customer', ['name' => $customerName])
                         );
                     }
                 }
-            }
 
-            // ── Dispatch sync jobs ──
-            if ($platform === PlatformType::META->value) {
-                SyncMetaJob::dispatch($serviceUser);
-            } elseif ($platform === PlatformType::GOOGLE->value) {
-                SyncGoogleServiceUserJob::dispatch($serviceUser);
-            }
+                // Validate account đã có KHÁCH KHÁC dùng chưa
+                if ($assignMode === 'account' && $selectedAccountId) {
+                    $activeStatus = ServiceUserStatus::ACTIVE->value;
+                    $currentUserId = $serviceUser->user_id;
+                    if ($platform === PlatformType::META->value) {
+                        $existingOwner = $this->metaAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->where('service_user_id', '!=', $serviceUser->id)
+                            ->whereNotNull('service_user_id')
+                            ->whereHas('serviceUser', fn ($q) => $q
+                                ->where('status', $activeStatus)
+                                ->where('user_id', '!=', $currentUserId))
+                            ->with('serviceUser.user')
+                            ->first();
+                        if ($existingOwner) {
+                            $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khách khác';
+                            return ServiceReturn::error(
+                                message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
+                            );
+                        }
+                    } elseif ($platform === PlatformType::GOOGLE->value) {
+                        $existingOwner = $this->googleAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->where('service_user_id', '!=', $serviceUser->id)
+                            ->whereNotNull('service_user_id')
+                            ->whereHas('serviceUser', fn ($q) => $q
+                                ->where('status', $activeStatus)
+                                ->where('user_id', '!=', $currentUserId))
+                            ->with('serviceUser.user')
+                            ->first();
+                        if ($existingOwner) {
+                            $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khách khác';
+                            return ServiceReturn::error(
+                                message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
+                            );
+                        }
+                    }
+                }
 
-            $this->notifyServiceStatus($serviceUser, 'activated');
+                // ── Xây config_account ──
+                if (is_array($config['accounts'] ?? null) && !empty($config['accounts'])) {
+                    $accounts = $config['accounts'];
+                    $newConfig = array_merge($currentConfig, [
+                        'accounts' => $accounts,
+                        'bm_id' => $bmIdSubmitted ?: ($currentConfig['bm_id'] ?? ''),
+                        'account_id' => $selectedAccountId,
+                        'assign_mode' => $assignMode,
+                        'payment_type' => $paymentType,
+                        'billing_source' => $billingSource,
+                    ]);
 
-            return ServiceReturn::success(data: $serviceUser);
+                    if ($platform === PlatformType::GOOGLE->value) {
+                        $newConfig['google_manager_id'] = $bmIdSubmitted ?: ($currentConfig['google_manager_id'] ?? null);
+                    }
+                } else {
+                    $childBmId = $config['child_bm_id'] ?? null;
+                    $newConfig = array_merge($currentConfig, [
+                        'meta_email' => $config['meta_email'] ?? ($currentConfig['meta_email'] ?? ''),
+                        'display_name' => $config['display_name'] ?? ($currentConfig['display_name'] ?? ''),
+                        'bm_id' => $bmIdSubmitted ?: ($currentConfig['bm_id'] ?? ''),
+                        'child_bm_id' => $childBmId,
+                        'account_id' => $selectedAccountId,
+                        'assign_mode' => $assignMode,
+                        'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
+                        'payment_type' => $paymentType,
+                        'billing_source' => $billingSource,
+                    ]);
+
+                    if ($platform === PlatformType::GOOGLE->value) {
+                        $newConfig['google_manager_id'] = $bmIdSubmitted ?: ($currentConfig['google_manager_id'] ?? null);
+                    }
+
+                    if ($platform === PlatformType::META->value) {
+                        $newConfig['info_fanpage'] = $config['info_fanpage'] ?? ($currentConfig['info_fanpage'] ?? '');
+                        $newConfig['info_website'] = $config['info_website'] ?? ($currentConfig['info_website'] ?? '');
+                    }
+                }
+
+                // ── Gán tài khoản cho service_user (TRƯỚC khi save status) ──
+                if ($assignMode === 'account' && $selectedAccountId) {
+                    if ($platform === PlatformType::META->value) {
+                        // Double-check lần cuối trong transaction (lock row)
+                        $conflictAccount = $this->metaAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->whereNotNull('service_user_id')
+                            ->where('service_user_id', '!=', $serviceUser->id)
+                            ->whereHas('serviceUser', fn ($q) => $q
+                                ->where('status', ServiceUserStatus::ACTIVE->value)
+                                ->where('user_id', '!=', $serviceUser->user_id))
+                            ->lockForUpdate()
+                            ->first();
+                        if ($conflictAccount) {
+                            $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khách khác';
+                            return ServiceReturn::error(
+                                message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
+                            );
+                        }
+                        $this->metaAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->update(['service_user_id' => $serviceUser->id]);
+                    } elseif ($platform === PlatformType::GOOGLE->value) {
+                        $conflictAccount = $this->googleAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->whereNotNull('service_user_id')
+                            ->where('service_user_id', '!=', $serviceUser->id)
+                            ->whereHas('serviceUser', fn ($q) => $q
+                                ->where('status', ServiceUserStatus::ACTIVE->value)
+                                ->where('user_id', '!=', $serviceUser->user_id))
+                            ->lockForUpdate()
+                            ->first();
+                        if ($conflictAccount) {
+                            $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khách khác';
+                            return ServiceReturn::error(
+                                message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
+                            );
+                        }
+                        $this->googleAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->update(['service_user_id' => $serviceUser->id]);
+                    }
+                } elseif (!empty($bmIdSubmitted)) {
+                    $sameUserServiceUserIds = $this->serviceUserRepository->query()
+                        ->where('user_id', $serviceUser->user_id)
+                        ->where('id', '!=', $serviceUser->id)
+                        ->pluck('id')
+                        ->all();
+                    if ($platform === PlatformType::META->value) {
+                        $this->metaAccountRepository->query()
+                            ->where('business_manager_id', $bmIdSubmitted)
+                            ->where(function ($q) use ($sameUserServiceUserIds) {
+                                $q->whereNull('service_user_id');
+                                if (!empty($sameUserServiceUserIds)) {
+                                    $q->orWhereIn('service_user_id', $sameUserServiceUserIds);
+                                }
+                            })
+                            ->update(['service_user_id' => $serviceUser->id]);
+                    } elseif ($platform === PlatformType::GOOGLE->value) {
+                        $this->googleAccountRepository->query()
+                            ->where('customer_manager_id', $bmIdSubmitted)
+                            ->where(function ($q) use ($sameUserServiceUserIds) {
+                                $q->whereNull('service_user_id');
+                                if (!empty($sameUserServiceUserIds)) {
+                                    $q->orWhereIn('service_user_id', $sameUserServiceUserIds);
+                                }
+                            })
+                            ->update(['service_user_id' => $serviceUser->id]);
+                    }
+                }
+
+                // ── Lưu config và cập nhật status (sau khi gán account thành công) ──
+                $serviceUser->config_account = $newConfig;
+                $serviceUser->status = ServiceUserStatus::ACTIVE->value;
+                $serviceUser->save();
+
+                // ── Nâng spend_cap Meta ──
+                if ($platform === PlatformType::META->value) {
+                    $topUpAmount = (float) ($newConfig['top_up_amount'] ?? $currentConfig['top_up_amount'] ?? 0);
+                    if ($topUpAmount > 0 && !empty($selectedAccountId)) {
+                        $spendCapResult = $this->metaBusinessService->increaseAdAccountSpendCap(
+                            $selectedAccountId,
+                            $topUpAmount
+                        );
+                        if ($spendCapResult->isError()) {
+                            Logging::error(
+                                message: 'ServiceUserService@approveServiceUser increaseAdAccountSpendCap failed: '.$spendCapResult->getMessage(),
+                                context: ['account_id' => $selectedAccountId, 'top_up_amount' => $topUpAmount]
+                            );
+                        }
+                    }
+                }
+
+                // ── Dispatch sync jobs ──
+                if ($platform === PlatformType::META->value) {
+                    SyncMetaJob::dispatch($serviceUser);
+                } elseif ($platform === PlatformType::GOOGLE->value) {
+                    SyncGoogleServiceUserJob::dispatch($serviceUser);
+                }
+
+                $this->notifyServiceStatus($serviceUser, 'activated');
+
+                return ServiceReturn::success(data: $serviceUser);
+            });
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'ServiceUserService@approveServiceUser error: '.$e->getMessage(),
