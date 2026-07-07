@@ -42,8 +42,9 @@ import {
 } from '@/routes';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Package, Pencil, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
+import { ChevronDown, Filter, Package, Pencil, Plus, Search, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { router as inertiaRouter } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 
 type TimezoneOption = {
@@ -56,6 +57,22 @@ type Props = {
     meta_timezones?: TimezoneOption[];
     google_timezones?: TimezoneOption[];
 };
+
+const STATUS_OPTIONS = [
+    { value: '', label: 'Tất cả trạng thái' },
+    { value: 'PENDING', label: 'Chờ duyệt' },
+    { value: 'ACTIVE', label: 'Hoạt động' },
+    { value: 'PROCESSING', label: 'Đang xử lý' },
+    { value: 'FAILED', label: 'Thất bại' },
+    { value: 'CANCELLED', label: 'Đã hủy' },
+    { value: 'QUEUE_JOB_PENDING', label: 'Đợi job' },
+];
+
+const PLATFORM_OPTIONS = [
+    { value: '', label: 'Tất cả nền tảng' },
+    { value: '1', label: 'Meta Ads' },
+    { value: '2', label: 'Google Ads' },
+];
 
 const STATUS_COLORS: Record<string, string> = {
     PENDING: 'bg-amber-500 text-white',
@@ -86,11 +103,16 @@ const ServiceOrdersIndex = ({
     const [bmIdList, setBmIdList] = useState<string[]>(['']);
     const [accountIdList, setAccountIdList] = useState<string[]>(['']);
 
-    // Multi-input lists for edit dialog
+    // Multi-input lists for edit dialog (BM/fanpage/website)
     const [editBmIdList, setEditBmIdList] = useState<string[]>(['']);
-    const [editAccountIdList, setEditAccountIdList] = useState<string[]>(['']);
     const [editFanpageList, setEditFanpageList] = useState<string[]>(['']);
     const [editWebsiteList, setEditWebsiteList] = useState<string[]>(['']);
+
+    // Filter state
+    const [filterSearch, setFilterSearch] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterPlatform, setFilterPlatform] = useState('');
+    const [showFilters, setShowFilters] = useState(false);
 
     // Derived accountIdInput = first non-empty item in accountIdList
     const currentAccountId = accountIdList.find((v) => v.trim()) || '';
@@ -171,6 +193,9 @@ const ServiceOrdersIndex = ({
         loadingBmAccounts: editLoadingBmAccounts,
         accountIdInput: editAccountIdInput,
         setAccountIdInput: setEditAccountIdInput,
+        // accountIdList từ hook (multi-account fix)
+        accountIdList: editAccountIdList,
+        setAccountIdList: setEditAccountIdList,
         handleSelectBmFromList: handleEditSelectBmFromList,
         handleSelectAccountFromList: handleEditSelectAccountFromList,
     } = useServiceOrderEditConfigDialog();
@@ -211,7 +236,7 @@ const ServiceOrdersIndex = ({
     useEffect(() => {
         if (editDialogOpen) {
             setEditBmIdList([editBmId || '']);
-            setEditAccountIdList([editAccountIdInput || '']);
+            // editAccountIdList được quản lý bởi hook, không reset ở đây
             setEditFanpageList([editInfoFanpage || '']);
             setEditWebsiteList([editInfoWebsite || '']);
         }
@@ -606,15 +631,126 @@ const ServiceOrdersIndex = ({
                             )}
                         </p>
                     </div>
-                    {!is_admin_view && (
-                        <Button asChild>
-                            <Link href={service_purchase_index().url}>
-                                <ShoppingBag className="mr-2 h-4 w-4" />
-                                {t('service_orders.go_to_packages')}
-                            </Link>
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {is_admin_view && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowFilters((v) => !v)}
+                            >
+                                <Filter className="mr-1.5 h-4 w-4" />
+                                Bộ lọc
+                                <ChevronDown className={`ml-1 h-3 w-3 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                            </Button>
+                        )}
+                        {!is_admin_view && (
+                            <Button asChild>
+                                <Link href={service_purchase_index().url}>
+                                    <ShoppingBag className="mr-2 h-4 w-4" />
+                                    {t('service_orders.go_to_packages')}
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
                 </div>
+
+                {/* Filter Bar */}
+                {is_admin_view && showFilters && (
+                    <div className="rounded-lg border bg-muted/30 p-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            {/* Tìm kiếm tên khách */}
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    className="w-full rounded-md border bg-background py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                                    placeholder="Tìm tên khách hàng..."
+                                    value={filterSearch}
+                                    onChange={(e) => setFilterSearch(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            inertiaRouter.get(
+                                                window.location.pathname,
+                                                {
+                                                    'filter[search]': filterSearch || undefined,
+                                                    'filter[status]': filterStatus || undefined,
+                                                    'filter[platform]': filterPlatform || undefined,
+                                                    page: 1,
+                                                } as any,
+                                                { preserveState: true, replace: true },
+                                            );
+                                        }
+                                    }}
+                                />
+                            </div>
+
+                            {/* Lọc trạng thái */}
+                            <select
+                                className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                            >
+                                {STATUS_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </select>
+
+                            {/* Lọc platform */}
+                            <select
+                                className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                                value={filterPlatform}
+                                onChange={(e) => setFilterPlatform(e.target.value)}
+                            >
+                                {PLATFORM_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </select>
+
+                            {/* Nút tìm kiếm + reset */}
+                            <div className="flex gap-2">
+                                <Button
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => {
+                                        inertiaRouter.get(
+                                            window.location.pathname,
+                                            {
+                                                'filter[search]': filterSearch || undefined,
+                                                'filter[status]': filterStatus || undefined,
+                                                'filter[platform]': filterPlatform || undefined,
+                                                page: 1,
+                                            } as any,
+                                            { preserveState: true, replace: true },
+                                        );
+                                    }}
+                                >
+                                    <Search className="mr-1.5 h-3.5 w-3.5" />
+                                    Tìm kiếm
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setFilterSearch('');
+                                        setFilterStatus('');
+                                        setFilterPlatform('');
+                                        inertiaRouter.get(
+                                            window.location.pathname,
+                                            { page: 1 } as any,
+                                            { preserveState: true, replace: true },
+                                        );
+                                    }}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <Card className="py-0">
                     {orders.length === 0 ? (

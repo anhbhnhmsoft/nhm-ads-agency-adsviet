@@ -45,6 +45,7 @@ export const useServiceOrderEditConfigDialog = () => {
     const [bmAccounts, setBmAccounts] = useState<BmAccount[]>([]);
     const [loadingBmAccounts, setLoadingBmAccounts] = useState(false);
     const [accountIdInput, setAccountIdInput] = useState('');
+    const [accountIdList, setAccountIdList] = useState<string[]>(['']);
 
     // Fetch methods matching Approve dialog
     const fetchBmList = useCallback(async (platform?: number) => {
@@ -168,6 +169,7 @@ export const useServiceOrderEditConfigDialog = () => {
         setSelectedChildBmId('none');
         setBmAccounts([]);
         setAccountIdInput('');
+        setAccountIdList(['']);
     }, []);
 
     const cleanAccountData = useCallback(
@@ -232,6 +234,11 @@ export const useServiceOrderEditConfigDialog = () => {
 
                 const accountIdVal = (config.account_id as string) || '';
                 setAccountIdInput(accountIdVal);
+                // Khởi tạo list từ config (hỗ trợ multi-account)
+                const accountIdsVal = Array.isArray(config.account_ids)
+                    ? (config.account_ids as string[]).filter(Boolean)
+                    : accountIdVal ? [accountIdVal] : [''];
+                setAccountIdList(accountIdsVal.length > 0 ? accountIdsVal : ['']);
 
                 if (bmIdVal && !isGoogle) {
                     fetchChildBusinessManagers(bmIdVal);
@@ -284,9 +291,15 @@ export const useServiceOrderEditConfigDialog = () => {
                 assignMode === 'bm' && selectedChildBmId !== 'none' && selectedChildBmId
                     ? selectedChildBmId
                     : null;
+            // Gửi tất cả accounts trong list (multi-account support)
+            const filteredAccountIds = accountIdList.filter((id) => id.trim());
             payload.account_id =
-                assignMode === 'account' && accountIdInput
-                    ? accountIdInput
+                assignMode === 'account' && filteredAccountIds.length > 0
+                    ? filteredAccountIds[0]  // backward compat: first account
+                    : null;
+            (payload as any).account_ids =
+                assignMode === 'account' && filteredAccountIds.length > 0
+                    ? filteredAccountIds
                     : null;
         }
 
@@ -322,6 +335,7 @@ export const useServiceOrderEditConfigDialog = () => {
         assignMode,
         selectedChildBmId,
         accountIdInput,
+        accountIdList,
     ]);
 
     const handleDialogOpenChange = useCallback(
@@ -374,6 +388,8 @@ export const useServiceOrderEditConfigDialog = () => {
         loadingBmAccounts,
         accountIdInput,
         setAccountIdInput,
+        accountIdList,
+        setAccountIdList,
         handleSelectBmFromList,
         handleSelectAccountFromList,
     };

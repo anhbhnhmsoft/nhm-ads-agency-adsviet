@@ -541,6 +541,10 @@ class ServiceUserService
                         $updateData[$field] = $config[$field];
                     }
                 }
+                // Lưu account_ids nếu có
+                if (!empty($config['account_ids'])) {
+                    $updateData['account_ids'] = array_values(array_filter($config['account_ids']));
+                }
                 $updateData['payment_type'] = $paymentType;
                 $updateData['billing_source'] = $billingSource;
 
@@ -552,6 +556,55 @@ class ServiceUserService
                 $serviceUser->config_account = array_merge($currentConfig, $updateData);
             }
             $serviceUser->save();
+
+            // Gán tài khoản nếu assign_mode = account (hỗ trợ multi-account qua account_ids)
+            $assignMode = $config['assign_mode'] ?? null;
+            $platform   = $serviceUser->package?->platform;
+            if ($assignMode === 'account') {
+                // Ưu tiên account_ids array, fallback về account_id
+                $accountIds = !empty($config['account_ids'])
+                    ? array_values(array_filter($config['account_ids']))
+                    : (!empty($config['account_id']) ? [$config['account_id']] : []);
+
+                foreach ($accountIds as $selectedAccountId) {
+                    if (!$selectedAccountId) continue;
+                    if ($platform === PlatformType::META->value) {
+                        // Defensive check
+                        $conflict = $this->metaAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->whereNotNull('service_user_id')
+                            ->where('service_user_id', '!=', $serviceUser->id)
+                            ->whereHas('serviceUser', fn($q) => $q
+                                ->where('status', ServiceUserStatus::ACTIVE->value)
+                                ->where('user_id', '!=', $serviceUser->user_id))
+                            ->first();
+                        if ($conflict) {
+                            $conflictName = $conflict->serviceUser?->user?->name ?? 'khách khác';
+                            Logging::error('updateConfigAccount: account conflict', [
+                                'account_id' => $selectedAccountId,
+                                'conflict_user' => $conflictName,
+                            ]);
+                            continue; // Bỏ qua account đang bị khách khác dùng
+                        }
+                        $this->metaAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->update(['service_user_id' => $serviceUser->id]);
+                    } elseif ($platform === PlatformType::GOOGLE->value) {
+                        $conflict = $this->googleAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->whereNotNull('service_user_id')
+                            ->where('service_user_id', '!=', $serviceUser->id)
+                            ->whereHas('serviceUser', fn($q) => $q
+                                ->where('status', ServiceUserStatus::ACTIVE->value)
+                                ->where('user_id', '!=', $serviceUser->user_id))
+                            ->first();
+                        if ($conflict) continue;
+                        $this->googleAccountRepository->query()
+                            ->where('account_id', $selectedAccountId)
+                            ->update(['service_user_id' => $serviceUser->id]);
+                    }
+                }
+            }
 
             // Nếu là Meta, trigger sync để cập nhật business_manager_id trong meta_accounts
             // Sync cả khi có bm_id trong config hoặc có accounts với bm_ids

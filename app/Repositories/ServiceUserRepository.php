@@ -41,6 +41,15 @@ class ServiceUserRepository extends BaseRepository
             });
         }
 
+        // Tìm kiếm theo tên khách hàng hoặc username
+        if (!empty($filters['search'])) {
+            $search = '%' . $filters['search'] . '%';
+            $query->whereHas('user', function ($userQuery) use ($search) {
+                $userQuery->where('name', 'like', $search)
+                    ->orWhere('username', 'like', $search);
+            });
+        }
+
         return $query;
     }
 

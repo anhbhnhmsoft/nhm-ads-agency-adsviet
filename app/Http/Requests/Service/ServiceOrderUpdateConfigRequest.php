@@ -24,6 +24,8 @@ class ServiceOrderUpdateConfigRequest extends FormRequest
             'assign_mode' => ['nullable', 'string', 'in:bm,account'],
             'child_bm_id' => ['nullable', 'string', 'max:255'],
             'account_id' => ['nullable', 'string', 'max:255'],
+            'account_ids' => ['nullable', 'array'],
+            'account_ids.*' => ['nullable', 'string', 'max:255'],
             'accounts' => ['nullable', 'array', 'max:3'],
             'accounts.*.meta_email' => ['nullable', 'string', 'email', 'max:255'],
             'accounts.*.display_name' => ['nullable', 'string', 'max:255'],
