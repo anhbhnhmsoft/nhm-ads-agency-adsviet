@@ -264,18 +264,10 @@ class ServiceUserService
                     ->pluck('id')
                     ->all();
                 if ($platform === PlatformType::META->value) {
-                    // Gán TK theo BM + BM share access
-                    $accessibleAccountIds = DB::table('meta_account_business_manager_accesses')
-                        ->where('source_bm_id', $bmIdSubmitted)
-                        ->pluck('account_id')
-                        ->toArray();
+                    // Gán CHỈ các TK thuộc về BM này (business_manager_id = bmIdSubmitted)
+                    // KHÔNG gán TK shared từ BM khác
                     $this->metaAccountRepository->query()
-                        ->where(function ($q) use ($bmIdSubmitted, $accessibleAccountIds) {
-                            $q->where('business_manager_id', $bmIdSubmitted);
-                            if (!empty($accessibleAccountIds)) {
-                                $q->orWhereIn('account_id', $accessibleAccountIds);
-                            }
-                        })
+                        ->where('business_manager_id', $bmIdSubmitted)
                         ->where(function ($q) use ($sameUserServiceUserIds) {
                             $q->whereNull('service_user_id');
                             if (!empty($sameUserServiceUserIds)) {
