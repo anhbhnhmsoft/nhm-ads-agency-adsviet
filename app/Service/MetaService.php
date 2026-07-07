@@ -1303,7 +1303,6 @@ class MetaService
                 $roas = $this->getRoas($insight);
                 $this->metaAdsAccountInsightRepository->query()->updateOrCreate(
                     [
-                        'service_user_id' => $metaAccount->service_user_id,
                         'meta_account_id' => $metaAccount->id,
                         'date' => $insight['date_start'],
                     ],
@@ -1987,7 +1986,6 @@ class MetaService
                                 try {
                                     $this->metaAdsAccountInsightRepository->query()->updateOrCreate(
                                         [
-                                            'service_user_id' => $serviceUser->id,
                                             'meta_account_id' => $metaAccount->id,
                                             'date' => $insight['date_start'], // Lưu ngày bắt đầu của insight
                                         ],
