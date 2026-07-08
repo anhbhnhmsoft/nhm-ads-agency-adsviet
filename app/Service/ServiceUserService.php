@@ -429,10 +429,15 @@ class ServiceUserService
                 $platform = $serviceUser->package?->platform ?? null;
 
                 // Tìm và gỡ account
+                // DB có thể lưu account_id CÓ hoặc KHÔNG CÓ prefix act_
+                $normalizedAccountId = preg_replace('/^act_/', '', trim($accountId));
                 $found = false;
                 if ((int) $platform === PlatformType::META->value) {
                     $account = $this->metaAccountRepository->query()
-                        ->where('account_id', preg_replace('/^act_/', '', $accountId))
+                        ->where(function ($q) use ($accountId, $normalizedAccountId) {
+                            $q->where('account_id', $accountId)
+                              ->orWhere('account_id', $normalizedAccountId);
+                        })
                         ->where('service_user_id', $serviceUserId)
                         ->first();
                     if ($account) {

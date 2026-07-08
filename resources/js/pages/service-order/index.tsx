@@ -45,7 +45,7 @@ import {
 } from '@/routes';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ChevronDown, Filter, Package, Pencil, Plus, Search, ShoppingBag, Trash2, X } from 'lucide-react';
+import { ChevronDown, Filter, Package, Pencil, Plus, RefreshCw, Search, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { router as inertiaRouter } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
@@ -710,6 +710,19 @@ const ServiceOrdersIndex = ({
                                     </Button>
                                 </>
                             )}
+                            {!isPending && order.status === 6 && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                    onClick={handleApprove}
+                                >
+                                    <RefreshCw className="mr-1 h-3 w-3" />
+                                    {t('service_orders.actions.reassign', {
+                                        defaultValue: 'Gán lại',
+                                    })}
+                                </Button>
+                            )}
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -1217,59 +1230,28 @@ const ServiceOrdersIndex = ({
                                                                     'service_orders.form.child_bm_label',
                                                                 )}
                                                             </Label>
-                                                            <Select
-                                                                value={
-                                                                    selectedChildBmId
-                                                                }
-                                                                onValueChange={(
-                                                                    value,
-                                                                ) =>
-                                                                    setSelectedChildBmId(
-                                                                        value,
-                                                                    )
-                                                                }
-                                                                disabled={
+                                                            <SearchableSelect
+                                                                options={[
+                                                                    {
+                                                                        value: 'none',
+                                                                        label: t('service_orders.form.use_parent_bm'),
+                                                                    },
+                                                                    ...childBusinessManagers.map((childBM) => ({
+                                                                        value: childBM.bm_id,
+                                                                        label: childBM.name || childBM.bm_id,
+                                                                        sublabel: childBM.bm_id,
+                                                                    }))
+                                                                ]}
+                                                                value={selectedChildBmId || 'none'}
+                                                                onValueChange={(value) => setSelectedChildBmId(value)}
+                                                                placeholder={
                                                                     loadingChildBMs
+                                                                        ? t('service_orders.form.loading_child_bms')
+                                                                        : t('service_orders.form.select_child_bm')
                                                                 }
-                                                            >
-                                                                <SelectTrigger id="child_bm_id">
-                                                                    <SelectValue
-                                                                        placeholder={
-                                                                            loadingChildBMs
-                                                                                ? t(
-                                                                                      'service_orders.form.loading_child_bms',
-                                                                                  )
-                                                                                : t(
-                                                                                      'service_orders.form.select_child_bm',
-                                                                                  )
-                                                                        }
-                                                                    />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="none">
-                                                                        {t(
-                                                                            'service_orders.form.use_parent_bm',
-                                                                        )}
-                                                                    </SelectItem>
-                                                                    {childBusinessManagers.map(
-                                                                        (
-                                                                            childBM: ChildBusinessManager,
-                                                                        ) => (
-                                                                            <SelectItem
-                                                                                key={
-                                                                                    childBM.bm_id
-                                                                                }
-                                                                                value={
-                                                                                    childBM.bm_id
-                                                                                }
-                                                                            >
-                                                                                {childBM.name ||
-                                                                                    childBM.bm_id}
-                                                                            </SelectItem>
-                                                                        ),
-                                                                    )}
-                                                                </SelectContent>
-                                                            </Select>
+                                                                searchPlaceholder={t('service_orders.form.search_bm_placeholder', { defaultValue: 'Tìm kiếm BM...' })}
+                                                                disabled={loadingChildBMs}
+                                                            />
                                                         </div>
                                                     )}
                                             </>
@@ -1832,19 +1814,26 @@ const ServiceOrdersIndex = ({
                                                                       'service_orders.form.select_mcc_available',
                                                                   )}
                                                         </Label>
-                                                        <Select
+                                                        <SearchableSelect
                                                             key={`edit-bm-tab-bm-${editBmIdList.join(',')}`}
-                                                            onValueChange={(
-                                                                value,
-                                                            ) => {
-                                                                if (
-                                                                    value &&
-                                                                    value !==
-                                                                        '__empty__'
-                                                                ) {
-                                                                    handleEditSelectBmFromList(
-                                                                        value,
-                                                                    );
+                                                            options={editBmList
+                                                                .filter(
+                                                                    (bm) =>
+                                                                        !editBmIdList.some(
+                                                                            (id) =>
+                                                                                id.trim() ===
+                                                                                (bm.bm_ids?.[0] || bm.id),
+                                                                        ),
+                                                                )
+                                                                .map((bm) => ({
+                                                                    value: bm.bm_ids?.[0] || bm.id,
+                                                                    label: `${bm.bm_name || bm.name} (${bm.bm_ids?.[0] || bm.id})`,
+                                                                    sublabel: bm.bm_ids?.[0] || bm.id,
+                                                                }))}
+                                                            value=""
+                                                            onValueChange={(value) => {
+                                                                if (value && value !== '__empty__') {
+                                                                    handleEditSelectBmFromList(value);
                                                                     addToListUnique(
                                                                         editBmIdList,
                                                                         setEditBmIdList,
@@ -1852,70 +1841,20 @@ const ServiceOrdersIndex = ({
                                                                     );
                                                                 }
                                                             }}
-                                                            disabled={
+                                                            placeholder={
                                                                 editLoadingBmList
+                                                                    ? t('service_orders.form.loading_child_bms')
+                                                                    : isEditMeta
+                                                                      ? t('service_orders.form.select_bm_from_list')
+                                                                      : t('service_orders.form.select_mcc_from_list')
                                                             }
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue
-                                                                    placeholder={
-                                                                        editLoadingBmList
-                                                                            ? t(
-                                                                                  'service_orders.form.loading_child_bms',
-                                                                              )
-                                                                            : isEditMeta
-                                                                              ? t(
-                                                                                    'service_orders.form.select_bm_from_list',
-                                                                                )
-                                                                              : t(
-                                                                                    'service_orders.form.select_mcc_from_list',
-                                                                                )
-                                                                    }
-                                                                />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {editBmList
-                                                                    .filter(
-                                                                        (bm) =>
-                                                                            !editBmIdList.some(
-                                                                                (
-                                                                                    id,
-                                                                                ) =>
-                                                                                    id.trim() ===
-                                                                                    (bm
-                                                                                        .bm_ids?.[0] ||
-                                                                                        bm.id),
-                                                                            ),
-                                                                    )
-                                                                    .map(
-                                                                        (
-                                                                            bm,
-                                                                        ) => (
-                                                                            <SelectItem
-                                                                                key={
-                                                                                    bm.id
-                                                                                }
-                                                                                value={
-                                                                                    bm
-                                                                                        .bm_ids?.[0] ||
-                                                                                    bm.id
-                                                                                }
-                                                                            >
-                                                                                <span className="block truncate">
-                                                                                    {bm.bm_name ||
-                                                                                        bm.name}{' '}
-                                                                                    (
-                                                                                    {bm
-                                                                                        .bm_ids?.[0] ||
-                                                                                        bm.id}
-
-                                                                                    )
-                                                                                </span>
-                                                                            </SelectItem>
-                                                                        ),
-                                                                    )}
-                                                            </SelectContent>
-                                                        </Select>
+                                                            searchPlaceholder={
+                                                                isEditMeta
+                                                                    ? t('service_orders.form.filter_bm_placeholder', { defaultValue: 'Lọc danh sách BM...' })
+                                                                    : t('service_orders.form.filter_mcc_placeholder', { defaultValue: 'Lọc danh sách MCC...' })
+                                                            }
+                                                            disabled={editLoadingBmList}
+                                                        />
                                                     </div>
 
                                                     {/* Input ID BM nhập tay + nút thêm */}
@@ -2041,59 +1980,28 @@ const ServiceOrdersIndex = ({
                                                                         'service_orders.form.child_bm_label',
                                                                     )}
                                                                 </Label>
-                                                                <Select
-                                                                    value={
-                                                                        editSelectedChildBmId
-                                                                    }
-                                                                    onValueChange={(
-                                                                        value,
-                                                                    ) =>
-                                                                        setEditSelectedChildBmId(
-                                                                            value,
-                                                                        )
-                                                                    }
-                                                                    disabled={
+                                                                <SearchableSelect
+                                                                    options={[
+                                                                        {
+                                                                            value: 'none',
+                                                                            label: t('service_orders.form.use_parent_bm'),
+                                                                        },
+                                                                        ...editChildBusinessManagers.map((childBM) => ({
+                                                                            value: childBM.bm_id,
+                                                                            label: childBM.name || childBM.bm_id,
+                                                                            sublabel: childBM.bm_id,
+                                                                        }))
+                                                                    ]}
+                                                                    value={editSelectedChildBmId || 'none'}
+                                                                    onValueChange={(value) => setEditSelectedChildBmId(value)}
+                                                                    placeholder={
                                                                         editLoadingChildBMs
+                                                                            ? t('service_orders.form.loading_child_bms')
+                                                                            : t('service_orders.form.select_child_bm')
                                                                     }
-                                                                >
-                                                                    <SelectTrigger id="edit_child_bm_id">
-                                                                        <SelectValue
-                                                                            placeholder={
-                                                                                editLoadingChildBMs
-                                                                                    ? t(
-                                                                                          'service_orders.form.loading_child_bms',
-                                                                                      )
-                                                                                    : t(
-                                                                                          'service_orders.form.select_child_bm',
-                                                                                      )
-                                                                            }
-                                                                        />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="none">
-                                                                            {t(
-                                                                                'service_orders.form.use_parent_bm',
-                                                                            )}
-                                                                        </SelectItem>
-                                                                        {editChildBusinessManagers.map(
-                                                                            (
-                                                                                childBM: ChildBusinessManager,
-                                                                            ) => (
-                                                                                <SelectItem
-                                                                                    key={
-                                                                                        childBM.bm_id
-                                                                                    }
-                                                                                    value={
-                                                                                        childBM.bm_id
-                                                                                    }
-                                                                                >
-                                                                                    {childBM.name ||
-                                                                                        childBM.bm_id}
-                                                                                </SelectItem>
-                                                                            ),
-                                                                        )}
-                                                                    </SelectContent>
-                                                                </Select>
+                                                                    searchPlaceholder={t('service_orders.form.search_bm_placeholder', { defaultValue: 'Tìm kiếm BM...' })}
+                                                                    disabled={editLoadingChildBMs}
+                                                                />
                                                             </div>
                                                         )}
                                                 </>
@@ -2112,23 +2020,17 @@ const ServiceOrdersIndex = ({
                                                                       'service_orders.form.select_mcc_available',
                                                                   )}
                                                         </Label>
-                                                        <Select
+                                                        <SearchableSelect
                                                             key={`edit-account-tab-bm-${editBmId}`}
-                                                            value={
-                                                                editBmId ||
-                                                                undefined
-                                                            }
-                                                            onValueChange={(
-                                                                value,
-                                                            ) => {
-                                                                if (
-                                                                    value &&
-                                                                    value !==
-                                                                        '__empty__'
-                                                                ) {
-                                                                    handleEditSelectBmFromList(
-                                                                        value,
-                                                                    );
+                                                            options={editBmList.map((bm) => ({
+                                                                value: bm.bm_ids?.[0] || bm.id,
+                                                                label: `${bm.bm_name || bm.name} (${bm.bm_ids?.[0] || bm.id})`,
+                                                                sublabel: bm.bm_ids?.[0] || bm.id,
+                                                            }))}
+                                                            value={editBmId || ''}
+                                                            onValueChange={(value) => {
+                                                                if (value && value !== '__empty__') {
+                                                                    handleEditSelectBmFromList(value);
                                                                     addToListUnique(
                                                                         editBmIdList,
                                                                         setEditBmIdList,
@@ -2136,55 +2038,20 @@ const ServiceOrdersIndex = ({
                                                                     );
                                                                 }
                                                             }}
-                                                            disabled={
+                                                            placeholder={
                                                                 editLoadingBmList
+                                                                    ? t('service_orders.form.loading_child_bms')
+                                                                    : isEditMeta
+                                                                      ? t('service_orders.form.select_bm_from_list')
+                                                                      : t('service_orders.form.select_mcc_from_list')
                                                             }
-                                                        >
-                                                            <SelectTrigger id="edit_select_bm_from_list_account">
-                                                                <SelectValue
-                                                                    placeholder={
-                                                                        editLoadingBmList
-                                                                            ? t(
-                                                                                  'service_orders.form.loading_child_bms',
-                                                                              )
-                                                                            : isEditMeta
-                                                                              ? t(
-                                                                                    'service_orders.form.select_bm_from_list',
-                                                                                )
-                                                                              : t(
-                                                                                    'service_orders.form.select_mcc_from_list',
-                                                                                )
-                                                                    }
-                                                                />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {editBmList.map(
-                                                                    (bm) => (
-                                                                        <SelectItem
-                                                                            key={
-                                                                                bm.id
-                                                                            }
-                                                                            value={
-                                                                                bm
-                                                                                    .bm_ids?.[0] ||
-                                                                                bm.id
-                                                                            }
-                                                                        >
-                                                                            <span className="block truncate">
-                                                                                {bm.bm_name ||
-                                                                                    bm.name}{' '}
-                                                                                (
-                                                                                {bm
-                                                                                    .bm_ids?.[0] ||
-                                                                                    bm.id}
-
-                                                                                )
-                                                                            </span>
-                                                                        </SelectItem>
-                                                                    ),
-                                                                )}
-                                                            </SelectContent>
-                                                        </Select>
+                                                            searchPlaceholder={
+                                                                isEditMeta
+                                                                    ? t('service_orders.form.filter_bm_placeholder', { defaultValue: 'Lọc danh sách BM...' })
+                                                                    : t('service_orders.form.filter_mcc_placeholder', { defaultValue: 'Lọc danh sách MCC...' })
+                                                            }
+                                                            disabled={editLoadingBmList}
+                                                        />
                                                     </div>
 
                                                     {/* 2. Dropdown chọn tài khoản có sẵn */}
@@ -2198,7 +2065,28 @@ const ServiceOrdersIndex = ({
                                                             )}{' '}
                                                             *
                                                         </Label>
-                                                        <Select
+                                                        <SearchableSelect
+                                                            options={editBmAccounts.map((acc: any) => {
+                                                                const alreadyInList = editAccountIdList.some(
+                                                                    (id) => id.trim() === acc.account_id,
+                                                                );
+                                                                const alreadyAssigned = !!acc.service_user_id;
+                                                                let suffix = '';
+                                                                if (alreadyInList) {
+                                                                    suffix = ' [Đã chọn]';
+                                                                } else if (alreadyAssigned) {
+                                                                    suffix = ' [Đã gán KH khác]';
+                                                                } else {
+                                                                    suffix = ' [Chưa gán]';
+                                                                }
+                                                                return {
+                                                                    value: acc.account_id,
+                                                                    label: `${acc.account_name || acc.account_id} — ${acc.account_id} (${acc.currency})${suffix}`,
+                                                                    sublabel: acc.account_id,
+                                                                    disabled: alreadyInList,
+                                                                };
+                                                            })}
+                                                            value=""
                                                             onValueChange={(value) => {
                                                                 if (value && value !== '__empty__') {
                                                                     addToListUnique(
@@ -2209,58 +2097,16 @@ const ServiceOrdersIndex = ({
                                                                     setEditAccountIdInput(value);
                                                                 }
                                                             }}
+                                                            placeholder={
+                                                                !editBmId
+                                                                    ? t('service_orders.form.select_bm_first')
+                                                                    : editLoadingBmAccounts
+                                                                      ? t('service_orders.form.loading_child_bms')
+                                                                      : t('service_orders.form.select_account_in_bm_mcc')
+                                                            }
+                                                            searchPlaceholder={t('service_orders.form.search_account_placeholder', { defaultValue: 'Tìm kiếm tài khoản...' })}
                                                             disabled={editLoadingBmAccounts || !editBmId}
-                                                            key={`edit-acc-dropdown-${editAccountIdList.join(',')}`}
-                                                        >
-                                                            <SelectTrigger id="edit_select_account_from_list">
-                                                                <SelectValue
-                                                                    placeholder={
-                                                                        !editBmId
-                                                                            ? t(
-                                                                                  'service_orders.form.select_bm_first',
-                                                                              )
-                                                                            : editLoadingBmAccounts
-                                                                              ? t(
-                                                                                    'service_orders.form.loading_child_bms',
-                                                                                )
-                                                                              : t(
-                                                                                    'service_orders.form.select_account_in_bm_mcc',
-                                                                                )
-                                                                    }
-                                                                />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {editBmAccounts.map((acc: any) => {
-                                                                    const alreadyInList = editAccountIdList.some(
-                                                                        (id) => id.trim() === acc.account_id,
-                                                                    );
-                                                                    const alreadyAssigned = !!acc.service_user_id;
-                                                                    return (
-                                                                        <SelectItem
-                                                                            key={acc.account_id}
-                                                                            value={acc.account_id}
-                                                                            disabled={alreadyInList}
-                                                                        >
-                                                                            <span className="block truncate">
-                                                                                {acc.account_name || acc.account_id}{' '}
-                                                                                &mdash;{' '}
-                                                                                {acc.account_id}{' '}
-                                                                                ({acc.currency})
-                                                                                {alreadyInList && (
-                                                                                    <span className="ml-1 text-xs font-semibold text-green-600">[Đã chọn]</span>
-                                                                                )}
-                                                                                {!alreadyInList && alreadyAssigned && (
-                                                                                    <span className="ml-1 text-xs font-semibold text-orange-500">[Đã gán KH khác]</span>
-                                                                                )}
-                                                                                {!alreadyInList && !alreadyAssigned && (
-                                                                                    <span className="ml-1 text-xs text-muted-foreground">[Chưa gán]</span>
-                                                                                )}
-                                                                            </span>
-                                                                        </SelectItem>
-                                                                    );
-                                                                })}
-                                                            </SelectContent>
-                                                        </Select>
+                                                        />
                                                     </div>
 
                                                     {/* 3. Input ID tài khoản nhập tay + nút thêm */}
