@@ -101,8 +101,14 @@ class ServiceUserService
 
                 $platform = $serviceUser->package->platform ?? null;
                 $assignMode = $config['assign_mode'] ?? 'bm';
-                $selectedAccountId = $config['account_id'] ?? null;
                 $bmIdSubmitted = trim((string) ($config['bm_id'] ?? ''));
+
+                $accountIds = [];
+                if (!empty($config['account_ids']) && is_array($config['account_ids'])) {
+                    $accountIds = array_values(array_filter(array_map('trim', $config['account_ids'])));
+                } elseif (!empty($config['account_id'])) {
+                    $accountIds = [trim($config['account_id'])];
+                }
 
                 $packagePaymentType = $this->resolvePackagePaymentType($serviceUser->package?->payment_type);
                 $paymentType = $this->resolveConfigPaymentType($currentConfig['payment_type'] ?? null, $packagePaymentType);
@@ -110,15 +116,15 @@ class ServiceUserService
 
                 // ── Validate trước khi thay đổi gì ──
 
-                // Validate BM đã có khách KHÁC dùng chưa (chỉ khi có BM ID)
-                if (!empty($bmIdSubmitted)) {
+                // Validate BM đã có khách KHÁC dùng chưa (chỉ khi có BM ID và assign_mode = bm)
+                if ($assignMode === 'bm' && !empty($bmIdSubmitted)) {
                     $existingServiceUser = $this->serviceUserRepository->query()
                         ->where('id', '!=', $serviceUser->id)
                         ->where('user_id', '!=', $serviceUser->user_id)
                         ->where('status', ServiceUserStatus::ACTIVE->value)
                         ->where(function ($q) use ($bmIdSubmitted) {
-                            $q->whereJsonContains('config_account->bm_id', $bmIdSubmitted)
-                              ->orWhereJsonContains('config_account->child_bm_id', $bmIdSubmitted);
+                            $q->whereRaw("config_account->>'bm_id' = ?", [$bmIdSubmitted])
+                              ->orWhereRaw("config_account->>'child_bm_id' = ?", [$bmIdSubmitted]);
                         })
                         ->with('user:id,name,username')
                         ->first();
@@ -131,41 +137,45 @@ class ServiceUserService
                     }
                 }
 
-                // Validate account đã có KHÁCH KHÁC dùng chưa
-                if ($assignMode === 'account' && $selectedAccountId) {
+                // Validate accounts đã có KHÁCH KHÁC dùng chưa
+                if ($assignMode === 'account' && !empty($accountIds)) {
                     $activeStatus = ServiceUserStatus::ACTIVE->value;
                     $currentUserId = $serviceUser->user_id;
                     if ($platform === PlatformType::META->value) {
-                        $existingOwner = $this->metaAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
-                            ->where('service_user_id', '!=', $serviceUser->id)
-                            ->whereNotNull('service_user_id')
-                            ->whereHas('serviceUser', fn ($q) => $q
-                                ->where('status', $activeStatus)
-                                ->where('user_id', '!=', $currentUserId))
-                            ->with('serviceUser.user')
-                            ->first();
-                        if ($existingOwner) {
-                            $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khách khác';
-                            return ServiceReturn::error(
-                                message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
-                            );
+                        foreach ($accountIds as $selectedAccountId) {
+                            $existingOwner = $this->metaAccountRepository->query()
+                                ->where('account_id', $selectedAccountId)
+                                ->where('service_user_id', '!=', $serviceUser->id)
+                                ->whereNotNull('service_user_id')
+                                ->whereHas('serviceUser', fn ($q) => $q
+                                    ->where('status', $activeStatus)
+                                    ->where('user_id', '!=', $currentUserId))
+                                ->with('serviceUser.user')
+                                ->first();
+                            if ($existingOwner) {
+                                $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khách khác';
+                                return ServiceReturn::error(
+                                    message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
+                                );
+                            }
                         }
                     } elseif ($platform === PlatformType::GOOGLE->value) {
-                        $existingOwner = $this->googleAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
-                            ->where('service_user_id', '!=', $serviceUser->id)
-                            ->whereNotNull('service_user_id')
-                            ->whereHas('serviceUser', fn ($q) => $q
-                                ->where('status', $activeStatus)
-                                ->where('user_id', '!=', $currentUserId))
-                            ->with('serviceUser.user')
-                            ->first();
-                        if ($existingOwner) {
-                            $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khách khác';
-                            return ServiceReturn::error(
-                                message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
-                            );
+                        foreach ($accountIds as $selectedAccountId) {
+                            $existingOwner = $this->googleAccountRepository->query()
+                                ->where('account_id', $selectedAccountId)
+                                ->where('service_user_id', '!=', $serviceUser->id)
+                                ->whereNotNull('service_user_id')
+                                ->whereHas('serviceUser', fn ($q) => $q
+                                    ->where('status', $activeStatus)
+                                    ->where('user_id', '!=', $currentUserId))
+                                ->with('serviceUser.user')
+                                ->first();
+                            if ($existingOwner) {
+                                $ownerName = $existingOwner->serviceUser?->user?->name ?? 'khách khác';
+                                return ServiceReturn::error(
+                                    message: __('services.validation.account_already_used_by_customer', ['name' => $ownerName])
+                                );
+                            }
                         }
                     }
                 }
@@ -176,7 +186,8 @@ class ServiceUserService
                     $newConfig = array_merge($currentConfig, [
                         'accounts' => $accounts,
                         'bm_id' => $bmIdSubmitted ?: ($currentConfig['bm_id'] ?? ''),
-                        'account_id' => $selectedAccountId,
+                        'account_id' => !empty($accountIds) ? $accountIds[0] : null,
+                        'account_ids' => $accountIds,
                         'assign_mode' => $assignMode,
                         'payment_type' => $paymentType,
                         'billing_source' => $billingSource,
@@ -192,7 +203,8 @@ class ServiceUserService
                         'display_name' => $config['display_name'] ?? ($currentConfig['display_name'] ?? ''),
                         'bm_id' => $bmIdSubmitted ?: ($currentConfig['bm_id'] ?? ''),
                         'child_bm_id' => $childBmId,
-                        'account_id' => $selectedAccountId,
+                        'account_id' => !empty($accountIds) ? $accountIds[0] : null,
+                        'account_ids' => $accountIds,
                         'assign_mode' => $assignMode,
                         'timezone_bm' => $config['timezone_bm'] ?? ($currentConfig['timezone_bm'] ?? null),
                         'payment_type' => $paymentType,
@@ -210,46 +222,50 @@ class ServiceUserService
                 }
 
                 // ── Gán tài khoản cho service_user (TRƯỚC khi save status) ──
-                if ($assignMode === 'account' && $selectedAccountId) {
+                if ($assignMode === 'account' && !empty($accountIds)) {
                     if ($platform === PlatformType::META->value) {
-                        // Double-check lần cuối trong transaction (lock row)
-                        $conflictAccount = $this->metaAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
-                            ->whereNotNull('service_user_id')
-                            ->where('service_user_id', '!=', $serviceUser->id)
-                            ->whereHas('serviceUser', fn ($q) => $q
-                                ->where('status', ServiceUserStatus::ACTIVE->value)
-                                ->where('user_id', '!=', $serviceUser->user_id))
-                            ->lockForUpdate()
-                            ->first();
-                        if ($conflictAccount) {
-                            $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khách khác';
-                            return ServiceReturn::error(
-                                message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
-                            );
+                        foreach ($accountIds as $selectedAccountId) {
+                            // Double-check lần cuối trong transaction (lock row)
+                            $conflictAccount = $this->metaAccountRepository->query()
+                                ->where('account_id', $selectedAccountId)
+                                ->whereNotNull('service_user_id')
+                                ->where('service_user_id', '!=', $serviceUser->id)
+                                ->whereHas('serviceUser', fn ($q) => $q
+                                    ->where('status', ServiceUserStatus::ACTIVE->value)
+                                    ->where('user_id', '!=', $serviceUser->user_id))
+                                ->lockForUpdate()
+                                ->first();
+                            if ($conflictAccount) {
+                                $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khách khác';
+                                return ServiceReturn::error(
+                                    message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
+                                );
+                            }
+                            $this->metaAccountRepository->query()
+                                ->where('account_id', $selectedAccountId)
+                                ->update(['service_user_id' => $serviceUser->id]);
                         }
-                        $this->metaAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
-                            ->update(['service_user_id' => $serviceUser->id]);
                     } elseif ($platform === PlatformType::GOOGLE->value) {
-                        $conflictAccount = $this->googleAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
-                            ->whereNotNull('service_user_id')
-                            ->where('service_user_id', '!=', $serviceUser->id)
-                            ->whereHas('serviceUser', fn ($q) => $q
-                                ->where('status', ServiceUserStatus::ACTIVE->value)
-                                ->where('user_id', '!=', $serviceUser->user_id))
-                            ->lockForUpdate()
-                            ->first();
-                        if ($conflictAccount) {
-                            $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khách khác';
-                            return ServiceReturn::error(
-                                message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
-                            );
+                        foreach ($accountIds as $selectedAccountId) {
+                            $conflictAccount = $this->googleAccountRepository->query()
+                                ->where('account_id', $selectedAccountId)
+                                ->whereNotNull('service_user_id')
+                                ->where('service_user_id', '!=', $serviceUser->id)
+                                ->whereHas('serviceUser', fn ($q) => $q
+                                    ->where('status', ServiceUserStatus::ACTIVE->value)
+                                    ->where('user_id', '!=', $serviceUser->user_id))
+                                ->lockForUpdate()
+                                ->first();
+                            if ($conflictAccount) {
+                                $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khách khác';
+                                return ServiceReturn::error(
+                                    message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
+                                );
+                            }
+                            $this->googleAccountRepository->query()
+                                ->where('account_id', $selectedAccountId)
+                                ->update(['service_user_id' => $serviceUser->id]);
                         }
-                        $this->googleAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
-                            ->update(['service_user_id' => $serviceUser->id]);
                     }
                 } elseif (!empty($bmIdSubmitted)) {
                     $sameUserServiceUserIds = $this->serviceUserRepository->query()
@@ -565,6 +581,17 @@ class ServiceUserService
                 $accountIds = !empty($config['account_ids'])
                     ? array_values(array_filter($config['account_ids']))
                     : (!empty($config['account_id']) ? [$config['account_id']] : []);
+
+                // Gỡ gán các tài khoản cũ thuộc về service_user này để tránh rác/trùng lặp khi update danh sách mới
+                if ($platform === PlatformType::META->value) {
+                    $this->metaAccountRepository->query()
+                        ->where('service_user_id', $serviceUser->id)
+                        ->update(['service_user_id' => null]);
+                } elseif ($platform === PlatformType::GOOGLE->value) {
+                    $this->googleAccountRepository->query()
+                        ->where('service_user_id', $serviceUser->id)
+                        ->update(['service_user_id' => null]);
+                }
 
                 foreach ($accountIds as $selectedAccountId) {
                     if (!$selectedAccountId) continue;

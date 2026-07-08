@@ -284,14 +284,21 @@ export const useServiceOrderAdminDialog = () => {
         return null;
     }, [assignMode, form.data.account_id_input]);
 
-    const handleSubmitApprove = useCallback((overrideAccountId?: string | null) => {
+    const handleSubmitApprove = useCallback((overrideAccountIds?: string[] | string | null) => {
         if (!selectedOrder) return;
+
+        // Normalize overrideAccountIds thành array
+        let accountIdsFromOverride: string[] = [];
+        if (Array.isArray(overrideAccountIds)) {
+            accountIdsFromOverride = overrideAccountIds.filter((v) => v?.trim());
+        } else if (typeof overrideAccountIds === 'string' && overrideAccountIds.trim()) {
+            accountIdsFromOverride = [overrideAccountIds.trim()];
+        }
 
         // Validate: tab "Gán tài khoản" phải nhập ID
         if (assignMode === 'account') {
-            const accountIdFromOverride = overrideAccountId?.trim();
             const accountIdFromForm = form.data.account_id_input?.trim();
-            if (!accountIdFromOverride && !accountIdFromForm) {
+            if (accountIdsFromOverride.length === 0 && !accountIdFromForm) {
                 form.setError('account_id', 'Vui lòng nhập ID tài khoản khi chọn tab Gán tài khoản');
                 return;
             }
@@ -316,8 +323,15 @@ export const useServiceOrderAdminDialog = () => {
             }));
         }
 
-        // Xác định account_id gửi lên backend
-        const accountId = getAccountIdToSubmit(overrideAccountId);
+        // Xác định danh sách account_ids gửi lên backend
+        let finalAccountIds: string[] = [];
+        if (assignMode === 'account') {
+            if (accountIdsFromOverride.length > 0) {
+                finalAccountIds = accountIdsFromOverride;
+            } else if (form.data.account_id_input?.trim()) {
+                finalAccountIds = [form.data.account_id_input.trim()];
+            }
+        }
 
         form.transform(() => ({
             ...form.data,
@@ -326,7 +340,8 @@ export const useServiceOrderAdminDialog = () => {
                 assignMode === 'bm' && selectedChildBmId !== 'none' && selectedChildBmId
                     ? selectedChildBmId
                     : null,
-            account_id: accountId,
+            account_id: finalAccountIds[0] || null,   // backward compat
+            account_ids: finalAccountIds.length > 0 ? finalAccountIds : null,
             assign_mode: assignMode,
             accounts: accountsToSubmit,
             payment_type:

@@ -1506,9 +1506,7 @@ const ServiceOrdersIndex = ({
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            handleSubmitApprove(
-                                                currentAccountId,
-                                            );
+                                            handleSubmitApprove(accountIdList.filter(Boolean));
                                         }}
                                         disabled={approveProcessing}
                                     >
@@ -2179,28 +2177,18 @@ const ServiceOrdersIndex = ({
                                                             *
                                                         </Label>
                                                         <Select
-                                                            onValueChange={(
-                                                                value,
-                                                            ) => {
-                                                                if (
-                                                                    value &&
-                                                                    value !==
-                                                                        '__empty__'
-                                                                ) {
+                                                            onValueChange={(value) => {
+                                                                if (value && value !== '__empty__') {
                                                                     addToListUnique(
                                                                         editAccountIdList,
                                                                         setEditAccountIdList,
                                                                         value,
                                                                     );
-                                                                    setEditAccountIdInput(
-                                                                        value,
-                                                                    );
+                                                                    setEditAccountIdInput(value);
                                                                 }
                                                             }}
-                                                            disabled={
-                                                                editLoadingBmAccounts ||
-                                                                !editBmId
-                                                            }
+                                                            disabled={editLoadingBmAccounts || !editBmId}
+                                                            key={`edit-acc-dropdown-${editAccountIdList.join(',')}`}
                                                         >
                                                             <SelectTrigger id="edit_select_account_from_list">
                                                                 <SelectValue
@@ -2220,49 +2208,35 @@ const ServiceOrdersIndex = ({
                                                                 />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {editBmAccounts
-                                                                    .filter(
-                                                                        (acc) =>
-                                                                            !editAccountIdList.some(
-                                                                                (
-                                                                                    id,
-                                                                                ) =>
-                                                                                    id.trim() ===
-                                                                                    acc.account_id,
-                                                                            ),
-                                                                    )
-                                                                    .map(
-                                                                        (
-                                                                            acc: BmAccount,
-                                                                        ) => (
-                                                                            <SelectItem
-                                                                                key={
-                                                                                    acc.account_id
-                                                                                }
-                                                                                value={
-                                                                                    acc.account_id
-                                                                                }
-                                                                            >
-                                                                                <span className="block truncate">
-                                                                                    {acc.account_name ||
-                                                                                        acc.account_id}{' '}
-                                                                                    —{' '}
-                                                                                    {
-                                                                                        acc.account_id
-                                                                                    }{' '}
-                                                                                    (
-                                                                                    {
-                                                                                        acc.currency
-                                                                                    }
-
-                                                                                    )
-                                                                                    {acc.service_user_id
-                                                                                        ? ' [Đã gán]'
-                                                                                        : ''}
-                                                                                </span>
-                                                                            </SelectItem>
-                                                                        ),
-                                                                    )}
+                                                                {editBmAccounts.map((acc: any) => {
+                                                                    const alreadyInList = editAccountIdList.some(
+                                                                        (id) => id.trim() === acc.account_id,
+                                                                    );
+                                                                    const alreadyAssigned = !!acc.service_user_id;
+                                                                    return (
+                                                                        <SelectItem
+                                                                            key={acc.account_id}
+                                                                            value={acc.account_id}
+                                                                            disabled={alreadyInList}
+                                                                        >
+                                                                            <span className="block truncate">
+                                                                                {acc.account_name || acc.account_id}{' '}
+                                                                                &mdash;{' '}
+                                                                                {acc.account_id}{' '}
+                                                                                ({acc.currency})
+                                                                                {alreadyInList && (
+                                                                                    <span className="ml-1 text-xs font-semibold text-green-600">[Đã chọn]</span>
+                                                                                )}
+                                                                                {!alreadyInList && alreadyAssigned && (
+                                                                                    <span className="ml-1 text-xs font-semibold text-orange-500">[Đã gán KH khác]</span>
+                                                                                )}
+                                                                                {!alreadyInList && !alreadyAssigned && (
+                                                                                    <span className="ml-1 text-xs text-muted-foreground">[Chưa gán]</span>
+                                                                                )}
+                                                                            </span>
+                                                                        </SelectItem>
+                                                                    );
+                                                                })}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>

@@ -141,7 +141,8 @@ class BusinessManagerController extends Controller
     {
         $this->ensureInternalAccess();
 
-        $platform = $request->input('platform') ? (int) $request->input('platform') : null;
+        $platformRaw = $request->input('platform') ?? $request->input('filter.platform') ?? null;
+        $platform = $platformRaw !== null ? (int) $platformRaw : null;
         $results = $this->businessManagerService->getScopedChildManagersForDropdown($platform);
 
         return response()->json(['data' => $results]);
