@@ -236,7 +236,6 @@ const ServiceOrdersIndex = ({
     const [filterSearch, setFilterSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [filterPlatform, setFilterPlatform] = useState('');
-    const [showFilters, setShowFilters] = useState(false);
 
     const [searchBmQuery, setSearchBmQuery] = useState('');
     const [searchAccountQuery, setSearchAccountQuery] = useState('');
@@ -783,17 +782,6 @@ const ServiceOrdersIndex = ({
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        {is_admin_view && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setShowFilters((v) => !v)}
-                            >
-                                <Filter className="mr-1.5 h-4 w-4" />
-                                Bộ lọc
-                                <ChevronDown className={`ml-1 h-3 w-3 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-                            </Button>
-                        )}
                         {!is_admin_view && (
                             <Button asChild>
                                 <Link href={service_purchase_index().url}>
@@ -806,7 +794,7 @@ const ServiceOrdersIndex = ({
                 </div>
 
                 {/* Filter Bar */}
-                {is_admin_view && showFilters && (
+                {is_admin_view && (
                     <div className="rounded-lg border bg-muted/30 p-4">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             {/* Tìm kiếm tên khách */}

@@ -428,8 +428,7 @@ class ServiceUserService
 
                 $platform = $serviceUser->package?->platform ?? null;
 
-                // Tìm và gỡ account
-                // DB có thể lưu account_id CÓ hoặc KHÔNG CÓ prefix act_
+                // Tìm và gỡ account — chỉ cần match account_id (vì có thể bị overwrite sai service_user_id)
                 $normalizedAccountId = preg_replace('/^act_/', '', trim($accountId));
                 $found = false;
                 if ((int) $platform === PlatformType::META->value) {
@@ -438,7 +437,6 @@ class ServiceUserService
                             $q->where('account_id', $accountId)
                               ->orWhere('account_id', $normalizedAccountId);
                         })
-                        ->where('service_user_id', $serviceUserId)
                         ->first();
                     if ($account) {
                         $account->update(['service_user_id' => null]);
@@ -447,7 +445,6 @@ class ServiceUserService
                 } elseif ((int) $platform === PlatformType::GOOGLE->value) {
                     $account = $this->googleAccountRepository->query()
                         ->where('account_id', $accountId)
-                        ->where('service_user_id', $serviceUserId)
                         ->first();
                     if ($account) {
                         $account->update(['service_user_id' => null]);
