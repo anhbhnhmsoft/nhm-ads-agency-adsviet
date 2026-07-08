@@ -180,6 +180,7 @@ type Props = {
     paginator: ServiceOrderPagination;
     meta_timezones?: TimezoneOption[];
     google_timezones?: TimezoneOption[];
+    customers?: { id: string; name: string; username: string }[];
 };
 
 const STATUS_OPTIONS = [
@@ -212,9 +213,10 @@ const ServiceOrdersIndex = ({
     paginator,
     meta_timezones = [],
     google_timezones = [],
+    customers = [],
 }: Props) => {
     const { t } = useTranslation();
-    const { props } = usePage();
+    const { props, url } = usePage();
     const checkRole = useCheckRole(props.auth);
     const is_admin_view = checkRole([
         _UserRole.ADMIN,
@@ -236,6 +238,15 @@ const ServiceOrdersIndex = ({
     const [filterSearch, setFilterSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [filterPlatform, setFilterPlatform] = useState('');
+    const [filterUserId, setFilterUserId] = useState('');
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        setFilterSearch(params.get('filter[search]') || '');
+        setFilterStatus(params.get('filter[status]') || '');
+        setFilterPlatform(params.get('filter[platform]') || '');
+        setFilterUserId(params.get('filter[user_id]') || '');
+    }, [url]);
 
     const [searchBmQuery, setSearchBmQuery] = useState('');
     const [searchAccountQuery, setSearchAccountQuery] = useState('');
@@ -812,7 +823,7 @@ const ServiceOrdersIndex = ({
                 {/* Filter Bar */}
                 {is_admin_view && (
                     <div className="rounded-lg border bg-muted/30 p-4">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                             {/* Tìm kiếm tên khách */}
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -830,12 +841,32 @@ const ServiceOrdersIndex = ({
                                                     'filter[search]': filterSearch || undefined,
                                                     'filter[status]': filterStatus || undefined,
                                                     'filter[platform]': filterPlatform || undefined,
+                                                    'filter[user_id]': filterUserId || undefined,
                                                     page: 1,
                                                 } as any,
                                                 { preserveState: true, replace: true },
                                             );
                                         }
                                     }}
+                                />
+                            </div>
+
+                            {/* Lọc khách hàng qua SearchableSelect */}
+                            <div>
+                                <SearchableSelect
+                                    options={[
+                                        { value: '', label: 'Tất cả khách hàng' },
+                                        ...customers.map((c) => ({
+                                            value: c.id,
+                                            label: c.name,
+                                            sublabel: c.username,
+                                        })),
+                                    ]}
+                                    value={filterUserId}
+                                    onValueChange={(val) => setFilterUserId(val)}
+                                    placeholder="Chọn khách hàng..."
+                                    searchPlaceholder="Tìm tên hoặc username..."
+                                    className="h-9"
                                 />
                             </div>
 
@@ -877,6 +908,7 @@ const ServiceOrdersIndex = ({
                                                 'filter[search]': filterSearch || undefined,
                                                 'filter[status]': filterStatus || undefined,
                                                 'filter[platform]': filterPlatform || undefined,
+                                                'filter[user_id]': filterUserId || undefined,
                                                 page: 1,
                                             } as any,
                                             { preserveState: true, replace: true },
@@ -893,6 +925,7 @@ const ServiceOrdersIndex = ({
                                         setFilterSearch('');
                                         setFilterStatus('');
                                         setFilterPlatform('');
+                                        setFilterUserId('');
                                         inertiaRouter.get(
                                             window.location.pathname,
                                             { page: 1 } as any,

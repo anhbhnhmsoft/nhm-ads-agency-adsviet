@@ -925,18 +925,15 @@ class MetaService
      * @param ServiceUser $serviceUser
      * @return ServiceReturn
      */
-    public function syncMetaAccounts(ServiceUser $serviceUser): ServiceReturn
+    public function setupSettingContextForServiceUser(ServiceUser $serviceUser): bool
     {
         $serviceUserConfig = $serviceUser->config_account ?? [];
-
         $bmId = null;
         $childBmId = $serviceUserConfig['child_bm_id'] ?? null;
 
         if ($childBmId) {
-            // Nếu có BM con được chọn, sử dụng BM con
             $bmId = $childBmId;
         } else {
-            // Nếu không có BM con, sử dụng BM gốc
             if (isset($serviceUserConfig['accounts']) && is_array($serviceUserConfig['accounts']) && !empty($serviceUserConfig['accounts'])) {
                 $firstAccount = $serviceUserConfig['accounts'][0];
                 if (isset($firstAccount['bm_ids']) && is_array($firstAccount['bm_ids']) && !empty($firstAccount['bm_ids'])) {
@@ -947,12 +944,10 @@ class MetaService
             }
         }
 
-        // Nếu không có bmId thì thoát
         if (!$bmId) {
-            return ServiceReturn::error('Missing bm_id in service user config');
+            return false;
         }
 
-        // Tự động tìm và thiết lập ngữ cảnh platform_setting phù hợp cho BM này
         $setting = $this->platformSettingService->findByConfigField(
             platform: PlatformType::META->value,
             field: 'business_manager_id',
@@ -961,7 +956,37 @@ class MetaService
 
         if ($setting) {
             $this->metaBusinessService->setSettingId((string)$setting->id);
+            return true;
         }
+
+        return false;
+    }
+
+    public function syncMetaAccounts(ServiceUser $serviceUser): ServiceReturn
+    {
+        $serviceUserConfig = $serviceUser->config_account ?? [];
+        $bmId = null;
+        $childBmId = $serviceUserConfig['child_bm_id'] ?? null;
+
+        if ($childBmId) {
+            $bmId = $childBmId;
+        } else {
+            if (isset($serviceUserConfig['accounts']) && is_array($serviceUserConfig['accounts']) && !empty($serviceUserConfig['accounts'])) {
+                $firstAccount = $serviceUserConfig['accounts'][0];
+                if (isset($firstAccount['bm_ids']) && is_array($firstAccount['bm_ids']) && !empty($firstAccount['bm_ids'])) {
+                    $bmId = $firstAccount['bm_ids'][0];
+                }
+            } else {
+                $bmId = $serviceUserConfig['bm_id'] ?? null;
+            }
+        }
+
+        if (!$bmId) {
+            return ServiceReturn::error('Missing bm_id in service user config');
+        }
+
+        $this->setupSettingContextForServiceUser($serviceUser);
+
         if (!$childBmId) {
             $this->syncBusinessManagers($bmId);
             // Đồng bộ danh sách Business Asset Groups để phân loại khách hàng

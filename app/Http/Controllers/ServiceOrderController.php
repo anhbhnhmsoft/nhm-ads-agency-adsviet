@@ -35,12 +35,35 @@ class ServiceOrderController extends Controller
             sortDirection: $params->get('direction'),
         ));
 
+        $isAdminOrStaff = in_array(auth()->user()->role, [
+            \App\Common\Constants\User\UserRole::ADMIN->value,
+            \App\Common\Constants\User\UserRole::MANAGER->value,
+            \App\Common\Constants\User\UserRole::EMPLOYEE->value,
+        ]);
+
+        $customers = [];
+        if ($isAdminOrStaff) {
+            $customers = \App\Models\User::whereIn('role', [
+                \App\Common\Constants\User\UserRole::CUSTOMER->value,
+                \App\Common\Constants\User\UserRole::AGENCY->value,
+            ])
+            ->where('disabled', false)
+            ->orderBy('name')
+            ->get(['id', 'name', 'username'])
+            ->map(fn($u) => [
+                'id' => (string) $u->id,
+                'name' => $u->name,
+                'username' => $u->username,
+            ]);
+        }
+
         return $this->rendering(
             view: 'service-order/index',
             data: [
                 'paginator' => fn () => ServiceOrderResource::collection($result->getData()),
                 'meta_timezones' => TimezoneHelper::getMetaTimezoneOptions(),
                 'google_timezones' => TimezoneHelper::getGoogleTimezoneOptions(),
+                'customers' => $customers,
             ]
         );
     }

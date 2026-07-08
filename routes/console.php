@@ -16,8 +16,8 @@ Schedule::command('notifications:wallet-low-balance')->dailyAt('09:00');
 // Tự động kiểm tra token/key nền tảng mỗi ngày
 Schedule::command('platform-settings:check-tokens')->dailyAt('00:10');
 
-// Kiểm tra và auto-pause accounts nếu balance dương và vượt ngưỡng mỗi 2 phút
-Schedule::command('accounts:check-and-auto-pause')->everyTwoMinutes();
+// Kiểm tra và auto-pause accounts nếu balance dương và vượt ngưỡng mỗi 5 phút
+Schedule::command('accounts:check-and-auto-pause')->everyFiveMinutes();
 
 // Billing spending fee theo ngưỡng chi tiêu, chạy sau mỗi nhịp sync insight
 Schedule::command('services:bill-postpay')->everyThirtyMinutes();
@@ -27,8 +27,8 @@ Schedule::command('services:enforce-creditline-limits')
     ->everyFiveMinutes()
     ->withoutOverlapping();
 
-// Đồng bộ toàn bộ các Platform (BM+MCC) mỗi 30 phút
-Schedule::job(SyncAllPlatformsJob::class)->everyThirtyMinutes();
+// Đồng bộ toàn bộ các Platform (BM+MCC) mỗi 1 tiếng
+Schedule::job(SyncAllPlatformsJob::class)->hourly();
 
 // routes/console.php
 Schedule::command('app:calculate-spending-commission')->monthlyOn(1, '01:00');
