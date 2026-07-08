@@ -27,7 +27,10 @@ export type ServiceOrderConfigAccount = {
     bm_id?: string;
     child_bm_id?: string;
     account_id?: string;
+    account_ids?: string[];
     assign_mode?: 'bm' | 'account';
+    resolved_account_ids?: string[];
+    resolved_bm_ids?: string[];
     info_fanpage?: string;
     info_website?: string;
     timezone_bm?: string;

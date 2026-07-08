@@ -371,13 +371,29 @@ const ServiceOrdersIndex = ({
 
     // Reset multi-input lists khi edit dialog mở
     useEffect(() => {
-        if (editDialogOpen) {
-            setEditBmIdList([editBmId || '']);
-            // editAccountIdList được quản lý bởi hook, không reset ở đây
-            setEditFanpageList([editInfoFanpage || '']);
-            setEditWebsiteList([editInfoWebsite || '']);
+        if (editDialogOpen && selectedEditOrder) {
+            const config = selectedEditOrder.config_account || {};
+            const resolvedBmIds = config.resolved_bm_ids;
+            setEditBmIdList(
+                Array.isArray(resolvedBmIds) && resolvedBmIds.length > 0
+                    ? resolvedBmIds
+                    : [config.bm_id || ''],
+            );
+            const resolvedAccountIds = config.resolved_account_ids;
+            const accountIdVal = config.account_id || '';
+            const accountIdsVal =
+                Array.isArray(resolvedAccountIds) && resolvedAccountIds.length > 0
+                    ? resolvedAccountIds
+                    : Array.isArray(config.account_ids) && config.account_ids.length > 0
+                    ? config.account_ids.filter(Boolean)
+                    : accountIdVal
+                      ? [accountIdVal]
+                      : [''];
+            setEditAccountIdList(accountIdsVal.length > 0 ? accountIdsVal : ['']);
+            setEditFanpageList([config.info_fanpage || '']);
+            setEditWebsiteList([config.info_website || '']);
         }
-    }, [editDialogOpen]);
+    }, [editDialogOpen, selectedEditOrder, setEditAccountIdList]);
 
     const isEditMeta =
         selectedEditOrder?.package?.platform === _PlatformType.META;

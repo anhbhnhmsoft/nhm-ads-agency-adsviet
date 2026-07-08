@@ -37,8 +37,22 @@ class PlatformTokenHealthService
         ]);
 
         if (!$response->successful()) {
+            $errorMsg = $response->json('error.message') ?? '';
+            $errorCode = $response->json('error.code') ?? 0;
+            // Rate limit (#4) là tạm thời, token vẫn hợp lệ
+            if ($errorCode === 4 && str_contains($errorMsg, 'Application request limit')) {
+                return [
+                    'status' => 'rate_limited',
+                    'message' => 'Token hợp lệ nhưng Meta đang chặn request tạm thời (rate limit). Chờ vài phút rồi thử lại.',
+                    'checked_at' => now()->toIso8601String(),
+                    'expires_at' => null,
+                    'expires_in_seconds' => null,
+                    'expires_label' => 'Tạm thời bị chặn',
+                    'raw' => ['error_code' => $errorCode, 'is_transient' => true],
+                ];
+            }
             return $this->invalid(
-                $response->json('error.message')
+                $errorMsg
                     ?: $response->json('error.error_user_msg')
                     ?: 'Meta trả về lỗi khi kiểm tra token.'
             );

@@ -6,6 +6,7 @@ use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 class ServiceOrderResource extends JsonResource
 {
@@ -19,7 +20,7 @@ class ServiceOrderResource extends JsonResource
         $status = ServiceUserStatus::tryFrom((int) $this->status);
         $package = $this->package;
 
-        $user = $this->whenLoaded('user');
+        $user = $this->relationLoaded('user') ? $this->user : null;
         $referral = $user?->referredBy?->referrer;
 
         // Tính tổng chi phí
@@ -28,6 +29,66 @@ class ServiceOrderResource extends JsonResource
         $paymentType = strtolower($package?->payment_type ?? ($config['payment_type'] ?? 'prepay'));
         $topUpAmount = isset($config['top_up_amount']) ? (float) $config['top_up_amount'] : 0.0;
         $serviceFee  = 0.0;
+
+        $platform = (int) ($package?->platform ?? 0);
+        $resolvedAccountIds = [];
+        $resolvedBmIds = [];
+
+        if ($platform === PlatformType::META->value && $this->relationLoaded('metaAccount')) {
+            /** @var Collection<int, mixed> $metaAccounts */
+            $metaAccounts = $this->metaAccount;
+            $resolvedAccountIds = $metaAccounts->pluck('account_id')
+                ->filter(fn ($id) => filled($id))
+                ->values()
+                ->all();
+            $resolvedBmIds = $metaAccounts->pluck('business_manager_id')
+                ->filter(fn ($id) => filled($id))
+                ->unique()
+                ->values()
+                ->all();
+        } elseif ($platform === PlatformType::GOOGLE->value && $this->relationLoaded('googleAccounts')) {
+            /** @var Collection<int, mixed> $googleAccounts */
+            $googleAccounts = $this->googleAccounts;
+            $resolvedAccountIds = $googleAccounts->pluck('account_id')
+                ->filter(fn ($id) => filled($id))
+                ->values()
+                ->all();
+            $resolvedBmIds = $googleAccounts->pluck('customer_manager_id')
+                ->filter(fn ($id) => filled($id))
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        if (empty($resolvedAccountIds)) {
+            $resolvedAccountIds = collect($config['account_ids'] ?? [])
+                ->whenEmpty(function (Collection $collection) use ($config) {
+                    $accountId = $config['account_id'] ?? null;
+                    return filled($accountId) ? collect([$accountId]) : $collection;
+                })
+                ->filter(fn ($id) => filled($id))
+                ->values()
+                ->all();
+        }
+
+        if (empty($resolvedBmIds)) {
+            $resolvedBmIds = collect($config['bm_ids'] ?? [])
+                ->whenEmpty(function (Collection $collection) use ($config) {
+                    $candidate = $config['child_bm_id'] ?? $config['bm_id'] ?? null;
+                    return filled($candidate) ? collect([$candidate]) : $collection;
+                })
+                ->filter(fn ($id) => filled($id))
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        $normalizedConfig = is_array($config)
+            ? array_merge($config, [
+                'resolved_account_ids' => $resolvedAccountIds,
+                'resolved_bm_ids' => $resolvedBmIds,
+            ])
+            : $config;
 
         $openFee          = (float) ($package?->open_fee ?? 0);
         $topUpFeePercent  = (float) ($package?->top_up_fee ?? 0);
@@ -74,7 +135,7 @@ class ServiceOrderResource extends JsonResource
             'top_up_fee' => $package?->top_up_fee,
             'spending_fee' => $spendingFeePercent,
             'total_cost' => $totalCost,
-            'config_account' => $this->config_account,
+            'config_account' => $normalizedConfig,
             'description' => $this->description,
             'created_at' => optional($this->created_at)->toIso8601String(),
             'updated_at' => optional($this->updated_at)->toIso8601String(),

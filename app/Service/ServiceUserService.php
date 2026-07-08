@@ -456,14 +456,17 @@ class ServiceUserService
                     return ServiceReturn::error(message: __('services.validation.account_not_linked'));
                 }
 
-                // Clear config_account
+                // Chuyển đơn về admin (Adviet Agency FB) — giữ ACTIVE
+                $adminBmId = '1537217683931546';
                 $config = $serviceUser->config_account ?? [];
                 if (!is_array($config)) {
                     $config = [];
                 }
-                unset($config['account_id'], $config['accounts'], $config['assign_mode']);
+                unset($config['account_id'], $config['accounts']);
+                $config['bm_id'] = $adminBmId;
+                $config['assign_mode'] = 'bm';
                 $serviceUser->config_account = $config;
-                $serviceUser->status = ServiceUserStatus::PENDING->value;
+                // Giữ nguyên status (không đổi về PENDING)
                 $serviceUser->save();
 
                 return ServiceReturn::success();

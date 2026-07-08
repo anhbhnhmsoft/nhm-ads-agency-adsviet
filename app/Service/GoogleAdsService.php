@@ -815,22 +815,43 @@ GAQL;
                                 );
                             }
 
+                            $serviceUserConfig = $serviceUser->config_account ?? [];
+                            $assignMode = $serviceUserConfig['assign_mode'] ?? 'account';
+                            $accountIds = !empty($serviceUserConfig['account_ids'])
+                                ? array_values(array_filter($serviceUserConfig['account_ids']))
+                                : (!empty($serviceUserConfig['account_id']) ? [$serviceUserConfig['account_id']] : []);
+
+                            $cleanAccountId = preg_replace('/[^0-9]/', '', (string)$accountId);
+                            $cleanAccountIds = array_map(fn($id) => preg_replace('/[^0-9]/', '', (string)$id), $accountIds);
+
+                            $shouldAssign = false;
+                            if ($assignMode === 'bm') {
+                                $shouldAssign = true;
+                            } else {
+                                $shouldAssign = in_array($cleanAccountId, $cleanAccountIds, true);
+                            }
+
+                            $updateData = [
+                                'account_name' => $customer->getDescriptiveName(),
+                                'account_status' => $mappedStatus,
+                                'currency' => $customer->getCurrencyCode(),
+                                'customer_manager_id' => $loginCustomerId,
+                                'time_zone' => $customer->getTimeZone(),
+                                'balance' => $balance,
+                                'balance_exhausted' => $balanceExhausted,
+                                'amount_spent' => $todaySpend,
+                                'last_synced_at' => now(),
+                            ];
+
+                            if ($shouldAssign) {
+                                $updateData['service_user_id'] = $serviceUser->id;
+                            }
+
                             $syncedAccount = $this->googleAccountRepository->query()->updateOrCreate(
                                 [
                                     'account_id' => (string) $accountId,
                                 ],
-                                [
-                                    'service_user_id' => $serviceUser->id,
-                                    'account_name' => $customer->getDescriptiveName(),
-                                    'account_status' => $mappedStatus,
-                                    'currency' => $customer->getCurrencyCode(),
-                                    'customer_manager_id' => $loginCustomerId,
-                                    'time_zone' => $customer->getTimeZone(),
-                                    'balance' => $balance,
-                                    'balance_exhausted' => $balanceExhausted,
-                                    'amount_spent' => $todaySpend,
-                                    'last_synced_at' => now(),
-                                ]
+                                $updateData
                             );
 
                             $this->persistTodaySpendInsight(

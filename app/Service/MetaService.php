@@ -1802,6 +1802,7 @@ class MetaService
 
     private function syncMetaAccountsFromEdge(ServiceUser $serviceUser, string $bmId, string $type = 'owner'): void
     {
+        $serviceUserConfig = $serviceUser->config_account ?? [];
         $after = null;
         do {
             $result = $type === 'client'
@@ -1859,28 +1860,46 @@ class MetaService
                 // Dữ liệu đã có đủ từ list API
                 $detail = $adsAccountData;
 
+                $assignMode = $serviceUserConfig['assign_mode'] ?? 'account';
+                $accountIds = !empty($serviceUserConfig['account_ids'])
+                    ? array_values(array_filter($serviceUserConfig['account_ids']))
+                    : (!empty($serviceUserConfig['account_id']) ? [$serviceUserConfig['account_id']] : []);
+                $accountIds = array_map('trim', $accountIds);
+
+                $shouldAssign = false;
+                if ($assignMode === 'bm') {
+                    $shouldAssign = true;
+                } else {
+                    $shouldAssign = in_array((string)$detail['id'], $accountIds, true);
+                }
+
+                $updateData = [
+                    'business_manager_id' => $ownerBmId,
+                    'account_name' => $detail['name'],
+                    'account_status' => $detail['account_status'],
+                    'disable_reason' => $detail['disable_reason'] ?? null,
+                    'spend_cap' => $detail['spend_cap'] ?? 0,
+                    'amount_spent' => $detail['amount_spent'] ?? 0,
+                    'balance' => $detail['balance'] ?? 0,
+                    'currency' => $detail['currency'] ?? 'USD',
+                    'created_time' => ($detail['created_time'] ?? null) ? Carbon::parse($detail['created_time']) : null,
+                    'is_prepay_account' => (bool) ($detail['is_prepay_account'] ?? false),
+                    'timezone_id' => $detail['timezone_id'] ?? null,
+                    'timezone_name' => $detail['timezone_name'] ?? null,
+                    'payment_card' => $this->resolvePaymentCardFromAccountData($detail),
+                    'last_synced_at' => now(),
+                ];
+
+                if ($shouldAssign) {
+                    $updateData['service_user_id'] = $serviceUser->id;
+                }
+
                 try {
                     $this->metaAccountRepository->query()->updateOrCreate(
                         [
                             'account_id' => $detail['id'],
                         ],
-                        [
-                            'service_user_id' => $serviceUser->id,
-                            'business_manager_id' => $ownerBmId,
-                            'account_name' => $detail['name'],
-                            'account_status' => $detail['account_status'],
-                            'disable_reason' => $detail['disable_reason'] ?? null,
-                            'spend_cap' => $detail['spend_cap'] ?? 0,
-                            'amount_spent' => $detail['amount_spent'] ?? 0,
-                            'balance' => $detail['balance'] ?? 0,
-                            'currency' => $detail['currency'] ?? 'USD',
-                            'created_time' => ($detail['created_time'] ?? null) ? Carbon::parse($detail['created_time']) : null,
-                            'is_prepay_account' => (bool) ($detail['is_prepay_account'] ?? false),
-                            'timezone_id' => $detail['timezone_id'] ?? null,
-                            'timezone_name' => $detail['timezone_name'] ?? null,
-                            'payment_card' => $this->resolvePaymentCardFromAccountData($detail),
-                            'last_synced_at' => now(),
-                        ]
+                        $updateData
                     );
                 } catch (\Exception $e) {
                     Logging::error('Error sync ads account: ' . $e->getMessage());

@@ -209,7 +209,13 @@ export const useServiceOrderEditConfigDialog = () => {
                 setMetaEmail((config.meta_email as string) || '');
                 setDisplayName((config.display_name as string) || '');
                 
-                const bmIdVal = (config.bm_id as string) || '';
+                const resolvedBmIds = Array.isArray(config.resolved_bm_ids)
+                    ? (config.resolved_bm_ids as string[]).filter(Boolean)
+                    : [];
+                const bmIdVal =
+                    (config.bm_id as string) ||
+                    resolvedBmIds[0] ||
+                    '';
                 setBmId(bmIdVal);
                 
                 setInfoFanpage(
@@ -225,19 +231,25 @@ export const useServiceOrderEditConfigDialog = () => {
                 );
                 setTimezoneBm((config.timezone_bm as string) || '');
 
+                const resolvedAccountIds = Array.isArray(config.resolved_account_ids)
+                    ? (config.resolved_account_ids as string[]).filter(Boolean)
+                    : [];
+                const accountIdVal = (config.account_id as string) || '';
+                const accountIdsVal = resolvedAccountIds.length > 0
+                    ? resolvedAccountIds
+                    : Array.isArray(config.account_ids)
+                    ? (config.account_ids as string[]).filter(Boolean)
+                    : accountIdVal ? [accountIdVal] : [];
+
                 // Restore assign fields
-                const assignModeVal = (config.assign_mode as AssignMode) || 'bm';
+                const hasAccounts = accountIdsVal.length > 0;
+                const assignModeVal = (config.assign_mode as AssignMode) || (hasAccounts ? 'account' : 'bm');
                 setAssignMode(assignModeVal);
                 
                 const childBmIdVal = (config.child_bm_id as string) || 'none';
                 setSelectedChildBmId(childBmIdVal);
 
-                const accountIdVal = (config.account_id as string) || '';
                 setAccountIdInput(accountIdVal);
-                // Khởi tạo list từ config (hỗ trợ multi-account)
-                const accountIdsVal = Array.isArray(config.account_ids)
-                    ? (config.account_ids as string[]).filter(Boolean)
-                    : accountIdVal ? [accountIdVal] : [''];
                 setAccountIdList(accountIdsVal.length > 0 ? accountIdsVal : ['']);
 
                 if (bmIdVal && !isGoogle) {

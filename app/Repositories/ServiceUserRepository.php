@@ -70,6 +70,8 @@ class ServiceUserRepository extends BaseRepository
     {
         return $query->with([
             'package:id,name,platform,payment_type,billing_source,open_fee,top_up_fee,spending_fee',
+            'metaAccount:id,service_user_id,account_id,business_manager_id',
+            'googleAccounts:id,service_user_id,account_id,customer_manager_id',
             'user' => function ($userQuery) {
                 $userQuery->select('id', 'name', 'referral_code')
                     ->with([
