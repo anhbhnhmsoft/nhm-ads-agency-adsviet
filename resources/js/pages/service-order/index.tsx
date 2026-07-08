@@ -20,6 +20,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import useCheckRole from '@/hooks/use-check-role';
 import AppLayout from '@/layouts/app-layout';
 import { _PlatformType, _UserRole } from '@/lib/types/constants';
@@ -46,6 +49,127 @@ import { ChevronDown, Filter, Package, Pencil, Plus, Search, ShoppingBag, Trash2
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { router as inertiaRouter } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
+
+interface SearchableSelectProps {
+    value?: string;
+    onValueChange: (value: string) => void;
+    placeholder: string;
+    searchPlaceholder?: string;
+    emptyText?: string;
+    options: { value: string; label: string; sublabel?: string; disabled?: boolean }[];
+    disabled?: boolean;
+    className?: string;
+}
+
+function SearchableSelect({
+    value,
+    onValueChange,
+    placeholder,
+    searchPlaceholder = 'Tìm kiếm...',
+    emptyText = 'Không tìm thấy kết quả',
+    options,
+    disabled = false,
+    className,
+}: SearchableSelectProps) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+
+    const selectedOption = options.find((opt) => opt.value === value);
+
+    const filteredOptions = options.filter((opt) => {
+        const query = search.toLowerCase().trim();
+        if (!query) return true;
+        return (
+            opt.label.toLowerCase().includes(query) ||
+            (opt.sublabel && opt.sublabel.toLowerCase().includes(query)) ||
+            opt.value.toLowerCase().includes(query)
+        );
+    });
+
+    useEffect(() => {
+        if (!open) {
+            setSearch('');
+        }
+    }, [open]);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    disabled={disabled}
+                    className={cn(
+                        "w-full justify-between text-left font-normal h-10 px-3 py-2 border-input bg-background focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                        !value && "text-muted-foreground",
+                        className
+                    )}
+                >
+                    <span className="truncate">
+                        {selectedOption ? (
+                            selectedOption.sublabel ? (
+                                `${selectedOption.label} (${selectedOption.sublabel})`
+                            ) : (
+                                selectedOption.label
+                            )
+                        ) : (
+                            placeholder
+                        )}
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                <div className="flex items-center border-b px-3">
+                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                    <Input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder={searchPlaceholder}
+                        className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+                    />
+                </div>
+                <ScrollArea className="max-h-[280px] overflow-y-auto p-1">
+                    {filteredOptions.length === 0 ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                            {emptyText}
+                        </div>
+                    ) : (
+                        <div className="space-y-1">
+                            {filteredOptions.map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    disabled={opt.disabled}
+                                    onClick={() => {
+                                        onValueChange(opt.value);
+                                        setOpen(false);
+                                    }}
+                                    className={cn(
+                                        "relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-left",
+                                        opt.value === value && "bg-accent text-accent-foreground font-medium",
+                                        opt.disabled && "opacity-50 pointer-events-none"
+                                    )}
+                                >
+                                    <span className="block truncate">
+                                        {opt.label}
+                                        {opt.sublabel && (
+                                            <span className="text-xs text-muted-foreground ml-1 block">
+                                                {opt.sublabel}
+                                            </span>
+                                        )}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </ScrollArea>
+            </PopoverContent>
+        </Popover>
+    );
+}
 
 type TimezoneOption = {
     value: string;
@@ -114,6 +238,9 @@ const ServiceOrdersIndex = ({
     const [filterPlatform, setFilterPlatform] = useState('');
     const [showFilters, setShowFilters] = useState(false);
 
+    const [searchBmQuery, setSearchBmQuery] = useState('');
+    const [searchAccountQuery, setSearchAccountQuery] = useState('');
+
     // Derived accountIdInput = first non-empty item in accountIdList
     const currentAccountId = accountIdList.find((v) => v.trim()) || '';
 
@@ -155,6 +282,17 @@ const ServiceOrdersIndex = ({
         formErrors,
         processing: approveProcessing,
     } = useServiceOrderAdminDialog();
+
+    useEffect(() => {
+        if (!dialogOpen) {
+            setSearchBmQuery('');
+            setSearchAccountQuery('');
+        }
+    }, [dialogOpen]);
+
+    useEffect(() => {
+        setSearchAccountQuery('');
+    }, [bmId]);
 
     const {
         dialogOpen: editDialogOpen,
@@ -904,19 +1042,30 @@ const ServiceOrdersIndex = ({
                                                                   'service_orders.form.select_mcc_available',
                                                               )}
                                                     </Label>
-                                                    <Select
+                                                    <SearchableSelect
                                                         key={`bm-tab-bm-${bmIdList.join(',')}`}
-                                                        onValueChange={(
-                                                            value,
-                                                        ) => {
-                                                            if (
-                                                                value &&
-                                                                value !==
-                                                                    '__empty__'
-                                                            ) {
-                                                                handleSelectBmFromList(
-                                                                    value,
-                                                                );
+                                                        options={bmList
+                                                            .filter(
+                                                                (bm) =>
+                                                                    !bmIdList.some(
+                                                                        (
+                                                                            id,
+                                                                        ) =>
+                                                                            id.trim() ===
+                                                                            (bm
+                                                                                .bm_ids?.[0] ||
+                                                                                bm.id),
+                                                                    ),
+                                                            )
+                                                            .map((bm) => ({
+                                                                value: bm.bm_ids?.[0] || bm.id,
+                                                                label: bm.bm_name || bm.name,
+                                                                sublabel: bm.bm_ids?.[0] || bm.id,
+                                                            }))}
+                                                        value=""
+                                                        onValueChange={(value) => {
+                                                            if (value) {
+                                                                handleSelectBmFromList(value);
                                                                 addToListUnique(
                                                                     bmIdList,
                                                                     setBmIdList,
@@ -924,63 +1073,20 @@ const ServiceOrdersIndex = ({
                                                                 );
                                                             }
                                                         }}
+                                                        placeholder={
+                                                            loadingBmList
+                                                                ? t('service_orders.form.loading_child_bms')
+                                                                : isApproveMeta
+                                                                  ? t('service_orders.form.select_bm_from_list')
+                                                                  : t('service_orders.form.select_mcc_from_list')
+                                                        }
+                                                        searchPlaceholder={
+                                                            isApproveMeta
+                                                                ? t('service_orders.form.filter_bm_placeholder', { defaultValue: 'Lọc danh sách BM...' })
+                                                                : t('service_orders.form.filter_mcc_placeholder', { defaultValue: 'Lọc danh sách MCC...' })
+                                                        }
                                                         disabled={loadingBmList}
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue
-                                                                placeholder={
-                                                                    loadingBmList
-                                                                        ? t(
-                                                                              'service_orders.form.loading_child_bms',
-                                                                          )
-                                                                        : isApproveMeta
-                                                                          ? t(
-                                                                                'service_orders.form.select_bm_from_list',
-                                                                            )
-                                                                          : t(
-                                                                                'service_orders.form.select_mcc_from_list',
-                                                                            )
-                                                                }
-                                                            />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {bmList
-                                                                .filter(
-                                                                    (bm) =>
-                                                                        !bmIdList.some(
-                                                                            (
-                                                                                id,
-                                                                            ) =>
-                                                                                id.trim() ===
-                                                                                (bm
-                                                                                    .bm_ids?.[0] ||
-                                                                                    bm.id),
-                                                                        ),
-                                                                )
-                                                                .map((bm) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            bm.id
-                                                                        }
-                                                                        value={
-                                                                            bm
-                                                                                .bm_ids?.[0] ||
-                                                                            bm.id
-                                                                        }
-                                                                    >
-                                                                        <span className="block truncate">
-                                                                            {bm.bm_name ||
-                                                                                bm.name}{' '}
-                                                                            (
-                                                                            {bm
-                                                                                .bm_ids?.[0] ||
-                                                                                bm.id}
-                                                                            )
-                                                                        </span>
-                                                                    </SelectItem>
-                                                                ))}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    />
                                                 </div>
 
                                                 {/* Input ID BM nhập tay + nút thêm */}
@@ -1182,22 +1288,17 @@ const ServiceOrdersIndex = ({
                                                                   'service_orders.form.select_mcc_available',
                                                               )}
                                                     </Label>
-                                                    <Select
+                                                    <SearchableSelect
                                                         key={`account-tab-bm-${bmId}`}
-                                                        value={
-                                                            bmId || undefined
-                                                        }
-                                                        onValueChange={(
-                                                            value,
-                                                        ) => {
-                                                            if (
-                                                                value &&
-                                                                value !==
-                                                                    '__empty__'
-                                                            ) {
-                                                                handleSelectBmFromList(
-                                                                    value,
-                                                                );
+                                                        options={bmList.map((bm) => ({
+                                                            value: bm.bm_ids?.[0] || bm.id,
+                                                            label: bm.bm_name || bm.name,
+                                                            sublabel: bm.bm_ids?.[0] || bm.id,
+                                                        }))}
+                                                        value={bmId || ''}
+                                                        onValueChange={(value) => {
+                                                            if (value) {
+                                                                handleSelectBmFromList(value);
                                                                 addToListUnique(
                                                                     bmIdList,
                                                                     setBmIdList,
@@ -1205,52 +1306,20 @@ const ServiceOrdersIndex = ({
                                                                 );
                                                             }
                                                         }}
+                                                        placeholder={
+                                                            loadingBmList
+                                                                ? t('service_orders.form.loading_child_bms')
+                                                                : isApproveMeta
+                                                                  ? t('service_orders.form.select_bm_from_list')
+                                                                  : t('service_orders.form.select_mcc_from_list')
+                                                        }
+                                                        searchPlaceholder={
+                                                            isApproveMeta
+                                                                ? t('service_orders.form.filter_bm_placeholder', { defaultValue: 'Lọc danh sách BM...' })
+                                                                : t('service_orders.form.filter_mcc_placeholder', { defaultValue: 'Lọc danh sách MCC...' })
+                                                        }
                                                         disabled={loadingBmList}
-                                                    >
-                                                        <SelectTrigger id="select_bm_from_list_account">
-                                                            <SelectValue
-                                                                placeholder={
-                                                                    loadingBmList
-                                                                        ? t(
-                                                                              'service_orders.form.loading_child_bms',
-                                                                          )
-                                                                        : isApproveMeta
-                                                                          ? t(
-                                                                                'service_orders.form.select_bm_from_list',
-                                                                            )
-                                                                          : t(
-                                                                                'service_orders.form.select_mcc_from_list',
-                                                                            )
-                                                                }
-                                                            />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {bmList.map(
-                                                                (bm) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            bm.id
-                                                                        }
-                                                                        value={
-                                                                            bm
-                                                                                .bm_ids?.[0] ||
-                                                                            bm.id
-                                                                        }
-                                                                    >
-                                                                        <span className="block truncate">
-                                                                            {bm.bm_name ||
-                                                                                bm.name}{' '}
-                                                                            (
-                                                                            {bm
-                                                                                .bm_ids?.[0] ||
-                                                                                bm.id}
-                                                                            )
-                                                                        </span>
-                                                                    </SelectItem>
-                                                                ),
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    />
                                                 </div>
 
                                                 {/* 2. Dropdown chọn tài khoản có sẵn - BẮT BUỘC */}
@@ -1264,15 +1333,26 @@ const ServiceOrdersIndex = ({
                                                         )}{' '}
                                                         *
                                                     </Label>
-                                                    <Select
-                                                        onValueChange={(
-                                                            value,
-                                                        ) => {
-                                                            if (
-                                                                value &&
-                                                                value !==
-                                                                    '__empty__'
-                                                            ) {
+                                                    <SearchableSelect
+                                                        options={bmAccounts
+                                                            .filter(
+                                                                (acc) =>
+                                                                    !accountIdList.some(
+                                                                        (
+                                                                            id,
+                                                                        ) =>
+                                                                            id.trim() ===
+                                                                            acc.account_id,
+                                                                    ),
+                                                            )
+                                                            .map((acc) => ({
+                                                                value: acc.account_id,
+                                                                label: `${acc.account_name || acc.account_id} — ${acc.account_id} (${acc.currency})${acc.service_user_id ? ' [Đã gán]' : ''}`,
+                                                                sublabel: acc.account_id,
+                                                            }))}
+                                                        value=""
+                                                        onValueChange={(value) => {
+                                                            if (value) {
                                                                 addToListUnique(
                                                                     accountIdList,
                                                                     setAccountIdList,
@@ -1283,74 +1363,16 @@ const ServiceOrdersIndex = ({
                                                                 );
                                                             }
                                                         }}
-                                                        disabled={
-                                                            loadingBmAccounts ||
+                                                        placeholder={
                                                             !bmId
+                                                                ? t('service_orders.form.select_bm_first')
+                                                                : loadingBmAccounts
+                                                                  ? t('service_orders.form.loading_child_bms')
+                                                                  : t('service_orders.form.select_account_in_bm_mcc')
                                                         }
-                                                    >
-                                                        <SelectTrigger id="select_account_from_list">
-                                                            <SelectValue
-                                                                placeholder={
-                                                                    !bmId
-                                                                        ? t(
-                                                                              'service_orders.form.select_bm_first',
-                                                                          )
-                                                                        : loadingBmAccounts
-                                                                          ? t(
-                                                                                'service_orders.form.loading_child_bms',
-                                                                            )
-                                                                          : t(
-                                                                                'service_orders.form.select_account_in_bm_mcc',
-                                                                            )
-                                                                }
-                                                            />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {bmAccounts
-                                                                .filter(
-                                                                    (acc) =>
-                                                                        !accountIdList.some(
-                                                                            (
-                                                                                id,
-                                                                            ) =>
-                                                                                id.trim() ===
-                                                                                acc.account_id,
-                                                                        ),
-                                                                )
-                                                                .map(
-                                                                    (
-                                                                        acc: BmAccount,
-                                                                    ) => (
-                                                                        <SelectItem
-                                                                            key={
-                                                                                acc.account_id
-                                                                            }
-                                                                            value={
-                                                                                acc.account_id
-                                                                            }
-                                                                        >
-                                                                            <span className="block truncate">
-                                                                                {acc.account_name ||
-                                                                                    acc.account_id}{' '}
-                                                                                —{' '}
-                                                                                {
-                                                                                    acc.account_id
-                                                                                }{' '}
-                                                                                (
-                                                                                {
-                                                                                    acc.currency
-                                                                                }
-
-                                                                                )
-                                                                                {acc.service_user_id
-                                                                                    ? ' [Đã gán]'
-                                                                                    : ''}
-                                                                            </span>
-                                                                        </SelectItem>
-                                                                    ),
-                                                                )}
-                                                        </SelectContent>
-                                                    </Select>
+                                                        searchPlaceholder={t('service_orders.form.search_account_placeholder', { defaultValue: 'Tìm kiếm tài khoản...' })}
+                                                        disabled={loadingBmAccounts || !bmId}
+                                                    />
                                                     {formErrors.account_id && (
                                                         <p className="text-xs text-red-500">
                                                             {
