@@ -10,6 +10,9 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
+use Illuminate\Support\Facades\Cache;
+use App\Core\Logging;
+
 /**
  * Đồng bộ dữ liệu từ Platform Settings Meta (BM + Accounts)
  * Chay khi admin lưu Platform Settings Meta
@@ -30,6 +33,11 @@ class SyncMetaPlatformJob implements ShouldQueue
 
     public function handle(MetaService $metaService): void
     {
+        if (Cache::has('meta_api_rate_limited_cooldown')) {
+            Logging::web("SyncMetaPlatformJob: Đang trong thời gian cooldown rate limit Meta. Bỏ qua.");
+            return;
+        }
+
         if ($this->bmId) {
             $metaService->syncFromBusinessManagerId($this->bmId, $this->settingId);
             return;

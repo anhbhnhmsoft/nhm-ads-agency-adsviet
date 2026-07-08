@@ -60,6 +60,10 @@ class SyncAdsServiceUser extends Command
                     $delaySeconds = $batchIndex * self::DISPATCH_BATCH_DELAY_SECONDS;
 
                     if ($serviceUser->package->platform === PlatformType::META->value) {
+                        if (\Illuminate\Support\Facades\Cache::has('meta_api_rate_limited_cooldown')) {
+                            $this->info("↷ Bỏ qua ServiceUser ID: {$serviceUser->id} do dính Rate Limit Meta (Cooldown)");
+                            return;
+                        }
                         SyncMetaJob::dispatch($serviceUser, false)->delay(now()->addSeconds($delaySeconds));
                         $totalDispatched++;
                         $this->info("✓ Đã dispatch job sync Meta cho ServiceUser ID: {$serviceUser->id} sau {$delaySeconds}s");

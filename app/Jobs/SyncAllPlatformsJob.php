@@ -35,13 +35,17 @@ class SyncAllPlatformsJob implements ShouldQueue
             Logging::web('SyncAllPlatformsJob: Starting global synchronization');
 
             // 1. Đồng bộ Meta
-            $metaSettings = $platformSettingService->getAllActiveByPlatform(PlatformType::META->value);
-            if ($metaSettings->isSuccess()) {
-                foreach ($metaSettings->getData() as $setting) {
-                    $config = $setting->config ?? [];
-                    $bmId = $platformSettingService->getMetaScopedBusinessManagerId($config);
-                    SyncMetaPlatformJob::dispatch($bmId ? (string)$bmId : null, (string)$setting->id);
-                    Logging::web("SyncAllPlatformsJob: Dispatched Meta sync for setting ID {$setting->id}");
+            if (\Illuminate\Support\Facades\Cache::has('meta_api_rate_limited_cooldown')) {
+                Logging::web("SyncAllPlatformsJob: Bỏ qua đồng bộ Meta do đang trong thời gian cooldown rate limit");
+            } else {
+                $metaSettings = $platformSettingService->getAllActiveByPlatform(PlatformType::META->value);
+                if ($metaSettings->isSuccess()) {
+                    foreach ($metaSettings->getData() as $setting) {
+                        $config = $setting->config ?? [];
+                        $bmId = $platformSettingService->getMetaScopedBusinessManagerId($config);
+                        SyncMetaPlatformJob::dispatch($bmId ? (string)$bmId : null, (string)$setting->id);
+                        Logging::web("SyncAllPlatformsJob: Dispatched Meta sync for setting ID {$setting->id}");
+                    }
                 }
             }
 
