@@ -48,6 +48,7 @@ class ServiceUserService
         protected GoogleAccountRepository $googleAccountRepository,
         protected ServiceAccountInventoryService $serviceAccountInventoryService,
         protected MetaBusinessService $metaBusinessService,
+        protected MetaService $metaService,
     )
     {
     }
@@ -267,39 +268,23 @@ class ServiceUserService
                                 ->update(['service_user_id' => $serviceUser->id]);
                         }
                     }
-                } elseif (!empty($bmIdSubmitted)) {
-                    $sameUserServiceUserIds = $this->serviceUserRepository->query()
-                        ->where('user_id', $serviceUser->user_id)
-                        ->where('id', '!=', $serviceUser->id)
-                        ->pluck('id')
-                        ->all();
-                    if ($platform === PlatformType::META->value) {
-                        $this->metaAccountRepository->query()
-                            ->where('business_manager_id', $bmIdSubmitted)
-                            ->where(function ($q) use ($sameUserServiceUserIds) {
-                                $q->whereNull('service_user_id');
-                                if (!empty($sameUserServiceUserIds)) {
-                                    $q->orWhereIn('service_user_id', $sameUserServiceUserIds);
-                                }
-                            })
-                            ->update(['service_user_id' => $serviceUser->id]);
-                    } elseif ($platform === PlatformType::GOOGLE->value) {
-                        $this->googleAccountRepository->query()
-                            ->where('customer_manager_id', $bmIdSubmitted)
-                            ->where(function ($q) use ($sameUserServiceUserIds) {
-                                $q->whereNull('service_user_id');
-                                if (!empty($sameUserServiceUserIds)) {
-                                    $q->orWhereIn('service_user_id', $sameUserServiceUserIds);
-                                }
-                            })
-                            ->update(['service_user_id' => $serviceUser->id]);
-                    }
                 }
 
-                // ── Lưu config và cập nhật status (sau khi gán account thành công) ──
+                // ── Lưu config và cập nhật status ──
                 $serviceUser->config_account = $newConfig;
                 $serviceUser->status = ServiceUserStatus::ACTIVE->value;
                 $serviceUser->save();
+
+                // ── Gán BM: sync accounts từ Meta API rồi assign ──
+                if ($assignMode === 'bm' && !empty($bmIdSubmitted)) {
+                    if ($platform === PlatformType::META->value) {
+                        // Sync accounts từ Meta API → cập nhật service_user_id
+                        $this->metaService->syncMetaAccounts($serviceUser);
+                    } elseif ($platform === PlatformType::GOOGLE->value) {
+                        // Google: sync rồi assign theo customer_manager_id
+                        $this->syncGoogleAccountsForBm($serviceUser, $bmIdSubmitted);
+                    }
+                }
 
                 // ── Nâng spend_cap Meta ──
                 if ($platform === PlatformType::META->value) {
@@ -318,7 +303,7 @@ class ServiceUserService
                     }
                 }
 
-                // ── Dispatch sync jobs ──
+                // ── Dispatch sync jobs (backup) ──
                 if ($platform === PlatformType::META->value) {
                     SyncMetaJob::dispatch($serviceUser);
                 } elseif ($platform === PlatformType::GOOGLE->value) {
@@ -477,6 +462,21 @@ class ServiceUserService
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    private function syncGoogleAccountsForBm(ServiceUser $serviceUser, string $bmId): void
+    {
+        try {
+            $this->googleAccountRepository->query()
+                ->where('customer_manager_id', $bmId)
+                ->whereNull('service_user_id')
+                ->update(['service_user_id' => $serviceUser->id]);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'ServiceUserService@syncGoogleAccountsForBm error: '.$e->getMessage(),
+                exception: $e
+            );
         }
     }
 

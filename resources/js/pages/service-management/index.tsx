@@ -860,6 +860,7 @@ const ServiceManagementIndex = ({
                                 </Button>
                             )}
                             {((isAgencyOrCustomer && !!account.service_user_id) || isStaff) &&
+                                (account as any).payment_type !== 'postpay' &&
                                 (account as any).remaining_amount != null &&
                                 Number((account as any).remaining_amount) > 0 &&
                                 account.platform === _PlatformType.META &&

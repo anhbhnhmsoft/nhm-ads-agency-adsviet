@@ -1,5 +1,4 @@
 import { _PlatformType } from '@/lib/types/constants';
-import type { ChildBusinessManager } from '@/pages/business-manager/types/type';
 import type {
     AccountConfig,
     ServiceOrder,
@@ -7,7 +6,6 @@ import type {
 import type { AccountFormData } from '@/pages/service-purchase/hooks/use-form';
 import {
     business_managers_get_accounts,
-    business_managers_get_child_bms,
     service_orders_update_config,
 } from '@/routes';
 import { router } from '@inertiajs/react';
@@ -35,11 +33,6 @@ export const useServiceOrderEditConfigDialog = () => {
 
     // Additional states matching Approve dialog
     const [assignMode, setAssignMode] = useState<AssignMode>('bm');
-    const [childBusinessManagers, setChildBusinessManagers] = useState<
-        ChildBusinessManager[]
-    >([]);
-    const [selectedChildBmId, setSelectedChildBmId] = useState<string>('none');
-    const [loadingChildBMs, setLoadingChildBMs] = useState(false);
     const [bmList, setBmList] = useState<BmListItem[]>([]);
     const [loadingBmList, setLoadingBmList] = useState(false);
     const [bmAccounts, setBmAccounts] = useState<BmAccount[]>([]);
@@ -69,37 +62,6 @@ export const useServiceOrderEditConfigDialog = () => {
             setLoadingBmList(false);
         }
     }, []);
-
-    const fetchChildBusinessManagers = useCallback(
-        async (parentBmId: string) => {
-            if (!parentBmId || parentBmId.trim() === '') {
-                setChildBusinessManagers([]);
-                setSelectedChildBmId('none');
-                return;
-            }
-
-            setLoadingChildBMs(true);
-            try {
-                const response = await axios.get(
-                    business_managers_get_child_bms({ parentBmId }).url,
-                );
-                if (
-                    response.data.success &&
-                    Array.isArray(response.data.data)
-                ) {
-                    setChildBusinessManagers(response.data.data);
-                } else {
-                    setChildBusinessManagers([]);
-                }
-            } catch (error) {
-                console.error('Error fetching child business managers:', error);
-                setChildBusinessManagers([]);
-            } finally {
-                setLoadingChildBMs(false);
-            }
-        },
-        [],
-    );
 
     const fetchBmAccounts = useCallback(
         async (bmIdValue: string, platform?: number) => {
@@ -138,14 +100,10 @@ export const useServiceOrderEditConfigDialog = () => {
         (bmIdVal: string) => {
             setBmId(bmIdVal);
             if (selectedOrder) {
-                const isGoogle = selectedOrder.package?.platform === _PlatformType.GOOGLE;
-                if (!isGoogle) {
-                    fetchChildBusinessManagers(bmIdVal);
-                    fetchBmAccounts(bmIdVal, selectedOrder.package?.platform ?? undefined);
-                }
+                fetchBmAccounts(bmIdVal, selectedOrder.package?.platform ?? undefined);
             }
         },
-        [selectedOrder, fetchChildBusinessManagers, fetchBmAccounts],
+        [selectedOrder, fetchBmAccounts],
     );
 
     const handleSelectAccountFromList = useCallback((accId: string) => {
@@ -165,8 +123,6 @@ export const useServiceOrderEditConfigDialog = () => {
         setTimezoneBm('');
         
         setAssignMode('bm');
-        setChildBusinessManagers([]);
-        setSelectedChildBmId('none');
         setBmAccounts([]);
         setAccountIdInput('');
         setAccountIdList(['']);
@@ -246,21 +202,17 @@ export const useServiceOrderEditConfigDialog = () => {
                 const assignModeVal = (config.assign_mode as AssignMode) || (hasAccounts ? 'account' : 'bm');
                 setAssignMode(assignModeVal);
                 
-                const childBmIdVal = (config.child_bm_id as string) || 'none';
-                setSelectedChildBmId(childBmIdVal);
-
                 setAccountIdInput(accountIdVal);
                 setAccountIdList(accountIdsVal.length > 0 ? accountIdsVal : ['']);
 
                 if (bmIdVal && !isGoogle) {
-                    fetchChildBusinessManagers(bmIdVal);
                     fetchBmAccounts(bmIdVal, order.package?.platform ?? undefined);
                 }
             }
             fetchBmList(order.package?.platform ?? undefined);
             setDialogOpen(true);
         },
-        [resetFormState, cleanAccountData, fetchBmList, fetchChildBusinessManagers, fetchBmAccounts],
+        [resetFormState, cleanAccountData, fetchBmList, fetchBmAccounts],
     );
 
     const handleSubmitUpdate = useCallback(() => {
@@ -299,10 +251,7 @@ export const useServiceOrderEditConfigDialog = () => {
             payload.asset_access = assetAccess || undefined;
             payload.timezone_bm = timezoneBm || undefined;
             payload.assign_mode = assignMode;
-            payload.child_bm_id =
-                assignMode === 'bm' && selectedChildBmId !== 'none' && selectedChildBmId
-                    ? selectedChildBmId
-                    : null;
+            payload.child_bm_id = null;
             // Gửi tất cả accounts trong list (multi-account support)
             const filteredAccountIds = accountIdList.filter((id) => id.trim());
             payload.account_id =
@@ -345,7 +294,6 @@ export const useServiceOrderEditConfigDialog = () => {
         cleanAccountData,
         resetFormState,
         assignMode,
-        selectedChildBmId,
         accountIdInput,
         accountIdList,
     ]);
@@ -390,10 +338,6 @@ export const useServiceOrderEditConfigDialog = () => {
         // Added properties
         assignMode,
         setAssignMode,
-        childBusinessManagers,
-        selectedChildBmId,
-        setSelectedChildBmId,
-        loadingChildBMs,
         bmList,
         loadingBmList,
         bmAccounts,
