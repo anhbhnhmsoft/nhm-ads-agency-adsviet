@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import useCheckRole from '@/hooks/use-check-role';
 import AppLayout from '@/layouts/app-layout';
 import { _PlatformType, _UserRole } from '@/lib/types/constants';
+import type { ChildBusinessManager } from '@/pages/business-manager/types/type';
 import { AccountFormEdit } from '@/pages/service-order/components/AccountFormEdit';
 import { AccountInfoCell } from '@/pages/service-order/components/AccountInfoCell';
 import {
@@ -272,6 +273,10 @@ const ServiceOrdersIndex = ({
         setAssetAccess,
         timezoneBm,
         setTimezoneBm,
+        childBusinessManagers,
+        selectedChildBmId,
+        setSelectedChildBmId,
+        loadingChildBMs,
         bmAccounts,
         loadingBmAccounts,
         bmList,
@@ -326,6 +331,10 @@ const ServiceOrdersIndex = ({
         handleSubmitUpdate,
         assignMode: editAssignMode,
         setAssignMode: setEditAssignMode,
+        childBusinessManagers: editChildBusinessManagers,
+        selectedChildBmId: editSelectedChildBmId,
+        setSelectedChildBmId: setEditSelectedChildBmId,
+        loadingChildBMs: editLoadingChildBMs,
         bmList: editBmList,
         loadingBmList: editLoadingBmList,
         bmAccounts: editBmAccounts,
@@ -1247,6 +1256,41 @@ const ServiceOrdersIndex = ({
                                                         </p>
                                                     )}
                                                 </div>
+
+                                                {/* Dropdown chọn BM con */}
+                                                {isApproveMeta &&
+                                                    childBusinessManagers.length >
+                                                        0 && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="child_bm_id">
+                                                                {t(
+                                                                    'service_orders.form.child_bm_label',
+                                                                )}
+                                                            </Label>
+                                                            <SearchableSelect
+                                                                options={[
+                                                                    {
+                                                                        value: 'none',
+                                                                        label: t('service_orders.form.use_parent_bm'),
+                                                                    },
+                                                                    ...childBusinessManagers.map((childBM) => ({
+                                                                        value: childBM.bm_id,
+                                                                        label: childBM.name || childBM.bm_id,
+                                                                        sublabel: childBM.bm_id,
+                                                                    }))
+                                                                ]}
+                                                                value={selectedChildBmId || 'none'}
+                                                                onValueChange={(value) => setSelectedChildBmId(value)}
+                                                                placeholder={
+                                                                    loadingChildBMs
+                                                                        ? t('service_orders.form.loading_child_bms')
+                                                                        : t('service_orders.form.select_child_bm')
+                                                                }
+                                                                searchPlaceholder={t('service_orders.form.search_bm_placeholder', { defaultValue: 'Tìm kiếm BM...' })}
+                                                                disabled={loadingChildBMs}
+                                                            />
+                                                        </div>
+                                                    )}
                                             </>
                                         ) : (
                                             <>
@@ -1582,14 +1626,25 @@ const ServiceOrdersIndex = ({
                                         </div>
                                     </div>
 
-                                    {/* Multi-account structure: hiện danh sách account details */}
-                                    {editUseAccountsStructure && (
+                                    {editUseAccountsStructure ? (
                                         <>
                                             <div className="flex items-center justify-between">
                                                 <Label className="text-base font-semibold">
                                                     {isEditMeta
-                                                        ? t('service_purchase.meta_account_info', { defaultValue: 'Thông tin tài khoản Meta' })
-                                                        : t('service_purchase.google_account_info', { defaultValue: 'Thông tin tài khoản Google' })}
+                                                        ? t(
+                                                              'service_purchase.meta_account_info',
+                                                              {
+                                                                  defaultValue:
+                                                                      'Thông tin tài khoản Meta',
+                                                              },
+                                                          )
+                                                        : t(
+                                                              'service_purchase.google_account_info',
+                                                              {
+                                                                  defaultValue:
+                                                                      'Thông tin tài khoản Google',
+                                                              },
+                                                          )}
                                                 </Label>
                                                 {editAccounts.length < 999 && (
                                                     <Button
@@ -1599,104 +1654,190 @@ const ServiceOrdersIndex = ({
                                                         onClick={() => {
                                                             setEditAccounts([
                                                                 ...editAccounts,
-                                                                { meta_email: '', display_name: '', bm_ids: [], fanpages: [], websites: [], timezone_bm: '', asset_access: 'full_asset' },
+                                                                {
+                                                                    meta_email:
+                                                                        '',
+                                                                    display_name:
+                                                                        '',
+                                                                    bm_ids: [],
+                                                                    fanpages:
+                                                                        isEditMeta
+                                                                            ? []
+                                                                            : [],
+                                                                    websites:
+                                                                        [],
+                                                                    timezone_bm:
+                                                                        '',
+                                                                    asset_access:
+                                                                        'full_asset',
+                                                                },
                                                             ]);
                                                         }}
                                                     >
                                                         <Plus className="mr-2 h-4 w-4" />
-                                                        {t('service_purchase.add_account', { defaultValue: 'Thêm tài khoản' })}
+                                                        {t(
+                                                            'service_purchase.add_account',
+                                                            {
+                                                                defaultValue:
+                                                                    'Thêm tài khoản',
+                                                            },
+                                                        )}
                                                     </Button>
                                                 )}
                                             </div>
                                             <div className="max-h-[60vh] space-y-4 overflow-y-auto">
-                                                {editAccounts.map((account, idx) => (
-                                                    <AccountFormEdit
-                                                        key={idx}
-                                                        account={account}
-                                                        accountIndex={idx}
-                                                        platform={selectedEditOrder?.package?.platform ?? 0}
-                                                        metaTimezones={meta_timezones}
-                                                        googleTimezones={google_timezones}
-                                                        onUpdate={(index, data) => {
-                                                            const newAccounts = [...editAccounts];
-                                                            newAccounts[index] = data;
-                                                            setEditAccounts(newAccounts);
-                                                        }}
-                                                        onRemove={(index) => {
-                                                            setEditAccounts(editAccounts.filter((_, i) => i !== index));
-                                                        }}
-                                                        canRemove={editAccounts.length > 1}
-                                                    />
-                                                ))}
+                                                {editAccounts.map(
+                                                    (account, idx) => (
+                                                        <AccountFormEdit
+                                                            key={idx}
+                                                            account={account}
+                                                            accountIndex={idx}
+                                                            platform={
+                                                                selectedEditOrder
+                                                                    ?.package
+                                                                    ?.platform ??
+                                                                0
+                                                            }
+                                                            metaTimezones={
+                                                                meta_timezones
+                                                            }
+                                                            googleTimezones={
+                                                                google_timezones
+                                                            }
+                                                            onUpdate={(
+                                                                index,
+                                                                data,
+                                                            ) => {
+                                                                const newAccounts =
+                                                                    [
+                                                                        ...editAccounts,
+                                                                    ];
+                                                                newAccounts[
+                                                                    index
+                                                                ] = data;
+                                                                setEditAccounts(
+                                                                    newAccounts,
+                                                                );
+                                                            }}
+                                                            onRemove={(
+                                                                index,
+                                                            ) => {
+                                                                setEditAccounts(
+                                                                    editAccounts.filter(
+                                                                        (
+                                                                            _,
+                                                                            i,
+                                                                        ) =>
+                                                                            i !==
+                                                                            index,
+                                                                    ),
+                                                                );
+                                                            }}
+                                                            canRemove={
+                                                                editAccounts.length >
+                                                                1
+                                                            }
+                                                        />
+                                                    ),
+                                                )}
                                             </div>
                                         </>
-                                    )}
-
-                                    {/* Single-account fields (chỉ hiện khi không có accounts structure) */}
-                                    {!editUseAccountsStructure && (
+                                    ) : (
                                         <>
                                             <div className="space-y-2">
                                                 <Label htmlFor="edit_meta_email">
-                                                    {t('service_purchase.meta_email')}
+                                                    {t(
+                                                        'service_purchase.meta_email',
+                                                    )}
                                                 </Label>
                                                 <Input
                                                     id="edit_meta_email"
                                                     type="email"
                                                     value={editMetaEmail || ''}
-                                                    onChange={(e) => setEditMetaEmail(e.target.value)}
-                                                    placeholder={t('service_orders.form.meta_email_placeholder')}
+                                                    onChange={(e) =>
+                                                        setEditMetaEmail(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder={t(
+                                                        'service_orders.form.meta_email_placeholder',
+                                                    )}
                                                 />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="edit_display_name">
-                                                    {t('service_purchase.display_name')}
+                                                    {t(
+                                                        'service_purchase.display_name',
+                                                    )}
                                                 </Label>
                                                 <Input
                                                     id="edit_display_name"
-                                                    value={editDisplayName || ''}
-                                                    onChange={(e) => setEditDisplayName(e.target.value)}
-                                                    placeholder={t('service_orders.form.display_name_placeholder')}
+                                                    value={
+                                                        editDisplayName || ''
+                                                    }
+                                                    onChange={(e) =>
+                                                        setEditDisplayName(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder={t(
+                                                        'service_orders.form.display_name_placeholder',
+                                                    )}
                                                 />
                                             </div>
-                                        </>
-                                    )}
 
-                                    <>
-                                    {/* Tabs: Gán BM / Gán tài khoản — luôn hiển thị */}
-                                    <div className="space-y-2">
-                                        <div className="flex gap-1 rounded-lg border p-1">
-                                            <button
-                                                type="button"
-                                                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                    editAssignMode === 'bm'
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'text-muted-foreground hover:bg-muted'
-                                                }`}
-                                                onClick={() => setEditAssignMode('bm')}
-                                            >
-                                                {isEditMeta
-                                                    ? t('service_orders.form.assign_bm')
-                                                    : t('service_orders.form.assign_mcc')}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                    editAssignMode === 'account'
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'text-muted-foreground hover:bg-muted'
-                                                }`}
-                                                onClick={() => {
-                                                    setEditAssignMode('account');
-                                                    if (editBmId) handleEditSelectBmFromList(editBmId);
-                                                }}
-                                            >
-                                                {t('service_orders.form.assign_account')}
-                                            </button>
-                                        </div>
-                                    </div>
+                                            {/* Tabs: Gán BM / Gán tài khoản */}
+                                            <div className="space-y-2">
+                                                <div className="flex gap-1 rounded-lg border p-1">
+                                                    <button
+                                                        type="button"
+                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                            editAssignMode ===
+                                                            'bm'
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'text-muted-foreground hover:bg-muted'
+                                                        }`}
+                                                        onClick={() =>
+                                                            setEditAssignMode(
+                                                                'bm',
+                                                            )
+                                                        }
+                                                    >
+                                                        {isEditMeta
+                                                            ? t(
+                                                                  'service_orders.form.assign_bm',
+                                                              )
+                                                            : t(
+                                                                  'service_orders.form.assign_mcc',
+                                                              )}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                            editAssignMode ===
+                                                            'account'
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'text-muted-foreground hover:bg-muted'
+                                                        }`}
+                                                        onClick={() => {
+                                                            setEditAssignMode(
+                                                                'account',
+                                                            );
+                                                            if (editBmId)
+                                                                handleEditSelectBmFromList(
+                                                                    editBmId,
+                                                                );
+                                                        }}
+                                                    >
+                                                        {t(
+                                                            'service_orders.form.assign_account',
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
 
-                                    {editAssignMode === 'bm' ? (
-                                        <>
+                                            {editAssignMode === 'bm' ? (
+                                                <>
                                                     {/* ==== TAB GÁN BM ==== */}
 
                                                     {/* Dropdown chọn BM có sẵn */}
@@ -1865,6 +2006,41 @@ const ServiceOrdersIndex = ({
                                                             )}
                                                         </div>
                                                     </div>
+
+                                                    {/* Dropdown chọn BM con */}
+                                                    {isEditMeta &&
+                                                        editChildBusinessManagers.length >
+                                                            0 && (
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="edit_child_bm_id">
+                                                                    {t(
+                                                                        'service_orders.form.child_bm_label',
+                                                                    )}
+                                                                </Label>
+                                                                <SearchableSelect
+                                                                    options={[
+                                                                        {
+                                                                            value: 'none',
+                                                                            label: t('service_orders.form.use_parent_bm'),
+                                                                        },
+                                                                        ...editChildBusinessManagers.map((childBM) => ({
+                                                                            value: childBM.bm_id,
+                                                                            label: childBM.name || childBM.bm_id,
+                                                                            sublabel: childBM.bm_id,
+                                                                        }))
+                                                                    ]}
+                                                                    value={editSelectedChildBmId || 'none'}
+                                                                    onValueChange={(value) => setEditSelectedChildBmId(value)}
+                                                                    placeholder={
+                                                                        editLoadingChildBMs
+                                                                            ? t('service_orders.form.loading_child_bms')
+                                                                            : t('service_orders.form.select_child_bm')
+                                                                    }
+                                                                    searchPlaceholder={t('service_orders.form.search_bm_placeholder', { defaultValue: 'Tìm kiếm BM...' })}
+                                                                    disabled={editLoadingChildBMs}
+                                                                />
+                                                            </div>
+                                                        )}
                                                 </>
                                             ) : (
                                                 <>
@@ -2398,7 +2574,6 @@ const ServiceOrdersIndex = ({
                                             </div>
                                         </>
                                     )}
-                                    </>
                                 </div>
 
                                 <DialogFooter>
