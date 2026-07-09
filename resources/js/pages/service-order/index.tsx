@@ -1661,6 +1661,7 @@ const ServiceOrdersIndex = ({
                                         </>
                                     )}
 
+                                    <>
                                     {/* Tabs: Gán BM / Gán tài khoản — luôn hiển thị */}
                                     <div className="space-y-2">
                                         <div className="flex gap-1 rounded-lg border p-1">
@@ -1695,7 +1696,7 @@ const ServiceOrdersIndex = ({
                                     </div>
 
                                     {editAssignMode === 'bm' ? (
-                                                <>
+                                        <>
                                                     {/* ==== TAB GÁN BM ==== */}
 
                                                     {/* Dropdown chọn BM có sẵn */}
@@ -2397,6 +2398,7 @@ const ServiceOrdersIndex = ({
                                             </div>
                                         </>
                                     )}
+                                    </>
                                 </div>
 
                                 <DialogFooter>
