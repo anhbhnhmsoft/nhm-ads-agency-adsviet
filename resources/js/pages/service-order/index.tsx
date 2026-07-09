@@ -1661,58 +1661,40 @@ const ServiceOrdersIndex = ({
                                         </>
                                     )}
 
-                                    <>
                                     {/* Tabs: Gán BM / Gán tài khoản — luôn hiển thị */}
-                                            <div className="space-y-2">
-                                                <div className="flex gap-1 rounded-lg border p-1">
-                                                    <button
-                                                        type="button"
-                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                            editAssignMode ===
-                                                            'bm'
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : 'text-muted-foreground hover:bg-muted'
-                                                        }`}
-                                                        onClick={() =>
-                                                            setEditAssignMode(
-                                                                'bm',
-                                                            )
-                                                        }
-                                                    >
-                                                        {isEditMeta
-                                                            ? t(
-                                                                  'service_orders.form.assign_bm',
-                                                              )
-                                                            : t(
-                                                                  'service_orders.form.assign_mcc',
-                                                              )}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                            editAssignMode ===
-                                                            'account'
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : 'text-muted-foreground hover:bg-muted'
-                                                        }`}
-                                                        onClick={() => {
-                                                            setEditAssignMode(
-                                                                'account',
-                                                            );
-                                                            if (editBmId)
-                                                                handleEditSelectBmFromList(
-                                                                    editBmId,
-                                                                );
-                                                        }}
-                                                    >
-                                                        {t(
-                                                            'service_orders.form.assign_account',
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            </div>
+                                    <div className="space-y-2">
+                                        <div className="flex gap-1 rounded-lg border p-1">
+                                            <button
+                                                type="button"
+                                                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                    editAssignMode === 'bm'
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'text-muted-foreground hover:bg-muted'
+                                                }`}
+                                                onClick={() => setEditAssignMode('bm')}
+                                            >
+                                                {isEditMeta
+                                                    ? t('service_orders.form.assign_bm')
+                                                    : t('service_orders.form.assign_mcc')}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                                    editAssignMode === 'account'
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'text-muted-foreground hover:bg-muted'
+                                                }`}
+                                                onClick={() => {
+                                                    setEditAssignMode('account');
+                                                    if (editBmId) handleEditSelectBmFromList(editBmId);
+                                                }}
+                                            >
+                                                {t('service_orders.form.assign_account')}
+                                            </button>
+                                        </div>
+                                    </div>
 
-                                            {editAssignMode === 'bm' ? (
+                                    {editAssignMode === 'bm' ? (
                                                 <>
                                                     {/* ==== TAB GÁN BM ==== */}
 
@@ -2413,9 +2395,8 @@ const ServiceOrdersIndex = ({
                                                     )}
                                                 />
                                             </div>
-                                            </>
-                                            )}
-                                    </>
+                                        </>
+                                    )}
                                 </div>
 
                                 <DialogFooter>
