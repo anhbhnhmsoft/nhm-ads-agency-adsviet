@@ -536,7 +536,7 @@ class BusinessManagerService
 
                         $scopeBmIdsForRow = $scopeBmIdsByAccount[(string) $account->account_id] ?? [];
 
-                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $bmDisplayName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, $reachValue, $remainingAmount, $customerName, $scopeBmIdsForRow, $lastSyncedAt, $config['payment_type'] ?? null);
+                        $accountsList[] = $this->buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $bmDisplayName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, $reachValue, $remainingAmount, $customerName, $scopeBmIdsForRow, $lastSyncedAt, $config['payment_type'] ?? null, (float) ($serviceUser->package->top_up_fee ?? 0));
                     }
                 } elseif ($platform === PlatformType::GOOGLE->value) {
                     $accounts = $this->googleAccountRepository->query()
@@ -612,6 +612,7 @@ class BusinessManagerService
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
                             'payment_type' => $config['payment_type'] ?? null,
+                            'spending_fee_percent' => (float) ($serviceUser->package->top_up_fee ?? 0),
                             'bm_ids' => $bmIdsForRow,
                             'bm_name' => $mccDisplayName,
                             'parent_bm_id' => $parentMccId,
@@ -1939,7 +1940,7 @@ class BusinessManagerService
     /**
      * Helper tạo mảng data cho item trong danh sách BM/MCC
      */
-    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, ?int $reachValue = null, ?float $remainingAmount = null, ?string $customerName = null, array $scopeBmIds = [], mixed $lastSyncedAt = null, ?string $paymentType = null): array
+    private function buildBusinessManagerListItem($account, $serviceUser, $platform, $ownerName, $bmIdsForRow, $parentBmIdForRow, $displayBmName, $spendValue, $balanceValue, $totalCampaigns, $activeCampaigns, $disabledCampaigns, $childBmId, ?int $reachValue = null, ?float $remainingAmount = null, ?string $customerName = null, array $scopeBmIds = [], mixed $lastSyncedAt = null, ?string $paymentType = null, ?float $spendingFeePercent = null): array
     {
         $status = $account->account_status !== null ? (int) $account->account_status : null;
 
@@ -1949,6 +1950,7 @@ class BusinessManagerService
             'account_name' => $account->account_name,
             'service_user_id' => (string) $serviceUser->id,
             'payment_type' => $paymentType,
+            'spending_fee_percent' => $spendingFeePercent,
             'bm_ids' => $bmIdsForRow,
             'scope_bm_ids' => $scopeBmIds,
             'bm_name' => $displayBmName,

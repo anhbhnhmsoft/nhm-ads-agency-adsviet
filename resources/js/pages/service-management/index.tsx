@@ -2178,27 +2178,33 @@ const ServiceManagementIndex = ({
                         </div>
 
                         {/* Hiển thị breakdown hoàn tiền */}
-                        {(selectedAccountForRefund as any)?.remaining_amount != null && (
-                            <div className="rounded-md bg-orange-50 dark:bg-orange-950/30 p-3 text-sm space-y-1">
-                                <div className="font-medium text-orange-700 dark:text-orange-300">
-                                    {t('service_management.refund_breakdown_title', {
-                                        defaultValue: 'Chi tiết hoàn tiền',
-                                    })}
+                        {(selectedAccountForRefund as any)?.remaining_amount != null && (() => {
+                            const remaining = Number((selectedAccountForRefund as any).remaining_amount) || 0;
+                            const feePercent = Number((selectedAccountForRefund as any).spending_fee_percent) || 0;
+                            const feeRefund = Math.round(remaining * feePercent / 100 * 100) / 100;
+                            const totalRefund = remaining + feeRefund;
+                            return (
+                                <div className="rounded-md bg-orange-50 dark:bg-orange-950/30 p-3 text-sm space-y-1">
+                                    <div className="font-medium text-orange-700 dark:text-orange-300">
+                                        {t('service_management.refund_breakdown_title', {
+                                            defaultValue: 'Chi tiết hoàn tiền',
+                                        })}
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>{t('service_management.refund_remaining', { defaultValue: 'Tiền dư còn lại' })}</span>
+                                        <span>{remaining.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>{t('service_management.refund_fee', { defaultValue: 'Phí dịch vụ hoàn lại' })}</span>
+                                        <span>{feeRefund.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+                                    </div>
+                                    <div className="flex justify-between font-semibold border-t pt-1">
+                                        <span>{t('service_management.refund_total', { defaultValue: 'Tổng hoàn' })}</span>
+                                        <span>{totalRefund.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span>{t('service_management.refund_remaining', { defaultValue: 'Tiền dư còn lại' })}</span>
-                                    <span>{Number((selectedAccountForRefund as any).remaining_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span>{t('service_management.refund_fee', { defaultValue: 'Phí dịch vụ hoàn lại' })}</span>
-                                    <span>... USD</span>
-                                </div>
-                                <div className="flex justify-between font-semibold border-t pt-1">
-                                    <span>{t('service_management.refund_total', { defaultValue: 'Tổng hoàn' })}</span>
-                                    <span>... USD</span>
-                                </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {/* Wallet password */}
                         {isAgencyOrCustomer && (
