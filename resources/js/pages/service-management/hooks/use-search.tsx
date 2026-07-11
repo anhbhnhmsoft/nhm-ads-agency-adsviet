@@ -10,6 +10,7 @@ export type ServiceManagementListFilter = {
     start_date?: string;
     end_date?: string;
     child_manager_id?: string;
+    customer_id?: string;
 };
 
 export const useSearchServiceManagement = () => {
@@ -26,6 +27,8 @@ export const useSearchServiceManagement = () => {
     const initialEndDate = params.get('filter[end_date]') ?? undefined;
     const initialChildManagerId =
         params.get('filter[child_manager_id]') ?? undefined;
+    const initialCustomerId =
+        params.get('filter[customer_id]') ?? undefined;
 
     const [query, setQuery] = useNestedState<ServiceManagementListFilter>({
         keyword: initialKeyword,
@@ -34,6 +37,7 @@ export const useSearchServiceManagement = () => {
         start_date: initialStartDate,
         end_date: initialEndDate,
         child_manager_id: initialChildManagerId,
+        customer_id: initialCustomerId,
     });
 
     const handleSearch = () => {
@@ -58,6 +62,7 @@ export const useSearchServiceManagement = () => {
             start_date: undefined,
             end_date: undefined,
             child_manager_id: undefined,
+            customer_id: undefined,
         };
 
         setQuery(emptyQuery);

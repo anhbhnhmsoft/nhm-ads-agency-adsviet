@@ -129,6 +129,13 @@ class ServiceManagementController extends Controller
                 'stats' => fn () => $stats,
                 'totals' => fn () => $totals,
                 'childManagers' => fn () => $this->businessManagerService->getChildManagersForFilter(),
+                'customers' => fn () => \App\Models\User::query()
+                    ->whereHas('serviceUsers')
+                    ->select('id', 'name')
+                    ->orderBy('name')
+                    ->get()
+                    ->map(fn ($u) => ['id' => (string) $u->id, 'name' => $u->name])
+                    ->toArray(),
             ]
         );
     }

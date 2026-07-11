@@ -34,11 +34,17 @@ type ChildManagerOption = {
     platform?: PlatformTypeEnum;
 };
 
+type CustomerOption = {
+    id: string;
+    name: string;
+};
+
 type PageProps = {
     childManagers?: {
         meta?: ChildManagerOption[];
         google?: ChildManagerOption[];
     };
+    customers?: CustomerOption[];
 };
 
 type SearchQuery = {
@@ -48,6 +54,7 @@ type SearchQuery = {
     start_date?: string;
     end_date?: string;
     child_manager_id?: string;
+    customer_id?: string;
 };
 
 type Props = {
@@ -67,6 +74,7 @@ const BusinessManagerSearchForm = ({
     const { props } = usePage<InertiaPageProps<PageProps>>();
 
     const childManagers = props.childManagers;
+    const customers = props.customers ?? [];
 
     const platformValue = query.platform
         ? query.platform.toString()
@@ -150,7 +158,7 @@ const BusinessManagerSearchForm = ({
                 <CardTitle>{t('common.search')}</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
                     <Field>
                         <FieldLabel htmlFor="keyword">
                             {t('common.keyword')}
@@ -164,6 +172,30 @@ const BusinessManagerSearchForm = ({
                                 setQuery({ keyword: e.target.value });
                             }}
                         />
+                    </Field>
+                    <Field>
+                        <FieldLabel htmlFor="customer">
+                            {t('service_management.customer', { defaultValue: 'Khách hàng' })}
+                        </FieldLabel>
+                        <Select
+                            value={query.customer_id || undefined}
+                            onValueChange={(value) => {
+                                setQuery({ customer_id: value || undefined });
+                            }}
+                        >
+                            <SelectTrigger id="customer">
+                                <SelectValue
+                                    placeholder={t('common.all', { defaultValue: 'Tất cả' })}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {customers.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                        {c.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </Field>
                     <Field>
                         <FieldLabel htmlFor="platform">

@@ -331,6 +331,11 @@ class BusinessManagerService
                 });
             }
 
+            // Filter theo customer nếu có
+            if (!empty($filter['customer_id'])) {
+                $query->where('user_id', (int) $filter['customer_id']);
+            }
+
             $serviceUsers = $query->get();
 
             $bmNameMap = $this->metaBusinessManagerRepository->query()
