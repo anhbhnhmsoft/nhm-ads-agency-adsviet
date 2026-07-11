@@ -17,11 +17,26 @@ import {
     user_edit,
     user_list,
     user_toggle_disable,
+    wallet_top_up,
 } from '@/routes';
 import { router, usePage } from '@inertiajs/react';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, ColumnVisibilityState } from '@tanstack/react-table';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 type Props = {
     paginator: CustomerListPagination;
@@ -49,6 +64,37 @@ const ListCustomer = ({
     );
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const managerFilterId = filters?.manager_id ?? null;
+
+    const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({
+        phone: false,
+        social: false,
+    });
+    const [selectedTopUpUser, setSelectedTopUpUser] = useState<CustomerListItem | null>(null);
+    const [isTopUpDialogOpen, setIsTopUpDialogOpen] = useState(false);
+    const [topUpAmount, setTopUpAmount] = useState('');
+    const [processingTopUp, setProcessingTopUp] = useState(false);
+
+    const handleTopUpSubmit = () => {
+        const amount = Number(topUpAmount);
+        if (!selectedTopUpUser || amount <= 0) return;
+
+        setProcessingTopUp(true);
+        router.post(
+            wallet_top_up({ userId: selectedTopUpUser.id }).url,
+            { amount },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setIsTopUpDialogOpen(false);
+                    setTopUpAmount('');
+                    setSelectedTopUpUser(null);
+                },
+                onFinish: () => {
+                    setProcessingTopUp(false);
+                },
+            }
+        );
+    };
 
     const actionCell = useActionCell<CustomerListItem>({
         canDelete: isAdmin,
@@ -145,6 +191,18 @@ const ListCustomer = ({
                 },
             },
             {
+                accessorKey: 'wallet_balance',
+                header: t('wallet.balance', { defaultValue: 'Số dư tiền balance' }),
+                cell: (cell) => {
+                    const balance = cell.row.original.wallet_balance;
+                    if (balance === undefined || balance === null) return '0.00 USDT';
+                    return Number(balance).toLocaleString('vi-VN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    }) + ' USDT';
+                },
+            },
+            {
                 accessorKey: 'referral_code',
                 header: t('common.referral_code'),
             },
@@ -192,6 +250,29 @@ const ListCustomer = ({
                 },
             },
             {
+                id: 'manual_topup',
+                header: t('wallet.top_up', { defaultValue: 'Nạp tiền thủ công' }),
+                cell: ({ row }) => {
+                    return (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setSelectedTopUpUser(row.original);
+                                setTopUpAmount('');
+                                setIsTopUpDialogOpen(true);
+                            }}
+                        >
+                            {t('wallet.top_up', { defaultValue: 'Nạp tiền' })}
+                        </Button>
+                    );
+                },
+                meta: {
+                    headerClassName: 'text-center',
+                    cellClassName: 'text-center',
+                },
+            },
+            {
                 id: 'action',
                 header: t('common.action'),
                 cell: ({ row }) => actionCell(row.original),
@@ -201,7 +282,7 @@ const ListCustomer = ({
                 },
             },
         ],
-        [t, actionCell, managerFilterId],
+        [t, actionCell, managerFilterId, setSelectedTopUpUser, setTopUpAmount, setIsTopUpDialogOpen],
     );
 
     return (
@@ -214,12 +295,136 @@ const ListCustomer = ({
                 showEmployeeSelect={canFilterEmployee}
             />
             <Separator className={'my-4'} />
-            <DataTable columns={columns} paginator={paginator} />
+            <div className="flex justify-between items-center mb-4 gap-2">
+                <h3 className="text-lg font-medium text-gray-900">
+                    {t('user.customer_list_title', { defaultValue: 'Danh sách khách hàng' })}
+                </h3>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                            {t('common.columns', { defaultValue: 'Hiển thị cột' })}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[200px]">
+                        <DropdownMenuCheckboxItem
+                            checked={columnVisibility['phone'] !== false}
+                            onCheckedChange={(value) =>
+                                setColumnVisibility((prev) => ({
+                                    ...prev,
+                                    phone: value,
+                                }))
+                            }
+                        >
+                            {t('common.phone')}
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                            checked={columnVisibility['social'] !== false}
+                            onCheckedChange={(value) =>
+                                setColumnVisibility((prev) => ({
+                                    ...prev,
+                                    social: value,
+                                }))
+                            }
+                        >
+                            {t('common.social_authentication')}
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                            checked={columnVisibility['wallet_balance'] !== false}
+                            onCheckedChange={(value) =>
+                                setColumnVisibility((prev) => ({
+                                    ...prev,
+                                    wallet_balance: value,
+                                }))
+                            }
+                        >
+                            {t('wallet.balance', { defaultValue: 'Số dư tiền balance' })}
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem
+                            checked={columnVisibility['manual_topup'] !== false}
+                            onCheckedChange={(value) =>
+                                setColumnVisibility((prev) => ({
+                                    ...prev,
+                                    manual_topup: value,
+                                }))
+                            }
+                        >
+                            {t('wallet.top_up', { defaultValue: 'Nạp tiền thủ công' })}
+                        </DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            <DataTable 
+                columns={columns} 
+                paginator={paginator} 
+                columnVisibility={columnVisibility}
+                onColumnVisibilityChange={setColumnVisibility}
+            />
             <UserInfoDialog
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 user={selectedUser}
             />
+            <Dialog open={isTopUpDialogOpen} onOpenChange={setIsTopUpDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {t('user.manual_top_up_title', {
+                                defaultValue: 'Nạp tiền thủ công cho khách hàng',
+                            })}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-500">
+                                {t('common.customer', { defaultValue: 'Khách hàng' })}
+                            </label>
+                            <div className="font-semibold text-sm">
+                                {selectedTopUpUser?.name} ({selectedTopUpUser?.username})
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-500">
+                                {t('wallet.balance', { defaultValue: 'Số dư hiện tại' })}
+                            </label>
+                            <div className="text-sm font-medium text-gray-900">
+                                {selectedTopUpUser?.wallet_balance?.toLocaleString('vi-VN', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                }) ?? '0.00'}{' '}
+                                USDT
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="top_up_amount" className="text-sm font-medium text-gray-500">
+                                {t('wallet.amount', { defaultValue: 'Số tiền nạp (USDT)' })}
+                            </label>
+                            <Input
+                                id="top_up_amount"
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={topUpAmount}
+                                onChange={(e) => setTopUpAmount(e.target.value)}
+                                placeholder="Nhập số tiền..."
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsTopUpDialogOpen(false)}
+                        >
+                            {t('common.cancel', { defaultValue: 'Hủy' })}
+                        </Button>
+                        <Button
+                            onClick={handleTopUpSubmit}
+                            disabled={!topUpAmount || Number(topUpAmount) <= 0 || processingTopUp}
+                        >
+                            {processingTopUp ? t('common.processing', { defaultValue: 'Đang xử lý...' }) : t('wallet.top_up', { defaultValue: 'Nạp tiền' })}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </>
     );
 };

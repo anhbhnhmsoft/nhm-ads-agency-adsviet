@@ -273,10 +273,6 @@ const ServiceOrdersIndex = ({
         setAssetAccess,
         timezoneBm,
         setTimezoneBm,
-        childBusinessManagers,
-        selectedChildBmId,
-        setSelectedChildBmId,
-        loadingChildBMs,
         bmAccounts,
         loadingBmAccounts,
         bmList,
@@ -331,10 +327,6 @@ const ServiceOrdersIndex = ({
         handleSubmitUpdate,
         assignMode: editAssignMode,
         setAssignMode: setEditAssignMode,
-        childBusinessManagers: editChildBusinessManagers,
-        selectedChildBmId: editSelectedChildBmId,
-        setSelectedChildBmId: setEditSelectedChildBmId,
-        loadingChildBMs: editLoadingChildBMs,
         bmList: editBmList,
         loadingBmList: editLoadingBmList,
         bmAccounts: editBmAccounts,
@@ -1256,41 +1248,6 @@ const ServiceOrdersIndex = ({
                                                         </p>
                                                     )}
                                                 </div>
-
-                                                {/* Dropdown chọn BM con */}
-                                                {isApproveMeta &&
-                                                    childBusinessManagers.length >
-                                                        0 && (
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="child_bm_id">
-                                                                {t(
-                                                                    'service_orders.form.child_bm_label',
-                                                                )}
-                                                            </Label>
-                                                            <SearchableSelect
-                                                                options={[
-                                                                    {
-                                                                        value: 'none',
-                                                                        label: t('service_orders.form.use_parent_bm'),
-                                                                    },
-                                                                    ...childBusinessManagers.map((childBM) => ({
-                                                                        value: childBM.bm_id,
-                                                                        label: childBM.name || childBM.bm_id,
-                                                                        sublabel: childBM.bm_id,
-                                                                    }))
-                                                                ]}
-                                                                value={selectedChildBmId || 'none'}
-                                                                onValueChange={(value) => setSelectedChildBmId(value)}
-                                                                placeholder={
-                                                                    loadingChildBMs
-                                                                        ? t('service_orders.form.loading_child_bms')
-                                                                        : t('service_orders.form.select_child_bm')
-                                                                }
-                                                                searchPlaceholder={t('service_orders.form.search_bm_placeholder', { defaultValue: 'Tìm kiếm BM...' })}
-                                                                disabled={loadingChildBMs}
-                                                            />
-                                                        </div>
-                                                    )}
                                             </>
                                         ) : (
                                             <>
@@ -1512,8 +1469,6 @@ const ServiceOrdersIndex = ({
                                                               )}
                                                     </p>
                                                 </div>
-
-                                                {/* 4. Input ID BM/MCC khách nhập — ẩn ở form approve, chỉ hiện ở form edit */}
 
                                                 {bmId &&
                                                     !loadingBmAccounts &&
@@ -2006,41 +1961,6 @@ const ServiceOrdersIndex = ({
                                                             )}
                                                         </div>
                                                     </div>
-
-                                                    {/* Dropdown chọn BM con */}
-                                                    {isEditMeta &&
-                                                        editChildBusinessManagers.length >
-                                                            0 && (
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor="edit_child_bm_id">
-                                                                    {t(
-                                                                        'service_orders.form.child_bm_label',
-                                                                    )}
-                                                                </Label>
-                                                                <SearchableSelect
-                                                                    options={[
-                                                                        {
-                                                                            value: 'none',
-                                                                            label: t('service_orders.form.use_parent_bm'),
-                                                                        },
-                                                                        ...editChildBusinessManagers.map((childBM) => ({
-                                                                            value: childBM.bm_id,
-                                                                            label: childBM.name || childBM.bm_id,
-                                                                            sublabel: childBM.bm_id,
-                                                                        }))
-                                                                    ]}
-                                                                    value={editSelectedChildBmId || 'none'}
-                                                                    onValueChange={(value) => setEditSelectedChildBmId(value)}
-                                                                    placeholder={
-                                                                        editLoadingChildBMs
-                                                                            ? t('service_orders.form.loading_child_bms')
-                                                                            : t('service_orders.form.select_child_bm')
-                                                                    }
-                                                                    searchPlaceholder={t('service_orders.form.search_bm_placeholder', { defaultValue: 'Tìm kiếm BM...' })}
-                                                                    disabled={editLoadingChildBMs}
-                                                                />
-                                                            </div>
-                                                        )}
                                                 </>
                                             ) : (
                                                 <>

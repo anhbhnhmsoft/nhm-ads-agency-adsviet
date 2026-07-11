@@ -100,7 +100,13 @@ class WalletService
         }
 
         $wallet = $this->walletRepository->findByUserId($userId);
-        if (!$wallet) return ServiceReturn::error(message: __('common_error.data_not_found'));
+        if (!$wallet) {
+            $createResult = $this->createForUser($userId);
+            if ($createResult->isError()) {
+                return $createResult;
+            }
+            $wallet = $createResult->getData();
+        }
         $wallet->update(['status' => WalletStatus::LOCKED->value]);
         return ServiceReturn::success();
     }
@@ -116,7 +122,13 @@ class WalletService
         }
 
         $wallet = $this->walletRepository->findByUserId($userId);
-        if (!$wallet) return ServiceReturn::error(message: __('common_error.data_not_found'));
+        if (!$wallet) {
+            $createResult = $this->createForUser($userId);
+            if ($createResult->isError()) {
+                return $createResult;
+            }
+            $wallet = $createResult->getData();
+        }
         $wallet->update(['status' => WalletStatus::ACTIVE->value]);
         return ServiceReturn::success();
     }
@@ -132,7 +144,13 @@ class WalletService
         }
 
         $wallet = $this->walletRepository->findByUserId($userId);
-        if (!$wallet) return ServiceReturn::error(message: __('common_error.data_not_found'));
+        if (!$wallet) {
+            $createResult = $this->createForUser($userId);
+            if ($createResult->isError()) {
+                return $createResult;
+            }
+            $wallet = $createResult->getData();
+        }
         $wallet->update(['password' => Hash::make($newPassword)]);
         return ServiceReturn::success();
     }
@@ -198,7 +216,13 @@ class WalletService
             return ServiceReturn::error(message: __('Số tiền nạp không hợp lệ'));
         }
         $wallet = $this->walletRepository->findByUserId($userId);
-        if (!$wallet) return ServiceReturn::error(message: __('common_error.data_not_found'));
+        if (!$wallet) {
+            $createResult = $this->createForUser($userId);
+            if ($createResult->isError()) {
+                return $createResult;
+            }
+            $wallet = $createResult->getData();
+        }
         if ($wallet->status === WalletStatus::LOCKED->value) return ServiceReturn::error(message: __('Ví đang bị khóa'));
 
         DB::transaction(function () use ($wallet, $amount, $actor) {
@@ -232,7 +256,13 @@ class WalletService
             return ServiceReturn::error(message: __('Số tiền rút không hợp lệ'));
         }
         $wallet = $this->walletRepository->findByUserId($userId);
-        if (!$wallet) return ServiceReturn::error(message: __('common_error.data_not_found'));
+        if (!$wallet) {
+            $createResult = $this->createForUser($userId);
+            if ($createResult->isError()) {
+                return $createResult;
+            }
+            $wallet = $createResult->getData();
+        }
         if ($wallet->status === WalletStatus::LOCKED->value) return ServiceReturn::error(message: __('Ví đang bị khóa'));
         // Kiểm tra mật khẩu ví nếu có đặt
         if (!empty($wallet->password)) {

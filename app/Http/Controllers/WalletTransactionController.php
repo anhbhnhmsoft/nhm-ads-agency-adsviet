@@ -85,12 +85,21 @@ class WalletTransactionController extends Controller
                 ]);
             }
         }
-        // Admin/Manager/Employee: xem tất cả, có thể filter theo user_id
+        // Admin/Manager/Employee: xem tất cả, có thể filter theo tên user
         elseif (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
             if ($request->has('user_id') && $request->user_id) {
-                $walletId = $this->walletService->getWalletIdByUserId((int) $request->user_id);
-                if ($walletId) {
-                    $walletIds = [$walletId];
+                $searchName = trim((string) $request->user_id);
+                // Tìm wallets của user theo tên (hoặc user_id nếu là số)
+                if (is_numeric($searchName)) {
+                    $walletId = $this->walletService->getWalletIdByUserId((int) $searchName);
+                    if ($walletId) {
+                        $walletIds = [$walletId];
+                    }
+                } else {
+                    $walletIds = \App\Models\UserWallet::query()
+                        ->whereHas('user', fn($q) => $q->where('name', 'ilike', "%{$searchName}%"))
+                        ->pluck('id')
+                        ->toArray();
                 }
             }
         }

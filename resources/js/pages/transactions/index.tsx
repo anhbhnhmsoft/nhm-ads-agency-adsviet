@@ -26,7 +26,7 @@ const TransactionsIndex = ({
     canApprove,
 }: TransactionsIndexProps) => {
     const { t } = useTranslation();
-    const [showFilters, setShowFilters] = useState(false);
+    const [showFilters, setShowFilters] = useState(true);
     const [showWithdrawInfo, setShowWithdrawInfo] = useState(false);
     const [selectedWithdrawInfo, setSelectedWithdrawInfo] = useState<{
         bank_name?: string;
@@ -320,13 +320,12 @@ const TransactionsIndex = ({
                                 {canApprove && (
                                     <div className="space-y-2">
                                         <Label htmlFor="filter-user-id">
-                                            {t('transactions.user_id', {
-                                                defaultValue: 'User ID',
+                                            {t('transactions.user_name', {
+                                                defaultValue: 'Tên khách hàng',
                                             })}
                                         </Label>
                                         <Input
                                             id="filter-user-id"
-                                            type="number"
                                             value={filterForm.data.user_id}
                                             onChange={(e) =>
                                                 filterForm.setData(
@@ -335,10 +334,10 @@ const TransactionsIndex = ({
                                                 )
                                             }
                                             placeholder={t(
-                                                'transactions.enter_user_id',
+                                                'transactions.enter_user_name',
                                                 {
                                                     defaultValue:
-                                                        'Nhập User ID',
+                                                        'Nhập tên khách...',
                                                 },
                                             )}
                                         />
@@ -417,38 +416,55 @@ const TransactionsIndex = ({
                                     total: pagination.total,
                                 })}
                             </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={pagination.current_page === 1}
-                                    onClick={() =>
-                                        router.get(transactions_index().url, {
-                                            page: pagination.current_page - 1,
-                                            ...filters,
-                                        })
+                            <div className="flex gap-1">
+                                {(() => {
+                                    const current = pagination.current_page;
+                                    const last = pagination.last_page;
+                                    const pages: (number | string)[] = [];
+                                    if (last <= 7) {
+                                        for (let i = 1; i <= last; i++) pages.push(i);
+                                    } else {
+                                        pages.push(1);
+                                        if (current > 4) pages.push('...');
+                                        for (
+                                            let i = Math.max(2, current - 1);
+                                            i <= Math.min(last - 1, current + 1);
+                                            i++
+                                        )
+                                            pages.push(i);
+                                        if (current < last - 3) pages.push('...');
+                                        pages.push(last);
                                     }
-                                >
-                                    {t('common.previous', {
-                                        defaultValue: 'Trước',
-                                    })}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={
-                                        pagination.current_page ===
-                                        pagination.last_page
-                                    }
-                                    onClick={() =>
-                                        router.get(transactions_index().url, {
-                                            page: pagination.current_page + 1,
-                                            ...filters,
-                                        })
-                                    }
-                                >
-                                    {t('common.next', { defaultValue: 'Sau' })}
-                                </Button>
+                                    return pages.map((page, idx) =>
+                                        typeof page === 'string' ? (
+                                            <span
+                                                key={`ellipsis-${idx}`}
+                                                className="px-2 py-1 text-sm text-muted-foreground"
+                                            >
+                                                ...
+                                            </span>
+                                        ) : (
+                                            <Button
+                                                key={page}
+                                                variant={
+                                                    page === current
+                                                        ? 'default'
+                                                        : 'outline'
+                                                }
+                                                size="sm"
+                                                className="min-w-[32px]"
+                                                onClick={() =>
+                                                    router.get(
+                                                        transactions_index().url,
+                                                        { page, ...filters },
+                                                    )
+                                                }
+                                            >
+                                                {page}
+                                            </Button>
+                                        ),
+                                    );
+                                })()}
                             </div>
                         </div>
                     )}
