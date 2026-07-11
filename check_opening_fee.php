@@ -39,10 +39,10 @@ foreach ($sus as $su) {
     $chargedAmount = DB::table('user_wallet_transactions')
         ->join('user_wallets', 'user_wallets.id', '=', 'user_wallet_transactions.wallet_id')
         ->where('user_wallets.user_id', $su->user_id)
-        ->where('reference_id', (string) $su->id)
-        ->where('type', 6) // SERVICE_PURCHASE
-        ->where('status', 4) // COMPLETED
-        ->sum('amount');
+        ->where('user_wallet_transactions.reference_id', (string) $su->id)
+        ->where('user_wallet_transactions.type', 6) // SERVICE_PURCHASE
+        ->where('user_wallet_transactions.status', 4) // COMPLETED
+        ->sum('user_wallet_transactions.amount');
 
     $chargedAmount = abs((float) $chargedAmount);
 
