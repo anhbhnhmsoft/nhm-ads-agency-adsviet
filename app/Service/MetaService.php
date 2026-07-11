@@ -48,6 +48,7 @@ class MetaService
         protected ConfigService $configService,
         protected PlatformSettingService $platformSettingService,
         protected MetaBusinessAssetGroupRepository $metaBusinessAssetGroupRepository,
+        protected TelegramService $telegramService,
     ) {
     }
 
@@ -2008,30 +2009,48 @@ class MetaService
      */
     public function syncMetaAdsAndCampaigns(ServiceUser $serviceUser): ServiceReturn
     {
+        $failedAccounts = [];
+        $rateLimited = false;
+
         try {
             $this->metaAccountRepository->query()
                 ->where('service_user_id', $serviceUser->id)
-                ->chunkById(50, function (Collection $metaAccounts) use ($serviceUser) {
+                ->chunkById(50, function (Collection $metaAccounts) use ($serviceUser, &$failedAccounts, &$rateLimited) {
                     foreach ($metaAccounts as $metaAccount) {
-                        // sync insight của ads account
-                        $insightResult = $this->metaBusinessService->getAccountDailyInsights(
-                            accountId: $metaAccount->account_id,
-                        );
-                        // Xử lý kết quả
-                        // Nếu bị lỗi thì next sang tài khoản tiếp theo
-                        if ($insightResult->isSuccess()) {
+                        if ($rateLimited) break;
+
+                        // Retry logic: max 3 attempts với exponential backoff
+                        $maxRetries = 3;
+                        $insightResult = null;
+                        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                            $insightResult = $this->metaBusinessService->getAccountDailyInsights(
+                                accountId: $metaAccount->account_id,
+                            );
+                            if ($insightResult->isSuccess()) break;
+
+                            $errorMsg = $insightResult->getMessage();
+                            if ($this->isRateLimitError($errorMsg)) {
+                                $rateLimited = true;
+                                Logging::warning('Meta API rate limit hit', [
+                                    'account_id' => $metaAccount->account_id,
+                                    'attempt' => $attempt,
+                                ]);
+                                break; // Dừng ngay khi rate limit, không retry
+                            }
+                            if ($attempt < $maxRetries) {
+                                sleep(2 * $attempt); // Backoff: 2s, 4s
+                            }
+                        }
+
+                        if ($insightResult && $insightResult->isSuccess()) {
                             $insights = $insightResult->getData()['data'] ?? [];
                             foreach ($insights as $insight) {
-                                // Lấy ROAS (Cái này Meta trả về dạng mảng object, cần xử lý kỹ)
-                                // Cấu trúc Meta trả về: "purchase_roas": [{ "action_type": "omni_purchase", "value": "2.5" }]
                                 $roas = $this->getRoas($insight);
-                                // Lưu dữ liệu vào DB
-                                // try catch lồng nhau để tránh lỗi khi lưu vào DB và ko bị ảnh hưởng đến các vòng lặp khác
                                 try {
                                     $this->metaAdsAccountInsightRepository->query()->updateOrCreate(
                                         [
                                             'meta_account_id' => $metaAccount->id,
-                                            'date' => $insight['date_start'], // Lưu ngày bắt đầu của insight
+                                            'date' => $insight['date_start'],
                                         ],
                                         [
                                             'spend' => $insight['spend'] ?? null,
@@ -2053,7 +2072,12 @@ class MetaService
                                 }
                             }
                         } else {
-                            Logging::error('Error sync ads account insight: ' . $insightResult->getMessage());
+                            $failedAccounts[] = $metaAccount->account_id;
+                            Logging::error('Error sync ads account insight after retries', [
+                                'account_id' => $metaAccount->account_id,
+                                'error' => $insightResult?->getMessage() ?? 'unknown',
+                                'service_user_id' => $serviceUser->id,
+                            ]);
                         }
 
 
@@ -2102,10 +2126,43 @@ class MetaService
 
                     }
                 });
+
+            // Alert admin nếu có accounts sync fail
+            if (!empty($failedAccounts)) {
+                try {
+                    $adminTelegramIds = \App\Models\User::where('role', 'admin')
+                        ->whereNotNull('telegram_id')
+                        ->pluck('telegram_id')
+                        ->toArray();
+                    if (!empty($adminTelegramIds)) {
+                        $msg = "⚠️ Meta sync fail (SU:{$serviceUser->id}):\n"
+                            . count($failedAccounts) . "/" . $this->metaAccountRepository->query()->where('service_user_id', $serviceUser->id)->count() . " accounts failed\n"
+                            . "Failed: " . implode(', ', array_slice($failedAccounts, 0, 5))
+                            . (count($failedAccounts) > 5 ? '...' : '')
+                            . ($rateLimited ? "\n⛔ Reason: Rate limit" : '');
+                        foreach ($adminTelegramIds as $tgId) {
+                            $this->telegramService->sendNotification($tgId, $msg);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Logging::error('Failed to send sync alert: ' . $e->getMessage());
+                }
+            }
+
             return ServiceReturn::success();
         } catch (\Exception $exception) {
             return ServiceReturn::error('Error sync ads campaign: ' . $exception->getMessage());
         }
+    }
+
+    private function isRateLimitError(string $errorMessage): bool
+    {
+        $keywords = ['rate limit', 'too many calls', 'throttled', 'request limit reached', 'application-level throttled'];
+        $lower = strtolower($errorMessage);
+        foreach ($keywords as $kw) {
+            if (str_contains($lower, $kw)) return true;
+        }
+        return false;
     }
 
     /**

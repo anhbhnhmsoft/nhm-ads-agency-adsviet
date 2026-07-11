@@ -573,15 +573,18 @@ class MetaBusinessService
                 'purchase_roas',    // Hiệu quả mua hàng
             ];
 
-            // Cấu hình mặc định
+            // Dùng time_range explicit (UTC-based) thay vì date_preset (timezone-dependent)
+            // để đảm bảo lấy được data ngày mới nhất bất kể timezone của ad account
             $defaultParams = [
                 'fields' => implode(',', $fields),
-                'level' => 'account', // Lấy tổng cấp tài khoản
-                'time_increment' => 1, // Chia theo từng ngày
-                'date_preset' => AdsInsightsDatePresetValues::LAST_30D // Mặc định lấy 30 ngày nếu không truyền gì
+                'level' => 'account',
+                'time_increment' => 1,
+                'time_range' => json_encode([
+                    'since' => now()->subDays(35)->toDateString(),
+                    'until' => now()->addDay()->toDateString(),
+                ]),
             ];
 
-            // Gộp tham số (Ưu tiên tham số truyền vào)
             $params = array_merge($defaultParams);
 
             $response = $this->api->call(

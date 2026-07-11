@@ -206,19 +206,20 @@ class ServicesBillPostpay extends Command
 
     private function getSpendingBetween(string $serviceUserId, string $fromDate, string $toDate): float
     {
-        // Meta spend
-        $metaSpend = (float) DB::table('meta_ads_account_insights')
-            ->where('service_user_id', $serviceUserId)
-            ->whereNull('deleted_at')
-            ->whereBetween('date', [$fromDate, $toDate])
-            ->sum(DB::raw('CAST(spend AS DECIMAL(18,4))'));
+        // Dùng amount_spent từ meta_accounts/google_accounts (cập nhật realtime bởi sync job)
+        // thay vì insights (bị delay do timezone + rate limit)
 
-        // Google spend
-        $googleSpend = (float) DB::table('google_ads_account_insights')
+        // Meta spend: SUM(amount_spent) — amount_spent là varchar nên cần CAST
+        $metaSpend = (float) DB::table('meta_accounts')
             ->where('service_user_id', $serviceUserId)
             ->whereNull('deleted_at')
-            ->whereBetween('date', [$fromDate, $toDate])
-            ->sum(DB::raw('CAST(spend AS DECIMAL(18,4))'));
+            ->sum(DB::raw("CAST(NULLIF(amount_spent, '') AS DECIMAL(18,4))"));
+
+        // Google spend: SUM(amount_spent)
+        $googleSpend = (float) DB::table('google_accounts')
+            ->where('service_user_id', $serviceUserId)
+            ->whereNull('deleted_at')
+            ->sum(DB::raw("CAST(NULLIF(amount_spent, '') AS DECIMAL(18,4))"));
 
         return $metaSpend + $googleSpend;
     }
@@ -248,19 +249,13 @@ class ServicesBillPostpay extends Command
 
     private function resolveBilledSpend($serviceUser, array $config): float
     {
+        // Ưu tiên billed_spend đã lưu trong config (tích lũy, chính xác nhất)
         if (isset($config['spending_fee_billed_spend']) && is_numeric($config['spending_fee_billed_spend'])) {
             return max(0.0, (float) $config['spending_fee_billed_spend']);
         }
 
-        if (!$serviceUser->last_postpay_billed_at) {
-            return 0.0;
-        }
-
-        return $this->getSpendingBetween(
-            (string) $serviceUser->id,
-            $serviceUser->created_at->toDateString(),
-            $serviceUser->last_postpay_billed_at->toDateString()
-        );
+        // Chưa bill lần nào → billed = 0
+        return 0.0;
     }
 
     /**
