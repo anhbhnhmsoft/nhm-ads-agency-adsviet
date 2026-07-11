@@ -71,6 +71,7 @@ return [
     'telegram' => [
         'low_balance' => "⚠️ Your wallet only has :balance USDT (threshold :threshold USDT).\nPlease top up to avoid service interruption.",
         'deposit_group_alert' => "⚠️ <b>Deposit notification</b> ⚠️\n<b>Name:</b>:name\n<b>Network:</b> :network\n<b>Amount:</b> :amount\n<b>Transaction:</b> :transaction_code\n<b>Order:</b> :order_code\n<b>Time:</b> :time",
+        'creditline_limit_reached' => "Hello :name, your service :package has reached the credit line safety threshold.\n- Total top-up: :total_top_up USDT\n- Total spend: :total_spend USD\n- Remaining: :remaining_credit USD\nCampaigns have been paused as the remaining credit fell below :pause_limit USD. Please top up to resume.",
     ],
     'postpay_charge_insufficient' => 'Hello :name, the spending fee due is :charge USDT, but your wallet balance is :balance USDT or below the required minimum :min_wallet USDT. Please top up to keep services running.',
     'postpay_charge_label' => 'Postpaid spending fee',
@@ -105,10 +106,14 @@ return [
         'account_top_up_cancelled_admin' => 'Admin cancelled the ad account top-up request',
         'cashback' => 'Cashback :percent% based on total spend in period :period.',
         'open_fee_refund' => 'Open fee refund :amount USD after reaching minimum spend threshold.',
+        'account_refund_detail' => 'Refund unused balance of account :account (:account_id) | Refunded amount: :remaining :currency, fee refunded: :fee :currency',
     ],
     'error' => [
         'wallet_not_found' => 'Wallet not found',
         'wallet_password_invalid' => 'Wallet password is incorrect',
         'wallet_balance_not_enough' => 'Insufficient balance',
+        'account_not_found' => 'Ad account not found',
+        'account_not_linked' => 'Account is not assigned to this service',
+        'no_remaining_balance' => 'Account has no remaining balance to refund',
     ],
 ];

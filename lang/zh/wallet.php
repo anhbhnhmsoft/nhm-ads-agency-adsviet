@@ -19,6 +19,7 @@ return [
         'account_top_up_google' => 'Google Ads 帐户充值',
         'account_top_up_meta' => '元广告帐户充值',
         'spending_fee' => '消费费用',
+        'account_refund' => '广告账户退款',
     ],
     'transaction_status' => [
         'unknown' => '未知',
@@ -47,6 +48,7 @@ return [
         'account_top_up_created' => '已创建广告帐户充值请求。请等待管理员处理。',
         'campaign_pause_created' => '已创建营销活动暂停请求。请等待管理员处理。',
         'campaign_end_created' => '活动结束请求已创建。请等待管理员处理。',
+        'account_refund_success' => '已成功将广告账户余额退还至钱包。',
     ],
     'deposit_disabled_temporarily' => '通过支付网关的在线存款暂时被禁用。请转账至配置的钱包地址并等待管理员审核。',
     'validation' => [
@@ -69,6 +71,7 @@ return [
     'telegram' => [
         'low_balance' => "⚠️您的钱包仅有:balanceUSDT（阈值:thresholdUSDT）。\n请充值，以免服务中断。",
         'deposit_group_alert' => "⚠️ <b>存款通知</b> ⚠️\n<b>姓名：</b>:name\n<b>网络：</b>:network\n<b>金额：</b>:amount\n<b>交易：</b>:transaction_code\n<b>订单：</b>:order_code\n<b>时间：</b>:time",
+        'creditline_limit_reached' => "您好 :name，您的服务 :package 已达到信用额度安全阈值。\n- 总充值：:total_top_up USDT\n- 总花费：:total_spend USD\n- 剩余：:remaining_credit USD\n由于剩余信用额度低于 :pause_limit USD，广告活动已暂停。请进行充值以恢复运行。",
     ],
     'postpay_charge_insufficient' => ':name您好，应付的消费费用为:chargeUSDT，但您的钱包余额为:balanceUSDT或低于要求的最低:min_walletUSDT。请充值以保持服务运行。',
     'postpay_charge_label' => '后付费消费费',
@@ -103,10 +106,14 @@ return [
         'account_top_up_cancelled_admin' => '管理员取消了广告帐户充值请求',
         'cashback' => '现金返还:percent%，基于:period期间的总支出。',
         'open_fee_refund' => '达到最低支出门槛后，开盘费退还:amount美元。',
+        'account_refund_detail' => '退还广告账户 :account (:account_id) 余额 | 退还金额：:remaining :currency，退还手续费：:fee :currency',
     ],
     'error' => [
         'wallet_not_found' => '找不到钱包',
         'wallet_password_invalid' => '钱包密码不正确',
         'wallet_balance_not_enough' => '余额不足',
+        'account_not_found' => '广告账户不存在',
+        'account_not_linked' => '此账户未关联到此服务',
+        'no_remaining_balance' => '此账户没有可退还的余额',
     ],
 ];

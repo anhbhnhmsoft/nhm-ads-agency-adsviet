@@ -336,7 +336,17 @@
         "support_request_note_label": "Mô tả chi tiết yêu cầu",
         "support_request_note_placeholder": "Nhập thêm thông tin như ID tài khoản, số tiền muốn chuyển, user nhận BM/BC/MCC...",
         "support_request_submit": "Gửi yêu cầu",
-        "support_request_success": "Đã tạo yêu cầu hỗ trợ thành công. Bạn sẽ được chuyển sang trang Hỗ trợ để theo dõi."
+        "support_request_success": "Đã tạo yêu cầu hỗ trợ thành công. Bạn sẽ được chuyển sang trang Hỗ trợ để theo dõi.",
+        "account_refund": "Hoàn tiền",
+        "account_refund_title": "Hoàn tiền dư tài khoản quảng cáo",
+        "account_refund_description": "Hoàn số tiền dư (chưa sử dụng) từ tài khoản quảng cáo về ví của bạn.",
+        "refund_breakdown_title": "Chi tiết hoàn tiền",
+        "refund_remaining": "Tiền dư còn lại",
+        "refund_fee": "Phí dịch vụ hoàn lại",
+        "refund_total": "Tổng hoàn",
+        "account_refund_submit": "Xác nhận hoàn tiền",
+        "account_refund_success": "Đã hoàn {{amount}} USD về ví.",
+        "account_refund_error": "Không thể hoàn tiền. Vui lòng thử lại."
     },
     "auth": {
         "components": {

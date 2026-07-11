@@ -56,57 +56,59 @@ class WalletTransactionService
                 return;
             }
 
-            $amount = (float) $transaction->amount;
-            $amountFormatted = number_format($amount, 2);
+            \App\Core\UserLocale::run($user, function () use ($transaction, $user) {
+                $amount = (float) $transaction->amount;
+                $amountFormatted = number_format($amount, 2);
 
-            $typeOptions = WalletTransactionType::getOptions();
-            $typeLabel = $typeOptions[$transaction->type] ?? $typeOptions[WalletTransactionType::UNKNOWN->value];
+                $typeOptions = WalletTransactionType::getOptions();
+                $typeLabel = $typeOptions[$transaction->type] ?? $typeOptions[WalletTransactionType::UNKNOWN->value];
 
-            $sign = $amount >= 0 ? '+' : '';
-            $lines = [
-                __('wallet.notifications.title', ['type' => $typeLabel]),
-                __('wallet.notifications.amount', ['amount' => $sign.$amountFormatted]),
-            ];
-            $description = (string) ($transaction->description ?? '');
-            $descriptionText = $description;
-            if ($description !== '' && str_starts_with($description, 'wallet.transaction_description.')) {
-                $descriptionText = __($description);
-            }
-            if ($descriptionText !== '') {
-                $lines[] = __('wallet.notifications.description', ['description' => $descriptionText]);
-            }
-            $message = implode("\n", $lines);
-
-            // Gửi thông báo qua Telegram/Email
-            $this->userAlertService->sendPlainText(
-                $user,
-                $message,
-                function (MailService $mailService, User $u) use ($typeLabel, $amount, $descriptionText) {
-                    return $mailService->sendWalletTransactionAlert(
-                        email: $u->email,
-                        username: $u->name ?? $u->username,
-                        typeLabel: $typeLabel,
-                        amount: $amount,
-                        description: $descriptionText ?: null,
-                    );
+                $sign = $amount >= 0 ? '+' : '';
+                $lines = [
+                    __('wallet.notifications.title', ['type' => $typeLabel]),
+                    __('wallet.notifications.amount', ['amount' => $sign.$amountFormatted]),
+                ];
+                $description = (string) ($transaction->description ?? '');
+                $descriptionText = $description;
+                if ($description !== '' && str_starts_with($description, 'wallet.transaction_description.')) {
+                    $descriptionText = __($description);
                 }
-            );
+                if ($descriptionText !== '') {
+                    $lines[] = __('wallet.notifications.description', ['description' => $descriptionText]);
+                }
+                $message = implode("\n", $lines);
 
-            // Tạo notification trong database
-            $title = __('wallet.notifications.title', ['type' => $typeLabel]);
-            $description = $message;
-            $this->notificationService->send(
-                userId: (int) $user->id,
-                title: $title,
-                description: $description,
-                data: [
-                    'transaction_id' => $transaction->id,
-                    'type' => $transaction->type,
-                    'status' => $transaction->status,
-                    'amount' => $amount,
-                ],
-                type: NotificationType::WALLET->value
-            );
+                // Gửi thông báo qua Telegram/Email
+                $this->userAlertService->sendPlainText(
+                    $user,
+                    $message,
+                    function (MailService $mailService, User $u) use ($typeLabel, $amount, $descriptionText) {
+                        return $mailService->sendWalletTransactionAlert(
+                            email: $u->email,
+                            username: $u->name ?? $u->username,
+                            typeLabel: $typeLabel,
+                            amount: $amount,
+                            description: $descriptionText ?: null,
+                        );
+                    }
+                );
+
+                // Tạo notification trong database
+                $title = __('wallet.notifications.title', ['type' => $typeLabel]);
+                $description = $message;
+                $this->notificationService->send(
+                    userId: (int) $user->id,
+                    title: $title,
+                    description: $description,
+                    data: [
+                        'transaction_id' => $transaction->id,
+                        'type' => $transaction->type,
+                        'status' => $transaction->status,
+                        'amount' => $amount,
+                    ],
+                    type: NotificationType::WALLET->value
+                );
+            });
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'WalletTransactionService@notifyTransaction error: '.$e->getMessage(),
@@ -1559,13 +1561,13 @@ class WalletTransactionService
             $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
 
             // Tạo transaction REFUND
-            $description = __('wallet.transaction_description.account_top_up_detail', [
+            $description = __('wallet.transaction_description.account_refund_detail', [
                 'account' => $account->account_name ?? '-',
                 'account_id' => $accountId,
-            ]) . " | Hoàn tiền dư: $remaining $accountCurrency";
-            if ($feeRefund > 0) {
-                $description .= " + phí hoàn: $feeRefund $accountCurrency";
-            }
+                'remaining' => number_format($remaining, 2),
+                'fee' => number_format($feeRefund, 2),
+                'currency' => $accountCurrency,
+            ]);
 
             $type = WalletTransactionType::ACCOUNT_REFUND;
             if ((int) $platform === PlatformType::GOOGLE->value) {

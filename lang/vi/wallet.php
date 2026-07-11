@@ -71,6 +71,7 @@ return [
     'telegram' => [
         'low_balance' => "⚠️ Ví của bạn chỉ còn :balance USDT (ngưỡng cảnh báo :threshold USDT).\nVui lòng nạp thêm để tránh gián đoạn dịch vụ.",
         'deposit_group_alert' => "⚠️ <b>Thông báo nạp</b> ⚠️\n<b>Name:</b>:name\n<b>Kiểu:</b> :network\n<b>Số tiền:</b> :amount\n<b>Mã giao dịch:</b> :transaction_code\n<b>Mã đơn:</b> :order_code\n<b>Thời gian:</b> :time",
+        'creditline_limit_reached' => "Xin chào :name, dịch vụ :package đã chạm ngưỡng an toàn creditline.\n- Tổng top up: :total_top_up USDT\n- Tổng spend: :total_spend USD\n- Còn lại: :remaining_credit USD\nCampaign đã được tạm dừng khi hạn mức còn khoảng :pause_limit USD, vui lòng top up thêm để tiếp tục chạy.",
     ],
     'postpay_charge_insufficient' => 'Xin chào :name, phí spending cần thu là :charge USDT nhưng số dư ví hiện tại :balance USDT không đủ hoặc chưa đạt mức duy trì tối thiểu :min_wallet USDT. Vui lòng nạp thêm để tiếp tục duy trì dịch vụ.',
     'postpay_charge_label' => 'Thu phí spending trả sau',
@@ -105,6 +106,7 @@ return [
         'account_top_up_cancelled_admin' => 'Admin hủy yêu cầu nạp tiền tài khoản quảng cáo',
         'cashback' => 'Hoàn tiền thưởng (Cashback) :percent% dựa trên tổng chi tiêu kỳ :period.',
         'open_fee_refund' => 'Hoàn phí mở tài khoản :amount USD khi đạt ngưỡng chi tiêu.',
+        'account_refund_detail' => 'Hoàn tiền dư tài khoản :account (:account_id) | Số dư hoàn: :remaining :currency, phí hoàn lại: :fee :currency',
     ],
     'error' => [
         'wallet_not_found' => 'Ví không tồn tại',

@@ -122,30 +122,32 @@ class ServicesBillPostpay extends Command
                             // Gửi thông báo cho khách (Telegram hoặc email)
                             $user = $wallet->user;
                             if ($user) {
-                                $shortName = $user->name ?? $user->username ?? 'Customer';
-                                $balanceFormatted = number_format((float) $wallet->balance, 2);
-                                $chargeFormatted = number_format($chargeAmount, 2);
-                                $spendingFeeFormatted = number_format($chargeAmount, 2);
-                                $message = __('wallet.postpay_charge_insufficient', [
-                                    'name' => $shortName,
-                                    'balance' => $balanceFormatted,
-                                    'charge' => $chargeFormatted,
-                                    'monthly_fee' => $spendingFeeFormatted,
-                                    'open_fee' => number_format(0, 2),
-                                    'min_wallet' => number_format(self::MIN_WALLET_BALANCE, 2),
-                                ]);
+                                \App\Core\UserLocale::run($user, function () use ($user, $wallet, $chargeAmount) {
+                                    $shortName = $user->name ?? $user->username ?? 'Customer';
+                                    $balanceFormatted = number_format((float) $wallet->balance, 2);
+                                    $chargeFormatted = number_format($chargeAmount, 2);
+                                    $spendingFeeFormatted = number_format($chargeAmount, 2);
+                                    $message = __('wallet.postpay_charge_insufficient', [
+                                        'name' => $shortName,
+                                        'balance' => $balanceFormatted,
+                                        'charge' => $chargeFormatted,
+                                        'monthly_fee' => $spendingFeeFormatted,
+                                        'open_fee' => number_format(0, 2),
+                                        'min_wallet' => number_format(self::MIN_WALLET_BALANCE, 2),
+                                    ]);
 
-                                if (!empty($user->telegram_id)) {
-                                    $this->telegramService->sendNotification($user->telegram_id, $message);
-                                } elseif (!empty($user->email) && !empty($user->email_verified_at)) {
-                                    $this->mailService->sendWalletTransactionAlert(
-                                        email: $user->email,
-                                        username: $shortName,
-                                        typeLabel: __('wallet.postpay_charge_label'),
-                                        amount: $chargeAmount,
-                                        description: $message,
-                                    );
-                                }
+                                    if (!empty($user->telegram_id)) {
+                                        $this->telegramService->sendNotification($user->telegram_id, $message);
+                                    } elseif (!empty($user->email) && !empty($user->email_verified_at)) {
+                                        $this->mailService->sendWalletTransactionAlert(
+                                            email: $user->email,
+                                            username: $shortName,
+                                            typeLabel: __('wallet.postpay_charge_label'),
+                                            amount: $chargeAmount,
+                                            description: $message,
+                                        );
+                                    }
+                                });
                             }
 
                             continue;

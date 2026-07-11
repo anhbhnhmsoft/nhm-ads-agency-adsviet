@@ -254,30 +254,33 @@ class EnforceCreditlineLimits extends Command
             return;
         }
 
-        $name = $user->name ?? $user->username ?? 'Customer';
-        $message = sprintf(
-            'Xin chào %s, dịch vụ %s đã chạm ngưỡng an toàn creditline. Tổng top up: %s USDT, tổng spend: %s USD, còn lại: %s. Campaign đã được tạm dừng khi hạn mức còn khoảng %s USD, vui lòng top up thêm để tiếp tục chạy.',
-            $name,
-            $serviceUser->package?->name ?? (string) $serviceUser->id,
-            number_format($totalTopUp, 2),
-            number_format($totalSpend, 2),
-            number_format($remainingCredit, 2),
-            number_format(self::PAUSE_REMAINING_CREDIT, 2),
-        );
+        \App\Core\UserLocale::run($user, function () use ($serviceUser, $user, $totalTopUp, $totalSpend, $remainingCredit) {
+            $name = $user->name ?? $user->username ?? 'Customer';
+            $packageName = $serviceUser->package?->name ?? (string) $serviceUser->id;
 
-        if (!empty($user->telegram_id)) {
-            $this->telegramService->sendNotification($user->telegram_id, $message);
-            return;
-        }
+            $message = __('wallet.telegram.creditline_limit_reached', [
+                'name' => $name,
+                'package' => $packageName,
+                'total_top_up' => number_format($totalTopUp, 2),
+                'total_spend' => number_format($totalSpend, 2),
+                'remaining_credit' => number_format($remainingCredit, 2),
+                'pause_limit' => number_format(self::PAUSE_REMAINING_CREDIT, 2),
+            ]);
 
-        if (!empty($user->email) && !empty($user->email_verified_at)) {
-            $this->mailService->sendWalletTransactionAlert(
-                email: $user->email,
-                username: $name,
-                typeLabel: 'Creditline limit',
-                amount: max(0.0, abs($remainingCredit)),
-                description: $message,
-            );
-        }
+            if (!empty($user->telegram_id)) {
+                $this->telegramService->sendNotification($user->telegram_id, $message);
+                return;
+            }
+
+            if (!empty($user->email) && !empty($user->email_verified_at)) {
+                $this->mailService->sendWalletTransactionAlert(
+                    email: $user->email,
+                    username: $name,
+                    typeLabel: __('wallet.notifications.title', ['type' => 'Creditline limit']),
+                    amount: max(0.0, abs($remainingCredit)),
+                    description: $message,
+                );
+            }
+        });
     }
 }

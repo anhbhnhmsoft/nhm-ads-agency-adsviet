@@ -417,7 +417,17 @@
         "support_request_note_label": "索取详情",
         "support_request_note_placeholder": "添加更多信息，例如广告帐户 ID、转账金额、BM/BC/MCC 的目标用户...",
         "support_request_submit": "提交请求",
-        "support_request_success": "支持请求已成功创建。您将被重定向到支持页面。"
+        "support_request_success": "支持请求已成功创建。您将被重定向到支持页面。",
+        "account_refund": "退款",
+        "account_refund_title": "广告账户退款",
+        "account_refund_description": "将广告账户中的剩余（未使用）余额退还到您的钱包。",
+        "refund_breakdown_title": "退款详情",
+        "refund_remaining": "剩余余额",
+        "refund_fee": "退还的服务费",
+        "refund_total": "总退款额",
+        "account_refund_submit": "确认退款",
+        "account_refund_success": "已成功退还 {{amount}} USD 至钱包。",
+        "account_refund_error": "无法退款。请重试。"
     },
     "transactions": {
         "title": "交易管理",

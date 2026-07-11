@@ -417,7 +417,17 @@
         "support_request_note_label": "Request details",
         "support_request_note_placeholder": "Add more information such as ad account IDs, amount to transfer, target user for BM/BC/MCC...",
         "support_request_submit": "Submit request",
-        "support_request_success": "Support request has been created successfully. You will be redirected to the Support page."
+        "support_request_success": "Support request has been created successfully. You will be redirected to the Support page.",
+        "account_refund": "Refund",
+        "account_refund_title": "Ad Account Refund",
+        "account_refund_description": "Refund the remaining (unused) balance from the ad account to your wallet.",
+        "refund_breakdown_title": "Refund Breakdown",
+        "refund_remaining": "Remaining Balance",
+        "refund_fee": "Refunded Service Fee",
+        "refund_total": "Total Refund",
+        "account_refund_submit": "Confirm Refund",
+        "account_refund_success": "Refunded {{amount}} USD to wallet successfully.",
+        "account_refund_error": "Cannot refund. Please try again."
     },
     "transactions": {
         "title": "Transaction management",

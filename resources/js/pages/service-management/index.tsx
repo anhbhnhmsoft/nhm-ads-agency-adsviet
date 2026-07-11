@@ -2256,6 +2256,7 @@ const ServiceManagementIndex = ({
                                     const data = response.data?.data;
                                     toast.success(
                                         t('service_management.account_refund_success', {
+                                            amount: data?.total_refund?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '?',
                                             defaultValue: `Đã hoàn ${data?.total_refund?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '?'} USD về ví.`,
                                         }),
                                     );
