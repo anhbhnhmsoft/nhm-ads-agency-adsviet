@@ -207,19 +207,19 @@ class ServicesBillPostpay extends Command
     private function getSpendingBetween(string $serviceUserId, string $fromDate, string $toDate): float
     {
         // Dùng amount_spent từ meta_accounts/google_accounts (cập nhật realtime bởi sync job)
-        // thay vì insights (bị delay do timezone + rate limit)
+        // Meta API trả cents cho USD → chia 100 để chuyển sang dollars
 
-        // Meta spend: SUM(amount_spent) — amount_spent là varchar nên cần CAST
+        // Meta spend
         $metaSpend = (float) DB::table('meta_accounts')
             ->where('service_user_id', $serviceUserId)
             ->whereNull('deleted_at')
-            ->sum(DB::raw("CAST(NULLIF(amount_spent, '') AS DECIMAL(18,4))"));
+            ->sum(DB::raw("COALESCE(CAST(NULLIF(amount_spent, '') AS DECIMAL(18,4)) / 100, 0)"));
 
-        // Google spend: SUM(amount_spent)
+        // Google spend
         $googleSpend = (float) DB::table('google_accounts')
             ->where('service_user_id', $serviceUserId)
             ->whereNull('deleted_at')
-            ->sum(DB::raw("CAST(NULLIF(amount_spent, '') AS DECIMAL(18,4))"));
+            ->sum(DB::raw("COALESCE(CAST(NULLIF(amount_spent, '') AS DECIMAL(18,4)) / 100, 0)"));
 
         return $metaSpend + $googleSpend;
     }
