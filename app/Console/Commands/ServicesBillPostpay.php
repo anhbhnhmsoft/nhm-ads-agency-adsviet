@@ -159,7 +159,7 @@ class ServicesBillPostpay extends Command
                                 'amount' => -$chargeAmount,
                                 'type' => WalletTransactionType::SPENDING_FEE->value,
                                 'status' => WalletTransactionStatus::COMPLETED->value,
-                                'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend): {$package->name}",
+                                'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$spending}): {$package->name}",
                                 'reference_id' => (string) $serviceUser->id,
                                 'withdraw_info' => [
                                     'purpose' => 'spending_fee',
@@ -169,6 +169,8 @@ class ServicesBillPostpay extends Command
                                     'billed_spend_before' => $billedSpend,
                                     'billed_spend_after' => $spending,
                                     'threshold' => self::SPENDING_FEE_CHARGE_THRESHOLD,
+                                    'last_billed_at' => $serviceUser->last_postpay_billed_at?->toDateTimeString() ?? null,
+                                    'charged_at' => now()->toDateTimeString(),
                                 ],
                             ]);
 
@@ -178,7 +180,7 @@ class ServicesBillPostpay extends Command
                                 'type' => ServiceUserTransactionType::FEE->value,
                                 'status' => ServiceUserTransactionStatus::COMPLETED->value,
                                 'reference_id' => (string) $walletTransaction->id,
-                                'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend): {$package->name}",
+                                'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$spending}): {$package->name}",
                             ]);
 
                             $config['spending_fee_billed_spend'] = $spending;

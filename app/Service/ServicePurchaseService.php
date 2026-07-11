@@ -104,15 +104,12 @@ class ServicePurchaseService
                     : (float) $package->top_up_fee;
                 $serviceFee = $topUpAmount > 0 ? ($topUpAmount * $serviceFeePercent / 100) : 0;
 
-                // Tạm ẩn: bỏ logic số lượng tài khoản - hiện tại mỗi đơn chỉ mua 1 TK
-                // $accountsCount = 1;
-                // if (isset($configAccount['accounts']) && is_array($configAccount['accounts']) && count($configAccount['accounts']) > 0) {
-                //     $accountsCount = count($configAccount['accounts']);
-                // }
-                // $openFeePayable = $openFee * $accountsCount;
-
-                // Phí mở tài khoản: chỉ tính 1 TK
-                $openFeePayable = $openFee;
+                // Phí mở tài khoản = số TK × phí mỗi TK
+                $accountsCount = 1;
+                if (isset($configAccount['accounts']) && is_array($configAccount['accounts']) && count($configAccount['accounts']) > 0) {
+                    $accountsCount = count($configAccount['accounts']);
+                }
+                $openFeePayable = $openFee * $accountsCount;
 
                 // Tổng tiền = phí mở + top-up + phí dịch vụ top-up
                 $totalCost = $openFeePayable + $topUpAmount + $serviceFee;
