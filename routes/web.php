@@ -41,6 +41,28 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 // Route Webhook NowPayments tạm thời tắt vì chuyển sang duyệt nạp thủ công
 // Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('nowpayments_webhook');
+Route::get('/webhooks/meta', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])
+    ->name('meta_webhook_verify')
+    ->withoutMiddleware([
+        AddQueuedCookiesToResponse::class,
+        AddLinkHeadersForPreloadedAssets::class,
+        HandleAppearance::class,
+        HandleInertiaRequests::class,
+        SetLocale::class,
+        ShareErrorsFromSession::class,
+    ]);
+
+Route::post('/webhooks/meta', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])
+    ->name('meta_webhook')
+    ->withoutMiddleware([
+        AddQueuedCookiesToResponse::class,
+        AddLinkHeadersForPreloadedAssets::class,
+        HandleAppearance::class,
+        HandleInertiaRequests::class,
+        SetLocale::class,
+        ShareErrorsFromSession::class,
+    ]);
+
 Route::post('/webhooks/coinremitter', [CoinRemitterWebhookController::class, 'handle'])
     ->withoutMiddleware([
         AddQueuedCookiesToResponse::class,

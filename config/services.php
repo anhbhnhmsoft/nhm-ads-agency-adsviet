@@ -81,5 +81,8 @@ return [
         'base_url' => env('EXCHANGE_RATE_API_BASE_URL', 'https://open.er-api.com/v6/latest'),
         'target_currency' => env('EXCHANGE_RATE_TARGET_CURRENCY', 'USD'),
     ],
+    'meta_webhook' => [
+        'verify_token' => env('META_WEBHOOK_VERIFY_TOKEN', 'adviet_meta_webhook_2026'),
+    ],
     'mobile_deep_link' => env('EXPO_DEEP_LINK'),
 ];

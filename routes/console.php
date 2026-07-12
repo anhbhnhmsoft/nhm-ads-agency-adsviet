@@ -16,8 +16,8 @@ Schedule::command('notifications:wallet-low-balance')->dailyAt('09:00');
 // Tự động kiểm tra token/key nền tảng mỗi ngày
 Schedule::command('platform-settings:check-tokens')->dailyAt('00:10');
 
-// Kiểm tra và auto-pause accounts nếu balance dương và vượt ngưỡng mỗi 5 phút
-Schedule::command('accounts:check-and-auto-pause')->everyFiveMinutes();
+// Fallback: Kiểm tra auto-pause accounts mỗi 30 phút (chính là webhook Meta push realtime)
+Schedule::command('accounts:check-and-auto-pause')->everyThirtyMinutes();
 
 // Billing spending fee theo ngưỡng chi tiêu, chạy sau mỗi nhịp sync insight
 Schedule::command('services:bill-postpay')->everyThirtyMinutes();

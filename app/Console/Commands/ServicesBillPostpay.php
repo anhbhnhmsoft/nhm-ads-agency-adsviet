@@ -210,20 +210,41 @@ class ServicesBillPostpay extends Command
 
     private function getSpendingBetween(string $serviceUserId, string $fromDate, string $toDate): float
     {
-        // Dùng amount_spent từ meta_accounts/google_accounts (cập nhật realtime bởi sync job)
-        // Meta API trả cents cho USD → chia 100 để chuyển sang dollars
+        $currencyService = app(\App\Service\CurrencyExchangeService::class);
 
-        // Meta spend
-        $metaSpend = (float) DB::table('meta_accounts')
+        // Meta spend: convert từng account theo currency → USD
+        $metaAccounts = DB::table('meta_accounts')
             ->where('service_user_id', $serviceUserId)
             ->whereNull('deleted_at')
-            ->sum(DB::raw("COALESCE(CAST(NULLIF(amount_spent, '') AS DECIMAL(18,4)) / 100, 0)"));
+            ->select('amount_spent', 'currency')
+            ->get();
+
+        $metaSpend = 0.0;
+        foreach ($metaAccounts as $a) {
+            $raw = (float) ($a->amount_spent ?? 0);
+            $currency = strtoupper($a->currency ?? 'USD');
+            // Zero-decimal currencies: VND, JPY, KRW, etc. → không chia 100
+            $zeroDecimal = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
+            $amount = in_array($currency, $zeroDecimal) ? $raw : $raw / 100;
+            // Convert về USD
+            $metaSpend += $currencyService->convert($amount, $currency, 'USD');
+        }
 
         // Google spend
-        $googleSpend = (float) DB::table('google_accounts')
+        $googleAccounts = DB::table('google_accounts')
             ->where('service_user_id', $serviceUserId)
             ->whereNull('deleted_at')
-            ->sum(DB::raw("COALESCE(CAST(NULLIF(amount_spent, '') AS DECIMAL(18,4)) / 100, 0)"));
+            ->select('amount_spent', 'currency')
+            ->get();
+
+        $googleSpend = 0.0;
+        foreach ($googleAccounts as $a) {
+            $raw = (float) ($a->amount_spent ?? 0);
+            $currency = strtoupper($a->currency ?? 'USD');
+            $zeroDecimal = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
+            $amount = in_array($currency, $zeroDecimal) ? $raw : $raw / 100;
+            $googleSpend += $currencyService->convert($amount, $currency, 'USD');
+        }
 
         return $metaSpend + $googleSpend;
     }

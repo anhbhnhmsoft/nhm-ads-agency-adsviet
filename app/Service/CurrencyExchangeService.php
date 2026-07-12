@@ -13,7 +13,7 @@ class CurrencyExchangeService
     private const FALLBACK_RATES_TO_USD = [
         'USD' => 1.0,
         'USDT' => 1.0,
-        'VND' => 0.000039,
+        'VND' => 0.00003846, // 26,000 VND = 1 USD
         'INR' => 0.012,
         'EUR' => 1.08,
         'GBP' => 1.27,
