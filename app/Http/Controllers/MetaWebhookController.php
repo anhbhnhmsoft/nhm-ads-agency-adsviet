@@ -72,19 +72,19 @@ class MetaWebhookController extends Controller
         $payload = $request->all();
         $object = $payload['object'] ?? null;
 
-        // Log mọi webhook nhận được
         Logging::web('MetaWebhook: Event received', [
             'object' => $object,
             'entry_count' => count($payload['entry'] ?? []),
         ]);
 
-        if ($object !== 'ad_account') {
+        // Hỗ trợ cả ad_account và campaign events
+        if (!in_array($object, ['ad_account', 'campaign'])) {
             return response()->json(['status' => 'ignored', 'object' => $object]);
         }
 
         $entries = $payload['entry'] ?? [];
         foreach ($entries as $entry) {
-            $this->processEntry($entry);
+            $this->processEntry($entry, $object);
         }
 
         return response()->json(['status' => 'ok']);
@@ -93,27 +93,36 @@ class MetaWebhookController extends Controller
     /**
      * Process a single webhook entry
      */
-    private function processEntry(array $entry): void
+    private function processEntry(array $entry, string $object): void
     {
-        $accountId = $entry['id'] ?? null;
+        $objectId = $entry['id'] ?? null;
         $changes = $entry['changes'] ?? [];
 
-        if (!$accountId) return;
+        if (!$objectId) return;
 
         foreach ($changes as $change) {
             $field = $change['field'] ?? null;
             $value = $change['value'] ?? null;
 
             Logging::web('MetaWebhook: Change received', [
-                'account_id' => $accountId,
+                'object' => $object,
+                'object_id' => $objectId,
                 'field' => $field,
                 'value' => is_array($value) ? json_encode($value) : $value,
             ]);
 
-            match ($field) {
-                'ad_status' => $this->handleAccountStatusChange($accountId, $value),
-                'spend_cap' => $this->handleSpendCapChange($accountId, $value),
-                default => Logging::web("MetaWebhook: Unhandled field: {$field}", ['account_id' => $accountId]),
+            match (true) {
+                // Ad Account events
+                $object === 'ad_account' && $field === 'ad_status' =>
+                    $this->handleAccountStatusChange($objectId, $value),
+                $object === 'ad_account' && $field === 'spend_cap' =>
+                    $this->handleSpendCapChange($objectId, $value),
+                // Campaign events
+                $object === 'campaign' && str_contains((string) $field, 'campaign') =>
+                    $this->handleCampaignChange($objectId, $value, $field),
+                // Default
+                default =>
+                    Logging::web("MetaWebhook: Unhandled field: {$field}", ['object_id' => $objectId]),
             };
         }
     }
@@ -141,6 +150,50 @@ class MetaWebhookController extends Controller
         if ($status === 'ACTIVE' || $accountStatus == 1) {
             Logging::web("MetaWebhook: Account ENABLED", ['account_id' => $accountId]);
             $this->sendAlert("🟢 Account {$accountId} đã được kích hoạt lại từ Meta webhook.");
+        }
+    }
+
+    /**
+     * Handle campaign status change
+     */
+    private function handleCampaignChange(string $campaignId, $value, string $field): void
+    {
+        // Meta gửi value là object chứa campaign_id và status
+        $campaignStatus = null;
+        if (is_array($value)) {
+            $campaignStatus = $value['status'] ?? $value['effective_status'] ?? null;
+        }
+
+        if (!$campaignStatus) {
+            Logging::web("MetaWebhook: Campaign event no status", ['campaign_id' => $campaignId, 'field' => $field]);
+            return;
+        }
+
+        Logging::web("MetaWebhook: Campaign status change", [
+            'campaign_id' => $campaignId,
+            'status' => $campaignStatus,
+        ]);
+
+        // Update status trong DB
+        try {
+            $updated = \App\Models\MetaAdsCampaign::query()
+                ->where('campaign_id', $campaignId)
+                ->update([
+                    'status' => $campaignStatus,
+                    'effective_status' => $campaignStatus,
+                    'last_synced_at' => now(),
+                ]);
+
+            if ($updated > 0) {
+                Logging::web("MetaWebhook: Campaign {$campaignId} updated to {$campaignStatus}");
+            }
+        } catch (\Throwable $e) {
+            Logging::error("MetaWebhook: Failed to update campaign {$campaignId}: " . $e->getMessage());
+        }
+
+        // Alert nếu campaign bị pause từ Meta
+        if (in_array($campaignStatus, ['PAUSED', 'DELETED'])) {
+            $this->sendAlert("⚠️ Campaign {$campaignId} changed to {$campaignStatus} từ Meta webhook.");
         }
     }
 

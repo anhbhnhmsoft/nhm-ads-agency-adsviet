@@ -20,6 +20,10 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Job phục vụ đồng bộ giữ liệu của 1 BM từ Meta API
+ *
+ * Phase 2: Chỉ sync account list + amount_spent (2 API calls).
+ * Bỏ insights polling (đã dùng amount_spent cho billing).
+ * Insights + campaigns chỉ sync khi admin bấm "Cập nhật dữ liệu Meta".
  */
 class SyncMetaJob implements ShouldQueue
 {
@@ -28,9 +32,6 @@ class SyncMetaJob implements ShouldQueue
     public int $timeout = 1800;
     public int $tries = 1;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(
         protected ServiceUser $serviceUser,
         protected bool $syncAccounts = true,
@@ -39,24 +40,20 @@ class SyncMetaJob implements ShouldQueue
         $this->onQueue(QueueKey::META_API);
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(
         MetaService $metaService,
         MetaAdsNotificationService $metaAdsNotificationService,
         TelegramService $telegramService,
     ): void
     {
-        // 1. Kiểm tra thời gian Cooldown Rate Limit
         if (Cache::has('meta_api_rate_limited_cooldown')) {
-            Logging::web("SyncMetaJob: Đang trong thời gian cooldown rate limit Meta. Bỏ qua ServiceUser ID {$this->serviceUser->id}.");
+            Logging::web("SyncMetaJob: Cooldown rate limit. Bỏ qua SU ID {$this->serviceUser->id}.");
             return;
         }
 
         try {
             if ($this->syncAccounts) {
-                // Đồng bộ tài khoản quảng cáo (BM/Asset groups/Ad accounts list)
+                // Chỉ sync account list + amount_spent (2 API calls/SU)
                 $syncResult = $metaService->syncMetaAccounts($this->serviceUser);
                 if ($syncResult->isError()) {
                     if (self::isRateLimitMessage($syncResult->getMessage())) {
@@ -65,15 +62,11 @@ class SyncMetaJob implements ShouldQueue
                     return;
                 }
             } else {
-                // Nếu không sync accounts, chỉ thiết lập ngữ cảnh/token cho BM/ServiceUser này
                 $metaService->setupSettingContextForServiceUser($this->serviceUser);
             }
 
-            // Đồng bộ chiến dịch quảng cáo và insight của ads account
-            $syncResultAds = $metaService->syncMetaAdsAndCampaigns($this->serviceUser);
-            if ($syncResultAds->isError() && self::isRateLimitMessage($syncResultAds->getMessage())) {
-                $this->handleRateLimit($telegramService, $syncResultAds->getMessage());
-            }
+            // Phase 2: KHÔNG gọi syncMetaAdsAndCampaigns ở đây nữa
+            // Insights/campaigns chỉ sync khi admin bấm "Cập nhật dữ liệu Meta" thủ công
         } catch (\Throwable $e) {
             if (self::isRateLimitException($e)) {
                 $this->handleRateLimit($telegramService, $e->getMessage());

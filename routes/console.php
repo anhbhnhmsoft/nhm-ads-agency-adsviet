@@ -27,8 +27,8 @@ Schedule::command('services:enforce-creditline-limits')
     ->everyFiveMinutes()
     ->withoutOverlapping();
 
-// Đồng bộ toàn bộ các Platform (BM+MCC) mỗi 1 tiếng
-Schedule::job(SyncAllPlatformsJob::class)->hourly();
+// Đồng bộ Platform + insights/campaigns mỗi 2 tiếng (campaign status realtime qua webhook)
+Schedule::job(SyncAllPlatformsJob::class)->everyTwoHours();
 
 // routes/console.php
 Schedule::command('app:calculate-spending-commission')->monthlyOn(1, '01:00');
