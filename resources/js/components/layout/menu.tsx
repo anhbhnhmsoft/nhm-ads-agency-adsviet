@@ -231,17 +231,6 @@ const useMenu = () => {
                         ]),
                     },
                     {
-                        title: t('ticket.refund.title', {
-                            defaultValue: 'Thanh lý tài khoản',
-                        }),
-                        url: ticket_refund().url,
-                        active: isActive(ticket_refund()),
-                        can_show: checkRole([
-                            _UserRole.CUSTOMER,
-                            _UserRole.AGENCY,
-                        ]),
-                    },
-                    {
                         title: t('ticket.appeal.title', {
                             defaultValue: 'Kháng tài khoản',
                         }),
@@ -275,12 +264,37 @@ const useMenu = () => {
                         ]),
                     },
                     {
+                        title: t('ticket.add_fund_wallet', {
+                            defaultValue: 'Nạp tiền vào ví (Add Fund)',
+                        }),
+                        url: wallet_index().url,
+                        active: isActive(wallet_index()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
                         title: t('ticket.deposit_app.title', {
-                            defaultValue: 'Nạp tiền vào tài khoản',
+                            defaultValue: 'Top up tài khoản (Trả trước)',
                         }),
                         url: ticket_deposit_app().url,
                         active: isActive(ticket_deposit_app()),
-                        can_show: false,
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
+                    },
+                    {
+                        title: t('ticket.refund.title', {
+                            defaultValue: 'Rút tiền tài khoản die về ví (Withdraw)',
+                        }),
+                        url: ticket_refund().url,
+                        active: isActive(ticket_refund()),
+                        can_show: checkRole([
+                            _UserRole.CUSTOMER,
+                            _UserRole.AGENCY,
+                        ]),
                     },
                 ],
             },

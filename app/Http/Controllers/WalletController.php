@@ -553,6 +553,35 @@ class WalletController extends Controller
         return redirect()->back();
     }
 
+    /**
+     * Admin trừ tiền từ ví khách
+     */
+    public function deductBalance(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Permission denied'], 401);
+        }
+
+        $request->validate([
+            'user_id' => 'required|string',
+            'amount' => 'required|numeric|min:0.01',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $result = $this->walletService->deductBalance(
+            userId: $request->input('user_id'),
+            amount: (float) $request->input('amount'),
+            reason: $request->input('reason'),
+        );
+
+        if ($result->isError()) {
+            return response()->json(['success' => false, 'message' => $result->getMessage()], 400);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Đã trừ tiền thành công']);
+    }
+
     public function unlock(string $userId): RedirectResponse
     {
         $result = $this->walletService->unlock($userId);

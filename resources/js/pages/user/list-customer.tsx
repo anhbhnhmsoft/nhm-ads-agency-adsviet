@@ -21,6 +21,7 @@ import {
 } from '@/routes';
 import { router, usePage } from '@inertiajs/react';
 import { ColumnDef, ColumnVisibilityState } from '@tanstack/react-table';
+import axios from 'axios';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,12 @@ const ListCustomer = ({
     const [topUpAmount, setTopUpAmount] = useState('');
     const [processingTopUp, setProcessingTopUp] = useState(false);
 
+    const [selectedDeductUser, setSelectedDeductUser] = useState<CustomerListItem | null>(null);
+    const [isDeductDialogOpen, setIsDeductDialogOpen] = useState(false);
+    const [deductAmount, setDeductAmount] = useState('');
+    const [deductReason, setDeductReason] = useState('');
+    const [processingDeduct, setProcessingDeduct] = useState(false);
+
     const handleTopUpSubmit = () => {
         const amount = Number(topUpAmount);
         if (!selectedTopUpUser || amount <= 0) return;
@@ -94,6 +101,28 @@ const ListCustomer = ({
                 },
             }
         );
+    };
+
+    const handleDeductSubmit = () => {
+        const amount = Number(deductAmount);
+        if (!selectedDeductUser || amount <= 0) return;
+
+        setProcessingDeduct(true);
+        axios.post('/wallets/deduct-balance', {
+            user_id: selectedDeductUser.id,
+            amount,
+            reason: deductReason || undefined,
+        }).then(() => {
+            setIsDeductDialogOpen(false);
+            setDeductAmount('');
+            setDeductReason('');
+            setSelectedDeductUser(null);
+            router.reload({ only: ['paginator'] });
+        }).catch((err) => {
+            alert(err?.response?.data?.message || 'Lỗi trừ tiền');
+        }).finally(() => {
+            setProcessingDeduct(false);
+        });
     };
 
     const actionCell = useActionCell<CustomerListItem>({
@@ -254,17 +283,32 @@ const ListCustomer = ({
                 header: t('wallet.top_up', { defaultValue: 'Nạp tiền thủ công' }),
                 cell: ({ row }) => {
                     return (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                setSelectedTopUpUser(row.original);
-                                setTopUpAmount('');
-                                setIsTopUpDialogOpen(true);
-                            }}
-                        >
-                            {t('wallet.top_up', { defaultValue: 'Nạp tiền' })}
-                        </Button>
+                        <div className="flex gap-1">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setSelectedTopUpUser(row.original);
+                                    setTopUpAmount('');
+                                    setIsTopUpDialogOpen(true);
+                                }}
+                            >
+                                Nạp tiền
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 border-red-300 hover:bg-red-50"
+                                onClick={() => {
+                                    setSelectedDeductUser(row.original);
+                                    setDeductAmount('');
+                                    setDeductReason('');
+                                    setIsDeductDialogOpen(true);
+                                }}
+                            >
+                                Trừ tiền
+                            </Button>
+                        </div>
                     );
                 },
                 meta: {
@@ -421,6 +465,78 @@ const ListCustomer = ({
                             disabled={!topUpAmount || Number(topUpAmount) <= 0 || processingTopUp}
                         >
                             {processingTopUp ? t('common.processing', { defaultValue: 'Đang xử lý...' }) : t('wallet.top_up', { defaultValue: 'Nạp tiền' })}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeductDialogOpen} onOpenChange={setIsDeductDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>
+                            Trừ tiền từ ví khách hàng
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-500">
+                                Khách hàng
+                            </label>
+                            <div className="font-semibold text-sm">
+                                {selectedDeductUser?.name} ({selectedDeductUser?.username})
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-500">
+                                Số dư hiện tại
+                            </label>
+                            <div className="text-sm font-medium text-gray-900">
+                                {selectedDeductUser?.wallet_balance?.toLocaleString('vi-VN', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                }) ?? '0.00'}{' '}
+                                USDT
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="deduct_amount" className="text-sm font-medium text-gray-500">
+                                Số tiền trừ (USDT) *
+                            </label>
+                            <Input
+                                id="deduct_amount"
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={deductAmount}
+                                onChange={(e) => setDeductAmount(e.target.value)}
+                                placeholder="Nhập số tiền muốn trừ..."
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="deduct_reason" className="text-sm font-medium text-gray-500">
+                                Lý do
+                            </label>
+                            <Input
+                                id="deduct_reason"
+                                value={deductReason}
+                                onChange={(e) => setDeductReason(e.target.value)}
+                                placeholder="Nhập lý do trừ tiền..."
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDeductDialogOpen(false)}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeductSubmit}
+                            disabled={!deductAmount || Number(deductAmount) <= 0 || processingDeduct}
+                        >
+                            {processingDeduct ? 'Đang xử lý...' : 'Trừ tiền'}
                         </Button>
                     </div>
                 </DialogContent>

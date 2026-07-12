@@ -957,6 +957,7 @@
     },
     "ticket": {
         "title": "Support",
+        "add_fund_wallet": "Add fund to wallet",
         "list": "Support requests",
         "create": "Create support request",
         "create_description": "Describe your issue so we can help you.",
@@ -1003,12 +1004,12 @@
         },
         "type": {
             "transfer_budget": "Transfer budget",
-            "account_liquidation": "Account liquidation",
+            "account_liquidation": "Withdraw money from dead account",
             "account_appeal": "Account appeal",
             "share_bm": "Share BM/ MCC",
             "withdraw_app": "Withdraw app wallet to customer wallet",
             "wallet_withdraw_app": "Withdraw from app wallet",
-            "wallet_deposit_app": "Deposit to account"
+            "wallet_deposit_app": "Top up account (Prepaid)"
         },
         "withdraw_app": {
             "title": "Withdraw from app wallet to customer wallet",
@@ -1020,7 +1021,7 @@
             "submit": "Create withdrawal request"
         },
         "deposit_app": {
-            "title": "Deposit to account",
+            "title": "Top up account (Prepaid)",
             "description": "Create a deposit request to an advertising account. The system will create a support ticket and a pending deposit order for admin approval.",
             "account_label": "Account to deposit",
             "account_required": "Please select an account",
@@ -1057,32 +1058,32 @@
             "notes_max": "Notes cannot exceed 1000 characters"
         },
         "refund": {
-            "title": "Account Liquidation",
+            "title": "Withdraw money from dead account to wallet (Withdraw)",
             "create_request": "Create request",
             "in_progress": "In progress",
-            "select_account": "Select liquidation account",
+            "select_account": "Select dead account to withdraw",
             "select_account_placeholder": "Select account",
             "add_account": "Add account",
             "selected_accounts": "Selected accounts",
-            "liquidation_type": "Liquidation type",
+            "liquidation_type": "Request type",
             "withdraw_to_wallet": "Withdraw Money to Wallet",
             "processing_time": "Processing time 3 working days",
             "amount_warning": "Actual amount may vary due to slow Facebook system updates",
             "notes": "Notes",
             "notes_placeholder": "Enter notes (if any)",
             "send_request": "Send request",
-            "create_success": "Account liquidation request created successfully",
+            "create_success": "Withdraw money from dead account request created successfully",
             "no_requests": "No requests yet",
             "platform_required": "Please select advertising channel",
             "platform_invalid": "Invalid advertising channel",
             "account_ids_required": "Please select at least one account",
             "account_ids_invalid": "Invalid account list",
             "account_ids_min": "Please select at least one account",
-            "liquidation_type_required": "Please select liquidation type",
-            "liquidation_type_invalid": "Invalid liquidation type",
+            "liquidation_type_required": "Please select request type",
+            "liquidation_type_invalid": "Invalid request type",
             "notes_max": "Notes cannot exceed 1000 characters",
             "platform": "Advertising channel",
-            "accounts": "Liquidation accounts"
+            "accounts": "Accounts to withdraw"
         },
         "appeal": {
             "title": "Account Appeal",

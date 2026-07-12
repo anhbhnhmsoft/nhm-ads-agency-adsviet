@@ -148,6 +148,7 @@ Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
         Route::post('/campaign-budget-update', [WalletController::class, 'campaignBudgetUpdate'])->name('wallet_campaign_budget_update');
         Route::post('/account-top-up', [WalletController::class, 'accountTopUp'])->name('wallet_account_top_up');
         Route::post('/account-refund', [WalletController::class, 'accountRefund'])->name('wallet_account_refund');
+        Route::post('/deduct-balance', [WalletController::class, 'deductBalance'])->name('wallet_deduct_balance');
         Route::post('/campaign-pause', [WalletController::class, 'campaignPause'])->name('wallet_campaign_pause');
         Route::post('/campaign-end', [WalletController::class, 'campaignEnd'])->name('wallet_campaign_end');
         Route::get('/min-amount/{network}', [WalletController::class, 'getMinimalAmount'])->name('wallet_min_amount');

@@ -957,6 +957,7 @@
     },
     "ticket": {
         "title": "支持",
+        "add_fund_wallet": "充值到钱包 (Add Fund)",
         "list": "支持请求",
         "create": "创建支持请求",
         "create_description": "描述您的问题，以便我们为您提供帮助。",
@@ -1003,12 +1004,12 @@
         },
         "type": {
             "transfer_budget": "转会预算",
-            "account_liquidation": "账户清算",
+            "account_liquidation": "死户余额提现至钱包",
             "account_appeal": "账户申诉",
             "share_bm": "分享BM/MCC",
             "withdraw_app": "将应用程序钱包提取到客户钱包",
             "wallet_withdraw_app": "从应用钱包提款",
-            "wallet_deposit_app": "存入账户"
+            "wallet_deposit_app": "广告账户充值 (Prepaid)"
         },
         "withdraw_app": {
             "title": "从应用程序钱包提现到客户钱包",
@@ -1020,7 +1021,7 @@
             "submit": "创建提款请求"
         },
         "deposit_app": {
-            "title": "存入账户",
+            "title": "广告账户充值 (Prepaid)",
             "description": "创建向广告帐户的存款请求。系统将创建支持票证和待处理的存款订单以供管理员批准。",
             "account_label": "存款账户",
             "account_required": "请选择一个帐户",
@@ -1057,32 +1058,32 @@
             "notes_max": "注释不能超过1000个字符"
         },
         "refund": {
-            "title": "账户清算",
+            "title": "死户余额提现至钱包 (Withdraw)",
             "create_request": "创建请求",
             "in_progress": "进行中",
-            "select_account": "选择强平账户",
+            "select_account": "选择死户进行提现",
             "select_account_placeholder": "选择账户",
             "add_account": "添加帐户",
             "selected_accounts": "选定的账户",
-            "liquidation_type": "清算类型",
+            "liquidation_type": "请求类型",
             "withdraw_to_wallet": "提款至钱包",
             "processing_time": "处理时间 3个工作日",
             "amount_warning": "由于 Facebook 系统更新缓慢，实际金额可能会有所不同",
             "notes": "笔记",
             "notes_placeholder": "输入注释（如果有）",
             "send_request": "发送请求",
-            "create_success": "账户清算请求创建成功",
+            "create_success": "死户余额提现至钱包请求创建成功",
             "no_requests": "还没有请求",
             "platform_required": "请选择广告渠道",
             "platform_invalid": "广告渠道无效",
             "account_ids_required": "请至少选择一个帐户",
             "account_ids_invalid": "帐户列表无效",
             "account_ids_min": "请至少选择一个帐户",
-            "liquidation_type_required": "请选择清算类型",
-            "liquidation_type_invalid": "强平类型无效",
+            "liquidation_type_required": "请选择请求类型",
+            "liquidation_type_invalid": "请求类型无效",
             "notes_max": "注释不能超过1000个字符",
             "platform": "广告渠道",
-            "accounts": "清算账户"
+            "accounts": "要提现的的账户"
         },
         "appeal": {
             "title": "账户申诉",

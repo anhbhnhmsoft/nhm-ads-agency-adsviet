@@ -282,7 +282,7 @@ class TicketController extends Controller
     /**
      * Trang thanh lý tài khoản - hiển thị form và danh sách yêu cầu
      */
-    public function refund(Request $request): Response
+    public function refund(Request $request): Response|\Illuminate\Http\RedirectResponse
     {
         $params = $this->extractQueryPagination($request);
         

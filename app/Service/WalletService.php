@@ -133,6 +133,54 @@ class WalletService
         return ServiceReturn::success();
     }
 
+    /**
+     * Admin trừ tiền từ ví khách
+     */
+    public function deductBalance(string $userId, float $amount, ?string $reason = null): ServiceReturn
+    {
+        $actor = Auth::user();
+        if (!$actor) {
+            return ServiceReturn::error(message: __('common_error.permission_denied'));
+        }
+        if (!$this->canPerformAction($actor, $userId)) {
+            return ServiceReturn::error(message: __('common_error.permission_denied'));
+        }
+
+        if ($amount <= 0) {
+            return ServiceReturn::error(message: __('Số tiền phải lớn hơn 0'));
+        }
+
+        $wallet = $this->walletRepository->findByUserId($userId);
+        if (!$wallet) {
+            return ServiceReturn::error(message: __('Ví không tồn tại'));
+        }
+
+        if ((float) $wallet->balance < $amount) {
+            return ServiceReturn::error(message: __('Số dư không đủ. Số dư hiện tại: :balance USD', ['balance' => number_format((float) $wallet->balance, 2)]));
+        }
+
+        DB::transaction(function () use ($wallet, $amount, $reason, $actor) {
+            $newBalance = (float) $wallet->balance - $amount;
+            $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
+
+            $description = "Admin trừ tiền";
+            if ($reason) {
+                $description .= ": {$reason}";
+            }
+
+            $this->transactionRepository->create([
+                'wallet_id' => $wallet->id,
+                'amount' => -$amount,
+                'type' => WalletTransactionType::REFUND->value,
+                'status' => WalletTransactionStatus::COMPLETED->value,
+                'description' => $description,
+                'reference_id' => null,
+            ]);
+        });
+
+        return ServiceReturn::success();
+    }
+
     public function resetPassword(string $userId, string $newPassword): ServiceReturn
     {
         $actor = Auth::user();

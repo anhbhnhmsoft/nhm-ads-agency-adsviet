@@ -13,11 +13,11 @@ return [
     'wallet_deposit_app_request' => 'Yêu cầu nạp tiền vào ví App',
     'Account creation request' => 'Yêu cầu tạo tài khoản',
     'Share BM/MCC request' => 'Yêu cầu share BM/MCC',
-    'Refund request' => 'Yêu cầu thanh lý tài khoản',
+    'Refund request' => 'Yêu cầu rút tiền tài khoản die về ví',
     'deposit_app' => 'Yêu cầu nạp tiền vào ví App',
     'withdraw_app' => 'Yêu cầu rút tiền về ngân hàng',
     'transfer_request' => 'Yêu cầu chuyển tiền',
-    'refund_request' => 'Yêu cầu thanh lý tài khoản',
+    'refund_request' => 'Yêu cầu rút tiền tài khoản die về ví',
     'appeal_request' => 'Yêu cầu kháng tài khoản',
     'share_request' => 'Yêu cầu share BM/MCC',
     'create_account_request' => 'Yêu cầu tạo tài khoản',
@@ -43,7 +43,7 @@ return [
     ],
     'type' => [
         'transfer' => 'Chuyển tiền',
-        'refund' => 'Thanh lý',
+        'refund' => 'Rút tiền tài khoản die',
         'appeal' => 'Kháng nghị',
         'share' => 'Chia sẻ BM/MCC',
         'create_account' => 'Tạo tài khoản',
@@ -113,7 +113,7 @@ return [
         'liquidation_type_invalid' => 'Loại thanh lý không hợp lệ',
         'notes_required' => 'Vui lòng nhập ghi chú',
         'notes_max' => 'Ghi chú không được vượt quá :max ký tự',
-        'create_success' => 'Đã tạo yêu cầu thanh lý tài khoản thành công',
+        'create_success' => 'Đã tạo yêu cầu rút tiền tài khoản die về ví thành công',
     ],
 
     'appeal' => [

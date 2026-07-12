@@ -323,9 +323,9 @@
         "campaign_update_budget_not_supported_google": "Hiện chưa hỗ trợ cập nhật ngân sách trực tiếp cho chiến dịch Google Ads.",
         "support_request_button": "Gửi yêu cầu hỗ trợ",
         "support_request_title": "Yêu cầu hỗ trợ dịch vụ",
-        "support_request_description": "Nếu bạn cần xử lý các tác vụ đặc biệt như thanh lý tài khoản, kháng tài khoản, chuyển tiền giữa các tài khoản ads hoặc chia sẻ BM/BC/MCC, hãy gửi yêu cầu tại đây. Hệ thống sẽ tạo một ticket trong trang Hỗ trợ để admin xử lý.",
+        "support_request_description": "Nếu bạn cần xử lý các tác vụ đặc biệt như rút tiền tài khoản die về ví (Withdraw), kháng tài khoản, chuyển tiền giữa các tài khoản ads hoặc chia sẻ BM/BC/MCC, hãy gửi yêu cầu tại đây. Hệ thống sẽ tạo một ticket trong trang Hỗ trợ để admin xử lý.",
         "support_request_type_label": "Loại yêu cầu",
-        "support_request_type_account_close": "Thanh lý tài khoản",
+        "support_request_type_account_close": "Rút tiền tài khoản die về ví (Withdraw)",
         "support_request_type_account_appeal": "Kháng tài khoản",
         "support_request_type_transfer_budget": "Chuyển tiền từ tài khoản ads này sang tài khoản ads khác",
         "support_request_type_share_bm": "Share BM / MCC cho user khác",
@@ -896,6 +896,7 @@
     },
     "ticket": {
         "title": "Hỗ trợ",
+        "add_fund_wallet": "Nạp tiền vào ví (Add Fund)",
         "list": "Danh sách yêu cầu hỗ trợ",
         "create": "Tạo yêu cầu hỗ trợ",
         "create_description": "Mô tả vấn đề của bạn để nhận được hỗ trợ",
@@ -942,12 +943,12 @@
         },
         "type": {
             "transfer_budget": "Chuyển tiền",
-            "account_liquidation": "Thanh lý tài khoản",
+            "account_liquidation": "Rút tiền tài khoản die về ví",
             "account_appeal": "Kháng tài khoản",
             "share_bm": "Share BM / MCC",
             "withdraw_app": "Rút ví app về ví khách",
             "wallet_withdraw_app": "Rút tiền từ ví app",
-            "wallet_deposit_app": "Nạp tiền vào tài khoản"
+            "wallet_deposit_app": "Top up tài khoản (Trả trước)"
         },
         "withdraw_app": {
             "title": "Rút tiền từ ví app về ví khách",
@@ -959,7 +960,7 @@
             "submit": "Tạo yêu cầu rút"
         },
         "deposit_app": {
-            "title": "Nạp tiền vào tài khoản",
+            "title": "Top up tài khoản (Trả trước)",
             "description": "Tạo yêu cầu nạp tiền vào tài khoản quảng cáo. Hệ thống sẽ tạo ticket hỗ trợ và lệnh nạp chờ admin duyệt.",
             "account_label": "Tài khoản cần nạp tiền",
             "account_required": "Vui lòng chọn tài khoản",
@@ -996,32 +997,32 @@
             "notes_max": "Ghi chú không được vượt quá 1000 ký tự"
         },
         "refund": {
-            "title": "Thanh lý tài khoản",
+            "title": "Rút tiền tài khoản die về ví (Withdraw)",
             "create_request": "Tạo yêu cầu",
             "in_progress": "Đang thực hiện",
-            "select_account": "Chọn tài khoản thanh lý",
+            "select_account": "Chọn tài khoản die cần rút",
             "select_account_placeholder": "Chọn tài khoản",
             "add_account": "Thêm tài khoản đã chọn",
             "selected_accounts": "Tài khoản đã chọn",
-            "liquidation_type": "Loại thanh lý",
+            "liquidation_type": "Loại yêu cầu",
             "withdraw_to_wallet": "Rút Tiền Về Ví",
             "processing_time": "Thời gian xử lý 3 ngày làm việc",
             "amount_warning": "Số tiền thực tế có thể lệch do hệ thống facebook cập nhật chậm",
             "notes": "Ghi chú",
             "notes_placeholder": "Nhập ghi chú (nếu có)",
             "send_request": "Gửi yêu cầu",
-            "create_success": "Đã tạo yêu cầu thanh lý tài khoản thành công",
+            "create_success": "Đã tạo yêu cầu rút tiền tài khoản die về ví thành công",
             "no_requests": "Chưa có yêu cầu nào",
             "platform_required": "Vui lòng chọn kênh quảng cáo",
             "platform_invalid": "Kênh quảng cáo không hợp lệ",
             "account_ids_required": "Vui lòng chọn ít nhất một tài khoản",
             "account_ids_invalid": "Danh sách tài khoản không hợp lệ",
             "account_ids_min": "Vui lòng chọn ít nhất một tài khoản",
-            "liquidation_type_required": "Vui lòng chọn loại thanh lý",
-            "liquidation_type_invalid": "Loại thanh lý không hợp lệ",
+            "liquidation_type_required": "Vui lòng chọn loại yêu cầu",
+            "liquidation_type_invalid": "Loại yêu cầu không hợp lệ",
             "notes_max": "Ghi chú không được vượt quá 1000 ký tự",
             "platform": "Kênh quảng cáo",
-            "accounts": "Tài khoản thanh lý"
+            "accounts": "Tài khoản cần rút"
         },
         "appeal": {
             "title": "Kháng tài khoản",
