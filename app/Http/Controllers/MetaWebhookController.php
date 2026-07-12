@@ -5,15 +5,11 @@ namespace App\Http\Controllers;
 use App\Core\Controller;
 use App\Core\Logging;
 use App\Service\MetaService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Hash;
+use Symfony\Component\HttpFoundation\Response;
 
 class MetaWebhookController extends Controller
 {
-    private const WEBHOOK_SECRET = 'meta_webhook_verify_token';
-
     public function __construct(
         protected MetaService $metaService,
     ) {
@@ -26,10 +22,10 @@ class MetaWebhookController extends Controller
      * - GET with hub.mode=subscribe & hub.challenge for verification
      * - POST with JSON payload for events
      */
-    public function handle(Request $request): JsonResponse
+    public function handle(Request $request): Response
     {
         // ── Verification handshake (GET) ──
-        if ($request->isMethod('GET') || $request->input('hub_mode') === 'subscribe') {
+        if ($request->isMethod('GET')) {
             return $this->verify($request);
         }
 
@@ -41,17 +37,23 @@ class MetaWebhookController extends Controller
      * Meta webhook verification
      * GET /webhooks/meta?hub.mode=subscribe&hub.challenge=xxx&hub.verify_token=xxx
      */
-    private function verify(Request $request): JsonResponse
+    private function verify(Request $request): Response
     {
-        $mode = $request->input('hub_mode');
-        $token = $request->input('hub.verify_token');
-        $challenge = $request->input('hub.challenge');
+        $mode = (string) $request->query('hub_mode', '');
+        $token = (string) $request->query('hub_verify_token', '');
+        $challenge = $request->query('hub_challenge');
 
         $expectedToken = config('services.meta_webhook.verify_token', env('META_WEBHOOK_VERIFY_TOKEN', 'adviet_meta_webhook_2026'));
 
-        if ($mode === 'subscribe' && $token === $expectedToken && $challenge) {
+        if (
+            $mode === 'subscribe'
+            && $challenge !== null
+            && $challenge !== ''
+            && hash_equals((string) $expectedToken, $token)
+        ) {
             Logging::web('MetaWebhook: Verification successful');
-            return response($challenge, 200)->header('Content-Type', 'text/plain');
+            return response((string) $challenge, Response::HTTP_OK)
+                ->header('Content-Type', 'text/plain; charset=UTF-8');
         }
 
         Logging::error('MetaWebhook: Verification failed', [
@@ -65,7 +67,7 @@ class MetaWebhookController extends Controller
     /**
      * Process Meta webhook events
      */
-    private function processEvent(Request $request): JsonResponse
+    private function processEvent(Request $request): Response
     {
         $payload = $request->all();
         $object = $payload['object'] ?? null;

@@ -50,6 +50,9 @@ Route::get('/webhooks/meta', [\App\Http\Controllers\MetaWebhookController::class
         HandleInertiaRequests::class,
         SetLocale::class,
         ShareErrorsFromSession::class,
+        StartSession::class,
+        ValidateCsrfToken::class,
+        VerifyCsrfToken::class,
     ]);
 
 Route::post('/webhooks/meta', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])
@@ -61,6 +64,9 @@ Route::post('/webhooks/meta', [\App\Http\Controllers\MetaWebhookController::clas
         HandleInertiaRequests::class,
         SetLocale::class,
         ShareErrorsFromSession::class,
+        StartSession::class,
+        ValidateCsrfToken::class,
+        VerifyCsrfToken::class,
     ]);
 
 Route::post('/webhooks/coinremitter', [CoinRemitterWebhookController::class, 'handle'])
