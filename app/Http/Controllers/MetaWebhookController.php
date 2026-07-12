@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Core\Controller;
 use App\Core\Logging;
 use App\Service\MetaService;
 use Illuminate\Http\JsonResponse;
