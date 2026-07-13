@@ -499,6 +499,18 @@ class WalletTransactionService
                     $transaction->update(['description' => $transaction->description . $autoIncreaseDescription]);
                 }
 
+                // Track total_topped_up trong config_service_user để tính remaining khi spend_cap bị reset
+                if ($serviceUserId && $accountId) {
+                    $su = \App\Models\ServiceUser::find($serviceUserId);
+                    if ($su) {
+                        $cfg = $su->config_account ?? [];
+                        $toppedUpKey = "topped_up_{$accountId}";
+                        $cfg[$toppedUpKey] = ($cfg[$toppedUpKey] ?? 0) + $topUpAmount;
+                        $su->config_account = $cfg;
+                        $su->save();
+                    }
+                }
+
                 $this->notifyTransaction($transaction, $wallet->user?->id);
 
                 return ServiceReturn::success(data: $transaction);
@@ -1535,6 +1547,15 @@ class WalletTransactionService
                 $spendCap = $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $accountCurrency) ?? 0.0;
                 $amountSpent = $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $accountCurrency) ?? 0.0;
                 $remaining = max(0.0, $spendCap - $amountSpent);
+
+                // Fallback: dùng total_topped_up khi spend_cap = 0 (Meta reset sau disable)
+                if ($remaining <= 0 && $serviceUser) {
+                    $suConfig = $serviceUser->config_account ?? [];
+                    $totalToppedUp = $suConfig["topped_up_{$accountId}"] ?? 0;
+                    if ($totalToppedUp > 0) {
+                        $remaining = max(0.0, $totalToppedUp - $amountSpent);
+                    }
+                }
             } elseif ((int) $platform === PlatformType::GOOGLE->value) {
                 $account = \App\Models\GoogleAccount::query()
                     ->where('account_id', $accountId)

@@ -2146,7 +2146,13 @@ const ServiceManagementIndex = ({
             </Dialog>
 
             {/* Dialog Hoàn tiền dư tài khoản quảng cáo */}
-            <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+            <Dialog open={refundDialogOpen} onOpenChange={(open) => {
+                setRefundDialogOpen(open);
+                if (!open) {
+                    setSelectedAccountForRefund(null);
+                    setRefundWalletPassword('');
+                }
+            }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>

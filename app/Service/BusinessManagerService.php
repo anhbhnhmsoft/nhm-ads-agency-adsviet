@@ -505,7 +505,9 @@ class BusinessManagerService
                         }
 
                         $balanceValue = (string) $this->normalizeMetaAccountMoney($account->balance ?? 0, $account->currency ?? 'USD');
-                        $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null, $account->currency ?? 'USD');
+                        $suConfig = $serviceUser->config_account ?? [];
+                        $totalToppedUp = $suConfig["topped_up_{$account->account_id}"] ?? null;
+                        $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null, $account->currency ?? 'USD', $totalToppedUp ? (float) $totalToppedUp : null);
                         $status = $account->account_status !== null ? (int) $account->account_status : null;
                         $isActive = $this->isAccountActive((int) $platform, $status);
 
@@ -1186,14 +1188,20 @@ class BusinessManagerService
             : $amount / 100;
     }
 
-    private function calculateRemainingAmount(mixed $spendCap, mixed $amountSpent, ?string $currency = null): ?float
+    private function calculateRemainingAmount(mixed $spendCap, mixed $amountSpent, ?string $currency = null, ?float $totalToppedUp = null): ?float
     {
         $limit = $this->normalizeMetaAccountMoney($spendCap, $currency);
+        $spent = $this->normalizeMetaAccountMoney($amountSpent, $currency) ?? 0.0;
+
+        // Fallback: dùng total_topped_up khi spend_cap = 0 (Meta reset sau khi disable)
+        if (($limit === null || $limit <= 0) && $totalToppedUp !== null && $totalToppedUp > 0) {
+            return max(0.0, $totalToppedUp - $spent);
+        }
+
         if ($limit === null || $limit <= 0) {
             return null;
         }
 
-        $spent = $this->normalizeMetaAccountMoney($amountSpent, $currency) ?? 0.0;
         return max(0.0, $limit - $spent);
     }
 
@@ -1778,7 +1786,9 @@ class BusinessManagerService
                     }
 
                     $balanceValue = (string) $this->normalizeMetaAccountMoney($account->balance ?? 0, $account->currency ?? 'USD');
-                    $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null, $account->currency ?? 'USD');
+                    $suConfigG = $serviceUser->config_account ?? [];
+                    $totalToppedUpG = $suConfigG["topped_up_{$account->account_id}"] ?? null;
+                    $remainingAmount = $this->calculateRemainingAmount($account->spend_cap ?? null, $account->amount_spent ?? null, $account->currency ?? 'USD', $totalToppedUpG ? (float) $totalToppedUpG : null);
                     $status = $account->account_status !== null ? (int) $account->account_status : null;
                     $isActive = $this->isAccountActive((int) $platform, $status);
 
