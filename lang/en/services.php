@@ -34,6 +34,9 @@ return [
         'monthly_spending_fee_invalid' => 'Monthly spending & fee structure is invalid.',
         'package_in_use' => 'This package is in use and cannot be deleted.',
         'package_not_allowed' => 'You are not allowed to use this service package.',
+        'customer_required' => 'Please select a customer to purchase on behalf of.',
+        'customer_invalid' => 'The selected customer is invalid or outside your scope.',
+        'customer_scope_denied' => 'You are not allowed to purchase for this customer.',
         'postpay_min_wallet' => 'Your wallet must have at least :amount USDT to use postpaid.',
         'postpay_not_allowed' => 'You are not allowed to use postpaid payment for this service package.',
         'bm_already_used_by_customer' => 'This Business Manager is already assigned to customer :name. Please choose another Business Manager.',
@@ -51,4 +54,3 @@ return [
         'new_package_description' => 'We have launched a new service package: :name. Check it out and register now!',
     ],
 ];
-

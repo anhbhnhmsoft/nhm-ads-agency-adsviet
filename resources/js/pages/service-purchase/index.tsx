@@ -19,11 +19,12 @@ import {
     useServicePurchaseForm,
     type AccountFormData,
 } from '@/pages/service-purchase/hooks/use-form';
+import { service_purchase_index } from '@/routes';
 import type {
     ServicePackage,
     ServicePurchasePageProps,
 } from '@/pages/service-purchase/types/type';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     Calculator,
@@ -56,9 +57,15 @@ const ServicePurchaseIndex = ({
     postpay_min_balance,
     meta_timezones = [],
     google_timezones = [],
+    customers = [],
+    selected_customer_id,
+    is_staff_purchase = false,
 }: ServicePurchasePageProps) => {
     const { t } = useTranslation();
     const page = usePage();
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string>(
+        selected_customer_id || '',
+    );
     const postpayMinBalance =
         typeof postpay_min_balance === 'number' ? postpay_min_balance : 100;
     const [selectedPackage, setSelectedPackage] =
@@ -98,6 +105,16 @@ const ServicePurchaseIndex = ({
 
     const { form: purchaseForm, submit: submitPurchase } =
         useServicePurchaseForm();
+    const canBrowsePackages = !is_staff_purchase || selectedCustomerId !== '';
+    const walletBalanceLabel = is_staff_purchase
+        ? t('service_purchase.wallet_balance_of_customer', {
+              defaultValue: 'Số dư ví khách:',
+          })
+        : t('service_purchase.wallet_balance');
+
+    useEffect(() => {
+        setSelectedCustomerId(selected_customer_id || '');
+    }, [selected_customer_id]);
 
     useEffect(() => {
         const currentLocale = (page.props as any)?.locale || 'unknown';
@@ -144,6 +161,30 @@ const ServicePurchaseIndex = ({
         : requestedPaymentType;
     const topUpAmount = top_up_amount || '';
     const budgetValue = budget || '';
+
+    const resetPurchaseDraft = () => {
+        setSelectedPackage(null);
+        setShowCalculator(false);
+        setTouchedFields({});
+        setAccounts([
+            {
+                meta_email: '',
+                display_name: '',
+                bm_ids: [],
+                fanpages: [],
+                websites: [],
+                timezone_bm: '',
+                asset_access: 'full_asset',
+            },
+        ]);
+        purchaseForm.reset();
+        purchaseForm.setData({
+            payment_type: 'prepay',
+            budget: '0',
+            top_up_amount: '0',
+            asset_access: 'full_asset',
+        });
+    };
 
     useEffect(() => {
         const currentPlatform = selectedPackage?.platform;
@@ -349,6 +390,14 @@ const ServicePurchaseIndex = ({
     // Handle purchase
     const handlePurchase = () => {
         if (!selectedPackage) return;
+        if (is_staff_purchase && !selectedCustomerId) {
+            alert(
+                t('service_purchase.customer_required', {
+                    defaultValue: 'Vui lòng chọn khách hàng trước khi mua',
+                }),
+            );
+            return;
+        }
 
         // Mark all fields as touched on submit
         setTouchedFields({ topUpAmount: true /*, budget: true */ });
@@ -425,28 +474,9 @@ const ServicePurchaseIndex = ({
             bmMccConfig,
             hasAccounts ? filteredAccounts : undefined,
             () => {
-                setSelectedPackage(null);
-                setShowCalculator(false);
-                setTouchedFields({});
-                setAccounts([
-                    {
-                        meta_email: '',
-                        display_name: '',
-                        bm_ids: [],
-                        fanpages: [],
-                        websites: [],
-                        timezone_bm: '',
-                        asset_access: 'full_asset',
-                    },
-                ]);
-                purchaseForm.reset();
-                purchaseForm.setData({
-                    payment_type: 'prepay',
-                    budget: '0',
-                    top_up_amount: '0',
-                    asset_access: 'full_asset',
-                });
+                resetPurchaseDraft();
             },
+            is_staff_purchase ? selectedCustomerId : undefined,
         );
     };
 
@@ -713,7 +743,7 @@ const ServicePurchaseIndex = ({
                             <div className="flex items-center gap-2">
                                 <Wallet className="h-5 w-5 text-green-600" />
                                 <span className="font-medium">
-                                    {t('service_purchase.wallet_balance')}:
+                                    {walletBalanceLabel}:
                                 </span>
                             </div>
                             <div className="text-base font-bold text-green-600 sm:text-xl">
@@ -1257,7 +1287,8 @@ const ServicePurchaseIndex = ({
                         disabled={
                             hasInsufficientBalance ||
                             !!topUpError ||
-                            purchaseForm.processing
+                            purchaseForm.processing ||
+                            (is_staff_purchase && !selectedCustomerId)
                         }
                     >
                         <ShoppingCart className="mr-2 h-4 w-4" />
@@ -1285,15 +1316,17 @@ const ServicePurchaseIndex = ({
                     <h1 className="mb-4 text-xl font-bold text-gray-900 sm:mb-0 sm:text-3xl">
                         {t('service_purchase.service_selection')}
                     </h1>
-                    <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-2">
-                        <Wallet className="h-5 w-5 text-green-600" />
-                        <span className="text-sm text-gray-600">
-                            {t('service_purchase.wallet_balance')}:
-                        </span>
-                        <span className="font-bold text-green-600">
-                            {formatUSDT(wallet_balance)}
-                        </span>
-                    </div>
+                    {canBrowsePackages && (
+                        <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-2">
+                            <Wallet className="h-5 w-5 text-green-600" />
+                            <span className="text-sm text-gray-600">
+                                {walletBalanceLabel}:
+                            </span>
+                            <span className="font-bold text-green-600">
+                                {formatUSDT(wallet_balance)}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {selectedPackage ? (
@@ -1307,74 +1340,162 @@ const ServicePurchaseIndex = ({
                             </span>
                         </div>
 
-                        {/* Filter and Search */}
-                        <div className="flex flex-col gap-4 sm:flex-row">
-                            {/* Platform Filter */}
-                            <div className="w-full sm:w-48">
-                                <Select
-                                    value={platformFilter}
-                                    onValueChange={setPlatformFilter}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue
-                                            placeholder={t(
-                                                'service_purchase.filter_platform',
-                                                {
-                                                    defaultValue:
-                                                        'Lọc theo nền tảng',
-                                                },
-                                            )}
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">
-                                            {t('service_purchase.filter_all', {
-                                                defaultValue: 'Tất cả',
-                                            })}
-                                        </SelectItem>
-                                        <SelectItem
-                                            value={String(_PlatformType.GOOGLE)}
+                        {/* Customer Select (Staff only) */}
+                        {is_staff_purchase && customers.length > 0 && (
+                            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1">
+                                        <Label className="text-sm font-medium text-blue-800">
+                                            {t('service_purchase.select_customer_to_buy', { defaultValue: 'Chọn khách hàng để mua hộ' })} *
+                                        </Label>
+                                        <Select
+                                            value={selectedCustomerId}
+                                            onValueChange={(value) => {
+                                                setSelectedCustomerId(value);
+                                                resetPurchaseDraft();
+                                                router.get(
+                                                    service_purchase_index().url,
+                                                    value
+                                                        ? { customer_id: value }
+                                                        : {},
+                                                    {
+                                                        preserveScroll: true,
+                                                        replace: true,
+                                                    },
+                                                );
+                                            }}
                                         >
-                                            {t('enum.platform_type.google', {
-                                                defaultValue: 'Google Ads',
-                                            })}
-                                        </SelectItem>
-                                        <SelectItem
-                                            value={String(_PlatformType.META)}
-                                        >
-                                            {t('enum.platform_type.meta', {
-                                                defaultValue: 'Meta Ads',
-                                            })}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {/* Search */}
-                            <div className="relative flex-1">
-                                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                                <Input
-                                    placeholder={t(
-                                        'service_purchase.search_placeholder',
+                                            <SelectTrigger className="mt-1">
+                                                <SelectValue placeholder={t('service_purchase.choose_customer', { defaultValue: 'Chọn khách hàng...' })} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {customers.map((c) => (
+                                                    <SelectItem key={c.id} value={c.id}>
+                                                        {c.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {purchaseForm.errors.customer_id && (
+                                            <p className="mt-1 text-sm text-red-600">
+                                                {purchaseForm.errors.customer_id}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {selectedCustomerId && (
+                                        <div className="text-right">
+                                            <div className="text-xs text-blue-600">
+                                                {walletBalanceLabel}:
+                                            </div>
+                                            <div className="text-lg font-bold text-blue-800">
+                                                {wallet_balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} USDT
+                                            </div>
+                                        </div>
                                     )}
-                                    value={searchQuery}
-                                    onChange={(e) =>
-                                        setSearchQuery(e.target.value)
-                                    }
-                                    className="pl-10"
-                                />
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
-                            {filteredPackages.map(renderServiceCard)}
-                        </div>
-
-                        {filteredPackages.length === 0 && (
-                            <div className="py-12 text-center">
-                                <p className="text-gray-500">
-                                    {t('service_purchase.no_services_found')}
+                        {/* Staff chưa chọn customer */}
+                        {is_staff_purchase && !selectedCustomerId && customers.length > 0 && (
+                            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
+                                <AlertTriangle className="mx-auto mb-2 h-8 w-8 text-amber-500" />
+                                <p className="text-sm text-amber-700">
+                                    {t('service_purchase.please_select_customer_first', { defaultValue: 'Vui lòng chọn khách hàng ở trên để xem gói dịch vụ và mua hộ' })}
                                 </p>
                             </div>
+                        )}
+
+                        {canBrowsePackages && (
+                            <>
+                                {/* Filter and Search */}
+                                <div className="flex flex-col gap-4 sm:flex-row">
+                                    {/* Platform Filter */}
+                                    <div className="w-full sm:w-48">
+                                        <Select
+                                            value={platformFilter}
+                                            onValueChange={setPlatformFilter}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue
+                                                    placeholder={t(
+                                                        'service_purchase.filter_platform',
+                                                        {
+                                                            defaultValue:
+                                                                'Lọc theo nền tảng',
+                                                        },
+                                                    )}
+                                                />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    {t(
+                                                        'service_purchase.filter_all',
+                                                        {
+                                                            defaultValue:
+                                                                'Tất cả',
+                                                        },
+                                                    )}
+                                                </SelectItem>
+                                                <SelectItem
+                                                    value={String(
+                                                        _PlatformType.GOOGLE,
+                                                    )}
+                                                >
+                                                    {t(
+                                                        'enum.platform_type.google',
+                                                        {
+                                                            defaultValue:
+                                                                'Google Ads',
+                                                        },
+                                                    )}
+                                                </SelectItem>
+                                                <SelectItem
+                                                    value={String(
+                                                        _PlatformType.META,
+                                                    )}
+                                                >
+                                                    {t(
+                                                        'enum.platform_type.meta',
+                                                        {
+                                                            defaultValue:
+                                                                'Meta Ads',
+                                                        },
+                                                    )}
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    {/* Search */}
+                                    <div className="relative flex-1">
+                                        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                                        <Input
+                                            placeholder={t(
+                                                'service_purchase.search_placeholder',
+                                            )}
+                                            value={searchQuery}
+                                            onChange={(e) =>
+                                                setSearchQuery(e.target.value)
+                                            }
+                                            className="pl-10"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {filteredPackages.map(renderServiceCard)}
+                                </div>
+
+                                {filteredPackages.length === 0 && (
+                                    <div className="py-12 text-center">
+                                        <p className="text-gray-500">
+                                            {t(
+                                                'service_purchase.no_services_found',
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </>
                 )}

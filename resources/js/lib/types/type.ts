@@ -22,6 +22,14 @@ export interface IUser {
     updated_at: string;
     deleted_at: string;
 }
+
+export interface IPreviewContext {
+    is_active: boolean;
+    target: IUser | null;
+    read_only: boolean;
+    is_applied: boolean;
+}
+
 export interface IMenu {
     title: string;
     is_menu?: boolean;

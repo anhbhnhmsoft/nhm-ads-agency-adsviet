@@ -36,10 +36,18 @@ export type TimezoneOption = {
     label: string;
 };
 
+export type CustomerOption = {
+    id: string;
+    name: string;
+};
+
 export type ServicePurchasePageProps = {
     packages: PackagesProp;
     wallet_balance: number;
     postpay_min_balance?: number;
     meta_timezones?: TimezoneOption[];
     google_timezones?: TimezoneOption[];
+    customers?: CustomerOption[];
+    selected_customer_id?: string;
+    is_staff_purchase?: boolean;
 };

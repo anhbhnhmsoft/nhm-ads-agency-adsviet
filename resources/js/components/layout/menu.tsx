@@ -164,7 +164,7 @@ const useMenu = () => {
                 icon: <ShoppingCart />,
                 is_menu: true,
                 active: isActive(service_purchase_index()),
-                can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY]),
+                can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY, _UserRole.MANAGER, _UserRole.EMPLOYEE]),
             },
             // Hỗ trợ
             {

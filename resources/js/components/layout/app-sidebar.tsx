@@ -13,16 +13,17 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
             {/*Header sidebar*/}
-            <SidebarHeader>
-                <div className="flex items-center justify-center">
+            <SidebarHeader className="items-center overflow-hidden">
+                <div className="flex w-full items-center justify-center overflow-hidden px-2 py-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">
                     <img
                         src={`${logo_path}`}
-                        alt="logo"
-                        className="h-[185px] w-[185px]"
+                        alt="Adviet Agency"
+                        className="h-24 w-auto max-w-[9.5rem] object-contain transition-all duration-200 ease-linear group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:max-w-10"
                     />
                 </div>
-                <div className="px-3 py-3 text-center text-lg font-bold tracking-wide">
-                    ADVIET AGENCY
+                <div className="w-full px-2 pb-2 text-center text-sm font-bold tracking-[0.2em] text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+                    <span className="block truncate">ADVIET</span>
+                    <span className="block truncate">AGENCY</span>
                 </div>
             </SidebarHeader>
 

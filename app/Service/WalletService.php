@@ -326,7 +326,7 @@ class WalletService
         return ServiceReturn::success();
     }
 
-    public function getWalletForUser(string $targetUserId): ServiceReturn
+    public function getWalletForUser(string $targetUserId, bool $createIfMissing = true): ServiceReturn
     {
         try {
             $targetId = (string) $targetUserId;
@@ -344,6 +344,10 @@ class WalletService
             $result = $this->findByUserId($targetId);
             // Nếu wallet chưa tồn tại, tự động tạo ví mới
             if (!$result->isSuccess()) {
+                if (!$createIfMissing) {
+                    return $result;
+                }
+
                 $createResult = $this->createForUser($targetId);
                 if (!$createResult->isSuccess()) {
                     return $createResult;

@@ -4,6 +4,7 @@ import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { DataTable } from '@/components/table/data-table';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import useCheckRole from '@/hooks/use-check-role';
@@ -17,6 +18,7 @@ import {
     Manager,
 } from '@/pages/user/types/type';
 import {
+    admin_preview_start,
     user_employee_destroy,
     user_employee_edit,
     user_employee_toggle_disable,
@@ -24,7 +26,7 @@ import {
 } from '@/routes';
 import { router } from '@inertiajs/react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Check, OctagonX } from 'lucide-react';
+import { Check, Monitor, OctagonX } from 'lucide-react';
 
 type Props = {
     paginator: EmployeeListPagination;
@@ -113,14 +115,57 @@ const ListEmployee = ({ paginator, managers = [] }: Props) => {
             {
                 id: 'action',
                 header: t('common.action'),
-                cell: (cell) => actionCell(cell.row.original),
+                cell: ({ row }) => {
+                    const employee = row.original;
+                    const canPreview =
+                        isAdmin &&
+                        !employee.disabled &&
+                        [_UserRole.MANAGER, _UserRole.EMPLOYEE].includes(
+                            employee.role,
+                        );
+                    const previewTitle =
+                        employee.role === _UserRole.MANAGER
+                            ? t('user.preview_manager_ui', {
+                                  defaultValue: 'Xem giao diện quản lý',
+                              })
+                            : t('user.preview_employee_ui', {
+                                  defaultValue: 'Xem giao diện nhân viên',
+                              });
+
+                    return (
+                        <div className="flex items-center justify-center gap-2">
+                            {actionCell(employee)}
+                            {canPreview && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        router.post(
+                                            admin_preview_start({
+                                                userId: employee.id,
+                                            }).url,
+                                            {
+                                                return_url:
+                                                    window.location.href,
+                                            },
+                                        )
+                                    }
+                                    title={previewTitle}
+                                >
+                                    <Monitor className="size-4" />
+                                </Button>
+                            )}
+                        </div>
+                    );
+                },
                 meta: {
                     headerClassName: 'text-center',
                     cellClassName: 'text-center',
                 },
             },
         ],
-        [t, isAdmin],
+        [t, isAdmin, actionCell],
     );
     return (
         <div>

@@ -38,14 +38,15 @@ class ServicePurchaseService
     // Tạo order mua dịch vụ và trừ tiền ví nội bộ
 
     public function createPurchaseOrder(
-        int $userId,
+        int|string $actorUserId,
+        int|string $serviceOwnerUserId,
         string $packageId,
         float $topUpAmount = 0,
         float $budget = 0,
         array $configAccount = []
     ): ServiceReturn {
         try {
-            return DB::transaction(function () use ($userId, $packageId, $topUpAmount, $budget, $configAccount) {
+            return DB::transaction(function () use ($actorUserId, $serviceOwnerUserId, $packageId, $topUpAmount, $budget, $configAccount) {
                 $package = $this->servicePackageRepository->find($packageId);
                 if (!$package) {
                     Logging::error('Package not found: ' . $packageId);
@@ -57,11 +58,12 @@ class ServicePurchaseService
                     return ServiceReturn::error(message: __('Gói dịch vụ đã bị vô hiệu hóa'));
                 }
 
+                // Check package private theo serviceOwnerUserId (khách hàng được mua hộ)
                 if (
                     $this->servicePackageAllowedUserRepository->hasAllowedUsers($packageId)
-                    && !$this->servicePackageAllowedUserRepository->isUserAllowed($packageId, $userId)
+                    && !$this->servicePackageAllowedUserRepository->isUserAllowed($packageId, $serviceOwnerUserId)
                 ) {
-                    return ServiceReturn::error(message: __('Bạn không có quyền sử dụng gói dịch vụ này'));
+                    return ServiceReturn::error(message: __('services.validation.package_not_allowed'));
                 }
 
                 $packagePaymentType = $package->payment_type ?? ServicePackagePaymentType::PREPAY->value;
@@ -114,10 +116,10 @@ class ServicePurchaseService
                 // Tổng tiền = phí mở + top-up + phí dịch vụ top-up
                 $totalCost = $openFeePayable + $topUpAmount + $serviceFee;
 
-                $wallet = $this->walletRepository->findByUserId($userId);
+                $wallet = $this->walletRepository->findByUserId($serviceOwnerUserId);
                 if (!$wallet) {
-                    Logging::error('Wallet not found for user: ' . $userId);
-                    return ServiceReturn::error(message: __('Ví không tồn tại'));
+                    Logging::error('Wallet not found for customer: ' . $serviceOwnerUserId . ' (actor: ' . $actorUserId . ')');
+                    return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
                 }
 
                 // Kiểm tra ngưỡng tối thiểu để đăng ký trả sau (cấu hình)
@@ -132,7 +134,7 @@ class ServicePurchaseService
 
                 if ($totalCost > 0) {
                     if ((float) $wallet->balance < $totalCost) {
-                        return ServiceReturn::error(message: __('Số dư ví không đủ'));
+                        return ServiceReturn::error(message: __('wallet.error.wallet_balance_not_enough'));
                     }
                     $wallet->update(['balance' => (float) $wallet->balance - $totalCost]);
                 }
@@ -144,11 +146,11 @@ class ServicePurchaseService
 
                 $serviceUser = $this->serviceUserRepository->create([
                     'package_id' => $packageId,
-                    'user_id' => $userId,
+                    'user_id' => $serviceOwnerUserId,
                     'config_account' => $defaultConfig,
                     'status' => ServiceUserStatus::PENDING->value,
-                    'budget' => max(0, $budget), //tránh âm
-                    'description' => "Mua gói dịch vụ: {$package->name}",
+                    'budget' => max(0, $budget),
+                    'description' => "Mua gói dịch vụ: {$package->name}" . ($actorUserId !== $serviceOwnerUserId ? " (mua hộ bởi staff #{$actorUserId})" : ''),
                 ]);
 
                 $serviceUser->setRelation('package', $package);
@@ -198,6 +200,8 @@ class ServicePurchaseService
                 }
 
                 Logging::web('ServicePurchaseService@createPurchaseOrder: Wallet deducted', [
+                    'actor_user_id' => $actorUserId,
+                    'service_owner_user_id' => $serviceOwnerUserId,
                     'wallet_id' => $wallet->id,
                     'service_user_id' => $serviceUser->id,
                     'wallet_transaction_id' => $walletTransaction?->id,

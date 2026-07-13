@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\User\UserRole;
 use App\Service\PlatformSettingService;
+use App\Service\UserPreviewService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -25,9 +26,15 @@ class HandleInertiaRequests extends Middleware
      */
     protected $platformSettingService;
 
-    public function __construct(PlatformSettingService $platformSettingService)
+    protected $userPreviewService;
+
+    public function __construct(
+        PlatformSettingService $platformSettingService,
+        UserPreviewService $userPreviewService,
+    )
     {
         $this->platformSettingService = $platformSettingService;
+        $this->userPreviewService = $userPreviewService;
     }
 
     /**
@@ -39,7 +46,13 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        // Ensure preview context is resolved before shared Inertia props are built.
+        $this->userPreviewService->applyPreviewIfNeeded($request);
+
         $user = $request->user();
+        $actor = $this->userPreviewService->getActor($request);
+        $previewTarget = $this->userPreviewService->getPreviewTarget($request);
+        $isPreviewActive = $previewTarget !== null;
 
         $metaSettings = null;
         $googleSettings = null;
@@ -67,6 +80,13 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => $user,
+            'auth_actor' => $actor,
+            'preview_context' => [
+                'is_active' => $isPreviewActive,
+                'target' => $previewTarget,
+                'read_only' => $isPreviewActive,
+                'is_applied' => $this->userPreviewService->isApplied($request),
+            ],
             'current_route' => fn () => request()->path(),
             'locale' => app()->getLocale(),
             'locales' => [

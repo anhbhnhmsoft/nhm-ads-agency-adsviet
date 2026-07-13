@@ -15,7 +15,10 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { _PlatformType } from '@/lib/types/constants';
-import { type IBreadcrumbItem as BreadcrumbItemType } from '@/lib/types/type';
+import {
+    IPreviewContext,
+    type IBreadcrumbItem as BreadcrumbItemType,
+} from '@/lib/types/type';
 import { platform_settings_switch } from '@/routes';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useTransition } from 'react';
@@ -27,8 +30,8 @@ export function AppSidebarHeader({
     breadcrumbs?: BreadcrumbItemType[];
 }) {
     const { t } = useTranslation();
-    const { locale, locales, meta_settings, google_settings } = usePage()
-        .props as {
+    const { locale, locales, meta_settings, google_settings, preview_context } =
+        usePage().props as {
         locale?: string;
         locales?: { code: string; label: string }[];
         meta_settings?: {
@@ -39,6 +42,7 @@ export function AppSidebarHeader({
             current_id: string;
             list: { id: string; name: string }[];
         };
+        preview_context?: IPreviewContext | null;
     };
     const [isPending, startTransition] = useTransition();
 
@@ -125,7 +129,9 @@ export function AppSidebarHeader({
                 </Breadcrumb>
             </div>
             <div className="ml-auto flex items-center gap-4">
-                {meta_settings && meta_settings.list.length > 0 && (
+                {!preview_context?.is_active &&
+                    meta_settings &&
+                    meta_settings.list.length > 0 && (
                     <Select
                         value={meta_settings.current_id ?? ''}
                         onValueChange={handleMetaChange}
@@ -163,7 +169,9 @@ export function AppSidebarHeader({
                     </Select>
                 )}
 
-                {google_settings && google_settings.list.length > 0 && (
+                {!preview_context?.is_active &&
+                    google_settings &&
+                    google_settings.list.length > 0 && (
                     <Select
                         value={google_settings.current_id ?? ''}
                         onValueChange={handleGoogleChange}

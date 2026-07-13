@@ -199,7 +199,7 @@ export default function Index({
     ]);
     const currentUser = authUser;
 
-    if (isAdminOrStaff && adminDashboardData) {
+    if (adminDashboardData && (isAdminOrStaff || !isAgencyOrCustomer)) {
         const roleLabelKey = currentUser
             ? userRolesLabel[currentUser.role]
             : undefined;
@@ -945,7 +945,7 @@ export default function Index({
         );
     }
 
-    if (!isAgencyOrCustomer || !dashboardData) {
+    if (!dashboardData || !isAgencyOrCustomer) {
         return (
             <AppLayout breadcrumbs={breadcrumbs}>
                 <Head title={t('dashboard.title')} />

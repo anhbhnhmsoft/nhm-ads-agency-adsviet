@@ -25,6 +25,7 @@ type ServicePurchaseFormData = {
     timezone_bm?: string;
     asset_access?: 'full_asset' | 'basic_asset';
     accounts?: AccountFormData[];
+    customer_id?: string;
 };
 
 export const useServicePurchaseForm = () => {
@@ -54,12 +55,17 @@ export const useServicePurchaseForm = () => {
         },
         accounts?: AccountFormData[],
         onSuccess?: () => void,
+        customerId?: string,
     ) => {
         const payload: ServicePurchaseFormData = {
             package_id: packageId,
             top_up_amount: topUpAmount,
             budget: budget || '0',
         };
+
+        if (customerId) {
+            payload.customer_id = customerId;
+        }
 
         if (accounts && accounts.length > 0) {
             const filteredAccounts = accounts

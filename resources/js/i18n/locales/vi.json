@@ -413,7 +413,23 @@
         "filter_employee": "Nhân viên",
         "select_employee_placeholder": "Chọn nhân viên...",
         "manager_owner": "Thuộc quản lý",
-        "manager_relation": "{{employee}} thuộc {{manager}}"
+        "manager_relation": "{{employee}} thuộc {{manager}}",
+        "preview_customer_ui": "Xem giao diện khách hàng",
+        "preview_employee_ui": "Xem giao diện nhân viên",
+        "preview_manager_ui": "Xem giao diện quản lý",
+        "preview": {
+            "banner_title": "Bạn đang xem giao diện {{type}}",
+            "current_account": "Tài khoản đang xem",
+            "original_login": "Đăng nhập gốc",
+            "back_to_admin": "Quay lại admin",
+            "admin_fallback": "Admin",
+            "account_types": {
+                "customer": "khách hàng",
+                "agency": "agency",
+                "manager": "quản lý",
+                "employee": "nhân viên"
+            }
+        }
     },
     "wallet": {
         "active": "Đang hoạt động",
@@ -787,7 +803,12 @@
         "feature_values": {
             "guarantee": "Bảo hành {{value}} ngày",
             "meta_timezone_id": "Múi giờ: #{{value}}"
-        }
+        },
+        "select_customer_to_buy": "Chọn khách hàng để mua hộ",
+        "choose_customer": "Chọn khách hàng...",
+        "please_select_customer_first": "Vui lòng chọn khách hàng ở trên để xem gói dịch vụ và mua hộ",
+        "wallet_balance_of_customer": "Số dư ví khách",
+        "customer_required": "Vui lòng chọn khách hàng trước khi mua"
     },
     "service_orders": {
         "title": "Đơn dịch vụ của bạn",

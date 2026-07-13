@@ -13,6 +13,7 @@ import {
     UserOption,
 } from '@/pages/user/types/type';
 import {
+    admin_preview_start,
     user_destroy,
     user_edit,
     user_list,
@@ -24,6 +25,7 @@ import { ColumnDef, ColumnVisibilityState } from '@tanstack/react-table';
 import axios from 'axios';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -319,14 +321,64 @@ const ListCustomer = ({
             {
                 id: 'action',
                 header: t('common.action'),
-                cell: ({ row }) => actionCell(row.original),
+                cell: ({ row }) => {
+                    const user = row.original;
+                    const canPreview =
+                        isAdmin &&
+                        !user.disabled &&
+                        [_UserRole.CUSTOMER, _UserRole.AGENCY].includes(
+                            user.role,
+                        );
+
+                    return (
+                        <div className="flex items-center justify-center gap-2">
+                            {actionCell(user)}
+                            {canPreview && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        router.post(
+                                            admin_preview_start({
+                                                userId: user.id,
+                                            }).url,
+                                            {
+                                                return_url:
+                                                    window.location.href,
+                                            },
+                                            {
+                                                preserveScroll: true,
+                                                preserveState: true,
+                                            },
+                                        )
+                                    }
+                                    title={t('user.preview_customer_ui', {
+                                        defaultValue:
+                                            'Xem giao diện khách hàng',
+                                    })}
+                                >
+                                    <Monitor className="size-4" />
+                                </Button>
+                            )}
+                        </div>
+                    );
+                },
                 meta: {
                     headerClassName: 'text-center',
                     cellClassName: 'text-center',
                 },
             },
         ],
-        [t, actionCell, managerFilterId, setSelectedTopUpUser, setTopUpAmount, setIsTopUpDialogOpen],
+        [
+            t,
+            actionCell,
+            isAdmin,
+            managerFilterId,
+            setSelectedTopUpUser,
+            setTopUpAmount,
+            setIsTopUpDialogOpen,
+        ],
     );
 
     return (

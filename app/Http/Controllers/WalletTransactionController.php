@@ -12,6 +12,7 @@ use App\Common\Constants\User\UserRole;
 use App\Common\Constants\Wallet\WalletTransactionDescription;
 use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
+use App\Service\UserPreviewService;
 use App\Service\WalletTransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,11 +22,13 @@ class WalletTransactionController extends Controller
     public function __construct(
         protected WalletService $walletService,
         protected WalletTransactionService $walletTransactionService,
+        protected UserPreviewService $userPreviewService,
     ) {}
 
     public function index(Request $request)
     {
         $user = Auth::user();
+        $isPreview = $this->userPreviewService->isPreviewActive($request);
         if (!$user) {
             Logging::web('WalletTransactionController@index: No user authenticated');
             return redirect()->route('login');
@@ -40,6 +43,20 @@ class WalletTransactionController extends Controller
             // Tự động tạo wallet nếu chưa có
             $walletResult = $this->walletService->findByUserId($user->id);
             if (!$walletResult->isSuccess()) {
+                if ($isPreview) {
+                    return $this->rendering('transactions/index', [
+                        'transactions' => [],
+                        'pagination' => [
+                            'current_page' => 1,
+                            'last_page' => 1,
+                            'per_page' => 20,
+                            'total' => 0,
+                        ],
+                        'filters' => $request->only(['type', 'status']),
+                        'canApprove' => false,
+                    ]);
+                }
+
                 $createResult = $this->walletService->createForUser($user->id);
                 if (!$createResult->isSuccess()) {
                      Logging::web('WalletTransactionController@index: Failed to create wallet', [

@@ -22,6 +22,8 @@ use App\Http\Requests\Wallet\WalletWithdrawRequest;
 use App\Service\CoinRemitterService;
 use App\Service\ConfigService;
 use App\Service\PaymentoService;
+use App\Service\UserService;
+use App\Service\UserPreviewService;
 use App\Service\WalletService;
 use App\Service\WalletTransactionService;
 use Illuminate\Http\JsonResponse;
@@ -37,24 +39,30 @@ class WalletController extends Controller
         protected WalletTransactionService $walletTransactionService,
         protected CoinRemitterService $coinRemitterService,
         protected PaymentoService $paymentoService,
+        protected UserService $userService,
+        protected UserPreviewService $userPreviewService,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         if (! $user) {
             return redirect()->route('login');
         }
 
-        $walletResult = $this->walletService->getWalletForUser((int) $user->id);
+        $isPreview = $this->userPreviewService->isPreviewActive($request);
+        $walletResult = $this->walletService->getWalletForUser(
+            (string) $user->id,
+            !$isPreview,
+        );
         $wallet = $walletResult->isSuccess() ? $walletResult->getData() : null;
         $walletError = $walletResult->isError() ? $walletResult->getMessage() : null;
 
-        if ($wallet) {
+        if ($wallet && !$isPreview) {
             $this->reconcileCoinRemitterDepositsForWallet((int) $wallet['id']);
             $this->reconcilePaymentoDepositsForWallet((int) $wallet['id']);
 
-            $walletResult = $this->walletService->getWalletForUser((int) $user->id);
+            $walletResult = $this->walletService->getWalletForUser((string) $user->id);
             $wallet = $walletResult->isSuccess() ? $walletResult->getData() : $wallet;
             $walletError = $walletResult->isError() ? $walletResult->getMessage() : $walletError;
         }
@@ -282,7 +290,7 @@ class WalletController extends Controller
     /**
      * Trả về thông tin ví dạng JSON cho user hiện tại (dùng cho Inertia/React)
      */
-    public function me(): JsonResponse
+    public function me(Request $request): JsonResponse
     {
         $user = Auth::user();
         if (! $user) {
@@ -292,7 +300,10 @@ class WalletController extends Controller
             ], 401);
         }
 
-        $walletResult = $this->walletService->getWalletForUser((int) $user->id);
+        $walletResult = $this->walletService->getWalletForUser(
+            (string) $user->id,
+            !$this->userPreviewService->isPreviewActive($request),
+        );
         if ($walletResult->isError()) {
             return response()->json([
                 'success' => false,
@@ -952,6 +963,12 @@ class WalletController extends Controller
             UserRole::EMPLOYEE->value,
         ])) {
             return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if (! $this->userService->canActOnCustomer($user, $userId)) {
+            return response()->json([
+                'message' => __('services.validation.customer_scope_denied'),
+            ], 403);
         }
 
         $walletResult = $this->walletService->getWalletForUser($userId);

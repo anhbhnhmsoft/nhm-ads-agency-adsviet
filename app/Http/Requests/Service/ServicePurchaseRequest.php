@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Service;
 
+use App\Common\Constants\User\UserRole;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ServicePurchaseRequest extends FormRequest
@@ -13,10 +14,16 @@ class ServicePurchaseRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+        $user = $this->user();
+        $isStaff = $user && in_array($user->role, [
+            UserRole::ADMIN->value,
+            UserRole::MANAGER->value,
+            UserRole::EMPLOYEE->value,
+        ], true);
+
+        $rules = [
             'package_id' => ['required', 'string'],
             'top_up_amount' => ['nullable', 'numeric', 'min:0'],
-            // 'budget' => ['nullable', 'numeric', 'min:0'],
             'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],
             'meta_email' => ['nullable', 'string', 'email', 'max:255'],
             'display_name' => ['nullable', 'string', 'max:255'],
@@ -37,6 +44,12 @@ class ServicePurchaseRequest extends FormRequest
             'accounts.*.timezone_bm' => ['nullable', 'string'],
             'accounts.*.asset_access' => ['nullable', 'string', 'in:full_asset,basic_asset'],
         ];
+
+        if ($isStaff) {
+            $rules['customer_id'] = ['required', 'string', 'exists:users,id'];
+        }
+
+        return $rules;
     }
 
     public function messages(): array
@@ -45,14 +58,13 @@ class ServicePurchaseRequest extends FormRequest
             'package_id.required' => __('services.validation.package_required'),
             'top_up_amount.numeric' => __('services.validation.top_up_numeric'),
             'top_up_amount.min' => __('services.validation.top_up_min'),
-            // 'budget.numeric' => __('services.validation.budget_numeric'),
-            // 'budget.min' => __('services.validation.budget_min', ['min' => 0]),
             'meta_email.email' => __('services.validation.meta_email_email'),
             'meta_email.max' => __('services.validation.meta_email_max', ['max' => 255]),
             'accounts.*.meta_email.email' => __('services.validation.meta_email_email'),
             'accounts.*.meta_email.max' => __('services.validation.meta_email_max', ['max' => 255]),
             'display_name.max' => __('services.validation.display_name_max', ['max' => 255]),
+            'customer_id.required' => __('services.validation.customer_required'),
+            'customer_id.exists' => __('services.validation.customer_invalid'),
         ];
     }
 }
-

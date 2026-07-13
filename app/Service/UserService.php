@@ -10,6 +10,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\UserReferralRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Common\Helper;
@@ -263,6 +264,70 @@ class UserService
         }
 
         return null;
+    }
+
+    public function getPurchasableCustomersForActor(User $actor): ServiceReturn
+    {
+        try {
+            $customers = $this->getPurchasableCustomerQueryForActor($actor)
+                ->select('id', 'name', 'username')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (User $customer) => [
+                    'id' => (string) $customer->id,
+                    'name' => $customer->name,
+                    'username' => $customer->username,
+                ])
+                ->values()
+                ->all();
+
+            return ServiceReturn::success(data: $customers);
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'Lỗi khi lấy danh sách khách hàng mua hộ UserService@getPurchasableCustomersForActor: ' . $e->getMessage(),
+                exception: $e
+            );
+
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    public function canActOnCustomer(User $actor, int|string $customerId): bool
+    {
+        return $this->getPurchasableCustomerQueryForActor($actor)
+            ->where('id', (string) $customerId)
+            ->exists();
+    }
+
+    protected function getPurchasableCustomerQueryForActor(User $actor): Builder
+    {
+        $filter = [
+            'roles' => [
+                UserRole::CUSTOMER->value,
+                UserRole::AGENCY->value,
+            ],
+            'is_active' => true,
+        ];
+
+        switch ((int) $actor->role) {
+            case UserRole::ADMIN->value:
+                break;
+            case UserRole::MANAGER->value:
+                $employeeIds = $this->userReferralRepository->getAssignedEmployeeIds((string) $actor->id);
+                $filter['referrer_ids'] = array_values(array_unique(array_merge(
+                    [(string) $actor->id],
+                    $employeeIds
+                )));
+                break;
+            case UserRole::EMPLOYEE->value:
+                $filter['referrer_ids'] = [(string) $actor->id];
+                break;
+            default:
+                $filter['referrer_ids'] = ['__no_match__'];
+                break;
+        }
+
+        return $this->userRepository->filterQuery($filter);
     }
 
     public function createEmployee(array $data): ServiceReturn

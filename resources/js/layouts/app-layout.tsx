@@ -2,12 +2,13 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/layout/app-shell';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppSidebarHeader } from '@/components/layout/app-sidebar-header';
+import { PreviewModeBanner } from '@/components/layout/preview-mode-banner';
 import LoadingGlobal from '@/components/loading-global';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import i18n from '@/i18n';
-import { IBreadcrumbItem } from '@/lib/types/type';
+import { IBreadcrumbItem, IPreviewContext, IUser } from '@/lib/types/type';
 import { usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -18,10 +19,13 @@ interface AppLayoutProps {
 }
 
 export default ({ children, breadcrumbs }: AppLayoutProps) => {
-    const { flash, logo_path, locale } = usePage().props as {
+    const { flash, logo_path, locale, auth_actor, preview_context } =
+        usePage().props as {
         flash: any;
         logo_path?: string;
         locale?: string;
+        auth_actor?: IUser | null;
+        preview_context?: IPreviewContext | null;
     };
 
     // Đồng bộ i18next với locale từ backend mỗi lần props thay đổi
@@ -51,6 +55,10 @@ export default ({ children, breadcrumbs }: AppLayoutProps) => {
                 <AppShell variant="sidebar">
                     <AppSidebar />
                     <AppContent variant="sidebar" className="overflow-x-hidden">
+                        <PreviewModeBanner
+                            actor={auth_actor ?? null}
+                            preview={preview_context ?? null}
+                        />
                         <AppSidebarHeader breadcrumbs={breadcrumbs} />
                         <main className="flex flex-1 flex-col gap-4 p-4">
                             {children}

@@ -122,7 +122,8 @@ class ServiceController extends Controller
 
 
         $result = $this->servicePurchaseService->createPurchaseOrder(
-            userId: (int) $user->id,
+            actorUserId: (string) $user->id,
+            serviceOwnerUserId: (string) $user->id,
             packageId: $data['package_id'],
             topUpAmount: isset($data['top_up_amount']) ? (float) $data['top_up_amount'] : 0,
             budget: isset($data['budget']) ? (float) $data['budget'] : 0,

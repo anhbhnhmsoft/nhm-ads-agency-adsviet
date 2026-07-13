@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\GoogleAdsController;
 use App\Http\Controllers\API\MetaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminPreviewController;
 use App\Http\Controllers\BusinessManagerController;
 use App\Http\Controllers\CoinRemitterWebhookController;
 use App\Http\Controllers\CommissionController;
@@ -27,9 +28,11 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\WalletTransactionController;
+use App\Http\Middleware\ApplyPreviewUser;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\PreventPreviewMutations;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -114,10 +117,17 @@ Route::middleware(['guest:web'])->group(function () {
     });
 });
 
-Route::middleware(['auth:web', EnsureUserIsActive::class])->group(function () {
+Route::middleware([
+    'auth:web',
+    EnsureUserIsActive::class,
+    PreventPreviewMutations::class,
+    ApplyPreviewUser::class,
+])->group(function () {
     Route::redirect('/', '/dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::post('/admin-preview/stop', [AdminPreviewController::class, 'stop'])->name('admin_preview_stop');
+    Route::post('/admin-preview/{userId}', [AdminPreviewController::class, 'start'])->name('admin_preview_start');
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile_update');
     Route::post('/profile/resend-email', [ProfileController::class, 'resendEmail'])->name('profile_resend_email');

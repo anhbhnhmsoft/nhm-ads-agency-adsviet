@@ -34,6 +34,9 @@ return [
         'monthly_spending_fee_invalid' => 'Cấu trúc phí theo mức chi tiêu hằng tháng không hợp lệ',
         'package_in_use' => 'Gói dịch vụ đang được sử dụng, không thể xóa.',
         'package_not_allowed' => 'Bạn không được phép sử dụng gói dịch vụ này.',
+        'customer_required' => 'Vui lòng chọn khách hàng để mua hộ.',
+        'customer_invalid' => 'Khách hàng không hợp lệ hoặc bạn không có quyền thao tác.',
+        'customer_scope_denied' => 'Bạn không có quyền mua hộ khách hàng này.',
         'postpay_min_wallet' => 'Ví của bạn cần tối thiểu :amount USDT để đăng ký trả sau.',
         'postpay_not_allowed' => 'Bạn không được phép sử dụng hình thức trả sau cho gói dịch vụ này.',
         'bm_already_used_by_customer' => 'Business Manager này đã được gán cho khách hàng :name. Vui lòng chọn Business Manager khác.',
@@ -59,4 +62,3 @@ return [
         'new_package_description' => 'Hệ thống vừa ra mắt gói dịch vụ mới: :name. Hãy tham khảo và đăng ký ngay!',
     ],
 ];
-

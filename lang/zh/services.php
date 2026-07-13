@@ -34,6 +34,9 @@ return [
         'monthly_spending_fee_invalid' => '每月支出和费用结构无效。',
         'package_in_use' => 'This package is in use and cannot be deleted.',
         'package_not_allowed' => '您无权使用此服务包。',
+        'customer_required' => '请选择要代购的客户。',
+        'customer_invalid' => '所选客户无效或不在您的可操作范围内。',
+        'customer_scope_denied' => '您无权为该客户代购。',
         'postpay_min_wallet' => '您的钱包必须至少有:amountUSDT 才能使用后付费。',
         'postpay_not_allowed' => '此服务套餐不允许您使用后付费方式。',
     ],
@@ -49,4 +52,3 @@ return [
         'new_package_description' => '我们推出了新的服务包：:name。查看并立即注册！',
     ],
 ];
-

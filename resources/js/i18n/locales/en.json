@@ -165,7 +165,23 @@
         "filter_manager": "Manager",
         "filter_employee": "Employee",
         "manager_owner": "Managed by",
-        "manager_relation": "{{employee}} under {{manager}}"
+        "manager_relation": "{{employee}} under {{manager}}",
+        "preview_customer_ui": "View customer interface",
+        "preview_employee_ui": "View employee interface",
+        "preview_manager_ui": "View manager interface",
+        "preview": {
+            "banner_title": "You are viewing the {{type}} interface",
+            "current_account": "Viewing account",
+            "original_login": "Original login",
+            "back_to_admin": "Back to admin",
+            "admin_fallback": "Admin",
+            "account_types": {
+                "customer": "customer",
+                "agency": "agency",
+                "manager": "manager",
+                "employee": "employee"
+            }
+        }
     },
     "profile": {
         "title": "Profile",
@@ -848,7 +864,12 @@
         "feature_values": {
             "guarantee": "Warranty {{value}} days",
             "meta_timezone_id": "Timezone: #{{value}}"
-        }
+        },
+        "select_customer_to_buy": "Select customer to purchase for",
+        "choose_customer": "Choose customer...",
+        "please_select_customer_first": "Please select a customer above to view packages and purchase on their behalf",
+        "wallet_balance_of_customer": "Customer wallet balance",
+        "customer_required": "Please select a customer before purchasing"
     },
     "service_orders": {
         "title": "Your service orders",

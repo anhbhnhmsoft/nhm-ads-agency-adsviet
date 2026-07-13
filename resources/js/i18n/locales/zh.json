@@ -165,7 +165,23 @@
         "filter_manager": "经理",
         "filter_employee": "员工",
         "manager_owner": "管理人",
-        "manager_relation": "{{manager}}下的{{employee}}"
+        "manager_relation": "{{manager}}下的{{employee}}",
+        "preview_customer_ui": "查看客户界面",
+        "preview_employee_ui": "查看员工界面",
+        "preview_manager_ui": "查看经理界面",
+        "preview": {
+            "banner_title": "您正在查看{{type}}界面",
+            "current_account": "当前查看账号",
+            "original_login": "原始登录账号",
+            "back_to_admin": "返回管理员",
+            "admin_fallback": "管理员",
+            "account_types": {
+                "customer": "客户",
+                "agency": "代理",
+                "manager": "经理",
+                "employee": "员工"
+            }
+        }
     },
     "profile": {
         "title": "轮廓",
@@ -848,7 +864,12 @@
         "feature_values": {
             "guarantee": "保修{{value}}天",
             "meta_timezone_id": "时区：#{{value}}"
-        }
+        },
+        "select_customer_to_buy": "选择代购客户",
+        "choose_customer": "选择客户...",
+        "please_select_customer_first": "请先选择客户，然后再查看套餐并代其购买",
+        "wallet_balance_of_customer": "客户钱包余额",
+        "customer_required": "购买前请先选择客户"
     },
     "service_orders": {
         "title": "您的服务订单",

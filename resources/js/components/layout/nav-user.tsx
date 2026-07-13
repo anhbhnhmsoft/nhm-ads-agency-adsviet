@@ -12,13 +12,24 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { IPreviewContext, IUser } from '@/lib/types/type';
 import { usePage } from '@inertiajs/react';
 import { ChevronsUpDown } from 'lucide-react';
 
 export function NavUser() {
-    const { auth } = usePage().props;
+    const { auth, auth_actor, preview_context } = usePage().props as {
+        auth: IUser | null;
+        auth_actor?: IUser | null;
+        preview_context?: IPreviewContext | null;
+    };
     const { state } = useSidebar();
     const isMobile = useIsMobile();
+    const displayUser = preview_context?.is_applied
+        ? auth
+        : preview_context?.is_active && auth_actor
+          ? auth_actor
+          : auth;
+
     return (
         <SidebarMenu>
             <SidebarMenuItem>
@@ -29,7 +40,7 @@ export function NavUser() {
                             className="group text-sidebar-foreground hover:bg-sidebar-accent hover:text-white data-[state=open]:bg-sidebar-accent data-[state=open]:text-white"
                             data-test="sidebar-menu-button"
                         >
-                            <UserInfo user={auth} />
+                            <UserInfo user={displayUser} />
                             <ChevronsUpDown className="ml-auto size-4" />
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
@@ -44,7 +55,7 @@ export function NavUser() {
                                   : 'bottom'
                         }
                     >
-                        <UserMenuContent user={auth} />
+                        <UserMenuContent user={displayUser} />
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>
