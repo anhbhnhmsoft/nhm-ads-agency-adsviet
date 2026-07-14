@@ -20,7 +20,7 @@ Schedule::command('platform-settings:check-tokens')->dailyAt('00:10');
 Schedule::command('accounts:check-and-auto-pause')->everyThirtyMinutes();
 
 // Billing spending fee theo ngưỡng chi tiêu, chạy sau mỗi nhịp sync insight
-Schedule::command('services:bill-postpay')->everyThirtyMinutes();
+Schedule::command('services:bill-postpay')->everyThirtyMinutes()->withoutOverlapping();
 
 // Khóa hạn mức gói creditline khi còn khoảng 20 USD
 Schedule::command('services:enforce-creditline-limits')

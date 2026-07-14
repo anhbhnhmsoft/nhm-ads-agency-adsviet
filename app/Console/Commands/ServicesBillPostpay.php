@@ -74,86 +74,93 @@ class ServicesBillPostpay extends Command
                             continue;
                         }
 
-                        $spending = $this->getSpendingBetween(
-                            (string) $serviceUser->id,
-                            $serviceUser->created_at->toDateString(),
-                            $today->toDateString()
-                        );
-                        $billedSpend = $this->resolveBilledSpend($serviceUser, $config);
-                        $unbilledSpend = max(0.0, $spending - $billedSpend);
+                        // Lock row to prevent duplicate charges from concurrent cron runs
+                        $lockedUser = DB::transaction(function () use ($serviceUser, $today, $feePercent, $package, $config) {
+                            $locked = $this->serviceUserRepository->query()
+                                ->where('id', $serviceUser->id)
+                                ->lockForUpdate()
+                                ->first();
 
-                        if ($unbilledSpend < self::SPENDING_FEE_CHARGE_THRESHOLD) {
-                            continue;
-                        }
-
-                        $spendingFee = $unbilledSpend * ($feePercent / 100);
-                        $chargeAmount = round($spendingFee, 2);
-                        if ($chargeAmount <= 0) {
-                            continue;
-                        }
-
-                        $wallet = $this->walletRepository->findByUserId((string) $serviceUser->user_id);
-                        if (!$wallet) {
-                            Logging::web('services:bill-postpay wallet not found', [
-                                'service_user_id' => $serviceUser->id,
-                                'user_id' => $serviceUser->user_id,
-                            ]);
-                            $serviceUser->last_postpay_billed_at = $today;
-                            $serviceUser->save();
-                            continue;
-                        }
-
-                        $requiredWalletBalance = max($chargeAmount, self::MIN_WALLET_BALANCE);
-                        if ((float) $wallet->balance < $requiredWalletBalance) {
-                            // Số dư không đủ: cảnh báo, pause campaign, và bỏ qua (không cập nhật last_postpay_billed_at để lần sau thử lại)
-                            Logging::web('services:bill-postpay insufficient balance, pause campaigns', [
-                                'service_user_id' => $serviceUser->id,
-                                'user_id' => $serviceUser->user_id,
-                                'balance' => $wallet->balance,
-                                'unbilled_spend' => $unbilledSpend,
-                                'spending_fee' => $chargeAmount,
-                                'minimum_wallet_balance' => self::MIN_WALLET_BALANCE,
-                                'charge_amount' => $chargeAmount,
-                            ]);
-
-                            // Pause tất cả campaigns của service_user này
-                            $this->pauseAllCampaignsForServiceUser($serviceUser);
-
-                            // Gửi thông báo cho khách (Telegram hoặc email)
-                            $user = $wallet->user;
-                            if ($user) {
-                                \App\Core\UserLocale::run($user, function () use ($user, $wallet, $chargeAmount) {
-                                    $shortName = $user->name ?? $user->username ?? 'Customer';
-                                    $balanceFormatted = number_format((float) $wallet->balance, 2);
-                                    $chargeFormatted = number_format($chargeAmount, 2);
-                                    $spendingFeeFormatted = number_format($chargeAmount, 2);
-                                    $message = __('wallet.postpay_charge_insufficient', [
-                                        'name' => $shortName,
-                                        'balance' => $balanceFormatted,
-                                        'charge' => $chargeFormatted,
-                                        'monthly_fee' => $spendingFeeFormatted,
-                                        'open_fee' => number_format(0, 2),
-                                        'min_wallet' => number_format(self::MIN_WALLET_BALANCE, 2),
-                                    ]);
-
-                                    if (!empty($user->telegram_id)) {
-                                        $this->telegramService->sendNotification($user->telegram_id, $message);
-                                    } elseif (!empty($user->email) && !empty($user->email_verified_at)) {
-                                        $this->mailService->sendWalletTransactionAlert(
-                                            email: $user->email,
-                                            username: $shortName,
-                                            typeLabel: __('wallet.postpay_charge_label'),
-                                            amount: $chargeAmount,
-                                            description: $message,
-                                        );
-                                    }
-                                });
+                            if (!$locked) {
+                                return null;
                             }
 
-                            continue;
-                        }
+                            $spending = $this->getSpendingBetween(
+                                (string) $locked->id,
+                                $locked->created_at->toDateString(),
+                                $today->toDateString()
+                            );
+                            $billedSpend = $this->resolveBilledSpend($locked, $config);
+                            $unbilledSpend = max(0.0, $spending - $billedSpend);
 
-                        DB::transaction(function () use ($wallet, $chargeAmount, $package, $serviceUser, $today, $config, $feePercent, $spending, $billedSpend, $unbilledSpend) {
+                            if ($unbilledSpend < self::SPENDING_FEE_CHARGE_THRESHOLD) {
+                                return 'skip';
+                            }
+
+                            $spendingFee = $unbilledSpend * ($feePercent / 100);
+                            $chargeAmount = round($spendingFee, 2);
+                            if ($chargeAmount <= 0) {
+                                return 'skip';
+                            }
+
+                            $wallet = $this->walletRepository->findByUserId((string) $locked->user_id);
+                            if (!$wallet) {
+                                Logging::web('services:bill-postpay wallet not found', [
+                                    'service_user_id' => $locked->id,
+                                    'user_id' => $locked->user_id,
+                                ]);
+                                $locked->last_postpay_billed_at = $today;
+                                $locked->save();
+                                return 'skip';
+                            }
+
+                            $requiredWalletBalance = max($chargeAmount, self::MIN_WALLET_BALANCE);
+                            if ((float) $wallet->balance < $requiredWalletBalance) {
+                                Logging::web('services:bill-postpay insufficient balance, pause campaigns', [
+                                    'service_user_id' => $locked->id,
+                                    'user_id' => $locked->user_id,
+                                    'balance' => $wallet->balance,
+                                    'unbilled_spend' => $unbilledSpend,
+                                    'spending_fee' => $chargeAmount,
+                                    'minimum_wallet_balance' => self::MIN_WALLET_BALANCE,
+                                    'charge_amount' => $chargeAmount,
+                                ]);
+
+                                $this->pauseAllCampaignsForServiceUser($locked);
+
+                                $user = $wallet->user;
+                                if ($user) {
+                                    \App\Core\UserLocale::run($user, function () use ($user, $wallet, $chargeAmount) {
+                                        $shortName = $user->name ?? $user->username ?? 'Customer';
+                                        $balanceFormatted = number_format((float) $wallet->balance, 2);
+                                        $chargeFormatted = number_format($chargeAmount, 2);
+                                        $spendingFeeFormatted = number_format($chargeAmount, 2);
+                                        $message = __('wallet.postpay_charge_insufficient', [
+                                            'name' => $shortName,
+                                            'balance' => $balanceFormatted,
+                                            'charge' => $chargeFormatted,
+                                            'monthly_fee' => $spendingFeeFormatted,
+                                            'open_fee' => number_format(0, 2),
+                                            'min_wallet' => number_format(self::MIN_WALLET_BALANCE, 2),
+                                        ]);
+
+                                        if (!empty($user->telegram_id)) {
+                                            $this->telegramService->sendNotification($user->telegram_id, $message);
+                                        } elseif (!empty($user->email) && !empty($user->email_verified_at)) {
+                                            $this->mailService->sendWalletTransactionAlert(
+                                                email: $user->email,
+                                                username: $shortName,
+                                                typeLabel: __('wallet.postpay_charge_label'),
+                                                amount: $chargeAmount,
+                                                description: $message,
+                                            );
+                                        }
+                                    });
+                                }
+
+                                return 'skip';
+                            }
+
                             $wallet->update(['balance' => (float) $wallet->balance - $chargeAmount]);
 
                             $walletTransaction = $this->walletTransactionRepository->create([
@@ -162,7 +169,7 @@ class ServicesBillPostpay extends Command
                                 'type' => WalletTransactionType::SPENDING_FEE->value,
                                 'status' => WalletTransactionStatus::COMPLETED->value,
                                 'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$spending}): {$package->name}",
-                                'reference_id' => (string) $serviceUser->id,
+                                'reference_id' => (string) $locked->id,
                                 'withdraw_info' => [
                                     'purpose' => 'spending_fee',
                                     'spend_amount' => $unbilledSpend,
@@ -171,13 +178,13 @@ class ServicesBillPostpay extends Command
                                     'billed_spend_before' => $billedSpend,
                                     'billed_spend_after' => $spending,
                                     'threshold' => self::SPENDING_FEE_CHARGE_THRESHOLD,
-                                    'last_billed_at' => $serviceUser->last_postpay_billed_at?->toDateTimeString() ?? null,
+                                    'last_billed_at' => $locked->last_postpay_billed_at?->toDateTimeString() ?? null,
                                     'charged_at' => now()->toDateTimeString(),
                                 ],
                             ]);
 
                             ServiceUserTransactionLog::create([
-                                'service_user_id' => $serviceUser->id,
+                                'service_user_id' => $locked->id,
                                 'amount' => $chargeAmount,
                                 'type' => ServiceUserTransactionType::FEE->value,
                                 'status' => ServiceUserTransactionStatus::COMPLETED->value,
@@ -187,10 +194,16 @@ class ServicesBillPostpay extends Command
 
                             $config['spending_fee_billed_spend'] = $spending;
                             $config['spending_fee_last_charged_at'] = now()->toDateTimeString();
-                            $serviceUser->config_account = $config;
-                            $serviceUser->last_postpay_billed_at = now();
-                            $serviceUser->save();
+                            $locked->config_account = $config;
+                            $locked->last_postpay_billed_at = now();
+                            $locked->save();
+
+                            return $locked;
                         });
+
+                        if ($lockedUser === null || $lockedUser === 'skip') {
+                            continue;
+                        }
                     } catch (\Throwable $e) {
                         Logging::error(
                             message: 'services:bill-postpay error',
