@@ -461,6 +461,7 @@
         "confirm_cancel": "取消这笔交易吗？",
         "view_info": "查看信息",
         "view_on_explorer": "在资源管理器上查看",
+        "balance_after": "交易后余额",
         "withdraw_info_title": "撤回信息",
         "withdraw_info_description": "用户提供的账户信息"
     },

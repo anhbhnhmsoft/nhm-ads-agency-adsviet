@@ -16,6 +16,7 @@ use App\Repositories\WalletRepository;
 use App\Repositories\UserRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -1451,6 +1452,103 @@ class WalletTransactionService
         }
     }
 
+    public function withBalanceAfter(Collection $transactions): Collection
+    {
+        if ($transactions->isEmpty()) {
+            return $transactions;
+        }
+
+        $walletIds = $transactions
+            ->pluck('wallet_id')
+            ->filter()
+            ->map(fn ($walletId) => (string) $walletId)
+            ->unique()
+            ->values();
+
+        if ($walletIds->isEmpty()) {
+            return $transactions;
+        }
+
+        $currentBalances = $this->walletRepository->query()
+            ->whereIn('id', $walletIds->all())
+            ->pluck('balance', 'id')
+            ->mapWithKeys(fn ($balance, $walletId) => [(string) $walletId => (float) $balance])
+            ->all();
+
+        $targetTransactionIds = $transactions
+            ->pluck('id')
+            ->map(fn ($transactionId) => (string) $transactionId)
+            ->flip();
+
+        $history = $this->transactionRepository->query()
+            ->whereIn('wallet_id', $walletIds->all())
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get(['id', 'wallet_id', 'amount', 'type', 'status', 'created_at']);
+
+        $runningBalances = $currentBalances;
+        $balanceAfterByTransactionId = [];
+
+        foreach ($history as $historyTransaction) {
+            $walletKey = (string) $historyTransaction->wallet_id;
+            $currentBalance = $runningBalances[$walletKey] ?? 0.0;
+
+            if ($targetTransactionIds->has((string) $historyTransaction->id)) {
+                $balanceAfterByTransactionId[(string) $historyTransaction->id] = round($currentBalance, 8);
+            }
+
+            $runningBalances[$walletKey] = $currentBalance - $this->resolveEffectiveBalanceDelta($historyTransaction);
+        }
+
+        return $transactions->map(function ($transaction) use ($balanceAfterByTransactionId) {
+            $transaction->setAttribute(
+                'balance_after',
+                $balanceAfterByTransactionId[(string) $transaction->id] ?? null
+            );
+
+            return $transaction;
+        });
+    }
+
+    private function resolveEffectiveBalanceDelta(UserWalletTransaction $transaction): float
+    {
+        $amount = (float) $transaction->amount;
+        if ($amount === 0.0) {
+            return 0.0;
+        }
+
+        $status = (int) $transaction->status;
+        $type = (int) $transaction->type;
+
+        if (in_array($status, [
+            WalletTransactionStatus::REJECTED->value,
+            WalletTransactionStatus::CANCELLED->value,
+            WalletTransactionStatus::UNKNOWN->value,
+        ], true)) {
+            return 0.0;
+        }
+
+        if ($type === WalletTransactionType::DEPOSIT->value) {
+            return in_array($status, [
+                WalletTransactionStatus::APPROVED->value,
+                WalletTransactionStatus::COMPLETED->value,
+            ], true)
+                ? $amount
+                : 0.0;
+        }
+
+        if ($status === WalletTransactionStatus::PENDING->value) {
+            return $amount <= 0 ? $amount : 0.0;
+        }
+
+        return in_array($status, [
+            WalletTransactionStatus::APPROVED->value,
+            WalletTransactionStatus::COMPLETED->value,
+        ], true)
+            ? $amount
+            : 0.0;
+    }
+
     // Tìm transaction by ID
     public function findById(int $id)
     {
@@ -1637,15 +1735,10 @@ class WalletTransactionService
             // Reset spend_cap trên Meta về 0 + pause tất cả campaigns
             if ((int) $platform === PlatformType::META->value) {
                 try {
-                    $normalizedId = str_starts_with($accountId, 'act_')
-                        ? $accountId
-                        : 'act_' . preg_replace('/[^0-9]/', '', $accountId);
-                    $this->metaBusinessService->initApi();
-                    $this->metaBusinessService->api->call(
-                        "/{$normalizedId}",
-                        'POST',
-                        ['spend_cap' => 0]
-                    );
+                    $resetSpendCap = $this->metaBusinessService->resetAdAccountSpendCap($accountId);
+                    if ($resetSpendCap->isError()) {
+                        Logging::error('refundAdAccountBalance: failed to reset spend_cap: '.$resetSpendCap->getMessage());
+                    }
                 } catch (\Throwable $e) {
                     Logging::error('refundAdAccountBalance: failed to reset spend_cap: '.$e->getMessage());
                 }

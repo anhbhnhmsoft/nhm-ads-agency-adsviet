@@ -990,6 +990,52 @@ class MetaBusinessService
         }
     }
 
+    /**
+     * Đặt spend_cap của tài khoản quảng cáo Meta về 0.
+     */
+    public function resetAdAccountSpendCap(?string $accountId): ServiceReturn
+    {
+        try {
+            if (empty($accountId)) {
+                return ServiceReturn::error(message: __('meta.error.account_not_found'));
+            }
+
+            $this->initApi();
+
+            $normalizedAccountId = str_starts_with($accountId, 'act_')
+                ? $accountId
+                : 'act_' . preg_replace('/[^0-9]/', '', $accountId);
+
+            $response = $this->api->call(
+                "/{$normalizedAccountId}",
+                'POST',
+                ['spend_cap' => 0]
+            )->getContent();
+
+            \App\Models\MetaAccount::query()
+                ->where(function ($q) use ($normalizedAccountId) {
+                    $stripped = preg_replace('/^act_/', '', $normalizedAccountId);
+                    $q->where('account_id', $normalizedAccountId)
+                      ->orWhere('account_id', $stripped);
+                })
+                ->update(['spend_cap' => '0']);
+
+            return ServiceReturn::success(data: [
+                'response' => $response,
+                'account_id' => $normalizedAccountId,
+                'new_spend_cap' => 0,
+            ]);
+        } catch (Exception $exception) {
+            $message = $exception->getMessage();
+            if (str_contains($message, 'Permissions error')) {
+                return ServiceReturn::error(message: __('meta.error.permissions_error'));
+            }
+
+            Logging::error('MetaBusinessService@resetAdAccountSpendCap error: '.$message, exception: $exception);
+            return ServiceReturn::error(message: $message);
+        }
+    }
+
     private function normalizeAccountMoney(mixed $value, ?string $currency): ?float
     {
         if ($value === null || $value === '' || !is_numeric($value)) {

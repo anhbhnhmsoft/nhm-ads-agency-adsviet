@@ -305,6 +305,16 @@ export function TransactionList({
                                     {tx.amount > 0 ? '+' : '-'}
                                     {formatUSDT(tx.amount)}
                                 </div>
+                                {tx.balance_after !== null &&
+                                    tx.balance_after !== undefined && (
+                                        <div className="mt-1 text-xs text-gray-500">
+                                            {t('transactions.balance_after', {
+                                                defaultValue:
+                                                    'Số dư sau giao dịch',
+                                            })}
+                                            : {formatUSDT(tx.balance_after)}
+                                        </div>
+                                    )}
                                 {explorerUrl && (
                                     <a
                                         href={explorerUrl}

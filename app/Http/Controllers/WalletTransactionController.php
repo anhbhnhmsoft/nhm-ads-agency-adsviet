@@ -141,6 +141,9 @@ class WalletTransactionController extends Controller
         );
         
         $paginator = $result->getData();
+        $paginator->setCollection(
+            $this->walletTransactionService->withBalanceAfter($paginator->getCollection())
+        );
 
         return $this->rendering('transactions/index', [
             'transactions' => fn () => WalletTransactionResource::collection($paginator),

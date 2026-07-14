@@ -461,6 +461,7 @@
         "confirm_cancel": "Cancel this transaction?",
         "view_info": "View info",
         "view_on_explorer": "View on explorer",
+        "balance_after": "Balance after transaction",
         "withdraw_info_title": "Withdraw information",
         "withdraw_info_description": "Account information provided by the user"
     },

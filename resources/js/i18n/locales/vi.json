@@ -701,6 +701,7 @@
         "withdraw_info_title": "Thông tin rút tiền",
         "withdraw_info_description": "Thông tin tài khoản người dùng đã nhập",
         "items": "giao dịch",
+        "balance_after": "Số dư sau giao dịch",
         "view_on_explorer": "Xem trên explorer"
     },
     "service_purchase": {

@@ -145,6 +145,16 @@ const getRefundAccountKey = (
     return `${serviceUserId}::${accountId}`;
 };
 
+const formatPaymentCard = (paymentCard?: string | null) => {
+    const normalized = String(paymentCard ?? '').trim();
+
+    if (!normalized || /^\d+$/.test(normalized)) {
+        return '-';
+    }
+
+    return normalized;
+};
+
 const ServiceManagementIndex = ({
     paginator,
     stats,
@@ -876,7 +886,7 @@ const ServiceManagementIndex = ({
                 header: t('service_management.payment_card', {
                     defaultValue: 'Payment card',
                 }),
-                cell: ({ row }) => row.original.payment_card || '-',
+                cell: ({ row }) => formatPaymentCard(row.original.payment_card),
                 meta: { cellClassName: 'whitespace-nowrap' },
             },
             {
@@ -928,7 +938,7 @@ const ServiceManagementIndex = ({
                                     variant="outline"
                                     className={
                                         isRefunded
-                                            ? 'border-muted-foreground/30 text-muted-foreground'
+                                            ? 'border-green-300 text-green-600 disabled:text-green-600 disabled:opacity-100 dark:border-green-800 dark:text-green-400 dark:disabled:text-green-400'
                                             : 'border-orange-300 text-orange-600 hover:bg-orange-50'
                                     }
                                     onClick={(event) => {

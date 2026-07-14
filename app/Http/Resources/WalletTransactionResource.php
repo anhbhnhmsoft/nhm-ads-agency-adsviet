@@ -27,6 +27,7 @@ class WalletTransactionResource extends JsonResource
             'txHash' => $this->tx_hash,
             'payment_id' => $this->payment_id,
             'withdraw_info' => $this->withdraw_info,
+            'balance_after' => $this->balance_after !== null ? (float) $this->balance_after : null,
             'createdAt' => optional($this->created_at)->toIso8601String(),
             'user' => ($this->wallet && $this->wallet->user) ? [
                 'id' => (string) $this->wallet->user->id,

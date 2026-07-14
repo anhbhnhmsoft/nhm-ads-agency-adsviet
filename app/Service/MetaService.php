@@ -3034,7 +3034,11 @@ class MetaService
             return $display;
         }
 
-        return $type !== '' ? $type : null;
+        if ($type === '' || preg_match('/^\d+$/', $type)) {
+            return null;
+        }
+
+        return $type;
     }
 
     private function resolvePaymentCardFromAccountData(array $accountData): ?string
@@ -3170,4 +3174,3 @@ class MetaService
     }
 
 }
-
