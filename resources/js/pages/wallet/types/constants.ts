@@ -15,6 +15,7 @@ export const TRANSACTION_TYPE = {
     ACCOUNT_TOP_UP_GOOGLE: 13,
     ACCOUNT_TOP_UP_META: 14,
     SPENDING_FEE: 15,
+    ACCOUNT_REFUND: 16,
 } as const;
 
 export const TRANSACTION_STATUS = {
@@ -45,6 +46,7 @@ export const TRANSACTION_TYPE_MAP: Record<number, string> = {
     [TRANSACTION_TYPE.ACCOUNT_TOP_UP_GOOGLE]: 'account_top_up_google',
     [TRANSACTION_TYPE.ACCOUNT_TOP_UP_META]: 'account_top_up_meta',
     [TRANSACTION_TYPE.SPENDING_FEE]: 'spending_fee',
+    [TRANSACTION_TYPE.ACCOUNT_REFUND]: 'account_refund',
 };
 
 export const TRANSACTION_STATUS_MAP: Record<number, string> = {

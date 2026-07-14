@@ -114,6 +114,7 @@ return [
         'wallet_balance_not_enough' => 'Insufficient balance',
         'account_not_found' => 'Ad account not found',
         'account_not_linked' => 'Account is not assigned to this service',
+        'account_already_refunded' => 'This account has already been refunded',
         'no_remaining_balance' => 'Account has no remaining balance to refund',
     ],
 ];

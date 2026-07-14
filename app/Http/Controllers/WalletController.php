@@ -119,7 +119,6 @@ class WalletController extends Controller
             'walletError' => $walletError,
             'networks' => $availableNetworks,
             'pending_deposit' => $pending,
-            'dashboard_guide_content' => $this->configService->getValue(ConfigName::DASHBOARD_GUIDE_CONTENT, ''),
         ]);
     }
 

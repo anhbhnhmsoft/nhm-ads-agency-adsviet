@@ -48,6 +48,7 @@ const WalletTransactionsCard = ({ t, transactions }: Props) => {
             case TRANSACTION_TYPE.WITHDRAW:
                 return <ArrowUpCircle className="h-5 w-5 text-red-500" />;
             case TRANSACTION_TYPE.REFUND:
+            case TRANSACTION_TYPE.ACCOUNT_REFUND:
                 return <RefreshCcw className="h-5 w-5 text-[#4285f4]" />;
             case TRANSACTION_TYPE.FEE:
                 return <Percent className="h-5 w-5 text-amber-500" />;

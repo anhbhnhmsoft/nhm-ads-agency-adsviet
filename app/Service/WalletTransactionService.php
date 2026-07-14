@@ -1412,7 +1412,14 @@ class WalletTransactionService
                 $typeValue = (int) $filters['type'];
                 $validTypeValues = array_column(WalletTransactionType::cases(), 'value');
                 if (in_array($typeValue, $validTypeValues, true)) {
-                    $query->where('type', $typeValue);
+                    if ($typeValue === WalletTransactionType::REFUND->value) {
+                        $query->whereIn('type', [
+                            WalletTransactionType::REFUND->value,
+                            WalletTransactionType::ACCOUNT_REFUND->value,
+                        ]);
+                    } else {
+                        $query->where('type', $typeValue);
+                    }
                 }
             }
 
@@ -1530,6 +1537,10 @@ class WalletTransactionService
                 return ServiceReturn::error(message: __('wallet.error.account_not_linked'));
             }
 
+            if ($this->findCompletedAccountRefund($serviceUserId, $accountId)) {
+                return ServiceReturn::error(message: __('wallet.error.account_already_refunded'));
+            }
+
             $platform = $serviceUser->package?->platform ?? null;
 
             // Tìm account và tính remaining
@@ -1604,6 +1615,11 @@ class WalletTransactionService
                 'amount' => $totalRefund,
                 'type' => $type->value,
                 'status' => WalletTransactionStatus::COMPLETED->value,
+                'reference_id' => sprintf(
+                    'account_refund:%s:%s',
+                    $serviceUserId,
+                    $this->normalizeRefundAccountId($accountId)
+                ),
                 'description' => $description,
                 'withdraw_info' => [
                     'purpose' => 'account_refund',
@@ -1657,11 +1673,13 @@ class WalletTransactionService
             $this->notifyTransaction($transaction, $userId);
 
             return ServiceReturn::success(data: [
+                'transaction_id' => (string) $transaction->id,
                 'remaining' => $remaining,
                 'fee_refund' => $feeRefund,
                 'total_refund' => $totalRefund,
                 'currency' => $accountCurrency,
                 'new_balance' => $newBalance,
+                'refunded_at' => optional($transaction->created_at)->toIso8601String(),
             ]);
         } catch (\Throwable $e) {
             Logging::error(
@@ -1669,6 +1687,115 @@ class WalletTransactionService
                 exception: $e
             );
             return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    private function normalizeRefundAccountId(?string $accountId): string
+    {
+        $normalizedAccountId = trim((string) $accountId);
+
+        return str_starts_with($normalizedAccountId, 'act_')
+            ? preg_replace('/^act_/', '', $normalizedAccountId)
+            : $normalizedAccountId;
+    }
+
+    private function buildAccountRefundLookupKey(?string $serviceUserId, ?string $accountId): ?string
+    {
+        $serviceUserId = trim((string) $serviceUserId);
+        $normalizedAccountId = $this->normalizeRefundAccountId($accountId);
+
+        if ($serviceUserId === '' || $normalizedAccountId === '') {
+            return null;
+        }
+
+        return $serviceUserId.'::'.$normalizedAccountId;
+    }
+
+    public function findCompletedAccountRefund(?string $serviceUserId, ?string $accountId): ?UserWalletTransaction
+    {
+        try {
+            $normalizedAccountId = $this->normalizeRefundAccountId($accountId);
+            $serviceUserId = trim((string) $serviceUserId);
+
+            if ($serviceUserId === '' || $normalizedAccountId === '') {
+                return null;
+            }
+
+            return $this->transactionRepository->query()
+                ->where('type', WalletTransactionType::ACCOUNT_REFUND->value)
+                ->where('status', WalletTransactionStatus::COMPLETED->value)
+                ->whereRaw("withdraw_info->>'purpose' = ?", ['account_refund'])
+                ->whereRaw("withdraw_info->>'service_user_id' = ?", [$serviceUserId])
+                ->whereRaw("regexp_replace(withdraw_info->>'account_id', '^act_', '') = ?", [$normalizedAccountId])
+                ->orderByDesc('created_at')
+                ->first();
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@findCompletedAccountRefund error: '.$e->getMessage(), exception: $e);
+            return null;
+        }
+    }
+
+    public function getCompletedAccountRefundLookup(array $accounts): array
+    {
+        try {
+            $pairKeys = [];
+            foreach ($accounts as $account) {
+                $serviceUserId = is_array($account)
+                    ? ($account['service_user_id'] ?? null)
+                    : ($account->service_user_id ?? null);
+                $accountId = is_array($account)
+                    ? ($account['account_id'] ?? ($account['id'] ?? null))
+                    : ($account->account_id ?? ($account->id ?? null));
+                $lookupKey = $this->buildAccountRefundLookupKey($serviceUserId, $accountId);
+
+                if ($lookupKey !== null) {
+                    $pairKeys[$lookupKey] = true;
+                }
+            }
+
+            if (empty($pairKeys)) {
+                return [];
+            }
+
+            $serviceUserIds = array_values(array_unique(array_map(
+                fn (string $key) => explode('::', $key, 2)[0],
+                array_keys($pairKeys),
+            )));
+            $accountIds = array_values(array_unique(array_map(
+                fn (string $key) => explode('::', $key, 2)[1],
+                array_keys($pairKeys),
+            )));
+
+            $transactions = $this->transactionRepository->query()
+                ->where('type', WalletTransactionType::ACCOUNT_REFUND->value)
+                ->where('status', WalletTransactionStatus::COMPLETED->value)
+                ->whereRaw("withdraw_info->>'purpose' = ?", ['account_refund'])
+                ->whereIn(DB::raw("withdraw_info->>'service_user_id'"), $serviceUserIds)
+                ->whereIn(DB::raw("regexp_replace(withdraw_info->>'account_id', '^act_', '')"), $accountIds)
+                ->orderByDesc('created_at')
+                ->get();
+
+            $lookup = [];
+            foreach ($transactions as $transaction) {
+                $withdrawInfo = $transaction->withdraw_info ?? [];
+                $lookupKey = $this->buildAccountRefundLookupKey(
+                    isset($withdrawInfo['service_user_id']) ? (string) $withdrawInfo['service_user_id'] : null,
+                    isset($withdrawInfo['account_id']) ? (string) $withdrawInfo['account_id'] : null,
+                );
+
+                if ($lookupKey !== null && !isset($lookup[$lookupKey])) {
+                    $lookup[$lookupKey] = [
+                        'transaction_id' => (string) $transaction->id,
+                        'amount' => (float) $transaction->amount,
+                        'refunded_at' => optional($transaction->created_at)->toIso8601String(),
+                    ];
+                }
+            }
+
+            return $lookup;
+        } catch (\Throwable $e) {
+            Logging::error('WalletTransactionService@getCompletedAccountRefundLookup error: '.$e->getMessage(), exception: $e);
+            return [];
         }
     }
 

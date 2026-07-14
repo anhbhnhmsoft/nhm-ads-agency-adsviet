@@ -55,6 +55,10 @@ export type BusinessManagerItem = {
     payment_card?: string | null;
     currency?: string | null;
     last_synced_at?: string | null;
+    is_refunded?: boolean;
+    refunded_at?: string | null;
+    refund_transaction_id?: string | null;
+    refund_amount?: number | null;
     accounts?: Array<{
         currency?: string | null;
     }>;

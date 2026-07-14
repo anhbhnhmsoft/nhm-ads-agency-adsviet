@@ -114,6 +114,7 @@ return [
         'wallet_balance_not_enough' => 'Số dư không đủ',
         'account_not_found' => 'Tài khoản quảng cáo không tồn tại',
         'account_not_linked' => 'Tài khoản chưa được gán cho dịch vụ này',
+        'account_already_refunded' => 'Tài khoản này đã được hoàn tiền trước đó',
         'no_remaining_balance' => 'Tài khoản không có số dư tiền dư để hoàn',
     ],
 ];

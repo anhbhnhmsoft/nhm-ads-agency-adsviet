@@ -435,6 +435,7 @@
         "support_request_submit": "Submit request",
         "support_request_success": "Support request has been created successfully. You will be redirected to the Support page.",
         "account_refund": "Refund",
+        "account_refunded": "Refunded",
         "account_refund_title": "Ad Account Refund",
         "account_refund_description": "Refund the remaining (unused) balance from the ad account to your wallet.",
         "refund_breakdown_title": "Refund Breakdown",
@@ -584,7 +585,8 @@
             "campaign_end_meta": "End Meta Ads campaign",
             "account_top_up_google": "Google Ads account top-up",
             "account_top_up_meta": "Meta Ads account top-up",
-            "spending_fee": "Spending fee"
+            "spending_fee": "Spending fee",
+            "account_refund": "Ad account refund"
         },
         "transaction_status": {
             "unknown": "Unknown",

@@ -338,6 +338,7 @@
         "support_request_submit": "Gửi yêu cầu",
         "support_request_success": "Đã tạo yêu cầu hỗ trợ thành công. Bạn sẽ được chuyển sang trang Hỗ trợ để theo dõi.",
         "account_refund": "Hoàn tiền",
+        "account_refunded": "Đã hoàn",
         "account_refund_title": "Hoàn tiền dư tài khoản quảng cáo",
         "account_refund_description": "Hoàn số tiền dư (chưa sử dụng) từ tài khoản quảng cáo về ví của bạn.",
         "refund_breakdown_title": "Chi tiết hoàn tiền",
@@ -466,7 +467,8 @@
             "campaign_end_meta": "Kết thúc chiến dịch Meta Ads",
             "account_top_up_google": "Nạp tiền tài khoản Google Ads",
             "account_top_up_meta": "Nạp tiền tài khoản Meta Ads",
-            "spending_fee": "Phí spending"
+            "spending_fee": "Phí spending",
+            "account_refund": "Hoàn tiền dư tài khoản quảng cáo"
         },
         "transaction_status": {
             "unknown": "Không xác định",

@@ -10,6 +10,7 @@ use App\Jobs\MetaApi\SyncMetaPlatformJob;
 use App\Service\BusinessManagerService;
 use App\Service\PlatformSettingService;
 use App\Service\ServiceUserService;
+use App\Service\WalletTransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
@@ -22,6 +23,7 @@ class ServiceManagementController extends Controller
         protected BusinessManagerService $businessManagerService,
         protected PlatformSettingService $platformSettingService,
         protected ServiceUserService $serviceUserService,
+        protected WalletTransactionService $walletTransactionService,
     ) {
     }
 
@@ -96,8 +98,12 @@ class ServiceManagementController extends Controller
         }
 
         $paginatorData = $paginator->toArray();
+        $refundLookup = $this->walletTransactionService->getCompletedAccountRefundLookup($paginatorData['data'] ?? []);
         $paginatorArray = [
-            'data' => $paginatorData['data'] ?? [],
+            'data' => array_map(
+                fn (array $item) => $this->attachRefundState($item, $refundLookup),
+                $paginatorData['data'] ?? [],
+            ),
             'links' => [
                 'first' => $paginatorData['first_page_url'] ?? null,
                 'last' => $paginatorData['last_page_url'] ?? null,
@@ -138,6 +144,38 @@ class ServiceManagementController extends Controller
                     ->toArray(),
             ]
         );
+    }
+
+    private function attachRefundState(array $account, array $refundLookup): array
+    {
+        $lookupKey = $this->buildRefundLookupKey(
+            isset($account['service_user_id']) ? (string) $account['service_user_id'] : null,
+            isset($account['account_id']) ? (string) $account['account_id'] : null,
+        );
+        $refundMeta = $lookupKey !== null ? ($refundLookup[$lookupKey] ?? null) : null;
+
+        $account['is_refunded'] = $refundMeta !== null;
+        $account['refunded_at'] = $refundMeta['refunded_at'] ?? null;
+        $account['refund_transaction_id'] = $refundMeta['transaction_id'] ?? null;
+        $account['refund_amount'] = $refundMeta['amount'] ?? null;
+
+        return $account;
+    }
+
+    private function buildRefundLookupKey(?string $serviceUserId, ?string $accountId): ?string
+    {
+        $serviceUserId = trim((string) $serviceUserId);
+        $accountId = trim((string) $accountId);
+
+        if ($serviceUserId === '' || $accountId === '') {
+            return null;
+        }
+
+        if (str_starts_with($accountId, 'act_')) {
+            $accountId = preg_replace('/^act_/', '', $accountId);
+        }
+
+        return $serviceUserId.'::'.$accountId;
     }
 
     public function syncMetaInsights(Request $request): \Illuminate\Http\JsonResponse

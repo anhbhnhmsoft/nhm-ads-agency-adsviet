@@ -114,6 +114,7 @@ return [
         'wallet_balance_not_enough' => '余额不足',
         'account_not_found' => '广告账户不存在',
         'account_not_linked' => '此账户未关联到此服务',
+        'account_already_refunded' => '此账户此前已经完成退款',
         'no_remaining_balance' => '此账户没有可退还的余额',
     ],
 ];

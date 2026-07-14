@@ -11,7 +11,6 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import DashboardGuideCard from './components/DashboardGuideCard';
 import PendingDepositCard from './components/PendingDepositCard';
 import WalletActionsTabs from './components/WalletActionsTabs';
 import WalletInfoCard from './components/WalletInfoCard';
@@ -22,7 +21,6 @@ const WalletIndex = ({
     walletError,
     networks = [],
     pending_deposit = null,
-    dashboard_guide_content = '',
 }: WalletIndexProps) => {
     const { t } = useTranslation();
     const { props } = usePage();
@@ -224,12 +222,6 @@ const WalletIndex = ({
                         />
                     </div>
 
-                    <div className="mt-4">
-                        <DashboardGuideCard
-                            t={t}
-                            content={dashboard_guide_content}
-                        />
-                    </div>
                 </>
             )}
         </div>

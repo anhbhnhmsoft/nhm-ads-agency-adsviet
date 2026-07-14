@@ -208,6 +208,15 @@ const TransactionsIndex = ({
                                                 { defaultValue: 'Hoàn tiền' },
                                             )}
                                         </option>
+                                        <option value="16">
+                                            {t(
+                                                'wallet.transaction_type.account_refund',
+                                                {
+                                                    defaultValue:
+                                                        'Hoàn tiền dư tài khoản quảng cáo',
+                                                },
+                                            )}
+                                        </option>
                                         <option value="4">
                                             {t('wallet.transaction_type.fee', {
                                                 defaultValue: 'Phí',
@@ -422,17 +431,20 @@ const TransactionsIndex = ({
                                     const last = pagination.last_page;
                                     const pages: (number | string)[] = [];
                                     if (last <= 7) {
-                                        for (let i = 1; i <= last; i++) pages.push(i);
+                                        for (let i = 1; i <= last; i++)
+                                            pages.push(i);
                                     } else {
                                         pages.push(1);
                                         if (current > 4) pages.push('...');
                                         for (
                                             let i = Math.max(2, current - 1);
-                                            i <= Math.min(last - 1, current + 1);
+                                            i <=
+                                            Math.min(last - 1, current + 1);
                                             i++
                                         )
                                             pages.push(i);
-                                        if (current < last - 3) pages.push('...');
+                                        if (current < last - 3)
+                                            pages.push('...');
                                         pages.push(last);
                                     }
                                     return pages.map((page, idx) =>
@@ -455,7 +467,8 @@ const TransactionsIndex = ({
                                                 className="min-w-[32px]"
                                                 onClick={() =>
                                                     router.get(
-                                                        transactions_index().url,
+                                                        transactions_index()
+                                                            .url,
                                                         { page, ...filters },
                                                     )
                                                 }

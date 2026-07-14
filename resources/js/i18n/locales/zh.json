@@ -435,6 +435,7 @@
         "support_request_submit": "提交请求",
         "support_request_success": "支持请求已成功创建。您将被重定向到支持页面。",
         "account_refund": "退款",
+        "account_refunded": "已退款",
         "account_refund_title": "广告账户退款",
         "account_refund_description": "将广告账户中的剩余（未使用）余额退还到您的钱包。",
         "refund_breakdown_title": "退款详情",
@@ -584,7 +585,8 @@
             "campaign_end_meta": "结束元广告活动",
             "account_top_up_google": "Google Ads 帐户充值",
             "account_top_up_meta": "元广告帐户充值",
-            "spending_fee": "消费费用"
+            "spending_fee": "消费费用",
+            "account_refund": "广告账户退款"
         },
         "transaction_status": {
             "unknown": "未知",

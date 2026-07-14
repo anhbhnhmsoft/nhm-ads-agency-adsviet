@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import axios from 'axios';
 import {
@@ -23,14 +23,6 @@ import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 import { toast } from 'sonner';
 
 import { DataTable } from '@/components/table/data-table';
-import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,6 +47,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -120,6 +120,29 @@ const getSeverityBadge = (severity?: StatusSeverity | null) => {
         default:
             return 'secondary' as const;
     }
+};
+
+const normalizeRefundAccountId = (accountId?: string | null) =>
+    String(accountId ?? '')
+        .trim()
+        .replace(/^act_/, '');
+
+const getRefundAccountKey = (
+    account?: Pick<
+        BusinessManagerItem,
+        'service_user_id' | 'account_id' | 'id'
+    > | null,
+) => {
+    const serviceUserId = String(account?.service_user_id ?? '').trim();
+    const accountId = normalizeRefundAccountId(
+        account?.account_id ?? account?.id ?? '',
+    );
+
+    if (!serviceUserId || !accountId) {
+        return null;
+    }
+
+    return `${serviceUserId}::${accountId}`;
 };
 
 const ServiceManagementIndex = ({
@@ -201,7 +224,9 @@ const ServiceManagementIndex = ({
     const [accountTopUpSubmitting, setAccountTopUpSubmitting] = useState(false);
     const [activeServices, setActiveServices] = useState<any[]>([]);
     const [loadingServices, setLoadingServices] = useState(false);
-    const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+    const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
+        null,
+    );
 
     // Refund dialog state
     const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -209,10 +234,14 @@ const ServiceManagementIndex = ({
         useState<BusinessManagerItem | null>(null);
     const [refundWalletPassword, setRefundWalletPassword] = useState('');
     const [refundSubmitting, setRefundSubmitting] = useState(false);
+    const [optimisticRefundedAccounts, setOptimisticRefundedAccounts] =
+        useState<Record<string, true>>({});
 
     // Column visibility state (persisted in localStorage)
     const COLUMN_VISIBILITY_KEY = 'service-management-columns';
-    const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+    const [columnVisibility, setColumnVisibility] = useState<
+        Record<string, boolean>
+    >(() => {
         try {
             const saved = localStorage.getItem(COLUMN_VISIBILITY_KEY);
             return saved ? JSON.parse(saved) : {};
@@ -220,15 +249,28 @@ const ServiceManagementIndex = ({
             return {};
         }
     });
-    const handleColumnVisibilityChange = useCallback((updater: Record<string, boolean> | ((old: Record<string, boolean>) => Record<string, boolean>)) => {
-        setColumnVisibility((prev) => {
-            const next = typeof updater === 'function' ? updater(prev) : updater;
-            try {
-                localStorage.setItem(COLUMN_VISIBILITY_KEY, JSON.stringify(next));
-            } catch { /* ignore */ }
-            return next;
-        });
-    }, []);
+    const handleColumnVisibilityChange = useCallback(
+        (
+            updater:
+                | Record<string, boolean>
+                | ((old: Record<string, boolean>) => Record<string, boolean>),
+        ) => {
+            setColumnVisibility((prev) => {
+                const next =
+                    typeof updater === 'function' ? updater(prev) : updater;
+                try {
+                    localStorage.setItem(
+                        COLUMN_VISIBILITY_KEY,
+                        JSON.stringify(next),
+                    );
+                } catch {
+                    /* ignore */
+                }
+                return next;
+            });
+        },
+        [],
+    );
 
     // Unassign dialog state
     const [unassignDialogOpen, setUnassignDialogOpen] = useState(false);
@@ -291,14 +333,16 @@ const ServiceManagementIndex = ({
                 setLoadingServices(true);
                 try {
                     const response = await axios.get(
-                        `/service-management/active-services?platform=${account.platform}`
+                        `/service-management/active-services?platform=${account.platform}`,
                     );
                     const services = response.data?.data || [];
                     setActiveServices(services);
-                    
+
                     const serviceUserId = account.service_user_id;
                     if (serviceUserId) {
-                        const foundService = services.find((s: any) => String(s.id) === String(serviceUserId));
+                        const foundService = services.find(
+                            (s: any) => String(s.id) === String(serviceUserId),
+                        );
                         if (foundService && foundService.user_id) {
                             await fetchWalletBalance(foundService.user_id);
                         }
@@ -316,7 +360,9 @@ const ServiceManagementIndex = ({
     const handleServiceChange = useCallback(
         async (serviceId: string) => {
             setSelectedServiceId(serviceId);
-            const service = activeServices.find((s) => String(s.id) === String(serviceId));
+            const service = activeServices.find(
+                (s) => String(s.id) === String(serviceId),
+            );
             if (service && service.user_id) {
                 await fetchWalletBalance(service.user_id);
             } else {
@@ -352,9 +398,9 @@ const ServiceManagementIndex = ({
         } catch (e: any) {
             toast.error(
                 e?.response?.data?.message ||
-                t('service_management.sync_meta_failed', {
-                    defaultValue: 'Không thể gửi yêu cầu đồng bộ Meta',
-                }),
+                    t('service_management.sync_meta_failed', {
+                        defaultValue: 'Không thể gửi yêu cầu đồng bộ Meta',
+                    }),
             );
         } finally {
             setSyncMetaSubmitting(false);
@@ -375,9 +421,9 @@ const ServiceManagementIndex = ({
         } catch (e: any) {
             toast.error(
                 e?.response?.data?.message ||
-                t('service_management.sync_google_failed', {
-                    defaultValue: 'Không thể gửi yêu cầu đồng bộ Google',
-                }),
+                    t('service_management.sync_google_failed', {
+                        defaultValue: 'Không thể gửi yêu cầu đồng bộ Google',
+                    }),
             );
         } finally {
             setSyncGoogleSubmitting(false);
@@ -418,8 +464,8 @@ const ServiceManagementIndex = ({
                         ? `/google-ads/platform-accounts/${account.id}/campaigns`
                         : `/meta/platform-accounts/${account.id}/campaigns`
                     : account.platform === _PlatformType.GOOGLE
-                        ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
-                        : `/meta/${account.service_user_id}/${account.id}/campaigns`;
+                      ? `/google-ads/${account.service_user_id}/${account.id}/campaigns`
+                      : `/meta/${account.service_user_id}/${account.id}/campaigns`;
 
                 const dateRange =
                     dateRangeArg === undefined
@@ -441,15 +487,15 @@ const ServiceManagementIndex = ({
                 const items: any[] = Array.isArray(payload?.data)
                     ? payload.data
                     : Array.isArray(payload)
-                        ? payload
-                        : [];
+                      ? payload
+                      : [];
                 setCampaigns(items as Campaign[]);
             } catch (e: any) {
                 setCampaignError(
                     e?.response?.data?.message ||
-                    t('service_management.campaigns_error', {
-                        defaultValue: 'Không thể tải chiến dịch',
-                    }),
+                        t('service_management.campaigns_error', {
+                            defaultValue: 'Không thể tải chiến dịch',
+                        }),
                 );
             } finally {
                 setCampaignLoading(false);
@@ -477,7 +523,7 @@ const ServiceManagementIndex = ({
             } catch (e: any) {
                 setCampaignInsightsError(
                     e?.response?.data?.message ||
-                    t('service_management.campaign_insight_error'),
+                        t('service_management.campaign_insight_error'),
                 );
             } finally {
                 setCampaignInsightsLoading(false);
@@ -510,7 +556,7 @@ const ServiceManagementIndex = ({
             } catch (e: any) {
                 setCampaignDetailError(
                     e?.response?.data?.message ||
-                    t('service_management.campaign_detail_error'),
+                        t('service_management.campaign_detail_error'),
                 );
             } finally {
                 setCampaignDetailLoading(false);
@@ -842,9 +888,26 @@ const ServiceManagementIndex = ({
                         !!account.service_user_id ||
                         account.platform === _PlatformType.META ||
                         account.platform === _PlatformType.GOOGLE;
+                    const refundKey = getRefundAccountKey(account);
+                    const isRefunded =
+                        !!account.is_refunded ||
+                        !!(refundKey && optimisticRefundedAccounts[refundKey]);
+                    const canRefundAccount =
+                        ((isAgencyOrCustomer && !!account.service_user_id) ||
+                            isStaff) &&
+                        (account as any).payment_type !== 'postpay' &&
+                        (account as any).remaining_amount != null &&
+                        Number((account as any).remaining_amount) > 0 &&
+                        account.platform === _PlatformType.META &&
+                        ((account as any).account_status_severity === 'error' ||
+                            (account as any).status_severity === 'error' ||
+                            account.account_status === 2);
+                    const showRefundAction = isRefunded || canRefundAccount;
                     return (
                         <div className="flex items-center justify-end gap-2">
-                            {((isAgencyOrCustomer && !!account.service_user_id) || isStaff) && (
+                            {((isAgencyOrCustomer &&
+                                !!account.service_user_id) ||
+                                isStaff) && (
                                 <Button
                                     size="sm"
                                     variant="outline"
@@ -859,25 +922,38 @@ const ServiceManagementIndex = ({
                                     })}
                                 </Button>
                             )}
-                            {((isAgencyOrCustomer && !!account.service_user_id) || isStaff) &&
-                                (account as any).payment_type !== 'postpay' &&
-                                (account as any).remaining_amount != null &&
-                                Number((account as any).remaining_amount) > 0 &&
-                                account.platform === _PlatformType.META &&
-                                (account.status_severity === 'error' || account.account_status === 2) && (
+                            {showRefundAction && (
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                                    className={
+                                        isRefunded
+                                            ? 'border-muted-foreground/30 text-muted-foreground'
+                                            : 'border-orange-300 text-orange-600 hover:bg-orange-50'
+                                    }
                                     onClick={(event) => {
                                         event.stopPropagation();
+                                        if (isRefunded) {
+                                            return;
+                                        }
                                         openAccountRefundDialog(account);
                                     }}
+                                    disabled={isRefunded}
                                 >
                                     <RotateCcw className="mr-2 h-4 w-4" />
-                                    {t('service_management.account_refund', {
-                                        defaultValue: 'Hoàn tiền',
-                                    })}
+                                    {isRefunded
+                                        ? t(
+                                              'service_management.account_refunded',
+                                              {
+                                                  defaultValue: 'Đã hoàn',
+                                              },
+                                          )
+                                        : t(
+                                              'service_management.account_refund',
+                                              {
+                                                  defaultValue: 'Hoàn tiền',
+                                              },
+                                          )}
                                 </Button>
                             )}
                             <Button
@@ -891,19 +967,19 @@ const ServiceManagementIndex = ({
                                 title={
                                     !canViewCampaigns
                                         ? t(
-                                            'service_management.account_not_assigned',
-                                            {
-                                                defaultValue:
-                                                    'Tài khoản này chưa được gán với user nào',
-                                            },
-                                        )
+                                              'service_management.account_not_assigned',
+                                              {
+                                                  defaultValue:
+                                                      'Tài khoản này chưa được gán với user nào',
+                                              },
+                                          )
                                         : t(
-                                            'service_management.view_campaigns_tooltip',
-                                            {
-                                                defaultValue:
-                                                    'Xem danh sách chiến dịch đã được sync từ API',
-                                            },
-                                        )
+                                              'service_management.view_campaigns_tooltip',
+                                              {
+                                                  defaultValue:
+                                                      'Xem danh sách chiến dịch đã được sync từ API',
+                                              },
+                                          )
                                 }
                             >
                                 {t('service_management.view_campaigns', {
@@ -914,7 +990,7 @@ const ServiceManagementIndex = ({
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="text-red-600 border-red-300 hover:bg-red-50"
+                                    className="border-red-300 text-red-600 hover:bg-red-50"
                                     onClick={(event) => {
                                         event.stopPropagation();
                                         openUnassignDialog(account);
@@ -931,7 +1007,16 @@ const ServiceManagementIndex = ({
                 },
             },
         ],
-        [t, isAgencyOrCustomer, isStaff, loadCampaigns, openAccountTopUpDialog],
+        [
+            t,
+            isAgencyOrCustomer,
+            isStaff,
+            loadCampaigns,
+            openAccountTopUpDialog,
+            openAccountRefundDialog,
+            openUnassignDialog,
+            optimisticRefundedAccounts,
+        ],
     );
 
     const campaignColumns: ColumnDef<Campaign>[] = useMemo(
@@ -992,11 +1077,11 @@ const ServiceManagementIndex = ({
                 header:
                     campaignDateRange?.from && campaignDateRange?.to
                         ? t('service_management.period_spend', {
-                            defaultValue: 'Chi tiêu theo khoảng ngày',
-                        })
+                              defaultValue: 'Chi tiêu theo khoảng ngày',
+                          })
                         : t('service_management.total_spend', {
-                            defaultValue: 'Tổng chi tiêu',
-                        }),
+                              defaultValue: 'Tổng chi tiêu',
+                          }),
                 cell: ({ row }) => formatCurrency(row.original.total_spend),
             },
             {
@@ -1062,8 +1147,8 @@ const ServiceManagementIndex = ({
             spendChangeNumber === null
                 ? 'text-muted-foreground'
                 : spendChangeNumber >= 0
-                    ? 'text-green-600'
-                    : 'text-red-600';
+                  ? 'text-green-600'
+                  : 'text-red-600';
 
         return (
             <Card className="mt-4">
@@ -1076,9 +1161,9 @@ const ServiceManagementIndex = ({
                             {spendChangeNumber === null
                                 ? t('service_management.spend_chart_no_change')
                                 : t(
-                                    'service_management.spend_chart_description',
-                                    { percent: spendChangeText },
-                                )}
+                                      'service_management.spend_chart_description',
+                                      { percent: spendChangeText },
+                                  )}
                         </CardDescription>
                     </div>
                     <Select
@@ -1470,14 +1555,14 @@ const ServiceManagementIndex = ({
                                                         percentNumber === null
                                                             ? null
                                                             : percentNumber >= 0
-                                                                ? TrendingUp
-                                                                : TrendingDown;
+                                                              ? TrendingUp
+                                                              : TrendingDown;
                                                     const percentColor =
                                                         percentNumber === null
                                                             ? 'text-muted-foreground'
                                                             : percentNumber >= 0
-                                                                ? 'text-green-500'
-                                                                : 'text-red-500';
+                                                              ? 'text-green-500'
+                                                              : 'text-red-500';
 
                                                     return (
                                                         <Card key={key}>
@@ -1549,8 +1634,8 @@ const ServiceManagementIndex = ({
                                                 const normalizedStatus =
                                                     rawStatus
                                                         ? String(
-                                                            rawStatus,
-                                                        ).toUpperCase()
+                                                              rawStatus,
+                                                          ).toUpperCase()
                                                         : '';
                                                 const isDeleted = [
                                                     'DELETED',
@@ -1701,91 +1786,121 @@ const ServiceManagementIndex = ({
                         {(lastSyncedAt ||
                             query.platform === _PlatformType.META ||
                             query.platform === _PlatformType.GOOGLE) && (
-                                <div className="-mt-4 flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-end">
-                                    <span>
-                                        {t('service_management.last_synced_at', {
-                                            defaultValue: 'Cập nhật lần cuối',
+                            <div className="-mt-4 flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-end">
+                                <span>
+                                    {t('service_management.last_synced_at', {
+                                        defaultValue: 'Cập nhật lần cuối',
+                                    })}
+                                    : {formatDateTimeFull(lastSyncedAt)}
+                                </span>
+                                {query.platform === _PlatformType.META && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleSyncMetaInsights}
+                                        disabled={syncMetaSubmitting}
+                                    >
+                                        {syncMetaSubmitting ? (
+                                            <Loader2 className="animate-spin" />
+                                        ) : (
+                                            <RefreshCw />
+                                        )}
+                                        {t('service_management.sync_meta', {
+                                            defaultValue:
+                                                'Cập nhật dữ liệu Meta',
                                         })}
-                                        : {formatDateTimeFull(lastSyncedAt)}
-                                    </span>
-                                    {query.platform === _PlatformType.META && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={handleSyncMetaInsights}
-                                            disabled={syncMetaSubmitting}
-                                        >
-                                            {syncMetaSubmitting ? (
-                                                <Loader2 className="animate-spin" />
-                                            ) : (
-                                                <RefreshCw />
-                                            )}
-                                            {t('service_management.sync_meta', {
-                                                defaultValue:
-                                                    'Cập nhật dữ liệu Meta',
-                                            })}
-                                        </Button>
-                                    )}
-                                    {query.platform === _PlatformType.GOOGLE && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={handleSyncGoogleInsights}
-                                            disabled={syncGoogleSubmitting}
-                                        >
-                                            {syncGoogleSubmitting ? (
-                                                <Loader2 className="animate-spin" />
-                                            ) : (
-                                                <RefreshCw />
-                                            )}
-                                            {t('service_management.sync_google', {
-                                                defaultValue:
-                                                    'Cập nhật dữ liệu Google',
-                                            })}
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
+                                    </Button>
+                                )}
+                                {query.platform === _PlatformType.GOOGLE && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleSyncGoogleInsights}
+                                        disabled={syncGoogleSubmitting}
+                                    >
+                                        {syncGoogleSubmitting ? (
+                                            <Loader2 className="animate-spin" />
+                                        ) : (
+                                            <RefreshCw />
+                                        )}
+                                        {t('service_management.sync_google', {
+                                            defaultValue:
+                                                'Cập nhật dữ liệu Google',
+                                        })}
+                                    </Button>
+                                )}
+                            </div>
+                        )}
 
                         {/* Column visibility toggle */}
-                        <div className="flex justify-end mb-2">
+                        <div className="mb-2 flex justify-end">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" size="sm">
                                         <Columns className="mr-2 h-4 w-4" />
-                                        {t('service_management.toggle_columns', {
-                                            defaultValue: 'Ẩn/Hiện cột',
-                                        })}
+                                        {t(
+                                            'service_management.toggle_columns',
+                                            {
+                                                defaultValue: 'Ẩn/Hiện cột',
+                                            },
+                                        )}
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuContent
+                                    align="end"
+                                    className="w-56"
+                                >
                                     <DropdownMenuLabel>
-                                        {t('service_management.select_columns', {
-                                            defaultValue: 'Chọn cột hiển thị',
-                                        })}
+                                        {t(
+                                            'service_management.select_columns',
+                                            {
+                                                defaultValue:
+                                                    'Chọn cột hiển thị',
+                                            },
+                                        )}
                                     </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     {accountColumns
                                         .filter((col) => {
-                                            const id = typeof col.id === 'string' ? col.id : (col as any).accessorKey;
+                                            const id =
+                                                typeof col.id === 'string'
+                                                    ? col.id
+                                                    : (col as any).accessorKey;
                                             return id && id !== 'actions';
                                         })
                                         .map((col) => {
-                                            const colId = typeof col.id === 'string' ? col.id : (col as any).accessorKey;
+                                            const colId =
+                                                typeof col.id === 'string'
+                                                    ? col.id
+                                                    : (col as any).accessorKey;
                                             if (!colId) return null;
-                                            const label = typeof col.header === 'string'
-                                                ? col.header
-                                                : t(`service_management.column.${colId}`, { defaultValue: String(colId) });
-                                            const isVisible = columnVisibility[colId] !== false;
+                                            const label =
+                                                typeof col.header === 'string'
+                                                    ? col.header
+                                                    : t(
+                                                          `service_management.column.${colId}`,
+                                                          {
+                                                              defaultValue:
+                                                                  String(colId),
+                                                          },
+                                                      );
+                                            const isVisible =
+                                                columnVisibility[colId] !==
+                                                false;
                                             return (
                                                 <DropdownMenuCheckboxItem
                                                     key={colId}
                                                     checked={isVisible}
-                                                    onCheckedChange={(checked) => {
-                                                        handleColumnVisibilityChange((prev) => ({
-                                                            ...prev,
-                                                            [colId]: checked,
-                                                        }));
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) => {
+                                                        handleColumnVisibilityChange(
+                                                            (prev) => ({
+                                                                ...prev,
+                                                                [colId]:
+                                                                    checked,
+                                                            }),
+                                                        );
                                                     }}
                                                 >
                                                     {label}
@@ -1800,7 +1915,9 @@ const ServiceManagementIndex = ({
                             columns={accountColumns}
                             paginator={paginator}
                             columnVisibility={columnVisibility}
-                            onColumnVisibilityChange={handleColumnVisibilityChange}
+                            onColumnVisibilityChange={
+                                handleColumnVisibilityChange
+                            }
                             onRowClick={(account) => loadCampaigns(account)}
                             renderFooterRows={(columnCount) => (
                                 <TableRow className="bg-muted/40 font-medium">
@@ -1885,10 +2002,11 @@ const ServiceManagementIndex = ({
                                     '-'}
                             </div>
                             {selectedAccountForTopUp?.customer_name && (
-                                <div className="text-muted-foreground mt-1 text-xs">
+                                <div className="mt-1 text-xs text-muted-foreground">
                                     {t('service_management.customer_name', {
                                         defaultValue: 'Khách hàng',
-                                    })}:{' '}
+                                    })}
+                                    :{' '}
                                     <span className="font-semibold text-foreground">
                                         {selectedAccountForTopUp.customer_name}
                                     </span>
@@ -1899,17 +2017,25 @@ const ServiceManagementIndex = ({
                         {isStaff && (
                             <div className="space-y-2">
                                 <Label htmlFor="account-top-up-service">
-                                    {t('service_management.select_customer_service_label', {
-                                        defaultValue: 'Chọn khách hàng - ví dịch vụ',
-                                    })}
+                                    {t(
+                                        'service_management.select_customer_service_label',
+                                        {
+                                            defaultValue:
+                                                'Chọn khách hàng - ví dịch vụ',
+                                        },
+                                    )}
                                 </Label>
                                 {loadingServices ? (
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                         <span>
-                                            {t('service_management.loading_services', {
-                                                defaultValue: 'Đang tải danh sách dịch vụ...',
-                                            })}
+                                            {t(
+                                                'service_management.loading_services',
+                                                {
+                                                    defaultValue:
+                                                        'Đang tải danh sách dịch vụ...',
+                                                },
+                                            )}
                                         </span>
                                     </div>
                                 ) : (
@@ -1917,39 +2043,55 @@ const ServiceManagementIndex = ({
                                         value={selectedServiceId || ''}
                                         onValueChange={handleServiceChange}
                                     >
-                                        <SelectTrigger className="w-full h-auto py-2 [&>span]:line-clamp-none [&>span]:block [&_span.text-muted-foreground]:truncate [&_span.text-muted-foreground]:block [&_span.text-muted-foreground]:max-w-[380px]">
+                                        <SelectTrigger className="h-auto w-full py-2 [&_span.text-muted-foreground]:block [&_span.text-muted-foreground]:max-w-[380px] [&_span.text-muted-foreground]:truncate [&>span]:line-clamp-none [&>span]:block">
                                             <SelectValue
                                                 placeholder={t(
                                                     'service_management.select_service_placeholder',
                                                     {
-                                                        defaultValue: 'Chọn gói dịch vụ của khách hàng',
+                                                        defaultValue:
+                                                            'Chọn gói dịch vụ của khách hàng',
                                                     },
                                                 )}
                                             />
                                         </SelectTrigger>
                                         <SelectContent className="max-h-[300px] max-w-[500px]">
                                             {activeServices.length === 0 ? (
-                                                <div className="p-2 text-sm text-center text-muted-foreground">
-                                                    {t('service_management.no_active_services', {
-                                                        defaultValue: 'Không có gói dịch vụ nào đang hoạt động',
-                                                    })}
+                                                <div className="p-2 text-center text-sm text-muted-foreground">
+                                                    {t(
+                                                        'service_management.no_active_services',
+                                                        {
+                                                            defaultValue:
+                                                                'Không có gói dịch vụ nào đang hoạt động',
+                                                        },
+                                                    )}
                                                 </div>
                                             ) : (
-                                                activeServices.map((service) => (
-                                                    <SelectItem
-                                                        key={service.id}
-                                                        value={String(service.id)}
-                                                    >
-                                                        <div className="flex flex-col items-start py-1 text-left w-full">
-                                                            <span className="font-medium text-sm text-foreground">
-                                                                {service.customer_name} (ID: {service.id})
-                                                            </span>
-                                                            <span className="text-xs text-muted-foreground whitespace-normal break-words max-w-[420px] mt-1 leading-relaxed">
-                                                                {service.package_name}
-                                                            </span>
-                                                        </div>
-                                                    </SelectItem>
-                                                ))
+                                                activeServices.map(
+                                                    (service) => (
+                                                        <SelectItem
+                                                            key={service.id}
+                                                            value={String(
+                                                                service.id,
+                                                            )}
+                                                        >
+                                                            <div className="flex w-full flex-col items-start py-1 text-left">
+                                                                <span className="text-sm font-medium text-foreground">
+                                                                    {
+                                                                        service.customer_name
+                                                                    }{' '}
+                                                                    (ID:{' '}
+                                                                    {service.id}
+                                                                    )
+                                                                </span>
+                                                                <span className="mt-1 max-w-[420px] text-xs leading-relaxed break-words whitespace-normal text-muted-foreground">
+                                                                    {
+                                                                        service.package_name
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ),
+                                                )
                                             )}
                                         </SelectContent>
                                     </Select>
@@ -1958,35 +2100,44 @@ const ServiceManagementIndex = ({
                         )}
 
                         {isStaff && (
-                            <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/30">
-                                <p className="font-semibold mb-1">
-                                    {t('service_management.staff_action_notice_title', {
-                                        defaultValue: 'Lưu ý quyền Admin/Nhân viên',
-                                    })}
+                            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-300">
+                                <p className="mb-1 font-semibold">
+                                    {t(
+                                        'service_management.staff_action_notice_title',
+                                        {
+                                            defaultValue:
+                                                'Lưu ý quyền Admin/Nhân viên',
+                                        },
+                                    )}
                                 </p>
                                 <p className="text-muted-foreground">
-                                    {t('service_management.staff_action_notice_desc', {
-                                        defaultValue: 'Bạn đang thực hiện nạp tiền thay cho khách hàng. Hệ thống sẽ trừ tiền trực tiếp từ ví của khách hàng này mà không cần nhập mật khẩu ví.',
-                                    })}
+                                    {t(
+                                        'service_management.staff_action_notice_desc',
+                                        {
+                                            defaultValue:
+                                                'Bạn đang thực hiện nạp tiền thay cho khách hàng. Hệ thống sẽ trừ tiền trực tiếp từ ví của khách hàng này mà không cần nhập mật khẩu ví.',
+                                        },
+                                    )}
                                 </p>
                             </div>
                         )}
 
-                        {((isAgencyOrCustomer) || (isStaff && selectedServiceId)) && (
+                        {(isAgencyOrCustomer ||
+                            (isStaff && selectedServiceId)) && (
                             <div className="text-sm text-muted-foreground">
                                 {walletBalanceLoading
                                     ? t(
-                                        'service_management.campaign_update_budget_wallet_balance_loading',
-                                    )
+                                          'service_management.campaign_update_budget_wallet_balance_loading',
+                                      )
                                     : walletBalance !== null
-                                        ? t(
+                                      ? t(
                                             'service_management.campaign_update_budget_wallet_balance',
                                             {
                                                 balance:
                                                     walletBalance.toLocaleString(),
                                             },
                                         )
-                                        : t(
+                                      : t(
                                             'service_management.campaign_update_budget_wallet_balance_error',
                                         )}
                             </div>
@@ -2062,9 +2213,13 @@ const ServiceManagementIndex = ({
 
                                 if (isStaff && !selectedServiceId) {
                                     toast.error(
-                                        t('service_management.select_service_required', {
-                                            defaultValue: 'Vui lòng chọn khách hàng - ví dịch vụ để nạp tiền',
-                                        }),
+                                        t(
+                                            'service_management.select_service_required',
+                                            {
+                                                defaultValue:
+                                                    'Vui lòng chọn khách hàng - ví dịch vụ để nạp tiền',
+                                            },
+                                        ),
                                     );
                                     return;
                                 }
@@ -2092,8 +2247,9 @@ const ServiceManagementIndex = ({
                                                 accountTopUpWalletPassword,
                                             platform_type:
                                                 selectedAccountForTopUp.platform,
-                                            service_user_id:
-                                                isStaff ? selectedServiceId : selectedAccountForTopUp.service_user_id,
+                                            service_user_id: isStaff
+                                                ? selectedServiceId
+                                                : selectedAccountForTopUp.service_user_id,
                                             account_id:
                                                 selectedAccountForTopUp.account_id ||
                                                 selectedAccountForTopUp.id,
@@ -2120,13 +2276,13 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                        t(
-                                            'service_management.account_top_up_error',
-                                            {
-                                                defaultValue:
-                                                    'Không thể tạo yêu cầu nạp tiền tài khoản quảng cáo.',
-                                            },
-                                        ),
+                                            t(
+                                                'service_management.account_top_up_error',
+                                                {
+                                                    defaultValue:
+                                                        'Không thể tạo yêu cầu nạp tiền tài khoản quảng cáo.',
+                                                },
+                                            ),
                                     );
                                 } finally {
                                     setAccountTopUpSubmitting(false);
@@ -2146,18 +2302,22 @@ const ServiceManagementIndex = ({
             </Dialog>
 
             {/* Dialog Hoàn tiền dư tài khoản quảng cáo */}
-            <Dialog open={refundDialogOpen} onOpenChange={(open) => {
-                setRefundDialogOpen(open);
-                if (!open) {
-                    setSelectedAccountForRefund(null);
-                    setRefundWalletPassword('');
-                }
-            }}>
+            <Dialog
+                open={refundDialogOpen}
+                onOpenChange={(open) => {
+                    setRefundDialogOpen(open);
+                    if (!open) {
+                        setSelectedAccountForRefund(null);
+                        setRefundWalletPassword('');
+                    }
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
                             {t('service_management.account_refund_title', {
-                                defaultValue: 'Hoàn tiền dư tài khoản quảng cáo',
+                                defaultValue:
+                                    'Hoàn tiền dư tài khoản quảng cáo',
                             })}
                         </DialogTitle>
                         <DialogDescription>
@@ -2184,41 +2344,112 @@ const ServiceManagementIndex = ({
                         </div>
 
                         {/* Hiển thị breakdown hoàn tiền */}
-                        {(selectedAccountForRefund as any)?.remaining_amount != null && (() => {
-                            const remaining = Number((selectedAccountForRefund as any).remaining_amount) || 0;
-                            const feePercent = Number((selectedAccountForRefund as any).spending_fee_percent) || 0;
-                            const feeRefund = Math.round(remaining * feePercent / 100 * 100) / 100;
-                            const totalRefund = remaining + feeRefund;
-                            return (
-                                <div className="rounded-md bg-orange-50 dark:bg-orange-950/30 p-3 text-sm space-y-1">
-                                    <div className="font-medium text-orange-700 dark:text-orange-300">
-                                        {t('service_management.refund_breakdown_title', {
-                                            defaultValue: 'Chi tiết hoàn tiền',
-                                        })}
+                        {(selectedAccountForRefund as any)?.remaining_amount !=
+                            null &&
+                            (() => {
+                                const remaining =
+                                    Number(
+                                        (selectedAccountForRefund as any)
+                                            .remaining_amount,
+                                    ) || 0;
+                                const feePercent =
+                                    Number(
+                                        (selectedAccountForRefund as any)
+                                            .spending_fee_percent,
+                                    ) || 0;
+                                const feeRefund =
+                                    Math.round(
+                                        ((remaining * feePercent) / 100) * 100,
+                                    ) / 100;
+                                const totalRefund = remaining + feeRefund;
+                                return (
+                                    <div className="space-y-1 rounded-md bg-orange-50 p-3 text-sm dark:bg-orange-950/30">
+                                        <div className="font-medium text-orange-700 dark:text-orange-300">
+                                            {t(
+                                                'service_management.refund_breakdown_title',
+                                                {
+                                                    defaultValue:
+                                                        'Chi tiết hoàn tiền',
+                                                },
+                                            )}
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                            <span>
+                                                {t(
+                                                    'service_management.refund_remaining',
+                                                    {
+                                                        defaultValue:
+                                                            'Tiền dư còn lại',
+                                                    },
+                                                )}
+                                            </span>
+                                            <span>
+                                                {remaining.toLocaleString(
+                                                    'en-US',
+                                                    {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    },
+                                                )}{' '}
+                                                USD
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                            <span>
+                                                {t(
+                                                    'service_management.refund_fee',
+                                                    {
+                                                        defaultValue:
+                                                            'Phí dịch vụ hoàn lại',
+                                                    },
+                                                )}
+                                            </span>
+                                            <span>
+                                                {feeRefund.toLocaleString(
+                                                    'en-US',
+                                                    {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    },
+                                                )}{' '}
+                                                USD
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between border-t pt-1 font-semibold">
+                                            <span>
+                                                {t(
+                                                    'service_management.refund_total',
+                                                    {
+                                                        defaultValue:
+                                                            'Tổng hoàn',
+                                                    },
+                                                )}
+                                            </span>
+                                            <span>
+                                                {totalRefund.toLocaleString(
+                                                    'en-US',
+                                                    {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    },
+                                                )}{' '}
+                                                USD
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span>{t('service_management.refund_remaining', { defaultValue: 'Tiền dư còn lại' })}</span>
-                                        <span>{remaining.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
-                                    </div>
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span>{t('service_management.refund_fee', { defaultValue: 'Phí dịch vụ hoàn lại' })}</span>
-                                        <span>{feeRefund.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
-                                    </div>
-                                    <div className="flex justify-between font-semibold border-t pt-1">
-                                        <span>{t('service_management.refund_total', { defaultValue: 'Tổng hoàn' })}</span>
-                                        <span>{totalRefund.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
-                                    </div>
-                                </div>
-                            );
-                        })()}
+                                );
+                            })()}
 
                         {/* Wallet password */}
                         {isAgencyOrCustomer && (
                             <div className="space-y-2">
                                 <Label htmlFor="refund-wallet-password">
-                                    {t('service_management.campaign_update_budget_wallet_password_label', {
-                                        defaultValue: 'Mật khẩu ví',
-                                    })}
+                                    {t(
+                                        'service_management.campaign_update_budget_wallet_password_label',
+                                        {
+                                            defaultValue: 'Mật khẩu ví',
+                                        },
+                                    )}
                                 </Label>
                                 <Input
                                     id="refund-wallet-password"
@@ -2227,9 +2458,12 @@ const ServiceManagementIndex = ({
                                     onChange={(e) =>
                                         setRefundWalletPassword(e.target.value)
                                     }
-                                    placeholder={t('service_management.campaign_update_budget_wallet_password_placeholder', {
-                                        defaultValue: 'Nhập mật khẩu ví',
-                                    })}
+                                    placeholder={t(
+                                        'service_management.campaign_update_budget_wallet_password_placeholder',
+                                        {
+                                            defaultValue: 'Nhập mật khẩu ví',
+                                        },
+                                    )}
                                 />
                             </div>
                         )}
@@ -2248,34 +2482,66 @@ const ServiceManagementIndex = ({
                         <Button
                             variant="destructive"
                             onClick={async () => {
-                                if (!selectedAccountForRefund?.service_user_id) return;
+                                if (!selectedAccountForRefund?.service_user_id)
+                                    return;
                                 setRefundSubmitting(true);
                                 try {
+                                    const refundKey = getRefundAccountKey(
+                                        selectedAccountForRefund,
+                                    );
                                     const response = await axios.post(
                                         '/wallets/account-refund',
                                         {
-                                            service_user_id: selectedAccountForRefund.service_user_id,
-                                            account_id: selectedAccountForRefund.account_id || selectedAccountForRefund.id,
-                                            wallet_password: refundWalletPassword || undefined,
+                                            service_user_id:
+                                                selectedAccountForRefund.service_user_id,
+                                            account_id:
+                                                selectedAccountForRefund.account_id ||
+                                                selectedAccountForRefund.id,
+                                            wallet_password:
+                                                refundWalletPassword ||
+                                                undefined,
                                         },
                                     );
                                     const data = response.data?.data;
                                     toast.success(
-                                        t('service_management.account_refund_success', {
-                                            amount: data?.total_refund?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '?',
-                                            defaultValue: `Đã hoàn ${data?.total_refund?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '?'} USD về ví.`,
-                                        }),
+                                        t(
+                                            'service_management.account_refund_success',
+                                            {
+                                                amount:
+                                                    data?.total_refund?.toLocaleString(
+                                                        'en-US',
+                                                        {
+                                                            minimumFractionDigits: 2,
+                                                            maximumFractionDigits: 2,
+                                                        },
+                                                    ) || '?',
+                                                defaultValue: `Đã hoàn ${data?.total_refund?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '?'} USD về ví.`,
+                                            },
+                                        ),
                                     );
+                                    if (refundKey) {
+                                        setOptimisticRefundedAccounts(
+                                            (current) => ({
+                                                ...current,
+                                                [refundKey]: true,
+                                            }),
+                                        );
+                                    }
                                     setRefundDialogOpen(false);
                                     setSelectedAccountForRefund(null);
                                     setRefundWalletPassword('');
                                     fetchWalletBalance();
+                                    router.reload({ only: ['paginator'] });
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                        t('service_management.account_refund_error', {
-                                            defaultValue: 'Không thể hoàn tiền. Vui lòng thử lại.',
-                                        }),
+                                            t(
+                                                'service_management.account_refund_error',
+                                                {
+                                                    defaultValue:
+                                                        'Không thể hoàn tiền. Vui lòng thử lại.',
+                                                },
+                                            ),
                                     );
                                 } finally {
                                     setRefundSubmitting(false);
@@ -2295,7 +2561,10 @@ const ServiceManagementIndex = ({
             </Dialog>
 
             {/* Dialog Gỡ gán tài khoản */}
-            <Dialog open={unassignDialogOpen} onOpenChange={setUnassignDialogOpen}>
+            <Dialog
+                open={unassignDialogOpen}
+                onOpenChange={setUnassignDialogOpen}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
@@ -2305,21 +2574,27 @@ const ServiceManagementIndex = ({
                         </DialogTitle>
                         <DialogDescription>
                             {t('service_management.unassign_description', {
-                                defaultValue: 'Gỡ bỏ liên kết tài khoản này khỏi khách hàng. Tài khoản sẽ trở về khoAvailable.',
+                                defaultValue:
+                                    'Gỡ bỏ liên kết tài khoản này khỏi khách hàng. Tài khoản sẽ trở về khoAvailable.',
                             })}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <div className="rounded-md bg-red-50 dark:bg-red-950/30 p-3 text-sm">
+                        <div className="rounded-md bg-red-50 p-3 text-sm dark:bg-red-950/30">
                             <div className="font-medium text-red-700 dark:text-red-300">
-                                {selectedAccountForUnassign?.account_name || '-'}
+                                {selectedAccountForUnassign?.account_name ||
+                                    '-'}
                             </div>
                             <div className="text-red-600/80 dark:text-red-400/80">
-                                ID: {selectedAccountForUnassign?.account_id || selectedAccountForUnassign?.id || '-'}
+                                ID:{' '}
+                                {selectedAccountForUnassign?.account_id ||
+                                    selectedAccountForUnassign?.id ||
+                                    '-'}
                             </div>
                             {selectedAccountForUnassign?.customer_name && (
-                                <div className="text-red-600/80 dark:text-red-400/80 mt-1">
-                                    Khách: {selectedAccountForUnassign.customer_name}
+                                <div className="mt-1 text-red-600/80 dark:text-red-400/80">
+                                    Khách:{' '}
+                                    {selectedAccountForUnassign.customer_name}
                                 </div>
                             )}
                         </div>
@@ -2337,20 +2612,30 @@ const ServiceManagementIndex = ({
                         <Button
                             variant="destructive"
                             onClick={async () => {
-                                if (!selectedAccountForUnassign?.service_user_id) return;
+                                if (
+                                    !selectedAccountForUnassign?.service_user_id
+                                )
+                                    return;
                                 setUnassignSubmitting(true);
                                 try {
                                     await axios.post(
                                         '/service-management/unassign-account',
                                         {
-                                            service_user_id: selectedAccountForUnassign.service_user_id,
-                                            account_id: selectedAccountForUnassign.account_id || selectedAccountForUnassign.id,
+                                            service_user_id:
+                                                selectedAccountForUnassign.service_user_id,
+                                            account_id:
+                                                selectedAccountForUnassign.account_id ||
+                                                selectedAccountForUnassign.id,
                                         },
                                     );
                                     toast.success(
-                                        t('service_management.unassign_success', {
-                                            defaultValue: 'Đã gỡ gán tài khoản thành công.',
-                                        }),
+                                        t(
+                                            'service_management.unassign_success',
+                                            {
+                                                defaultValue:
+                                                    'Đã gỡ gán tài khoản thành công.',
+                                            },
+                                        ),
                                     );
                                     setUnassignDialogOpen(false);
                                     setSelectedAccountForUnassign(null);
@@ -2359,9 +2644,13 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                        t('service_management.unassign_error', {
-                                            defaultValue: 'Không thể gỡ gán. Vui lòng thử lại.',
-                                        }),
+                                            t(
+                                                'service_management.unassign_error',
+                                                {
+                                                    defaultValue:
+                                                        'Không thể gỡ gán. Vui lòng thử lại.',
+                                                },
+                                            ),
                                     );
                                 } finally {
                                     setUnassignSubmitting(false);
@@ -2406,7 +2695,7 @@ const ServiceManagementIndex = ({
                                 try {
                                     const platformPrefix =
                                         selectedAccount?.platform ===
-                                            _PlatformType.GOOGLE
+                                        _PlatformType.GOOGLE
                                             ? 'google-ads'
                                             : 'meta';
                                     await axios.post(
@@ -2425,9 +2714,9 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                        t(
-                                            'service_management.campaign_pause_error',
-                                        ),
+                                            t(
+                                                'service_management.campaign_pause_error',
+                                            ),
                                     );
                                 } finally {
                                     setPauseSubmitting(false);
@@ -2469,12 +2758,12 @@ const ServiceManagementIndex = ({
                                 try {
                                     const platformPrefix =
                                         selectedAccount?.platform ===
-                                            _PlatformType.GOOGLE
+                                        _PlatformType.GOOGLE
                                             ? 'google-ads'
                                             : 'meta';
                                     const status =
                                         selectedAccount?.platform ===
-                                            _PlatformType.GOOGLE
+                                        _PlatformType.GOOGLE
                                             ? 'ENABLED'
                                             : 'ACTIVE';
                                     await axios.post(
@@ -2493,9 +2782,9 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                        t(
-                                            'service_management.campaign_resume_error',
-                                        ),
+                                            t(
+                                                'service_management.campaign_resume_error',
+                                            ),
                                     );
                                 } finally {
                                     setResumeSubmitting(false);
@@ -2538,12 +2827,12 @@ const ServiceManagementIndex = ({
                                 try {
                                     const platformPrefix =
                                         selectedAccount?.platform ===
-                                            _PlatformType.GOOGLE
+                                        _PlatformType.GOOGLE
                                             ? 'google-ads'
                                             : 'meta';
                                     const status =
                                         selectedAccount?.platform ===
-                                            _PlatformType.GOOGLE
+                                        _PlatformType.GOOGLE
                                             ? 'REMOVED'
                                             : 'DELETED';
                                     await axios.post(
@@ -2564,9 +2853,9 @@ const ServiceManagementIndex = ({
                                 } catch (e: any) {
                                     toast.error(
                                         e?.response?.data?.message ||
-                                        t(
-                                            'service_management.campaign_end_error',
-                                        ),
+                                            t(
+                                                'service_management.campaign_end_error',
+                                            ),
                                     );
                                 } finally {
                                     setEndSubmitting(false);
