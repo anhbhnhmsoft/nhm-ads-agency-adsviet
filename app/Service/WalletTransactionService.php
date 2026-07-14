@@ -1536,8 +1536,12 @@ class WalletTransactionService
             $remaining = 0.0;
             $accountCurrency = 'USD';
             if ((int) $platform === PlatformType::META->value) {
+                $normalizedAccountId = preg_replace('/^act_/', '', $accountId);
                 $account = \App\Models\MetaAccount::query()
-                    ->where('account_id', preg_replace('/^act_/', '', $accountId))
+                    ->where(function ($q) use ($normalizedAccountId, $accountId) {
+                        $q->where('account_id', $normalizedAccountId)
+                          ->orWhere('account_id', $accountId);
+                    })
                     ->where('service_user_id', $serviceUserId)
                     ->first();
                 if (!$account) {

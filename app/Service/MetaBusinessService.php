@@ -964,7 +964,11 @@ class MetaBusinessService
             // DB lưu cents (minor units) cho display consistency với MetaService sync
             $newSpendCapMinor = $this->toMetaMinorUnit($newSpendCap, $currency);
             \App\Models\MetaAccount::query()
-                ->where('account_id', preg_replace('/^act_/', '', $normalizedAccountId))
+                ->where(function ($q) use ($normalizedAccountId) {
+                    $stripped = preg_replace('/^act_/', '', $normalizedAccountId);
+                    $q->where('account_id', $normalizedAccountId)
+                      ->orWhere('account_id', $stripped);
+                })
                 ->update(['spend_cap' => (string) $newSpendCapMinor]);
 
             return ServiceReturn::success(data: [

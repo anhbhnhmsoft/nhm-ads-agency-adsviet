@@ -812,88 +812,22 @@ const ServiceOrdersIndex = ({
                     </div>
                 </div>
 
-                {/* Filter Bar */}
+                {/* Filter Bar - Compact Filament style */}
                 {is_admin_view && (
-                    <div className="rounded-lg border bg-muted/30 p-4">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-                            {/* Tìm kiếm tên khách */}
-                            <div className="relative">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <input
-                                    type="text"
-                                    className="w-full rounded-md border bg-background py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                                    placeholder="Tìm tên khách hàng..."
-                                    value={filterSearch}
-                                    onChange={(e) => setFilterSearch(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            inertiaRouter.get(
-                                                window.location.pathname,
-                                                {
-                                                    'filter[search]': filterSearch || undefined,
-                                                    'filter[status]': filterStatus || undefined,
-                                                    'filter[platform]': filterPlatform || undefined,
-                                                    'filter[user_id]': filterUserId || undefined,
-                                                    page: 1,
-                                                } as any,
-                                                { preserveState: true, replace: true },
-                                            );
-                                        }
-                                    }}
-                                />
-                            </div>
+                    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                        <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
 
-                            {/* Lọc khách hàng qua SearchableSelect */}
-                            <div>
-                                <SearchableSelect
-                                    options={[
-                                        { value: '', label: 'Tất cả khách hàng' },
-                                        ...customers.map((c) => ({
-                                            value: c.id,
-                                            label: c.name,
-                                            sublabel: c.username,
-                                        })),
-                                    ]}
-                                    value={filterUserId}
-                                    onValueChange={(val) => setFilterUserId(val)}
-                                    placeholder="Chọn khách hàng..."
-                                    searchPlaceholder="Tìm tên hoặc username..."
-                                    className="h-9"
-                                />
-                            </div>
-
-                            {/* Lọc trạng thái */}
-                            <select
-                                className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                            >
-                                {STATUS_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
-
-                            {/* Lọc platform */}
-                            <select
-                                className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                                value={filterPlatform}
-                                onChange={(e) => setFilterPlatform(e.target.value)}
-                            >
-                                {PLATFORM_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
-
-                            {/* Nút tìm kiếm + reset */}
-                            <div className="flex gap-2">
-                                <Button
-                                    size="sm"
-                                    className="flex-1"
-                                    onClick={() => {
+                        {/* Tìm kiếm tên khách */}
+                        <div className="relative">
+                            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <input
+                                type="text"
+                                className="h-8 w-[180px] rounded-md border bg-background pl-7 pr-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                                placeholder="Tìm khách hàng..."
+                                value={filterSearch}
+                                onChange={(e) => setFilterSearch(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
                                         inertiaRouter.get(
                                             window.location.pathname,
                                             {
@@ -905,30 +839,101 @@ const ServiceOrdersIndex = ({
                                             } as any,
                                             { preserveState: true, replace: true },
                                         );
-                                    }}
-                                >
-                                    <Search className="mr-1.5 h-3.5 w-3.5" />
-                                    Tìm kiếm
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => {
-                                        setFilterSearch('');
-                                        setFilterStatus('');
-                                        setFilterPlatform('');
-                                        setFilterUserId('');
-                                        inertiaRouter.get(
-                                            window.location.pathname,
-                                            { page: 1 } as any,
-                                            { preserveState: true, replace: true },
-                                        );
-                                    }}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
+                                    }
+                                }}
+                            />
                         </div>
+
+                        {/* Lọc khách hàng */}
+                        <div className="w-[200px]">
+                            <SearchableSelect
+                                options={[
+                                    { value: '', label: 'Tất cả khách' },
+                                    ...customers.map((c) => ({
+                                        value: c.id,
+                                        label: c.name,
+                                        sublabel: c.username,
+                                    })),
+                                ]}
+                                value={filterUserId}
+                                onValueChange={(val) => setFilterUserId(val)}
+                                placeholder="Khách hàng..."
+                                searchPlaceholder="Tìm tên hoặc username..."
+                                className="h-8 text-xs"
+                            />
+                        </div>
+
+                        {/* Lọc trạng thái */}
+                        <select
+                            className="h-8 rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            {STATUS_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        {/* Lọc platform */}
+                        <select
+                            className="h-8 rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                            value={filterPlatform}
+                            onChange={(e) => setFilterPlatform(e.target.value)}
+                        >
+                            {PLATFORM_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        {/* Nút tìm kiếm */}
+                        <Button
+                            size="sm"
+                            variant="default"
+                            className="h-8 px-3 text-xs"
+                            onClick={() => {
+                                inertiaRouter.get(
+                                    window.location.pathname,
+                                    {
+                                        'filter[search]': filterSearch || undefined,
+                                        'filter[status]': filterStatus || undefined,
+                                        'filter[platform]': filterPlatform || undefined,
+                                        'filter[user_id]': filterUserId || undefined,
+                                        page: 1,
+                                    } as any,
+                                    { preserveState: true, replace: true },
+                                );
+                            }}
+                        >
+                            <Search className="mr-1 h-3 w-3" />
+                            Lọc
+                        </Button>
+
+                        {/* Nút reset - chỉ hiện khi có filter đang active */}
+                        {(filterSearch || filterStatus || filterPlatform || filterUserId) && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => {
+                                    setFilterSearch('');
+                                    setFilterStatus('');
+                                    setFilterPlatform('');
+                                    setFilterUserId('');
+                                    inertiaRouter.get(
+                                        window.location.pathname,
+                                        { page: 1 } as any,
+                                        { preserveState: true, replace: true },
+                                    );
+                                }}
+                            >
+                                <X className="mr-1 h-3 w-3" />
+                                Xóa bộ lọc
+                            </Button>
+                        )}
                     </div>
                 )}
 

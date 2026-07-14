@@ -197,11 +197,15 @@ export const useServiceOrderEditConfigDialog = () => {
                     ? (config.account_ids as string[]).filter(Boolean)
                     : accountIdVal ? [accountIdVal] : [];
 
-                // Restore assign fields
+                // Restore assign fields — detect correct tab from config
                 const hasAccounts = accountIdsVal.length > 0;
-                const assignModeVal = (config.assign_mode as AssignMode) || (hasAccounts ? 'account' : 'bm');
+                const hasBm = !!bmIdVal || resolvedBmIds.length > 0;
+
+                // Detection order: explicit assign_mode → account_ids present → bm_id present → default 'bm'
+                const assignModeVal = (config.assign_mode as AssignMode)
+                    || (hasAccounts ? 'account' : hasBm ? 'bm' : 'bm');
                 setAssignMode(assignModeVal);
-                
+
                 setAccountIdInput(accountIdVal);
                 setAccountIdList(accountIdsVal.length > 0 ? accountIdsVal : ['']);
 
@@ -245,23 +249,30 @@ export const useServiceOrderEditConfigDialog = () => {
         } else {
             payload.meta_email = metaEmail || undefined;
             payload.display_name = displayName || undefined;
-            payload.bm_id = bmId || undefined;
-            payload.info_fanpage = infoFanpage || undefined;
-            payload.info_website = infoWebsite || undefined;
-            payload.asset_access = assetAccess || undefined;
-            payload.timezone_bm = timezoneBm || undefined;
             payload.assign_mode = assignMode;
             payload.child_bm_id = null;
-            // Gửi tất cả accounts trong list (multi-account support)
-            const filteredAccountIds = accountIdList.filter((id) => id.trim());
-            payload.account_id =
-                assignMode === 'account' && filteredAccountIds.length > 0
-                    ? filteredAccountIds[0]  // backward compat: first account
-                    : null;
-            (payload as any).account_ids =
-                assignMode === 'account' && filteredAccountIds.length > 0
-                    ? filteredAccountIds
-                    : null;
+
+            if (assignMode === 'account') {
+                // Tab "Gán tài khoản" active → clear BM data, keep account IDs
+                payload.bm_id = undefined;
+                payload.info_fanpage = undefined;
+                payload.info_website = undefined;
+                const filteredAccountIds = accountIdList.filter((id) => id.trim());
+                payload.account_id =
+                    filteredAccountIds.length > 0 ? filteredAccountIds[0] : null;
+                (payload as any).account_ids =
+                    filteredAccountIds.length > 0 ? filteredAccountIds : null;
+            } else {
+                // Tab "Gán BM" active → keep BM data, clear account IDs
+                payload.bm_id = bmId || undefined;
+                payload.info_fanpage = infoFanpage || undefined;
+                payload.info_website = infoWebsite || undefined;
+                payload.account_id = null;
+                (payload as any).account_ids = null;
+            }
+
+            payload.asset_access = assetAccess || undefined;
+            payload.timezone_bm = timezoneBm || undefined;
         }
 
         router.put(
