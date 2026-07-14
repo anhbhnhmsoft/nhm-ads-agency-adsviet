@@ -68,6 +68,10 @@
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
         ],
+        "post-install-cmd": [
+            "@php -r \"is_dir('storage/logs/actions') || mkdir('storage/logs/actions', 0775, true);\"",
+            "@php -r \"is_dir('storage/logs/errors') || mkdir('storage/logs/errors', 0775, true);\""
+        ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
         ],
