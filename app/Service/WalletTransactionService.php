@@ -207,6 +207,108 @@ class WalletTransactionService
         }
     }
 
+    private function notifySupportGroupTopUp(
+        UserWalletTransaction $transaction,
+        ?string $accountName = null,
+        ?string $accountId = null,
+    ): void {
+        try {
+            $supportGroupId = config('services.telegram.support_group_id');
+            if (empty($supportGroupId)) {
+                return;
+            }
+
+            $transaction->loadMissing('wallet.user');
+            $customer = $transaction->wallet?->user;
+            if (!$customer) {
+                return;
+            }
+
+            $amount = abs((float) $transaction->amount);
+            $amountFormatted = fmod($amount, 1.0) === 0.0
+                ? number_format($amount, 0)
+                : number_format($amount, 2);
+            $transactionCode = 'TX'.$transaction->id;
+            $timezone = (string) config('services.telegram.timezone', 'Asia/Ho_Chi_Minh');
+            $createdAt = $transaction->created_at
+                ? $transaction->created_at->copy()->timezone($timezone)
+                : now($timezone);
+
+            $accountDisplay = $accountName
+                ? ($accountId ? "{$accountName} ({$accountId})" : $accountName)
+                : ($accountId ?: 'N/A');
+
+            $message = __('wallet.telegram.top_up_group_alert', [
+                'name' => htmlspecialchars($customer->name ?? $customer->username ?? ('User '.$customer->id), ENT_QUOTES, 'UTF-8'),
+                'amount' => htmlspecialchars($amountFormatted, ENT_QUOTES, 'UTF-8'),
+                'account' => htmlspecialchars($accountDisplay, ENT_QUOTES, 'UTF-8'),
+                'transaction_code' => htmlspecialchars($transactionCode, ENT_QUOTES, 'UTF-8'),
+                'time' => $createdAt->format('d/m/Y H:i:s'),
+            ]);
+
+            $this->telegramService->sendNotification(
+                chatId: (string) $supportGroupId,
+                message: $message,
+                userId: null,
+                type: NotificationType::WALLET,
+                data: ['transaction_id' => $transaction->id]
+            );
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'WalletTransactionService@notifySupportGroupTopUp error: '.$e->getMessage(),
+                exception: $e
+            );
+        }
+    }
+
+    public function notifySupportGroupSpendingFee(
+        UserWalletTransaction $transaction,
+        string $packageName,
+        float $spendAmount,
+        float $feeAmount,
+    ): void {
+        try {
+            $supportGroupId = config('services.telegram.support_group_id');
+            if (empty($supportGroupId)) {
+                return;
+            }
+
+            $transaction->loadMissing('wallet.user');
+            $customer = $transaction->wallet?->user;
+            if (!$customer) {
+                return;
+            }
+
+            $transactionCode = 'TX'.$transaction->id;
+            $timezone = (string) config('services.telegram.timezone', 'Asia/Ho_Chi_Minh');
+            $createdAt = $transaction->created_at
+                ? $transaction->created_at->copy()->timezone($timezone)
+                : now($timezone);
+
+            $message = __('wallet.telegram.spending_fee_group_alert', [
+                'name' => htmlspecialchars($customer->name ?? $customer->username ?? ('User '.$customer->id), ENT_QUOTES, 'UTF-8'),
+                'package' => htmlspecialchars($packageName, ENT_QUOTES, 'UTF-8'),
+                'spend_amount' => htmlspecialchars(number_format($spendAmount, 2), ENT_QUOTES, 'UTF-8'),
+                'fee_amount' => htmlspecialchars(number_format($feeAmount, 2), ENT_QUOTES, 'UTF-8'),
+                'transaction_code' => htmlspecialchars($transactionCode, ENT_QUOTES, 'UTF-8'),
+                'time' => $createdAt->format('d/m/Y H:i:s'),
+            ]);
+
+            $this->telegramService->sendNotification(
+                chatId: (string) $supportGroupId,
+                message: $message,
+                userId: null,
+                type: NotificationType::WALLET,
+                data: ['transaction_id' => $transaction->id]
+            );
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'WalletTransactionService@notifySupportGroupSpendingFee error: '.$e->getMessage(),
+                exception: $e
+            );
+        }
+    }
+
     private function supportGroupDepositOrderCode(UserWalletTransaction $transaction): ?string
     {
         $referenceId = (string) ($transaction->reference_id ?? '');
@@ -513,6 +615,7 @@ class WalletTransactionService
                 }
 
                 $this->notifyTransaction($transaction, $wallet->user?->id);
+                $this->notifySupportGroupTopUp($transaction, $accountName, $accountId);
 
                 return ServiceReturn::success(data: $transaction);
             });
@@ -1619,23 +1722,28 @@ class WalletTransactionService
                 return ServiceReturn::error(message: __('wallet.error.account_not_found'));
             }
 
-            $wallet = $this->walletRepository->findByUserId($userId);
-            if (!$wallet) {
-                return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
-            }
-
-            if (!empty($wallet->password)) {
-                if (empty($walletPassword) || !\Illuminate\Support\Facades\Hash::check($walletPassword, $wallet->password)) {
-                    return ServiceReturn::error(message: __('wallet.error.wallet_password_invalid'));
-                }
-            }
-
             $serviceUser = \App\Models\ServiceUser::with('package')->find($serviceUserId);
             if (!$serviceUser) {
                 return ServiceReturn::error(message: __('wallet.error.account_not_linked'));
             }
 
-            if ($this->findCompletedAccountRefund($serviceUserId, $accountId)) {
+            $targetUserId = trim((string) ($serviceUser->user_id ?? ''));
+            if ($targetUserId === '') {
+                return ServiceReturn::error(message: __('wallet.error.account_not_linked'));
+            }
+
+            $wallet = $this->walletRepository->findByUserId($targetUserId);
+            if (!$wallet) {
+                return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
+            }
+
+            if ((string) $userId === $targetUserId && !empty($wallet->password)) {
+                if (empty($walletPassword) || !\Illuminate\Support\Facades\Hash::check($walletPassword, $wallet->password)) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_password_invalid'));
+                }
+            }
+
+            if ($this->findCompletedAccountRefund($serviceUserId, $accountId, (string) $wallet->id)) {
                 return ServiceReturn::error(message: __('wallet.error.account_already_refunded'));
             }
 
@@ -1690,10 +1798,6 @@ class WalletTransactionService
             $feeRefund = $feeData['fee_amount'];
             $totalRefund = $remaining + $feeRefund;
 
-            // Cộng tiền vào ví
-            $newBalance = (float) $wallet->balance + $totalRefund;
-            $this->walletRepository->query()->where('id', $wallet->id)->update(['balance' => $newBalance]);
-
             // Tạo transaction REFUND
             $description = __('wallet.transaction_description.account_refund_detail', [
                 'account' => $account->account_name ?? '-',
@@ -1708,29 +1812,56 @@ class WalletTransactionService
                 $type = WalletTransactionType::ACCOUNT_REFUND;
             }
 
-            $transaction = $this->transactionRepository->create([
-                'wallet_id' => $wallet->id,
-                'amount' => $totalRefund,
-                'type' => $type->value,
-                'status' => WalletTransactionStatus::COMPLETED->value,
-                'reference_id' => sprintf(
-                    'account_refund:%s:%s',
-                    $serviceUserId,
-                    $this->normalizeRefundAccountId($accountId)
-                ),
-                'description' => $description,
-                'withdraw_info' => [
-                    'purpose' => 'account_refund',
-                    'platform_type' => $platform,
-                    'service_user_id' => $serviceUserId,
-                    'account_id' => $accountId,
-                    'account_name' => $account->account_name ?? null,
-                    'remaining_amount' => $remaining,
-                    'fee_refund' => $feeRefund,
-                    'total_refund' => $totalRefund,
-                    'currency' => $accountCurrency,
-                ],
-            ]);
+            $transactionResult = DB::transaction(function () use (
+                $wallet,
+                $totalRefund,
+                $type,
+                $serviceUserId,
+                $accountId,
+                $description,
+                $platform,
+                $account,
+                $remaining,
+                $feeRefund,
+                $accountCurrency
+            ) {
+                $newBalance = (float) $wallet->balance + $totalRefund;
+                $this->walletRepository->query()
+                    ->where('id', $wallet->id)
+                    ->update(['balance' => $newBalance]);
+
+                $transaction = $this->transactionRepository->create([
+                    'wallet_id' => $wallet->id,
+                    'amount' => $totalRefund,
+                    'type' => $type->value,
+                    'status' => WalletTransactionStatus::COMPLETED->value,
+                    'reference_id' => sprintf(
+                        'account_refund:%s:%s',
+                        $serviceUserId,
+                        $this->normalizeRefundAccountId($accountId)
+                    ),
+                    'description' => $description,
+                    'withdraw_info' => [
+                        'purpose' => 'account_refund',
+                        'platform_type' => $platform,
+                        'service_user_id' => $serviceUserId,
+                        'account_id' => $accountId,
+                        'account_name' => $account->account_name ?? null,
+                        'remaining_amount' => $remaining,
+                        'fee_refund' => $feeRefund,
+                        'total_refund' => $totalRefund,
+                        'currency' => $accountCurrency,
+                    ],
+                ]);
+
+                return [
+                    'transaction' => $transaction,
+                    'new_balance' => $newBalance,
+                ];
+            });
+
+            $transaction = $transactionResult['transaction'];
+            $newBalance = $transactionResult['new_balance'];
 
             // Reset spend_cap trên Meta về 0 + pause tất cả campaigns
             if ((int) $platform === PlatformType::META->value) {
@@ -1763,7 +1894,7 @@ class WalletTransactionService
                 }
             }
 
-            $this->notifyTransaction($transaction, $userId);
+            $this->notifyTransaction($transaction, $wallet->user?->id);
 
             return ServiceReturn::success(data: [
                 'transaction_id' => (string) $transaction->id,
@@ -1804,19 +1935,25 @@ class WalletTransactionService
         return $serviceUserId.'::'.$normalizedAccountId;
     }
 
-    public function findCompletedAccountRefund(?string $serviceUserId, ?string $accountId): ?UserWalletTransaction
+    public function findCompletedAccountRefund(
+        ?string $serviceUserId,
+        ?string $accountId,
+        ?string $expectedWalletId = null
+    ): ?UserWalletTransaction
     {
         try {
             $normalizedAccountId = $this->normalizeRefundAccountId($accountId);
             $serviceUserId = trim((string) $serviceUserId);
+            $expectedWalletId = $expectedWalletId ?: $this->resolveRefundWalletIdByServiceUser($serviceUserId);
 
-            if ($serviceUserId === '' || $normalizedAccountId === '') {
+            if ($serviceUserId === '' || $normalizedAccountId === '' || $expectedWalletId === null) {
                 return null;
             }
 
             return $this->transactionRepository->query()
                 ->where('type', WalletTransactionType::ACCOUNT_REFUND->value)
                 ->where('status', WalletTransactionStatus::COMPLETED->value)
+                ->where('wallet_id', $expectedWalletId)
                 ->whereRaw("withdraw_info->>'purpose' = ?", ['account_refund'])
                 ->whereRaw("withdraw_info->>'service_user_id' = ?", [$serviceUserId])
                 ->whereRaw("regexp_replace(withdraw_info->>'account_id', '^act_', '') = ?", [$normalizedAccountId])
@@ -1832,6 +1969,7 @@ class WalletTransactionService
     {
         try {
             $pairKeys = [];
+            $lookupOwnerUserIds = [];
             foreach ($accounts as $account) {
                 $serviceUserId = is_array($account)
                     ? ($account['service_user_id'] ?? null)
@@ -1839,15 +1977,63 @@ class WalletTransactionService
                 $accountId = is_array($account)
                     ? ($account['account_id'] ?? ($account['id'] ?? null))
                     : ($account->account_id ?? ($account->id ?? null));
+                $ownerUserId = is_array($account)
+                    ? ($account['owner_id'] ?? null)
+                    : ($account->owner_id ?? null);
                 $lookupKey = $this->buildAccountRefundLookupKey($serviceUserId, $accountId);
 
                 if ($lookupKey !== null) {
-                    $pairKeys[$lookupKey] = true;
+                    $pairKeys[$lookupKey] = (string) $serviceUserId;
+                    if ($ownerUserId !== null && $ownerUserId !== '') {
+                        $lookupOwnerUserIds[$lookupKey] = (string) $ownerUserId;
+                    }
                 }
             }
 
             if (empty($pairKeys)) {
                 return [];
+            }
+
+            $missingOwnerServiceUserIds = [];
+            foreach ($pairKeys as $lookupKey => $serviceUserId) {
+                if (!isset($lookupOwnerUserIds[$lookupKey])) {
+                    $missingOwnerServiceUserIds[] = $serviceUserId;
+                }
+            }
+
+            $serviceUserOwnerMap = empty($missingOwnerServiceUserIds)
+                ? []
+                : ServiceUser::query()
+                    ->whereIn('id', array_values(array_unique($missingOwnerServiceUserIds)))
+                    ->get(['id', 'user_id'])
+                    ->mapWithKeys(function (ServiceUser $serviceUser) {
+                        $userId = trim((string) ($serviceUser->user_id ?? ''));
+
+                        return $userId === ''
+                            ? []
+                            : [(string) $serviceUser->id => $userId];
+                    })
+                    ->all();
+
+            foreach ($pairKeys as $lookupKey => $serviceUserId) {
+                if (!isset($lookupOwnerUserIds[$lookupKey]) && isset($serviceUserOwnerMap[$serviceUserId])) {
+                    $lookupOwnerUserIds[$lookupKey] = (string) $serviceUserOwnerMap[$serviceUserId];
+                }
+            }
+
+            $walletIdsByUserId = empty($lookupOwnerUserIds)
+                ? []
+                : $this->walletRepository->query()
+                    ->whereIn('user_id', array_values(array_unique(array_values($lookupOwnerUserIds))))
+                    ->pluck('id', 'user_id')
+                    ->mapWithKeys(fn ($walletId, $userId) => [(string) $userId => (string) $walletId])
+                    ->all();
+
+            $expectedWalletIdsByLookupKey = [];
+            foreach ($lookupOwnerUserIds as $lookupKey => $ownerUserId) {
+                if (isset($walletIdsByUserId[$ownerUserId])) {
+                    $expectedWalletIdsByLookupKey[$lookupKey] = $walletIdsByUserId[$ownerUserId];
+                }
             }
 
             $serviceUserIds = array_values(array_unique(array_map(
@@ -1876,7 +2062,15 @@ class WalletTransactionService
                     isset($withdrawInfo['account_id']) ? (string) $withdrawInfo['account_id'] : null,
                 );
 
-                if ($lookupKey !== null && !isset($lookup[$lookupKey])) {
+                $expectedWalletId = $lookupKey !== null
+                    ? ($expectedWalletIdsByLookupKey[$lookupKey] ?? null)
+                    : null;
+
+                if (
+                    $lookupKey !== null &&
+                    !isset($lookup[$lookupKey]) &&
+                    ($expectedWalletId === null || (string) $transaction->wallet_id === $expectedWalletId)
+                ) {
                     $lookup[$lookupKey] = [
                         'transaction_id' => (string) $transaction->id,
                         'amount' => (float) $transaction->amount,
@@ -1890,6 +2084,26 @@ class WalletTransactionService
             Logging::error('WalletTransactionService@getCompletedAccountRefundLookup error: '.$e->getMessage(), exception: $e);
             return [];
         }
+    }
+
+    private function resolveRefundWalletIdByServiceUser(?string $serviceUserId): ?string
+    {
+        $serviceUserId = trim((string) $serviceUserId);
+        if ($serviceUserId === '') {
+            return null;
+        }
+
+        $targetUserId = trim((string) ServiceUser::query()
+            ->where('id', $serviceUserId)
+            ->value('user_id'));
+
+        if ($targetUserId === '') {
+            return null;
+        }
+
+        $wallet = $this->walletRepository->findByUserId($targetUserId);
+
+        return $wallet ? (string) $wallet->id : null;
     }
 
     private function normalizeMetaAccountMoney(mixed $value, ?string $currency): ?float

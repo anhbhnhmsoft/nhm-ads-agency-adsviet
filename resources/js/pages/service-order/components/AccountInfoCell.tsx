@@ -6,12 +6,16 @@ type AccountInfoCellProps = {
     config: ServiceOrderConfigAccount | null;
     platform?: number | null;
     packageBillingSource?: string | null;
+    metaTimezones?: Array<{ value: string; label: string }>;
+    googleTimezones?: Array<{ value: string; label: string }>;
 };
 
 export const AccountInfoCell = ({
     config,
     platform,
     packageBillingSource,
+    metaTimezones = [],
+    googleTimezones = [],
 }: AccountInfoCellProps) => {
     const { t } = useTranslation();
 
@@ -20,6 +24,13 @@ export const AccountInfoCell = ({
     }
 
     const isMeta = platform === _PlatformType.META;
+
+    const resolveTimezoneLabel = (value: string): string => {
+        if (!value) return '';
+        const options = isMeta ? metaTimezones : googleTimezones;
+        const found = options.find((opt) => opt.value === value);
+        return found ? found.label : value;
+    };
 
     const accounts = config.accounts;
     if (Array.isArray(accounts) && accounts.length > 0) {
@@ -138,7 +149,7 @@ export const AccountInfoCell = ({
                                                   )}
                                             :
                                         </span>{' '}
-                                        {timezone}
+                                        {resolveTimezoneLabel(timezone)}
                                     </div>
                                 )}
                                 {fanpages.length > 0 && (
@@ -292,7 +303,7 @@ export const AccountInfoCell = ({
                               })}
                         :
                     </span>{' '}
-                    {timezone}
+                    {resolveTimezoneLabel(timezone)}
                 </div>
             )}
             {fanpage && (

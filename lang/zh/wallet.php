@@ -71,6 +71,8 @@ return [
     'telegram' => [
         'low_balance' => "⚠️您的钱包仅有:balanceUSDT（阈值:thresholdUSDT）。\n请充值，以免服务中断。",
         'deposit_group_alert' => "⚠️ <b>存款通知</b> ⚠️\n<b>姓名：</b>:name\n<b>网络：</b>:network\n<b>金额：</b>:amount\n<b>交易：</b>:transaction_code\n<b>订单：</b>:order_code\n<b>时间：</b>:time",
+        'top_up_group_alert' => "🔔 <b>广告账户充值</b>\n<b>客户：</b>:name\n<b>金额：</b>:amount USDT\n<b>账户：</b>:account\n<b>交易：</b>:transaction_code\n<b>时间：</b>:time",
+        'spending_fee_group_alert' => "💰 <b>收取消费费</b>\n<b>客户：</b>:name\n<b>套餐：</b>:package\n<b>消费：</b>:spend_amount USD\n<b>费用：</b>:fee_amount USDT\n<b>交易：</b>:transaction_code\n<b>时间：</b>:time",
         'creditline_limit_reached' => "您好 :name，您的服务 :package 已达到信用额度安全阈值。\n- 总充值：:total_top_up USDT\n- 总花费：:total_spend USD\n- 剩余：:remaining_credit USD\n由于剩余信用额度低于 :pause_limit USD，广告活动已暂停。请进行充值以恢复运行。",
     ],
     'postpay_charge_insufficient' => ':name您好，应付的消费费用为:chargeUSDT，但您的钱包余额为:balanceUSDT或低于要求的最低:min_walletUSDT。请充值以保持服务运行。',

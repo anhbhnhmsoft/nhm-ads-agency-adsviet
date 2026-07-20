@@ -827,6 +827,7 @@
         "table": {
             "stt": "STT",
             "order_id": "Mã đơn",
+            "package": "Gói dịch vụ",
             "customer_name": "Tài khoản yêu cầu",
             "referral": "Người giới thiệu",
             "account_info": "Thông tin tài khoản",
@@ -842,6 +843,22 @@
             "availability": "Trạng thái sử dụng",
             "created_at": "Thời gian tạo",
             "actions": "Thao tác"
+        },
+        "filter": {
+            "search_placeholder": "Tìm khách hàng...",
+            "all_customers": "Tất cả khách",
+            "customer_placeholder": "Khách hàng...",
+            "search_customer": "Tìm tên hoặc username...",
+            "all_status": "Tất cả trạng thái",
+            "status_pending": "Chờ duyệt",
+            "status_active": "Hoạt động",
+            "status_processing": "Đang xử lý",
+            "status_failed": "Thất bại",
+            "status_cancelled": "Đã hủy",
+            "status_queue_job_pending": "Đợi job",
+            "all_platforms": "Tất cả nền tảng",
+            "search_button": "Lọc",
+            "reset_button": "Xóa bộ lọc"
         },
         "status": {
             "pending": "Đang chờ",

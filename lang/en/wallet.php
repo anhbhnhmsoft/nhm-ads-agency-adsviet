@@ -71,6 +71,8 @@ return [
     'telegram' => [
         'low_balance' => "⚠️ Your wallet only has :balance USDT (threshold :threshold USDT).\nPlease top up to avoid service interruption.",
         'deposit_group_alert' => "⚠️ <b>Deposit notification</b> ⚠️\n<b>Name:</b>:name\n<b>Network:</b> :network\n<b>Amount:</b> :amount\n<b>Transaction:</b> :transaction_code\n<b>Order:</b> :order_code\n<b>Time:</b> :time",
+        'top_up_group_alert' => "🔔 <b>Account top-up</b>\n<b>Customer:</b> :name\n<b>Amount:</b> :amount USDT\n<b>Account:</b> :account\n<b>Tx ID:</b> :transaction_code\n<b>Time:</b> :time",
+        'spending_fee_group_alert' => "💰 <b>Spending fee charged</b>\n<b>Customer:</b> :name\n<b>Package:</b> :package\n<b>Spend:</b> :spend_amount USD\n<b>Fee:</b> :fee_amount USDT\n<b>Tx ID:</b> :transaction_code\n<b>Time:</b> :time",
         'creditline_limit_reached' => "Hello :name, your service :package has reached the credit line safety threshold.\n- Total top-up: :total_top_up USDT\n- Total spend: :total_spend USD\n- Remaining: :remaining_credit USD\nCampaigns have been paused as the remaining credit fell below :pause_limit USD. Please top up to resume.",
     ],
     'postpay_charge_insufficient' => 'Hello :name, the spending fee due is :charge USDT, but your wallet balance is :balance USDT or below the required minimum :min_wallet USDT. Please top up to keep services running.',

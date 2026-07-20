@@ -884,6 +884,7 @@
         "table": {
             "stt": "No.",
             "order_id": "Order ID",
+            "package": "Service package",
             "customer_name": "Requesting account",
             "referral": "Referrer",
             "account_info": "Account info",
@@ -899,6 +900,22 @@
             "status": "Order status",
             "created_at": "Created at",
             "actions": "Actions"
+        },
+        "filter": {
+            "search_placeholder": "Search customer...",
+            "all_customers": "All customers",
+            "customer_placeholder": "Customer...",
+            "search_customer": "Search name or username...",
+            "all_status": "All status",
+            "status_pending": "Pending",
+            "status_active": "Active",
+            "status_processing": "Processing",
+            "status_failed": "Failed",
+            "status_cancelled": "Cancelled",
+            "status_queue_job_pending": "Queued",
+            "all_platforms": "All platforms",
+            "search_button": "Filter",
+            "reset_button": "Clear filter"
         },
         "status": {
             "pending": "Pending",

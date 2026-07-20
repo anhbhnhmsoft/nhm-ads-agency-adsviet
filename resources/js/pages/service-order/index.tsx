@@ -183,20 +183,20 @@ type Props = {
     customers?: { id: string; name: string; username: string }[];
 };
 
-const STATUS_OPTIONS = [
-    { value: '', label: 'Tất cả trạng thái' },
-    { value: 'PENDING', label: 'Chờ duyệt' },
-    { value: 'ACTIVE', label: 'Hoạt động' },
-    { value: 'PROCESSING', label: 'Đang xử lý' },
-    { value: 'FAILED', label: 'Thất bại' },
-    { value: 'CANCELLED', label: 'Đã hủy' },
-    { value: 'QUEUE_JOB_PENDING', label: 'Đợi job' },
+const STATUS_OPTIONS: Array<{ value: string; labelKey: string }> = [
+    { value: '', labelKey: 'service_orders.filter.all_status' },
+    { value: 'PENDING', labelKey: 'service_orders.filter.status_pending' },
+    { value: 'ACTIVE', labelKey: 'service_orders.filter.status_active' },
+    { value: 'PROCESSING', labelKey: 'service_orders.filter.status_processing' },
+    { value: 'FAILED', labelKey: 'service_orders.filter.status_failed' },
+    { value: 'CANCELLED', labelKey: 'service_orders.filter.status_cancelled' },
+    { value: 'QUEUE_JOB_PENDING', labelKey: 'service_orders.filter.status_queue_job_pending' },
 ];
 
-const PLATFORM_OPTIONS = [
-    { value: '', label: 'Tất cả nền tảng' },
-    { value: '1', label: 'Meta Ads' },
-    { value: '2', label: 'Google Ads' },
+const PLATFORM_OPTIONS: Array<{ value: string; labelKey: string }> = [
+    { value: '', labelKey: 'service_orders.filter.all_platforms' },
+    { value: '1', labelKey: 'Meta Ads' },
+    { value: '2', labelKey: 'Google Ads' },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -514,6 +514,8 @@ const ServiceOrdersIndex = ({
                             packageBillingSource={
                                 row.original.package?.billing_source
                             }
+                            metaTimezones={meta_timezones}
+                            googleTimezones={google_timezones}
                         />
                     );
                 },
@@ -823,7 +825,7 @@ const ServiceOrdersIndex = ({
                             <input
                                 type="text"
                                 className="h-8 w-[180px] rounded-md border bg-background pl-7 pr-2 text-xs outline-none focus:ring-2 focus:ring-ring"
-                                placeholder="Tìm khách hàng..."
+                                placeholder={t('service_orders.filter.search_placeholder')}
                                 value={filterSearch}
                                 onChange={(e) => setFilterSearch(e.target.value)}
                                 onKeyDown={(e) => {
@@ -848,7 +850,7 @@ const ServiceOrdersIndex = ({
                         <div className="w-[200px]">
                             <SearchableSelect
                                 options={[
-                                    { value: '', label: 'Tất cả khách' },
+                                    { value: '', label: t('service_orders.filter.all_customers') },
                                     ...customers.map((c) => ({
                                         value: c.id,
                                         label: c.name,
@@ -857,8 +859,8 @@ const ServiceOrdersIndex = ({
                                 ]}
                                 value={filterUserId}
                                 onValueChange={(val) => setFilterUserId(val)}
-                                placeholder="Khách hàng..."
-                                searchPlaceholder="Tìm tên hoặc username..."
+                                placeholder={t('service_orders.filter.customer_placeholder')}
+                                searchPlaceholder={t('service_orders.filter.search_customer')}
                                 className="h-8 text-xs"
                             />
                         </div>
@@ -871,7 +873,7 @@ const ServiceOrdersIndex = ({
                         >
                             {STATUS_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
-                                    {opt.label}
+                                    {t(opt.labelKey)}
                                 </option>
                             ))}
                         </select>
@@ -884,7 +886,7 @@ const ServiceOrdersIndex = ({
                         >
                             {PLATFORM_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
-                                    {opt.label}
+                                    {t(opt.labelKey)}
                                 </option>
                             ))}
                         </select>
@@ -909,7 +911,7 @@ const ServiceOrdersIndex = ({
                             }}
                         >
                             <Search className="mr-1 h-3 w-3" />
-                            Lọc
+                            {t('service_orders.filter.search_button')}
                         </Button>
 
                         {/* Nút reset - chỉ hiện khi có filter đang active */}
@@ -931,7 +933,7 @@ const ServiceOrdersIndex = ({
                                 }}
                             >
                                 <X className="mr-1 h-3 w-3" />
-                                Xóa bộ lọc
+                                {t('service_orders.filter.reset_button')}
                             </Button>
                         )}
                     </div>

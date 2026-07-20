@@ -71,6 +71,8 @@ return [
     'telegram' => [
         'low_balance' => "⚠️ Ví của bạn chỉ còn :balance USDT (ngưỡng cảnh báo :threshold USDT).\nVui lòng nạp thêm để tránh gián đoạn dịch vụ.",
         'deposit_group_alert' => "⚠️ <b>Thông báo nạp</b> ⚠️\n<b>Name:</b>:name\n<b>Kiểu:</b> :network\n<b>Số tiền:</b> :amount\n<b>Mã giao dịch:</b> :transaction_code\n<b>Mã đơn:</b> :order_code\n<b>Thời gian:</b> :time",
+        'top_up_group_alert' => "🔔 <b>Nạp tiền tài khoản quảng cáo</b>\n<b>Khách:</b> :name\n<b>Số tiền:</b> :amount USDT\n<b>Tài khoản:</b> :account\n<b>Mã GD:</b> :transaction_code\n<b>Thời gian:</b> :time",
+        'spending_fee_group_alert' => "💰 <b>Thu phí spending</b>\n<b>Khách:</b> :name\n<b>Gói:</b> :package\n<b>Chi tiêu:</b> :spend_amount USD\n<b>Phí:</b> :fee_amount USDT\n<b>Mã GD:</b> :transaction_code\n<b>Thời gian:</b> :time",
         'creditline_limit_reached' => "Xin chào :name, dịch vụ :package đã chạm ngưỡng an toàn creditline.\n- Tổng top up: :total_top_up USDT\n- Tổng spend: :total_spend USD\n- Còn lại: :remaining_credit USD\nCampaign đã được tạm dừng khi hạn mức còn khoảng :pause_limit USD, vui lòng top up thêm để tiếp tục chạy.",
     ],
     'postpay_charge_insufficient' => 'Xin chào :name, phí spending cần thu là :charge USDT nhưng số dư ví hiện tại :balance USDT không đủ hoặc chưa đạt mức duy trì tối thiểu :min_wallet USDT. Vui lòng nạp thêm để tiếp tục duy trì dịch vụ.',

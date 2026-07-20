@@ -17,6 +17,7 @@ use App\Repositories\WalletRepository;
 use App\Repositories\MetaAdsCampaignRepository;
 use App\Repositories\GoogleAdsCampaignRepository;
 use App\Service\TelegramService;
+use App\Service\WalletTransactionService;
 use App\Service\MailService;
 use App\Service\MetaService;
 use App\Service\GoogleAdsService;
@@ -42,6 +43,7 @@ class ServicesBillPostpay extends Command
         protected MailService $mailService,
         protected MetaService $metaService,
         protected GoogleAdsService $googleAdsService,
+        protected WalletTransactionService $walletTransactionService,
     ) {
         parent::__construct();
     }
@@ -191,6 +193,13 @@ class ServicesBillPostpay extends Command
                                 'reference_id' => (string) $walletTransaction->id,
                                 'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$spending}): {$package->name}",
                             ]);
+
+                            $this->walletTransactionService->notifySupportGroupSpendingFee(
+                                $walletTransaction,
+                                $package->name,
+                                $unbilledSpend,
+                                $chargeAmount,
+                            );
 
                             $config['spending_fee_billed_spend'] = $spending;
                             $config['spending_fee_last_charged_at'] = now()->toDateTimeString();

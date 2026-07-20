@@ -435,6 +435,36 @@ class WalletController extends Controller
             'wallet_password' => ['nullable', 'string'],
         ]);
 
+        $serviceUser = \App\Models\ServiceUser::query()
+            ->find($request->input('service_user_id'), ['id', 'user_id']);
+        if (! $serviceUser || empty($serviceUser->user_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('wallet.error.account_not_linked'),
+            ], 400);
+        }
+
+        $targetUserId = (string) $serviceUser->user_id;
+        $isStaff = in_array($user->role, [
+            UserRole::ADMIN->value,
+            UserRole::MANAGER->value,
+            UserRole::EMPLOYEE->value,
+        ], true);
+
+        if ($isStaff) {
+            if (! $this->userService->canActOnCustomer($user, $targetUserId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('common_error.permission_denied'),
+                ], 403);
+            }
+        } elseif ((string) $user->id !== $targetUserId) {
+            return response()->json([
+                'success' => false,
+                'message' => __('common_error.permission_denied'),
+            ], 403);
+        }
+
         $result = $this->walletTransactionService->refundAdAccountBalance(
             userId: (int) $user->id,
             serviceUserId: $request->input('service_user_id'),
