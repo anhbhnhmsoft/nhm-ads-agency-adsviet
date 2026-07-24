@@ -25,42 +25,37 @@ const ForgotPasswordOtp = ({ email }: Props) => {
 
     return (
         <>
-            <Head title={t('auth.forgot_password.verify_otp_title', { defaultValue: 'Xác minh mã OTP' })} />
+            <Head title={t('auth.forgot_password.verify_otp_title')} />
 
-            <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">
-                    {t('auth.forgot_password.otp_sent_hint', {
-                        defaultValue: `Mã OTP đã được gửi đến ${email}. Vui lòng nhập mã 6 chữ số.`,
-                        email,
-                    })}
-                </p>
+            <p className="text-sm text-muted-foreground">
+                {t('auth.forgot_password.otp_sent_hint', { email })}
+            </p>
 
-                <form onSubmit={handleSubmit} className="grid gap-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="otp">{t('auth.forgot_password.enter_otp', { defaultValue: 'Mã OTP' })}</Label>
-                        <div className="relative">
-                            <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                            <Input
-                                id="otp"
-                                type="text"
-                                value={data.otp}
-                                onChange={(e) => setData('otp', e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                required
-                                autoFocus
-                                maxLength={6}
-                                placeholder="000000"
-                                className="pl-10 tracking-[0.5em] text-center"
-                            />
-                        </div>
-                        <InputError message={errors.otp} />
+            <form onSubmit={handleSubmit} className="mt-4 grid gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="otp">{t('auth.forgot_password.enter_otp')}</Label>
+                    <div className="relative">
+                        <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            id="otp"
+                            type="text"
+                            value={data.otp}
+                            onChange={(e) => setData('otp', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            required
+                            autoFocus
+                            maxLength={6}
+                            placeholder="000000"
+                            className="pl-10 tracking-[0.5em] text-center"
+                        />
                     </div>
+                    <InputError message={errors.otp} />
+                </div>
 
-                    <Button type="submit" className="w-full" disabled={processing}>
-                        {processing && <Spinner />}
-                        {t('auth.forgot_password.verify_otp', { defaultValue: 'Xác minh' })}
-                    </Button>
-                </form>
-            </div>
+                <Button type="submit" className="w-full" disabled={processing}>
+                    {processing && <Spinner />}
+                    {t('auth.forgot_password.verify_otp')}
+                </Button>
+            </form>
         </>
     );
 };
@@ -69,7 +64,6 @@ ForgotPasswordOtp.layout = (page: ReactNode) => (
     <AuthLayout
         children={page}
         title="auth.forgot_password.verify_otp_title"
-        description="auth.forgot_password.description"
     />
 );
 

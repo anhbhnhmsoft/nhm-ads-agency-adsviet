@@ -1290,7 +1290,8 @@
             "description": "请登录以访问系统。",
             "login_with": "使用{{provider}}登录",
             "signup_prompt": "没有帐户？",
-            "signup_link": "登记"
+            "signup_link": "登记",
+            "forgot_password": "忘记密码？"
         },
         "register": {
             "choose_social_first": "选择验证方式继续",
@@ -1313,6 +1314,24 @@
             "title": "创建新帐户",
             "description": "欢迎使用广告管理系统。输入您的注册信息以创建新帐户。",
             "role": "角色"
+        },
+        "forgot_password": {
+            "title": "忘记密码",
+            "description": "输入注册邮箱以接收验证码。",
+            "email_placeholder": "email@example.com",
+            "send_otp": "发送验证码",
+            "otp_sent": "验证码已发送至您的邮箱。",
+            "otp_sent_hint": "验证码已发送至 {{email}}。请输入6位数字验证码。",
+            "verify_otp_title": "验证验证码",
+            "enter_otp": "验证码",
+            "verify_otp": "验证",
+            "reset_title": "重置密码",
+            "reset_description": "为您的账户输入新密码。",
+            "new_password_placeholder": "至少6个字符",
+            "reset_button": "重置密码",
+            "reset_success": "密码重置成功，请登录。",
+            "email_not_found": "系统中未找到该邮箱。",
+            "back_to_login": "返回"
         }
     },
     "supplier": {

@@ -23,44 +23,36 @@ const ForgotPassword = () => {
 
     return (
         <>
-            <Head title={t('auth.forgot_password.title', { defaultValue: 'Quên mật khẩu' })} />
+            <Head title={t('auth.forgot_password.title')} />
 
-            <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">
-                    {t('auth.forgot_password.description', {
-                        defaultValue: 'Nhập email đã đăng ký để nhận mã OTP xác minh.',
-                    })}
-                </p>
-
-                <form onSubmit={handleSubmit} className="grid gap-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="email">{t('common.email', { defaultValue: 'Email' })}</Label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                            <Input
-                                id="email"
-                                type="email"
-                                value={data.email}
-                                onChange={(e) => setData('email', e.target.value)}
-                                required
-                                autoFocus
-                                placeholder={t('auth.forgot_password.email_placeholder', { defaultValue: 'email@example.com' })}
-                                className="pl-10"
-                            />
-                        </div>
-                        <InputError message={errors.email} />
+            <form onSubmit={handleSubmit} className="grid gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="email">{t('common.email', { defaultValue: 'Email' })}</Label>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            id="email"
+                            type="email"
+                            value={data.email}
+                            onChange={(e) => setData('email', e.target.value)}
+                            required
+                            autoFocus
+                            placeholder={t('auth.forgot_password.email_placeholder')}
+                            className="pl-10"
+                        />
                     </div>
-
-                    <Button type="submit" className="w-full" disabled={processing}>
-                        {processing && <Spinner />}
-                        {t('auth.forgot_password.send_otp', { defaultValue: 'Gửi mã OTP' })}
-                    </Button>
-                </form>
-
-                <div className="text-center text-sm text-muted-foreground">
-                    {t('auth.forgot_password.back_to_login', { defaultValue: 'Quay lại' })}{' '}
-                    <TextLink href={login()}>{t('auth.login.title')}</TextLink>
+                    <InputError message={errors.email} />
                 </div>
+
+                <Button type="submit" className="w-full" disabled={processing}>
+                    {processing && <Spinner />}
+                    {t('auth.forgot_password.send_otp')}
+                </Button>
+            </form>
+
+            <div className="mt-2 text-center text-sm text-muted-foreground">
+                {t('auth.forgot_password.back_to_login')}{' '}
+                <TextLink href={login()}>{t('auth.login.login')}</TextLink>
             </div>
         </>
     );

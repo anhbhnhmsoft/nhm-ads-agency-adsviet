@@ -1290,7 +1290,8 @@
             "description": "Please sign in to access the system.",
             "login_with": "Log in with {{provider}}",
             "signup_prompt": "Don't have an account? ",
-            "signup_link": "Register"
+            "signup_link": "Register",
+            "forgot_password": "Forgot password?"
         },
         "register": {
             "choose_social_first": "Choose a verification method to continue",
@@ -1313,6 +1314,24 @@
             "title": "Create new account",
             "description": "Welcome to the ads management system. Enter your registration information to create a new account.",
             "role": "Role"
+        },
+        "forgot_password": {
+            "title": "Forgot Password",
+            "description": "Enter your registered email to receive a verification OTP code.",
+            "email_placeholder": "email@example.com",
+            "send_otp": "Send OTP Code",
+            "otp_sent": "OTP code has been sent to your email.",
+            "otp_sent_hint": "OTP code has been sent to {{email}}. Please enter the 6-digit code.",
+            "verify_otp_title": "Verify OTP Code",
+            "enter_otp": "OTP Code",
+            "verify_otp": "Verify",
+            "reset_title": "Reset Password",
+            "reset_description": "Enter a new password for your account.",
+            "new_password_placeholder": "Minimum 6 characters",
+            "reset_button": "Reset Password",
+            "reset_success": "Password reset successfully. Please log in.",
+            "email_not_found": "Email not found in the system.",
+            "back_to_login": "Back to"
         }
     },
     "supplier": {

@@ -364,7 +364,8 @@
             "description": "Vui lòng đăng nhập để truy cập hệ thống.",
             "login_with": "Đăng nhập bằng {{provider}}",
             "signup_prompt": "Chưa có tài khoản? ",
-            "signup_link": "Đăng ký"
+            "signup_link": "Đăng ký",
+            "forgot_password": "Quên mật khẩu?"
         },
         "register": {
             "choose_social_first": "Chọn phương thức xác thực để tiếp tục",
@@ -430,6 +431,24 @@
                 "manager": "quản lý",
                 "employee": "nhân viên"
             }
+        },
+        "forgot_password": {
+            "title": "Quên mật khẩu",
+            "description": "Nhập email đã đăng ký để nhận mã OTP xác minh.",
+            "email_placeholder": "email@example.com",
+            "send_otp": "Gửi mã OTP",
+            "otp_sent": "Mã OTP đã được gửi đến email của bạn.",
+            "otp_sent_hint": "Mã OTP đã được gửi đến {{email}}. Vui lòng nhập mã 6 chữ số.",
+            "verify_otp_title": "Xác minh mã OTP",
+            "enter_otp": "Mã OTP",
+            "verify_otp": "Xác minh",
+            "reset_title": "Đặt lại mật khẩu",
+            "reset_description": "Nhập mật khẩu mới cho tài khoản của bạn.",
+            "new_password_placeholder": "Tối thiểu 6 ký tự",
+            "reset_button": "Đặt lại mật khẩu",
+            "reset_success": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập.",
+            "email_not_found": "Email không tồn tại trong hệ thống.",
+            "back_to_login": "Quay lại"
         }
     },
     "wallet": {
