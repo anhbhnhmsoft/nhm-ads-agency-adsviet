@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Common\Constants\Otp\Otp;
 use App\Core\Controller;
 use App\Core\FlashMessage;
 use App\Http\Requests\Auth\RegisterEmailOtpRequest;
 use App\Http\Requests\Auth\VerifyRegisterEmailOtpRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterUserRequest;
+use App\Models\User;
 use App\Service\AuthService;
 use App\Service\MailService;
 use App\Service\OtpService;
 use App\Service\WalletService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
@@ -217,4 +220,116 @@ class AuthController extends Controller
         }
     }
 
+    // ── Forgot Password ──────────────────────────────────────────
+
+    public function forgotPasswordScreen(): \Inertia\Response
+    {
+        return $this->rendering('auth/forgot-password');
+    }
+
+    public function sendForgotPasswordOtp(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $email = $request->input('email');
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            $otpResult = $this->otpService->generateOtp(
+                (string) $user->id,
+                Otp::FORGOT_PASSWORD,
+                5,
+            );
+
+            if ($otpResult->isSuccess()) {
+                $this->mailService->sendVerifyForgotPassword(
+                    $email,
+                    $user->username,
+                    $otpResult->getData()['code'],
+                    5,
+                );
+            }
+        }
+
+        // Luôn redirect để không lộ email có tồn tại hay không
+        Session::put('forgot_password_email', $email);
+        FlashMessage::success(__('auth.forgot_password.otp_sent', ['default' => 'Mã OTP đã được gửi đến email của bạn.']));
+        return redirect()->route('auth_forgot_password_verify_screen');
+    }
+
+    public function forgotPasswordOtpScreen(): \Inertia\Response
+    {
+        if (!Session::has('forgot_password_email')) {
+            return redirect()->route('auth_forgot_password_screen');
+        }
+        return $this->rendering('auth/forgot-password-otp', [
+            'email' => Session::get('forgot_password_email'),
+        ]);
+    }
+
+    public function verifyForgotPasswordOtp(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'otp' => ['required', 'string', 'digits:6'],
+        ]);
+
+        $email = Session::get('forgot_password_email');
+        if (!$email) {
+            return redirect()->route('auth_forgot_password_screen');
+        }
+
+        $user = User::where('email', $email)->first();
+        if (!$user) {
+            FlashMessage::error(__('auth.forgot_password.email_not_found', ['default' => 'Email không tồn tại trong hệ thống.']));
+            return redirect()->route('auth_forgot_password_screen');
+        }
+
+        $result = $this->otpService->verifyOtp(
+            (string) $user->id,
+            $request->input('otp'),
+            Otp::FORGOT_PASSWORD,
+        );
+
+        if ($result->isError()) {
+            return back()->withErrors(['otp' => $result->getMessage()]);
+        }
+
+        Session::put('forgot_password_verified', true);
+        return redirect()->route('auth_forgot_password_reset_screen');
+    }
+
+    public function forgotPasswordResetScreen(): \Inertia\Response
+    {
+        if (!Session::get('forgot_password_verified')) {
+            return redirect()->route('auth_forgot_password_screen');
+        }
+        return $this->rendering('auth/forgot-password-reset');
+    }
+
+    public function resetForgotPassword(Request $request): RedirectResponse
+    {
+        if (!Session::get('forgot_password_verified')) {
+            return redirect()->route('auth_forgot_password_screen');
+        }
+
+        $request->validate([
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+        ]);
+
+        $email = Session::get('forgot_password_email');
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            return redirect()->route('auth_forgot_password_screen');
+        }
+
+        $user->update(['password' => Hash::make($request->input('password'))]);
+
+        Session::forget(['forgot_password_email', 'forgot_password_verified']);
+
+        FlashMessage::success(__('auth.forgot_password.reset_success', ['default' => 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập.']));
+        return redirect()->route('login');
+    }
 }

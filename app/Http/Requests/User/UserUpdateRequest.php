@@ -17,7 +17,7 @@ class UserUpdateRequest extends FormRequest
         $id = $this->route('id');
         return [
             'name' => ['required','string','max:255'],
-            'password' => ['nullable','string'],
+            'password' => ['nullable','string','confirmed'],
             'phone' => ['nullable','string','max:30'],
             'role' => ['required','integer'],
             'disabled' => ['required','boolean'],

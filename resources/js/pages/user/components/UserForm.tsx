@@ -9,6 +9,7 @@ type Props = {
         name: string;
         username: string;
         password: string;
+        password_confirmation: string;
         phone?: string | null;
         role: number;
         disabled: boolean;
@@ -97,6 +98,23 @@ export default function UserForm({
                         </span>
                     )}
                 </div>
+
+                {(!isEdit || data.password) && (
+                    <div className="grid gap-1">
+                        <label>{t('common.password_confirmation', { defaultValue: 'Xác nhận mật khẩu' })}</label>
+                        <Input
+                            type="password"
+                            value={data.password_confirmation}
+                            onChange={(e) => setData('password_confirmation', e.target.value)}
+                            required={!!data.password}
+                        />
+                        {errors.password_confirmation && (
+                            <span className="text-sm text-red-500">
+                                {errors.password_confirmation}
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 <div className="grid gap-1">
                     <label>{t('common.phone')}</label>

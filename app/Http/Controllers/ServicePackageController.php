@@ -56,6 +56,26 @@ class ServicePackageController extends Controller
     }
 
     /**
+     * Trang xem danh sách gói dịch vụ (read-only) cho nhân viên/quản lý tư vấn
+     */
+    public function listView(): \Inertia\Response
+    {
+        $result = $this->servicePackageService->getListServicePackage(new QueryListDTO(
+            perPage: 100,
+            page: 1,
+            filter: [],
+            sortBy: 'created_at',
+            sortDirection: 'desc',
+        ));
+        return $this->rendering(
+            view: 'service-package/list',
+            data: [
+                'packages' => fn () => ServicePackageListResource::collection($result->getData()),
+            ]
+        );
+    }
+
+    /**
      * Hiển thị form tạo gói dịch vụ
      * @return \Inertia\Response
      */

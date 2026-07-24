@@ -89,6 +89,11 @@ const Login = ({ bot_username }: Props) => {
                             </button>
                         </div>
                         <InputError message={errors.password} />
+                        <div className="text-right">
+                            <TextLink href="/forgot-password" tabIndex={3}>
+                                {t('auth.login.forgot_password', { defaultValue: 'Quên mật khẩu?' })}
+                            </TextLink>
+                        </div>
                     </div>
 
                     <Button

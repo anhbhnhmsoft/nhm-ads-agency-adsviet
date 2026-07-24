@@ -104,7 +104,15 @@ Route::middleware(['guest:web'])->group(function () {
     Route::get('/login', [AuthController::class, 'loginScreen'])->name('login');
     Route::get('/register', [AuthController::class, 'registerScreen'])->name('register');
 
-    // xác thực
+    // Quên mật khẩu
+    Route::get('/forgot-password', [AuthController::class, 'forgotPasswordScreen'])->name('auth_forgot_password_screen');
+    Route::post('/forgot-password', [AuthController::class, 'sendForgotPasswordOtp'])->name('auth_forgot_password_send');
+    Route::get('/forgot-password/verify-otp', [AuthController::class, 'forgotPasswordOtpScreen'])->name('auth_forgot_password_verify_screen');
+    Route::post('/forgot-password/verify-otp', [AuthController::class, 'verifyForgotPasswordOtp'])->name('auth_forgot_password_verify');
+    Route::get('/forgot-password/reset', [AuthController::class, 'forgotPasswordResetScreen'])->name('auth_forgot_password_reset_screen');
+    Route::post('/forgot-password/reset', [AuthController::class, 'resetForgotPassword'])->name('auth_forgot_password_reset');
+
+    // xac thuc
     Route::prefix('auth')->group(function () {
         Route::post('/login', [AuthController::class, 'handleLoginUsername'])->name('auth_login');
         Route::post('/start', [AuthController::class, 'handleLoginTelegram'])->name('auth_telegram');
@@ -212,6 +220,7 @@ Route::middleware([
         Route::get('/', [ServicePackageController::class, 'index'])->name('service_packages_index');
         Route::get('/create', [ServicePackageController::class, 'createView'])->name('service_packages_create_view');
         Route::post('/create', [ServicePackageController::class, 'create'])->name('service_packages_create');
+        Route::get('/list', [ServicePackageController::class, 'listView'])->name('service_packages_list');
         Route::get('/{id}/account-inventory', [ServiceAccountInventoryController::class, 'index'])->name('service_packages_account_inventory_index');
         Route::post('/{id}/account-inventory/import', [ServiceAccountInventoryController::class, 'import'])->name('service_packages_account_inventory_import');
         Route::delete('/{id}/account-inventory/{inventoryId}', [ServiceAccountInventoryController::class, 'destroy'])->name('service_packages_account_inventory_destroy');

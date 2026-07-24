@@ -166,6 +166,15 @@ const useMenu = () => {
                 active: isActive(service_purchase_index()),
                 can_show: checkRole([_UserRole.CUSTOMER, _UserRole.AGENCY, _UserRole.MANAGER, _UserRole.EMPLOYEE]),
             },
+            // Xem gói dịch vụ (read-only cho nhân viên/quản lý tư vấn)
+            {
+                title: t('menu.service_packages_list', { defaultValue: 'Xem gói dịch vụ' }),
+                url: '/service-packages/list',
+                icon: <Boxes />,
+                is_menu: true,
+                active: isActive('/service-packages/list'),
+                can_show: checkRole([_UserRole.MANAGER, _UserRole.EMPLOYEE]),
+            },
             // Hỗ trợ
             {
                 title: checkRole([

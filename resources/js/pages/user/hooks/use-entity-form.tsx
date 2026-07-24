@@ -21,6 +21,7 @@ export const useEntityForm = ({
         name: initial?.name || '',
         username: initial?.username || '',
         password: '',
+        password_confirmation: '',
         phone: initial?.phone || '',
         role: initial?.role ?? defaultRole,
         disabled: initial?.disabled ?? false,
