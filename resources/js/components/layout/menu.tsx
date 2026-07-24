@@ -16,6 +16,7 @@ import {
     service_orders_index,
     service_packages_create_view,
     service_packages_index,
+    service_packages_list,
     service_purchase_index,
     spend_report_index,
     suppliers_create_view,
@@ -168,11 +169,11 @@ const useMenu = () => {
             },
             // Xem gói dịch vụ (read-only cho nhân viên/quản lý tư vấn)
             {
-                title: t('menu.service_packages_list', { defaultValue: 'Xem gói dịch vụ' }),
-                url: '/service-packages/list',
+                title: t('menu.service_packages_list'),
+                url: service_packages_list().url,
                 icon: <Boxes />,
                 is_menu: true,
-                active: isActive('/service-packages/list'),
+                active: isActive(service_packages_list()),
                 can_show: checkRole([_UserRole.MANAGER, _UserRole.EMPLOYEE]),
             },
             // Hỗ trợ

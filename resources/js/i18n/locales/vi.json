@@ -110,6 +110,7 @@
         "config": "Cấu hình",
         "platform_settings": "Cấu hình nền tảng",
         "service_packages": "Gói dịch vụ",
+        "service_packages_list": "Xem gói dịch vụ",
         "suppliers": "Nhà cung cấp",
         "commissions": "Cấu hình hoa hồng",
         "commissions_report": "Báo cáo hoa hồng",
@@ -388,6 +389,24 @@
             "title": "Đăng ký tài khoản mới",
             "description": "Chào mừng bạn đến với hệ thống quản lý quảng cáo, hãy nhập thông tin đăng ký để tạo tài khoản mới.",
             "role": "Vai trò"
+        },
+        "forgot_password": {
+            "title": "Quên mật khẩu",
+            "description": "Nhập email đã đăng ký để nhận mã OTP xác minh.",
+            "email_placeholder": "email@example.com",
+            "send_otp": "Gửi mã OTP",
+            "otp_sent": "Mã OTP đã được gửi đến email của bạn.",
+            "otp_sent_hint": "Mã OTP đã được gửi đến {{email}}. Vui lòng nhập mã 6 chữ số.",
+            "verify_otp_title": "Xác minh mã OTP",
+            "enter_otp": "Mã OTP",
+            "verify_otp": "Xác minh",
+            "reset_title": "Đặt lại mật khẩu",
+            "reset_description": "Nhập mật khẩu mới cho tài khoản của bạn.",
+            "new_password_placeholder": "Tối thiểu 6 ký tự",
+            "reset_button": "Đặt lại mật khẩu",
+            "reset_success": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập.",
+            "email_not_found": "Email không tồn tại trong hệ thống.",
+            "back_to_login": "Quay lại"
         }
     },
     "user": {
@@ -431,24 +450,6 @@
                 "manager": "quản lý",
                 "employee": "nhân viên"
             }
-        },
-        "forgot_password": {
-            "title": "Quên mật khẩu",
-            "description": "Nhập email đã đăng ký để nhận mã OTP xác minh.",
-            "email_placeholder": "email@example.com",
-            "send_otp": "Gửi mã OTP",
-            "otp_sent": "Mã OTP đã được gửi đến email của bạn.",
-            "otp_sent_hint": "Mã OTP đã được gửi đến {{email}}. Vui lòng nhập mã 6 chữ số.",
-            "verify_otp_title": "Xác minh mã OTP",
-            "enter_otp": "Mã OTP",
-            "verify_otp": "Xác minh",
-            "reset_title": "Đặt lại mật khẩu",
-            "reset_description": "Nhập mật khẩu mới cho tài khoản của bạn.",
-            "new_password_placeholder": "Tối thiểu 6 ký tự",
-            "reset_button": "Đặt lại mật khẩu",
-            "reset_success": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập.",
-            "email_not_found": "Email không tồn tại trong hệ thống.",
-            "back_to_login": "Quay lại"
         }
     },
     "wallet": {

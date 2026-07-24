@@ -111,6 +111,7 @@
         "config": "Config",
         "platform_settings": "Platform settings",
         "service_packages": "Service packages",
+        "service_packages_list": "View service packages",
         "suppliers": "Suppliers",
         "commissions": "Commission settings",
         "commissions_report": "Commission report",
