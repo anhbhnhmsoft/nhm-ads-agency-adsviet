@@ -151,6 +151,7 @@ class UserPreviewService
             'wallet_min_amount',
             'transactions_index',
             'service_purchase_index',
+            'service_packages_list',
             'service_orders_index',
             'service_management_*',
             'spend_report_*',
