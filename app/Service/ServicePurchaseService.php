@@ -2,7 +2,11 @@
 
 namespace App\Service;
 
+use App\Common\Constants\Config\ConfigName;
+use App\Common\Constants\NotificationType\NotificationType;
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServicePackage\AccountBillingSource;
+use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\ServiceUser\ServiceUserTransactionStatus;
 use App\Common\Constants\ServiceUser\ServiceUserTransactionType;
@@ -10,11 +14,9 @@ use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Core\Logging;
 use App\Core\ServiceReturn;
+use App\Models\ServiceUser;
 use App\Models\ServiceUserTransactionLog;
 use App\Repositories\ConfigRepository;
-use App\Common\Constants\Config\ConfigName;
-use App\Common\Constants\ServicePackage\AccountBillingSource;
-use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Repositories\ServicePackageAllowedUserRepository;
 use App\Repositories\ServicePackageRepository;
 use App\Repositories\ServiceUserRepository;
@@ -33,6 +35,7 @@ class ServicePurchaseService
         protected UserWalletTransactionRepository $walletTransactionRepository,
         protected ConfigRepository $configRepository,
         protected ServiceAccountInventoryService $serviceAccountInventoryService,
+        protected TelegramService $telegramService,
     ) {}
 
     // Tạo order mua dịch vụ và trừ tiền ví nội bộ
@@ -48,36 +51,38 @@ class ServicePurchaseService
         try {
             return DB::transaction(function () use ($actorUserId, $serviceOwnerUserId, $packageId, $topUpAmount, $budget, $configAccount) {
                 $package = $this->servicePackageRepository->find($packageId);
-                if (!$package) {
-                    Logging::error('Package not found: ' . $packageId);
+                if (! $package) {
+                    Logging::error('Package not found: '.$packageId);
+
                     return ServiceReturn::error(message: __('Gói dịch vụ không tồn tại'));
                 }
 
                 if ($package->disabled) {
-                    Logging::error('Package is disabled: ' . $packageId);
+                    Logging::error('Package is disabled: '.$packageId);
+
                     return ServiceReturn::error(message: __('Gói dịch vụ đã bị vô hiệu hóa'));
                 }
 
                 // Check package private theo serviceOwnerUserId (khách hàng được mua hộ)
                 if (
                     $this->servicePackageAllowedUserRepository->hasAllowedUsers($packageId)
-                    && !$this->servicePackageAllowedUserRepository->isUserAllowed($packageId, $serviceOwnerUserId)
+                    && ! $this->servicePackageAllowedUserRepository->isUserAllowed($packageId, $serviceOwnerUserId)
                 ) {
                     return ServiceReturn::error(message: __('services.validation.package_not_allowed'));
                 }
 
                 $packagePaymentType = $package->payment_type ?? ServicePackagePaymentType::PREPAY->value;
-                if (!in_array($packagePaymentType, ServicePackagePaymentType::getValues(), true)) {
+                if (! in_array($packagePaymentType, ServicePackagePaymentType::getValues(), true)) {
                     $packagePaymentType = ServicePackagePaymentType::PREPAY->value;
                 }
 
                 $requestedPaymentType = $configAccount['payment_type'] ?? $packagePaymentType;
-                if (!in_array($requestedPaymentType, ServicePackagePaymentType::getValues(), true)) {
+                if (! in_array($requestedPaymentType, ServicePackagePaymentType::getValues(), true)) {
                     $requestedPaymentType = $packagePaymentType;
                 }
 
                 $canUsePostpay = $packagePaymentType === ServicePackagePaymentType::POSTPAY->value;
-                if ($requestedPaymentType === ServicePackagePaymentType::POSTPAY->value && !$canUsePostpay) {
+                if ($requestedPaymentType === ServicePackagePaymentType::POSTPAY->value && ! $canUsePostpay) {
                     return ServiceReturn::error(message: __('services.validation.postpay_not_allowed'));
                 }
 
@@ -95,6 +100,7 @@ class ServicePurchaseService
                         'topUpAmount' => $topUpAmount,
                         'minTopUp' => $minTopUp,
                     ]);
+
                     return ServiceReturn::error(
                         message: __('Số tiền top-up tối thiểu là :amount USD', ['amount' => number_format($minTopUp, 2)])
                     );
@@ -117,8 +123,9 @@ class ServicePurchaseService
                 $totalCost = $openFeePayable + $topUpAmount + $serviceFee;
 
                 $wallet = $this->walletRepository->findByUserId($serviceOwnerUserId);
-                if (!$wallet) {
-                    Logging::error('Wallet not found for customer: ' . $serviceOwnerUserId . ' (actor: ' . $actorUserId . ')');
+                if (! $wallet) {
+                    Logging::error('Wallet not found for customer: '.$serviceOwnerUserId.' (actor: '.$actorUserId.')');
+
                     return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
                 }
 
@@ -126,7 +133,7 @@ class ServicePurchaseService
                 $postpayMinBalanceRaw = $this->configRepository
                     ->findByKey(ConfigName::POSTPAY_MIN_BALANCE->value)?->value;
                 $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 100;
-                if (!$isPrepay && (float) $wallet->balance < $postpayMinBalance) {
+                if (! $isPrepay && (float) $wallet->balance < $postpayMinBalance) {
                     return ServiceReturn::error(
                         message: __('services.validation.postpay_min_wallet', ['amount' => $postpayMinBalance])
                     );
@@ -150,7 +157,7 @@ class ServicePurchaseService
                     'config_account' => $defaultConfig,
                     'status' => ServiceUserStatus::PENDING->value,
                     'budget' => max(0, $budget),
-                    'description' => "Mua gói dịch vụ: {$package->name}" . ($actorUserId !== $serviceOwnerUserId ? " (mua hộ bởi staff #{$actorUserId})" : ''),
+                    'description' => "Mua gói dịch vụ: {$package->name}".($actorUserId !== $serviceOwnerUserId ? " (mua hộ bởi staff #{$actorUserId})" : ''),
                 ]);
 
                 $serviceUser->setRelation('package', $package);
@@ -208,6 +215,8 @@ class ServicePurchaseService
                     'amount' => $totalCost,
                 ]);
 
+                $this->notifySupportGroupNewOrder($serviceUser, $totalCost, $paymentType);
+
                 return ServiceReturn::success(data: [
                     'service_user_id' => $serviceUser->id,
                     'wallet_transaction_id' => $walletTransaction?->id,
@@ -216,22 +225,71 @@ class ServicePurchaseService
             });
         } catch (Throwable $e) {
             Logging::error(
-                message: 'ServicePurchaseService@createPurchaseOrder error: ' . $e->getMessage(),
+                message: 'ServicePurchaseService@createPurchaseOrder error: '.$e->getMessage(),
                 exception: $e
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    private function notifySupportGroupNewOrder(
+        ServiceUser $serviceUser,
+        float $totalCost,
+        string $paymentType,
+    ): void {
+        try {
+            $supportGroupId = config('services.telegram.support_group_id');
+            if (empty($supportGroupId)) {
+                return;
+            }
+
+            $serviceUser->loadMissing('user');
+            $customer = $serviceUser->user;
+            $package = $serviceUser->package;
+            if (! $customer || ! $package) {
+                return;
+            }
+
+            $timezone = (string) config('services.telegram.timezone', 'Asia/Ho_Chi_Minh');
+            $createdAt = $serviceUser->created_at
+                ? $serviceUser->created_at->copy()->timezone($timezone)
+                : now($timezone);
+            $platform = PlatformType::tryFrom((int) $package->platform)?->label() ?? (string) $package->platform;
+            $config = is_array($serviceUser->config_account) ? $serviceUser->config_account : [];
+
+            $message = __('service_user.telegram.new_order_group_alert', [
+                'order_code' => htmlspecialchars((string) $serviceUser->id, ENT_QUOTES, 'UTF-8'),
+                'customer' => htmlspecialchars($customer->name ?? $customer->username ?? ('User '.$customer->id), ENT_QUOTES, 'UTF-8'),
+                'package' => htmlspecialchars((string) $package->name, ENT_QUOTES, 'UTF-8'),
+                'platform' => htmlspecialchars($platform, ENT_QUOTES, 'UTF-8'),
+                'payment_type' => htmlspecialchars(__('service_user.payment_type.'.$paymentType), ENT_QUOTES, 'UTF-8'),
+                'top_up_amount' => htmlspecialchars(number_format((float) ($config['top_up_amount'] ?? 0), 2), ENT_QUOTES, 'UTF-8'),
+                'total_cost' => htmlspecialchars(number_format($totalCost, 2), ENT_QUOTES, 'UTF-8'),
+                'time' => $createdAt->format('d/m/Y H:i:s'),
+            ]);
+
+            $this->telegramService->sendNotification(
+                chatId: (string) $supportGroupId,
+                message: $message,
+                userId: null,
+                type: NotificationType::SERVICE_ANNOUNCEMENT,
+                data: ['service_user_id' => (string) $serviceUser->id],
+            );
+        } catch (Throwable $e) {
+            Logging::error(
+                message: 'ServicePurchaseService@notifySupportGroupNewOrder error: '.$e->getMessage(),
+                exception: $e
+            );
         }
     }
 
     /**
      * Lấy default config account theo platform
-     * @param int $platform
-     * @param array $userConfig
-     * @return array
      */
     private function getDefaultConfigAccount(int $platform, array $userConfig = []): array
     {
-        if (isset($userConfig['accounts']) && is_array($userConfig['accounts']) && !empty($userConfig['accounts'])) {
+        if (isset($userConfig['accounts']) && is_array($userConfig['accounts']) && ! empty($userConfig['accounts'])) {
             $accounts = [];
             foreach ($userConfig['accounts'] as $account) {
                 $accountData = [
@@ -247,12 +305,12 @@ class ServicePurchaseService
                     $accountData['fanpages'] = $account['fanpages'] ?? [];
                 }
 
-                $accountData['bm_ids'] = array_filter($accountData['bm_ids'], fn($v) => !empty(trim($v ?? '')));
+                $accountData['bm_ids'] = array_filter($accountData['bm_ids'], fn ($v) => ! empty(trim($v ?? '')));
                 if (isset($accountData['fanpages'])) {
-                    $accountData['fanpages'] = array_filter($accountData['fanpages'], fn($v) => !empty(trim($v ?? '')));
+                    $accountData['fanpages'] = array_filter($accountData['fanpages'], fn ($v) => ! empty(trim($v ?? '')));
                 }
                 if (isset($accountData['websites'])) {
-                    $accountData['websites'] = array_filter($accountData['websites'], fn($v) => !empty(trim($v ?? '')));
+                    $accountData['websites'] = array_filter($accountData['websites'], fn ($v) => ! empty(trim($v ?? '')));
                 }
 
                 $accounts[] = $accountData;
@@ -297,7 +355,7 @@ class ServicePurchaseService
             return $billingSource;
         }
 
-        if (!empty($package->supplier_id)) {
+        if (! empty($package->supplier_id)) {
             return AccountBillingSource::SUPPLIER_CREDIT_LINE->value;
         }
 

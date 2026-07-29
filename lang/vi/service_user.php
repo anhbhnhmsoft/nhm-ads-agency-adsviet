@@ -7,6 +7,13 @@ return [
         'cancelled' => 'Gói dịch vụ ":package" đã được hủy.',
         'unknown_package' => 'Gói dịch vụ',
     ],
+    'payment_type' => [
+        'prepay' => 'Trả trước',
+        'postpay' => 'Trả sau',
+    ],
+    'telegram' => [
+        'new_order_group_alert' => "🛎 <b>Đơn dịch vụ mới</b>\n<b>Mã đơn:</b> :order_code\n<b>Khách hàng:</b> :customer\n<b>Gói:</b> :package\n<b>Nền tảng:</b> :platform\n<b>Thanh toán:</b> :payment_type\n<b>Top-up:</b> :top_up_amount USD\n<b>Tổng tiền:</b> :total_cost USDT\n<b>Thời gian:</b> :time",
+    ],
     'mail' => [
         'subject' => 'Thông báo trạng thái dịch vụ',
         'greeting' => 'Xin chào :user,',
@@ -18,5 +25,4 @@ return [
         'footer' => 'Trân trọng,',
     ],
 ];
-
 

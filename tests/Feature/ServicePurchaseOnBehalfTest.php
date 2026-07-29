@@ -1,11 +1,13 @@
 <?php
 
+use App\Common\Constants\NotificationType\NotificationType;
 use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServicePackage\ServicePackagePaymentType;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\User\UserRole;
 use App\Common\Constants\Wallet\WalletStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
+use App\Core\ServiceReturn;
 use App\Models\ServicePackage;
 use App\Models\ServicePackageAllowedUser;
 use App\Models\ServiceUser;
@@ -13,6 +15,11 @@ use App\Models\User;
 use App\Models\UserReferral;
 use App\Models\UserWallet;
 use App\Models\UserWalletTransaction;
+use App\Service\TelegramService;
+
+beforeEach(function () {
+    config(['services.telegram.support_group_id' => null]);
+});
 
 function makePurchaseUser(int $role, string $prefix, bool $disabled = false): User
 {
@@ -111,6 +118,46 @@ it('allows an employee to purchase a package for an assigned customer and deduct
 
     expect($walletTransaction)->not->toBeNull();
     expect((float) $walletTransaction->amount)->toBe(-30.0);
+});
+
+it('notifies the Telegram support group when a service order is created', function () {
+    config(['services.telegram.support_group_id' => '-100123456789']);
+
+    $telegram = Mockery::mock(TelegramService::class);
+    $telegram->shouldReceive('sendNotification')
+        ->once()
+        ->withArgs(function (
+            string $chatId,
+            string $message,
+            ?int $userId,
+            NotificationType $type,
+            ?array $data,
+        ) {
+            return $chatId === '-100123456789'
+                && str_contains($message, 'Đơn dịch vụ mới')
+                && str_contains($message, 'Telegram Customer')
+                && str_contains($message, 'Telegram Package')
+                && $userId === null
+                && $type === NotificationType::SERVICE_ANNOUNCEMENT
+                && ! empty($data['service_user_id']);
+        })
+        ->andReturn(ServiceReturn::success());
+    app()->instance(TelegramService::class, $telegram);
+
+    $customer = makePurchaseUser(UserRole::CUSTOMER->value, 'telegram_customer');
+    $customer->update(['name' => 'Telegram Customer']);
+    makeWallet($customer, 100);
+    $package = makePackage(['name' => 'Telegram Package']);
+
+    $response = $this
+        ->actingAs($customer)
+        ->post(route('service_purchase_purchase'), [
+            'package_id' => $package->id,
+            'payment_type' => 'prepay',
+            'top_up_amount' => 20,
+        ]);
+
+    $response->assertRedirect(route('service_orders_index'));
 });
 
 it('prevents a manager from purchasing for a customer outside their scope', function () {
