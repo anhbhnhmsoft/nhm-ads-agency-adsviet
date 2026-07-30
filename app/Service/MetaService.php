@@ -2,8 +2,9 @@
 
 namespace App\Service;
 
-use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\Config\ConfigName;
 use App\Common\Constants\MetaBusinessManager\MetaBusinessManagerSource;
+use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServicePackage\Meta\MetaAdsAccountStatus;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\User\UserRole;
@@ -13,16 +14,18 @@ use App\Core\Cache\Caching;
 use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
+use App\Models\MetaAccount;
+use App\Models\MetaAdsCampaign;
 use App\Models\ServiceUser;
+use App\Models\User;
 use App\Repositories\MetaAccountBusinessManagerAccessRepository;
 use App\Repositories\MetaAccountRepository;
 use App\Repositories\MetaAdsAccountInsightRepository;
 use App\Repositories\MetaAdsCampaignRepository;
-use App\Repositories\MetaBusinessManagerRepository;
 use App\Repositories\MetaBusinessAssetGroupRepository;
+use App\Repositories\MetaBusinessManagerRepository;
 use App\Repositories\ServiceUserRepository;
 use App\Repositories\WalletRepository;
-use App\Common\Constants\Config\ConfigName;
 use Carbon\Carbon;
 use FacebookAds\Object\Values\AdDatePresetValues;
 use Illuminate\Database\Eloquent\Collection;
@@ -49,8 +52,7 @@ class MetaService
         protected PlatformSettingService $platformSettingService,
         protected MetaBusinessAssetGroupRepository $metaBusinessAssetGroupRepository,
         protected TelegramService $telegramService,
-    ) {
-    }
+    ) {}
 
     private function upsertMetaBusinessManager(array $identifiers, array $data)
     {
@@ -60,7 +62,7 @@ class MetaService
             $existing = $this->metaBusinessManagerRepository->findByBmId($bmId);
             $isDirectUpdate = (bool) ($data['is_direct_access'] ?? false);
 
-            if ($existing && (bool) ($existing->is_direct_access ?? false) && !$isDirectUpdate) {
+            if ($existing && (bool) ($existing->is_direct_access ?? false) && ! $isDirectUpdate) {
                 $data['is_direct_access'] = true;
                 $data['access_source'] = $existing->access_source ?: MetaBusinessManagerSource::SELF;
             }
@@ -88,15 +90,13 @@ class MetaService
 
     /**
      * Validate service user
-     * @param string $serviceUserId
-     * @return ServiceReturn
      */
     protected function validateServiceUser(string $serviceUserId): ServiceReturn
     {
         try {
             $serviceUser = $this->serviceUserRepository->find($serviceUserId);
             // validate service user tồn tại
-            if (!$serviceUser) {
+            if (! $serviceUser) {
                 return ServiceReturn::error(__('meta.error.service_not_found'));
             }
             // validate dịch vụ là Meta
@@ -104,20 +104,20 @@ class MetaService
                 return ServiceReturn::error(__('meta.error.service_user_platform_not_meta'));
             }
             // validate phân quyền
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
             switch ($user->role) {
                 case UserRole::ADMIN->value:
                     // Admin thì không cần kiểm tra gì thêm
                     break;
                 case UserRole::MANAGER->value:
-                // manager sử lý sau, hiện tại cho chung logic với employee
+                    // manager sử lý sau, hiện tại cho chung logic với employee
                 case UserRole::EMPLOYEE->value:
                     // Kiểm tra xem có phải dịch vụ thuộc user mà mình quản lý không
                     $isReferralService = $user->referrals()
                         ->where('referred_id', $serviceUser->user_id)
                         ->exists();
-                    if (!$isReferralService) {
+                    if (! $isReferralService) {
                         return ServiceReturn::error(__('meta.error.service_not_found'));
                     }
                     break;
@@ -128,20 +128,21 @@ class MetaService
                     $isReferralService = $user->referrals()
                         ->where('referred_id', $serviceUser->user_id)
                         ->exists();
-                    if (!$isOwnService && !$isReferralService) {
+                    if (! $isOwnService && ! $isReferralService) {
                         return ServiceReturn::error(__('meta.error.service_not_found'));
                     }
                     break;
                 case UserRole::CUSTOMER->value:
                     // Kiểm tra xem có phải dịch vụ của mình không
                     $isOwnService = $serviceUser->user_id == $user->id;
-                    if (!$isOwnService) {
+                    if (! $isOwnService) {
                         return ServiceReturn::error(__('meta.error.service_not_found'));
                     }
                     break;
                 default:
                     return ServiceReturn::error(__('meta.error.service_not_found'));
             }
+
             return ServiceReturn::success(data: $serviceUser);
         } catch (\Exception $e) {
             return ServiceReturn::error(__('common_error.server_error'));
@@ -166,9 +167,6 @@ class MetaService
 
     /**
      * Lấy danh sách tài khoản quảng cáo theo service user, có phân trang
-     * @param string $serviceUserId
-     * @param QueryListDTO $queryListDTO
-     * @return ServiceReturn
      */
     public function getAdsAccountPaginatedByServiceUserId(string $serviceUserId, QueryListDTO $queryListDTO): ServiceReturn
     {
@@ -194,15 +192,15 @@ class MetaService
             if ($isAdminOrStaff) {
                 $config = $serviceUser->config_account ?? [];
                 $bmIds = [];
-                if (!empty($config['bm_id'])) {
+                if (! empty($config['bm_id'])) {
                     $bmIds[] = (string) $config['bm_id'];
                 }
-                if (!empty($config['child_bm_id'])) {
+                if (! empty($config['child_bm_id'])) {
                     $bmIds[] = (string) $config['child_bm_id'];
                 }
                 if (isset($config['accounts']) && is_array($config['accounts'])) {
                     foreach ($config['accounts'] as $accConf) {
-                        if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                        if (! empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
                             foreach ($accConf['bm_ids'] as $bmId) {
                                 $bmIds[] = (string) $bmId;
                             }
@@ -213,7 +211,7 @@ class MetaService
 
                 $query->where(function ($subQ) use ($serviceUser, $bmIds) {
                     $subQ->where('service_user_id', $serviceUser->id);
-                    if (!empty($bmIds)) {
+                    if (! empty($bmIds)) {
                         $subQ->orWhereIn('business_manager_id', $bmIds);
                         $subQ->orWhereIn('account_id', function ($accessQuery) use ($bmIds) {
                             $accessQuery->select('account_id')
@@ -237,6 +235,7 @@ class MetaService
             $accountSnapshot = $paginator->getCollection()
                 ->map(function ($account) {
                     $statusEnum = MetaAdsAccountStatus::tryFrom((int) $account->account_status);
+
                     return [
                         'id' => (string) $account->id,
                         'account_id' => $account->account_id,
@@ -247,12 +246,14 @@ class MetaService
                 ->take(20)
                 ->values()
                 ->toArray();
+
             return ServiceReturn::success(data: $paginator);
         } catch (\Exception $e) {
             Logging::error(
-                message: 'Lỗi khi lấy danh sách tài khoản quảng cáo MetaService@getAdsAccountPaginatedByServiceUser: ' . $e->getMessage(),
+                message: 'Lỗi khi lấy danh sách tài khoản quảng cáo MetaService@getAdsAccountPaginatedByServiceUser: '.$e->getMessage(),
                 exception: $e
             );
+
             // trả về paginator rỗng khi có lỗi
             return ServiceReturn::success(
                 data: new LengthAwarePaginator(
@@ -267,10 +268,6 @@ class MetaService
 
     /**
      * Lấy danh sách chiến dịch quảng cáo theo service user và account id, có phân trang
-     * @param string $serviceUserId
-     * @param string $accountId
-     * @param QueryListDTO $queryListDTO
-     * @return ServiceReturn
      */
     public function getCampaignsPaginatedByServiceUserIdAndAccountId(string $serviceUserId, string $accountId, QueryListDTO $queryListDTO): ServiceReturn
     {
@@ -286,7 +283,7 @@ class MetaService
         try {
             // get Ads Account
             $adsAccount = $this->findAdsAccountForServiceUser($serviceUser, $accountId);
-            if (!$adsAccount) {
+            if (! $adsAccount) {
                 return ServiceReturn::error(__('meta.error.account_not_found'));
             }
             [$startDate, $endDate] = $this->parseCampaignSpendDateRange($queryListDTO->filter ?? []);
@@ -394,12 +391,14 @@ class MetaService
                 $item->total_spend = $totalSpendMap[$item->campaign_id] ?? 0;
                 $item->today_spend = $todaySpendMap[$item->campaign_id] ?? 0;
             });
+
             return ServiceReturn::success(data: $paginator);
         } catch (\Exception $exception) {
             Logging::error(
-                message: 'Lỗi khi lấy danh sách chiến dịch quảng cáo MetaService@getCampaigns: ' . $exception->getMessage(),
+                message: 'Lỗi khi lấy danh sách chiến dịch quảng cáo MetaService@getCampaigns: '.$exception->getMessage(),
                 exception: $exception
             );
+
             // trả về paginator rỗng khi có lỗi
             return ServiceReturn::success(
                 data: new LengthAwarePaginator(
@@ -414,10 +413,10 @@ class MetaService
 
     /**
      * Cập nhật trạng thái chiến dịch Meta theo service user + campaign DB id.
-     * @param string $serviceUserId
-     * @param string $campaignId
-     * @param string $status ACTIVE|PAUSED|DELETED
-     * @return ServiceReturn
+     *
+     * @param  string  $serviceUserId
+     * @param  string  $campaignId
+     * @param  string  $status  ACTIVE|PAUSED|DELETED
      */
     public function getCampaignsPaginatedByAccountId(string $accountId, QueryListDTO $queryListDTO): ServiceReturn
     {
@@ -426,7 +425,7 @@ class MetaService
                 ->where('id', $accountId)
                 ->first();
 
-            if (!$adsAccount) {
+            if (! $adsAccount) {
                 return ServiceReturn::error(__('meta.error.account_not_found'));
             }
 
@@ -511,7 +510,7 @@ class MetaService
             return ServiceReturn::success(data: $paginator);
         } catch (\Throwable $exception) {
             Logging::error(
-                message: 'MetaService@getCampaignsPaginatedByAccountId error: ' . $exception->getMessage(),
+                message: 'MetaService@getCampaignsPaginatedByAccountId error: '.$exception->getMessage(),
                 exception: $exception
             );
 
@@ -542,7 +541,7 @@ class MetaService
                 $campaign->load('metaAccount');
             }
 
-            if (!$campaign) {
+            if (! $campaign) {
                 return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
             }
 
@@ -551,7 +550,7 @@ class MetaService
 
             // Kiểm tra validation khi resume (ACTIVE) cho Customer/Agency
             if ($normalizedStatus === 'ACTIVE' && $metaAccount) {
-                /** @var \App\Models\User $user */
+                /** @var User $user */
                 $user = Auth::user();
                 $userRole = $user->role ?? null;
 
@@ -560,11 +559,17 @@ class MetaService
                     // Cho phép resume
                 } elseif (in_array($userRole, [UserRole::CUSTOMER->value, UserRole::AGENCY->value])) {
                     // Customer/Agency: Kiểm tra spending > balance + threshold (lấy từ config)
-                    $balance = (float) ($metaAccount->balance ?? 0);
+                    $balance = $this->normalizeMetaAccountMoney(
+                        $metaAccount->balance,
+                        $metaAccount->currency
+                    ) ?? 0.0;
                     $threshold = (float) $this->configService->getValue(ConfigName::THRESHOLD_PAUSE, 100);
 
                     // Lấy chi tiêu tích lũy (lifetime)
-                    $lifetimeSpending = (float) ($metaAccount->amount_spent ?? 0);
+                    $lifetimeSpending = $this->normalizeMetaAccountMoney(
+                        $metaAccount->amount_spent,
+                        $metaAccount->currency
+                    ) ?? 0.0;
 
                     // Nếu không có amount_spent, lấy từ insights database
                     if ($lifetimeSpending == 0) {
@@ -572,7 +577,7 @@ class MetaService
                             [(string) $metaAccount->id],
                             'maximum'
                         );
-                        if (!$insightsResult->isError()) {
+                        if (! $insightsResult->isError()) {
                             $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
                         }
                     }
@@ -607,19 +612,16 @@ class MetaService
             return ServiceReturn::success(data: $apiResult->getData());
         } catch (\Throwable $exception) {
             Logging::error(
-                message: 'MetaService@updateCampaignStatus error: ' . $exception->getMessage(),
+                message: 'MetaService@updateCampaignStatus error: '.$exception->getMessage(),
                 exception: $exception
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 
     /**
      * Cập nhật giới hạn chi tiêu (spend_cap) chiến dịch Meta.
-     * @param string $serviceUserId
-     * @param string $campaignId
-     * @param float $amount
-     * @return ServiceReturn
      */
     public function updateCampaignSpendCap(string $serviceUserId, string $campaignId, float $amount): ServiceReturn
     {
@@ -633,7 +635,7 @@ class MetaService
         try {
             $campaign = $this->findCampaignForServiceUser($serviceUser, $campaignId);
 
-            if (!$campaign) {
+            if (! $campaign) {
                 return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
             }
 
@@ -647,18 +649,16 @@ class MetaService
             return ServiceReturn::success(data: $apiResult->getData());
         } catch (\Throwable $exception) {
             Logging::error(
-                message: 'MetaService@updateCampaignSpendCap error: ' . $exception->getMessage(),
+                message: 'MetaService@updateCampaignSpendCap error: '.$exception->getMessage(),
                 exception: $exception
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 
     /**
      * Lấy thông tin chi tiết chiến dịch quảng cáo Meta
-     * @param string $serviceUserId
-     * @param string $campaignId
-     * @return ServiceReturn
      */
     public function getCampaignDetail(string $serviceUserId, string $campaignId): ServiceReturn
     {
@@ -685,7 +685,7 @@ class MetaService
 
             // Lấy thông tin chi tiết chiến dịch từ database
             $campaign = $this->findCampaignForServiceUser($serviceUser, $campaignId);
-            if (!$campaign) {
+            if (! $campaign) {
                 return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
             }
             // Lấy thông tin chi tiết insights chiến dịch từ Meta Business (today)
@@ -765,7 +765,7 @@ class MetaService
                 'campaign_id' => $campaign->campaign_id,
                 'name' => $campaign->name,
                 'status' => $campaign->status, // Trạng thái chiến dịch
-                'effective_status' => $campaign->effective_status,// Trạng thái hiệu lực chiến dịch
+                'effective_status' => $campaign->effective_status, // Trạng thái hiệu lực chiến dịch
                 'objective' => $campaign->objective, // Mục tiêu chiến dịch
                 'daily_budget' => $campaign->daily_budget, // Giới hạn chi tiêu mỗi ngày
                 'budget_remaining' => $campaign->budget_remaining, // Giới hạn chi tiêu còn lại
@@ -839,7 +839,7 @@ class MetaService
                             $totalConversionsToday
                         ),
                     ],
-                ]
+                ],
 
             ];
 
@@ -851,7 +851,6 @@ class MetaService
                 expire: 15 // 15 phút
             );
 
-
             return ServiceReturn::success(
                 data: $data,
             );
@@ -861,12 +860,8 @@ class MetaService
         }
     }
 
-
     /**
      * Lấy thông tin chi tiết về hiệu suất quảng cáo Meta cho một chiến dịch cụ thể
-     * @param string $serviceUserId
-     * @param string $campaignId
-     * @return ServiceReturn
      */
     public function getCampaignDailyInsights(string $serviceUserId, string $campaignId, string $datePreset): ServiceReturn
     {
@@ -883,7 +878,7 @@ class MetaService
             // Lấy thông tin chi tiết hiệu suất quảng cáo từ cache
             $data = Caching::getCache(
                 key: CacheKey::CACHE_DETAIL_META_INSIGHT,
-                uniqueKey: $campaignId . $datePreset,
+                uniqueKey: $campaignId.$datePreset,
             );
             if ($data) {
                 return ServiceReturn::success(data: $data);
@@ -893,7 +888,7 @@ class MetaService
                 ->where('service_user_id', $serviceUser->id)
                 ->where('id', $campaignId)
                 ->first();
-            if (!$campaign) {
+            if (! $campaign) {
                 return ServiceReturn::error(message: __('meta.error.campaign_not_found'));
             }
             $insightsResult = $this->metaBusinessService->getCampaignDailyInsights(
@@ -909,9 +904,10 @@ class MetaService
             Caching::setCache(
                 key: CacheKey::CACHE_DETAIL_META_INSIGHT,
                 value: $insights,
-                uniqueKey: $campaignId . $datePreset,
+                uniqueKey: $campaignId.$datePreset,
                 expire: 15 // 15 phút
             );
+
             return ServiceReturn::success(
                 data: $insights,
             );
@@ -920,10 +916,9 @@ class MetaService
         }
     }
 
-
     /**
      * Đồng bộ tài khoản quảng cáo từ Meta Business
-     * @param ServiceUser $serviceUser
+     *
      * @return ServiceReturn
      */
     public function setupSettingContextForServiceUser(ServiceUser $serviceUser): bool
@@ -935,9 +930,9 @@ class MetaService
         if ($childBmId) {
             $bmId = $childBmId;
         } else {
-            if (isset($serviceUserConfig['accounts']) && is_array($serviceUserConfig['accounts']) && !empty($serviceUserConfig['accounts'])) {
+            if (isset($serviceUserConfig['accounts']) && is_array($serviceUserConfig['accounts']) && ! empty($serviceUserConfig['accounts'])) {
                 $firstAccount = $serviceUserConfig['accounts'][0];
-                if (isset($firstAccount['bm_ids']) && is_array($firstAccount['bm_ids']) && !empty($firstAccount['bm_ids'])) {
+                if (isset($firstAccount['bm_ids']) && is_array($firstAccount['bm_ids']) && ! empty($firstAccount['bm_ids'])) {
                     $bmId = $firstAccount['bm_ids'][0];
                 }
             } else {
@@ -945,7 +940,7 @@ class MetaService
             }
         }
 
-        if (!$bmId) {
+        if (! $bmId) {
             return false;
         }
 
@@ -956,7 +951,8 @@ class MetaService
         )->getData();
 
         if ($setting) {
-            $this->metaBusinessService->setSettingId((string)$setting->id);
+            $this->metaBusinessService->setSettingId((string) $setting->id);
+
             return true;
         }
 
@@ -972,9 +968,9 @@ class MetaService
         if ($childBmId) {
             $bmId = $childBmId;
         } else {
-            if (isset($serviceUserConfig['accounts']) && is_array($serviceUserConfig['accounts']) && !empty($serviceUserConfig['accounts'])) {
+            if (isset($serviceUserConfig['accounts']) && is_array($serviceUserConfig['accounts']) && ! empty($serviceUserConfig['accounts'])) {
                 $firstAccount = $serviceUserConfig['accounts'][0];
-                if (isset($firstAccount['bm_ids']) && is_array($firstAccount['bm_ids']) && !empty($firstAccount['bm_ids'])) {
+                if (isset($firstAccount['bm_ids']) && is_array($firstAccount['bm_ids']) && ! empty($firstAccount['bm_ids'])) {
                     $bmId = $firstAccount['bm_ids'][0];
                 }
             } else {
@@ -982,13 +978,13 @@ class MetaService
             }
         }
 
-        if (!$bmId) {
+        if (! $bmId) {
             return ServiceReturn::error('Missing bm_id in service user config');
         }
 
         $this->setupSettingContextForServiceUser($serviceUser);
 
-        if (!$childBmId) {
+        if (! $childBmId) {
             $this->syncBusinessManagers($bmId);
             // Đồng bộ danh sách Business Asset Groups để phân loại khách hàng
             $this->syncBusinessAssetGroups($bmId);
@@ -999,6 +995,7 @@ class MetaService
         $this->syncMetaAccountsFromEdge($serviceUser, $bmId, 'owner');
         // client_ad_accounts (được share vào BM)
         $this->syncMetaAccountsFromEdge($serviceUser, $bmId, 'client');
+
         return ServiceReturn::success();
     }
 
@@ -1037,7 +1034,7 @@ class MetaService
                     ]
                 );
             } else {
-                Logging::error('MetaService@syncFromBusinessManagerIdBasic: cannot fetch parent BM info: ' . $parentInfo->getMessage());
+                Logging::error('MetaService@syncFromBusinessManagerIdBasic: cannot fetch parent BM info: '.$parentInfo->getMessage());
             }
 
             // đồng bộ account ads dưới BM gốc (owned + client)
@@ -1048,12 +1045,14 @@ class MetaService
 
             $this->syncMetaAccountsForManagers($bmIdsToSync);
             sleep(1); // 1 giây delay giữa các edge để tránh rate limit
+
             return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error(
-                message: 'MetaService@syncFromBusinessManagerIdBasic error: ' . $e->getMessage(),
+                message: 'MetaService@syncFromBusinessManagerIdBasic error: '.$e->getMessage(),
                 exception: $e
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -1077,9 +1076,10 @@ class MetaService
             return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error(
-                message: 'MetaService@syncFromAccessibleBusinessManagers error: ' . $e->getMessage(),
+                message: 'MetaService@syncFromAccessibleBusinessManagers error: '.$e->getMessage(),
                 exception: $e
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -1087,7 +1087,7 @@ class MetaService
     public function syncInsightsAndCampaignsForBusinessManager(string $bmId): ServiceReturn
     {
         try {
-            //Đồng bộ BM con (owned + client + agency)
+            // Đồng bộ BM con (owned + client + agency)
             $selfBusinessManagerIds = $this->syncSelfBusinessManagers($bmId);
 
             $this->syncBusinessManagersFromEdge($bmId, 'owned');
@@ -1119,9 +1119,10 @@ class MetaService
             return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error(
-                message: 'MetaService@syncInsightsAndCampaignsForBusinessManager error: ' . $e->getMessage(),
+                message: 'MetaService@syncInsightsAndCampaignsForBusinessManager error: '.$e->getMessage(),
                 exception: $e
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -1143,9 +1144,10 @@ class MetaService
             return $this->syncInsightsAndCampaignsForBusinessManager($bmId);
         } catch (\Throwable $e) {
             Logging::error(
-                message: 'MetaService@syncFromBusinessManagerId error: ' . $e->getMessage(),
+                message: 'MetaService@syncFromBusinessManagerId error: '.$e->getMessage(),
                 exception: $e
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -1189,11 +1191,11 @@ class MetaService
         ];
 
         $logPath = storage_path('logs/meta-permission-issues.log');
-        $logLine = json_encode($logData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n" . str_repeat('-', 80) . "\n";
+        $logLine = json_encode($logData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)."\n".str_repeat('-', 80)."\n";
         file_put_contents($logPath, $logLine, FILE_APPEND);
 
         Logging::web(
-            "Meta Account Permission Issue: Account {$metaAccount->account_id} ({$metaAccount->account_name}) " .
+            "Meta Account Permission Issue: Account {$metaAccount->account_id} ({$metaAccount->account_name}) ".
             "thuộc BM {$metaAccount->business_manager_id} thiếu quyền ads_management/ads_read cho {$errorType}",
             $logData
         );
@@ -1219,7 +1221,7 @@ class MetaService
             ->where(function ($query) use ($uniqueBmIds, $accessibleAccountIds) {
                 $query->whereIn('business_manager_id', $uniqueBmIds);
 
-                if (!empty($accessibleAccountIds)) {
+                if (! empty($accessibleAccountIds)) {
                     $query->orWhereIn('account_id', $accessibleAccountIds);
                 }
             })
@@ -1229,30 +1231,30 @@ class MetaService
 
                 foreach ($metaAccounts as $metaAccount) {
                     // 1. Request lấy Insights
-                    $insightsUrl = "{$metaAccount->account_id}/insights?" . http_build_query([
+                    $insightsUrl = "{$metaAccount->account_id}/insights?".http_build_query([
                         'level' => 'account',
                         'time_increment' => 1,
                         'time_range' => [
                             'since' => Carbon::today()->subDays(30)->toDateString(),
                             'until' => Carbon::today()->toDateString(),
                         ],
-                        'fields' => 'date_start,date_stop,spend,impressions,reach,frequency,clicks,inline_link_clicks,ctr,cpc,cpm,actions,purchase_roas'
+                        'fields' => 'date_start,date_stop,spend,impressions,reach,frequency,clicks,inline_link_clicks,ctr,cpc,cpm,actions,purchase_roas',
                     ]);
                     $batchRequests[] = [
                         'method' => 'GET',
                         'relative_url' => $insightsUrl,
-                        'name' => "insights_{$metaAccount->id}"
+                        'name' => "insights_{$metaAccount->id}",
                     ];
 
                     // 2. Request lấy Campaigns
-                    $campaignsUrl = "{$metaAccount->account_id}/campaigns?" . http_build_query([
+                    $campaignsUrl = "{$metaAccount->account_id}/campaigns?".http_build_query([
                         'fields' => 'id,name,status,effective_status,objective,daily_budget,lifetime_budget,budget_remaining,spend_cap,created_time,start_time,stop_time',
-                        'limit' => 100
+                        'limit' => 100,
                     ]);
                     $batchRequests[] = [
                         'method' => 'GET',
                         'relative_url' => $campaignsUrl,
-                        'name' => "campaigns_{$metaAccount->id}"
+                        'name' => "campaigns_{$metaAccount->id}",
                     ];
 
                     $accountMap[$metaAccount->id] = $metaAccount;
@@ -1261,14 +1263,15 @@ class MetaService
                 // Gửi Batch Request (Tối đa 50 requests/lần: 25 acc * 2)
                 $batchResponse = $this->metaBusinessService->callBatch($batchRequests);
                 if ($batchResponse->isError()) {
-                    Logging::error("Batch Insights Sync failed: " . $batchResponse->getMessage());
+                    Logging::error('Batch Insights Sync failed: '.$batchResponse->getMessage());
+
                     return;
                 }
 
                 $responses = $batchResponse->getData();
                 foreach ($responses as $index => $res) {
                     $reqName = $batchRequests[$index]['name'];
-                    list($type, $dbId) = explode('_', $reqName);
+                    [$type, $dbId] = explode('_', $reqName);
                     $metaAccount = $accountMap[$dbId];
 
                     if (($res['code'] ?? 0) !== 200) {
@@ -1285,8 +1288,9 @@ class MetaService
                                 ];
                             }
                         } else {
-                            Logging::error("Batch Request Item Failed ({$type} for {$metaAccount->account_id}): " . $errorMessage);
+                            Logging::error("Batch Request Item Failed ({$type} for {$metaAccount->account_id}): ".$errorMessage);
                         }
+
                         continue;
                     }
 
@@ -1300,7 +1304,7 @@ class MetaService
                 }
             });
 
-        if (!empty($accountsWithPermissionIssues)) {
+        if (! empty($accountsWithPermissionIssues)) {
             $uniqueAccounts = [];
             foreach ($accountsWithPermissionIssues as $account) {
                 $uniqueAccounts[$account['account_id']] = $account;
@@ -1313,13 +1317,11 @@ class MetaService
             ];
 
             $logPath = storage_path('logs/meta-permission-issues.log');
-            file_put_contents($logPath, "\nSummary: " . json_encode($summary, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
+            file_put_contents($logPath, "\nSummary: ".json_encode($summary, JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
 
-            Logging::web("Meta Sync Permission Issues Summary", $summary);
+            Logging::web('Meta Sync Permission Issues Summary', $summary);
         }
     }
-
-
 
     private function syncInsightsFromData(object $metaAccount, array $data): void
     {
@@ -1348,7 +1350,7 @@ class MetaService
                     ]
                 );
             } catch (\Exception $exception) {
-                Logging::error('Error sync business-manager ads account insight: ' . $exception->getMessage());
+                Logging::error('Error sync business-manager ads account insight: '.$exception->getMessage());
             }
         }
     }
@@ -1378,7 +1380,7 @@ class MetaService
                     ]
                 );
             } catch (\Exception $e) {
-                Logging::error('Error sync business-manager ads campaign: ' . $e->getMessage());
+                Logging::error('Error sync business-manager ads campaign: '.$e->getMessage());
             }
         }
     }
@@ -1398,9 +1400,10 @@ class MetaService
             );
 
             if ($result->isError()) {
-                Logging::error('Error sync self business managers: ' . $result->getMessage(), [
+                Logging::error('Error sync self business managers: '.$result->getMessage(), [
                     'context_bm_id' => $contextBmId,
                 ]);
+
                 return array_values(array_unique($syncedBmIds));
             }
 
@@ -1409,7 +1412,7 @@ class MetaService
 
             foreach ($businesses as $businessData) {
                 $bmId = isset($businessData['id']) ? (string) $businessData['id'] : null;
-                if (!$bmId) {
+                if (! $bmId) {
                     continue;
                 }
 
@@ -1435,7 +1438,7 @@ class MetaService
 
                     $syncedBmIds[] = $bmId;
                 } catch (\Throwable $e) {
-                    Logging::error('Error upsert self business manager: ' . $e->getMessage(), [
+                    Logging::error('Error upsert self business manager: '.$e->getMessage(), [
                         'bm_id' => $bmId,
                     ]);
                 }
@@ -1473,7 +1476,7 @@ class MetaService
 
     private function syncBusinessManagers(string $parentBmId): void
     {
-        //Lấy thông tin BM gốc
+        // Lấy thông tin BM gốc
         // Fields hợp lệ: id, name, verification_status, primary_page
         $parentInfo = $this->metaBusinessService->getBusinessById($parentBmId);
 
@@ -1496,7 +1499,7 @@ class MetaService
                 ]
             );
         } else {
-            Logging::error('MetaService@syncBusinessManagers: cannot fetch parent BM info: ' . $parentInfo->getMessage());
+            Logging::error('MetaService@syncBusinessManagers: cannot fetch parent BM info: '.$parentInfo->getMessage());
         }
 
         // Đồng bộ BM con:
@@ -1534,10 +1537,11 @@ class MetaService
             };
 
             if ($result->isError()) {
-                Logging::error('Error sync business managers from ' . $type . ' edge: ' . $result->getMessage(), [
+                Logging::error('Error sync business managers from '.$type.' edge: '.$result->getMessage(), [
                     'bm_id' => $parentBmId,
                     'edge' => $type,
                 ]);
+
                 return;
             }
 
@@ -1566,7 +1570,7 @@ class MetaService
                         ]
                     );
                 } catch (\Exception $e) {
-                    Logging::error('Error sync business manager: ' . $e->getMessage());
+                    Logging::error('Error sync business manager: '.$e->getMessage());
                 }
 
                 // Delay giữa các BM để tránh rate limit
@@ -1601,18 +1605,19 @@ class MetaService
                 $batchRequests[] = [
                     'method' => 'GET',
                     'relative_url' => "{$bmId}/owned_ad_accounts?fields={$fields}&limit=100",
-                    'name' => "owned_{$bmId}"
+                    'name' => "owned_{$bmId}",
                 ];
                 $batchRequests[] = [
                     'method' => 'GET',
                     'relative_url' => "{$bmId}/client_ad_accounts?fields={$fields}&limit=100",
-                    'name' => "client_{$bmId}"
+                    'name' => "client_{$bmId}",
                 ];
             }
 
             $batchResponse = $this->metaBusinessService->callBatch($batchRequests);
             if ($batchResponse->isError()) {
-                Logging::error("Batch Account Sync failed: " . $batchResponse->getMessage());
+                Logging::error('Batch Account Sync failed: '.$batchResponse->getMessage());
+
                 continue;
             }
 
@@ -1651,7 +1656,7 @@ class MetaService
             $ownerBmName = $business['name'] ?? null;
 
             if ($ownerBmId && in_array((string) $ownerBmId, $hiddenBmIds, true)) {
-                if (!$bmIdFromRequest || in_array((string) $bmIdFromRequest, $hiddenBmIds, true)) {
+                if (! $bmIdFromRequest || in_array((string) $bmIdFromRequest, $hiddenBmIds, true)) {
                     continue;
                 }
             }
@@ -1700,7 +1705,7 @@ class MetaService
                     'business_manager_id' => $ownerBmId,
                 ];
 
-                if (!$existingAccount || !$existingAccount->service_user_id) {
+                if (! $existingAccount || ! $existingAccount->service_user_id) {
                     $updateData['service_user_id'] = null;
                 }
 
@@ -1722,7 +1727,7 @@ class MetaService
                     );
                 }
             } catch (\Throwable $e) {
-                Logging::error('Error processing account data: ' . $e->getMessage());
+                Logging::error('Error processing account data: '.$e->getMessage());
             }
         }
 
@@ -1731,9 +1736,9 @@ class MetaService
 
     /**
      * Đồng bộ tài khoản quảng cáo từ một edge cụ thể
-     * @param string $bmId
-     * @param string $type 'owner' hoặc 'client'
-     * @param int|null $maxAccounts Giới hạn số lượng accounts sync (null = không giới hạn, dùng trong queue)
+     *
+     * @param  string  $type  'owner' hoặc 'client'
+     * @param  int|null  $maxAccounts  Giới hạn số lượng accounts sync (null = không giới hạn, dùng trong queue)
      */
     private function syncMetaAccountsFromManagerEdge(string $bmId, string $type = 'owner', ?int $maxAccounts = null): ?array
     {
@@ -1746,15 +1751,17 @@ class MetaService
         $syncedAccountIds = [];
 
         while (true) {
-            if ($maxAccounts !== null && $syncedCount >= $maxAccounts)
+            if ($maxAccounts !== null && $syncedCount >= $maxAccounts) {
                 break;
+            }
 
             $result = $type === 'client'
                 ? $this->metaBusinessService->getClientAdsAccountPaginated($bmId, 100, $after)
                 : $this->metaBusinessService->getOwnerAdsAccountPaginated($bmId, 100, $after);
 
             if ($result->isError()) {
-                Logging::error('Error sync ads account from manager edge ' . $type . ': ' . $result->getMessage());
+                Logging::error('Error sync ads account from manager edge '.$type.': '.$result->getMessage());
+
                 return null;
             }
 
@@ -1764,8 +1771,9 @@ class MetaService
 
             $syncedCount += count($accounts);
             $after = $data['paging']['cursors']['after'] ?? null;
-            if (!$after)
+            if (! $after) {
                 break;
+            }
             usleep(500000);
         }
 
@@ -1780,7 +1788,7 @@ class MetaService
         $query = $this->metaAccountBusinessManagerAccessRepository->query()
             ->where('source_bm_id', (string) $bmId);
 
-        if (!empty($currentAccountIds)) {
+        if (! empty($currentAccountIds)) {
             $query->whereNotIn('account_id', $currentAccountIds);
         }
 
@@ -1805,13 +1813,13 @@ class MetaService
         $ids = [(string) $bmId];
         $queue = [(string) $bmId];
 
-        while (!empty($queue)) {
+        while (! empty($queue)) {
             $children = $this->metaBusinessManagerRepository->query()
                 ->whereIn('parent_bm_id', $queue)
                 ->whereNull('hidden_at')
                 ->pluck('bm_id')
                 ->map(fn ($id) => (string) $id)
-                ->filter(fn ($id) => !in_array($id, $ids, true))
+                ->filter(fn ($id) => ! in_array($id, $ids, true))
                 ->values()
                 ->toArray();
 
@@ -1845,7 +1853,8 @@ class MetaService
 
             if ($result->isError()) {
                 // log lỗi nhưng không dừng hẳn luồng cho edge còn lại
-                Logging::error('Error sync ads account from ' . $type . ' edge: ' . $result->getMessage());
+                Logging::error('Error sync ads account from '.$type.' edge: '.$result->getMessage());
+
                 return;
             }
 
@@ -1854,13 +1863,13 @@ class MetaService
 
             foreach ($accounts as $adsAccountData) {
                 // Xác định BM con (owner) nếu có
-            $business = $adsAccountData['business'] ?? null;
-            $ownerBmId = $business['id'] ?? $bmId;
-            $ownerBmName = $business['name'] ?? null;
+                $business = $adsAccountData['business'] ?? null;
+                $ownerBmId = $business['id'] ?? $bmId;
+                $ownerBmName = $business['name'] ?? null;
 
-            if ($this->isMetaBusinessManagerHidden((string) $ownerBmId)) {
-                continue;
-            }
+                if ($this->isMetaBusinessManagerHidden((string) $ownerBmId)) {
+                    continue;
+                }
 
                 // Lưu/cập nhật BM con
                 try {
@@ -1878,7 +1887,7 @@ class MetaService
                     );
                 } catch (\Throwable $e) {
                     Logging::error(
-                        message: 'MetaService@syncMetaAccountsFromEdge: cannot upsert child BM: ' . $e->getMessage(),
+                        message: 'MetaService@syncMetaAccountsFromEdge: cannot upsert child BM: '.$e->getMessage(),
                         exception: $e
                     );
                 }
@@ -1887,16 +1896,16 @@ class MetaService
                 $detail = $adsAccountData;
 
                 $assignMode = $serviceUserConfig['assign_mode'] ?? 'account';
-                $accountIds = !empty($serviceUserConfig['account_ids'])
+                $accountIds = ! empty($serviceUserConfig['account_ids'])
                     ? array_values(array_filter($serviceUserConfig['account_ids']))
-                    : (!empty($serviceUserConfig['account_id']) ? [$serviceUserConfig['account_id']] : []);
+                    : (! empty($serviceUserConfig['account_id']) ? [$serviceUserConfig['account_id']] : []);
                 $accountIds = array_map('trim', $accountIds);
 
                 $shouldAssign = false;
                 if ($assignMode === 'bm') {
                     $shouldAssign = true;
                 } else {
-                    $shouldAssign = in_array((string)$detail['id'], $accountIds, true);
+                    $shouldAssign = in_array((string) $detail['id'], $accountIds, true);
                 }
 
                 $updateData = [
@@ -1928,7 +1937,7 @@ class MetaService
                         $updateData
                     );
                 } catch (\Exception $e) {
-                    Logging::error('Error sync ads account: ' . $e->getMessage());
+                    Logging::error('Error sync ads account: '.$e->getMessage());
                 }
             }
 
@@ -1951,7 +1960,8 @@ class MetaService
                 );
 
                 if ($result->isError()) {
-                    Logging::error('MetaService@syncBusinessAssetGroups error: ' . $result->getMessage());
+                    Logging::error('MetaService@syncBusinessAssetGroups error: '.$result->getMessage());
+
                     return;
                 }
 
@@ -1971,7 +1981,7 @@ class MetaService
 
                         // 2. Gán các Ad Accounts thuộc group này
                         $adAccounts = $groupData['ad_accounts']['data'] ?? [];
-                        if (!empty($adAccounts)) {
+                        if (! empty($adAccounts)) {
                             // Lấy danh sách ID local của MetaAccount từ Meta ID
                             $accountMetaIds = array_column($adAccounts, 'id');
                             $localAccountIds = $this->metaAccountRepository->query()
@@ -1980,13 +1990,13 @@ class MetaService
                                 ->toArray();
 
                             // Đồng bộ pivot table (syncWithoutDetaching để không xóa các gán group khác nếu có)
-                            if (!empty($localAccountIds)) {
+                            if (! empty($localAccountIds)) {
                                 $group->accounts()->syncWithoutDetaching($localAccountIds);
                             }
                         }
                     } catch (\Throwable $e) {
                         Logging::error(
-                            message: 'MetaService@syncBusinessAssetGroups item error: ' . $e->getMessage(),
+                            message: 'MetaService@syncBusinessAssetGroups item error: '.$e->getMessage(),
                             exception: $e
                         );
                     }
@@ -1996,7 +2006,7 @@ class MetaService
             } while ($after);
         } catch (\Throwable $e) {
             Logging::error(
-                message: 'MetaService@syncBusinessAssetGroups fatal error: ' . $e->getMessage(),
+                message: 'MetaService@syncBusinessAssetGroups fatal error: '.$e->getMessage(),
                 exception: $e
             );
         }
@@ -2004,8 +2014,6 @@ class MetaService
 
     /**
      * Đồng bộ chiến dịch quảng cáo từ Meta Business
-     * @param ServiceUser $serviceUser
-     * @return ServiceReturn
      */
     public function syncMetaAdsAndCampaigns(ServiceUser $serviceUser): ServiceReturn
     {
@@ -2017,7 +2025,9 @@ class MetaService
                 ->where('service_user_id', $serviceUser->id)
                 ->chunkById(50, function (Collection $metaAccounts) use ($serviceUser, &$failedAccounts, &$rateLimited) {
                     foreach ($metaAccounts as $metaAccount) {
-                        if ($rateLimited) break;
+                        if ($rateLimited) {
+                            break;
+                        }
 
                         // Retry logic: max 3 attempts với exponential backoff
                         $maxRetries = 3;
@@ -2026,7 +2036,9 @@ class MetaService
                             $insightResult = $this->metaBusinessService->getAccountDailyInsights(
                                 accountId: $metaAccount->account_id,
                             );
-                            if ($insightResult->isSuccess()) break;
+                            if ($insightResult->isSuccess()) {
+                                break;
+                            }
 
                             $errorMsg = $insightResult->getMessage();
                             if ($this->isRateLimitError($errorMsg)) {
@@ -2068,7 +2080,7 @@ class MetaService
                                         ]
                                     );
                                 } catch (\Exception $exception) {
-                                    Logging::error('Error sync ads account insight: ' . $exception->getMessage());
+                                    Logging::error('Error sync ads account insight: '.$exception->getMessage());
                                 }
                             }
                         } else {
@@ -2079,7 +2091,6 @@ class MetaService
                                 'service_user_id' => $serviceUser->id,
                             ]);
                         }
-
 
                         // sync chiến dịch quảng cáo
                         $after = null;
@@ -2117,41 +2128,41 @@ class MetaService
                                         ]
                                     );
                                 } catch (\Exception $e) {
-                                    Logging::error('Error sync ads campaign: ' . $e->getMessage());
+                                    Logging::error('Error sync ads campaign: '.$e->getMessage());
                                 }
                             }
                         } else {
-                            Logging::error('Error sync ads campaign: ' . $campaignResult->getMessage());
+                            Logging::error('Error sync ads campaign: '.$campaignResult->getMessage());
                         }
 
                     }
                 });
 
             // Alert admin nếu có accounts sync fail
-            if (!empty($failedAccounts)) {
+            if (! empty($failedAccounts)) {
                 try {
-                    $adminTelegramIds = \App\Models\User::where('role', 'admin')
+                    $adminTelegramIds = User::where('role', 'admin')
                         ->whereNotNull('telegram_id')
                         ->pluck('telegram_id')
                         ->toArray();
-                    if (!empty($adminTelegramIds)) {
+                    if (! empty($adminTelegramIds)) {
                         $msg = "⚠️ Meta sync fail (SU:{$serviceUser->id}):\n"
-                            . count($failedAccounts) . "/" . $this->metaAccountRepository->query()->where('service_user_id', $serviceUser->id)->count() . " accounts failed\n"
-                            . "Failed: " . implode(', ', array_slice($failedAccounts, 0, 5))
-                            . (count($failedAccounts) > 5 ? '...' : '')
-                            . ($rateLimited ? "\n⛔ Reason: Rate limit" : '');
+                            .count($failedAccounts).'/'.$this->metaAccountRepository->query()->where('service_user_id', $serviceUser->id)->count()." accounts failed\n"
+                            .'Failed: '.implode(', ', array_slice($failedAccounts, 0, 5))
+                            .(count($failedAccounts) > 5 ? '...' : '')
+                            .($rateLimited ? "\n⛔ Reason: Rate limit" : '');
                         foreach ($adminTelegramIds as $tgId) {
                             $this->telegramService->sendNotification($tgId, $msg);
                         }
                     }
                 } catch (\Throwable $e) {
-                    Logging::error('Failed to send sync alert: ' . $e->getMessage());
+                    Logging::error('Failed to send sync alert: '.$e->getMessage());
                 }
             }
 
             return ServiceReturn::success();
         } catch (\Exception $exception) {
-            return ServiceReturn::error('Error sync ads campaign: ' . $exception->getMessage());
+            return ServiceReturn::error('Error sync ads campaign: '.$exception->getMessage());
         }
     }
 
@@ -2160,14 +2171,17 @@ class MetaService
         $keywords = ['rate limit', 'too many calls', 'throttled', 'request limit reached', 'application-level throttled'];
         $lower = strtolower($errorMessage);
         foreach ($keywords as $kw) {
-            if (str_contains($lower, $kw)) return true;
+            if (str_contains($lower, $kw)) {
+                return true;
+            }
         }
+
         return false;
     }
 
     /**
      * Lấy ROAS (Return On Ad Spend) từ insights.
-     * @param $insights
+     *
      * @return float
      */
     private function getRoas($insights)
@@ -2180,6 +2194,7 @@ class MetaService
                 break;
             }
         }
+
         return $roas;
     }
 
@@ -2200,7 +2215,7 @@ class MetaService
             $query = $this->metaAdsAccountInsightRepository->query()
                 ->whereIn('meta_account_id', $metaAccountIds);
 
-            if (!empty($serviceUserIds)) {
+            if (! empty($serviceUserIds)) {
                 $query->whereIn('service_user_id', $serviceUserIds);
             }
 
@@ -2265,9 +2280,10 @@ class MetaService
             ]);
         } catch (\Exception $exception) {
             Logging::error(
-                message: "Error get accounts insights summary from database: " . $exception->getMessage(),
+                message: 'Error get accounts insights summary from database: '.$exception->getMessage(),
                 exception: $exception,
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -2309,7 +2325,7 @@ class MetaService
     {
         try {
             $user = Auth::user();
-            if (!$user) {
+            if (! $user) {
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
@@ -2372,7 +2388,7 @@ class MetaService
             $ranking = [];
             foreach ($insights as $insight) {
                 $account = $accounts->get($insight->meta_account_id);
-                if (!$account) {
+                if (! $account) {
                     continue;
                 }
 
@@ -2403,22 +2419,22 @@ class MetaService
             return ServiceReturn::success(data: $ranking);
         } catch (\Exception $exception) {
             Logging::error(
-                message: "Error get account spending ranking: " . $exception->getMessage(),
+                message: 'Error get account spending ranking: '.$exception->getMessage(),
                 exception: $exception,
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 
     /**
      * Lấy dữ liệu report cho agency và customer
-     * @return ServiceReturn
      */
     public function getReportData(): ServiceReturn
     {
         try {
             $user = Auth::user();
-            if (!$user) {
+            if (! $user) {
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
@@ -2432,11 +2448,11 @@ class MetaService
                 if ($bmId) {
                     $metaServiceUserIds = $this->serviceUserRepository->query()
                         ->where('status', ServiceUserStatus::ACTIVE->value)
-                        ->whereHas('package', fn($q) => $q->where('platform', PlatformType::META->value))
+                        ->whereHas('package', fn ($q) => $q->where('platform', PlatformType::META->value))
                         ->where(function ($q) use ($bmId) {
                             $q->whereJsonContains('config_account->business_manager_id', $bmId)
-                              ->orWhereJsonContains('config_account->bm_id', $bmId)
-                              ->orWhereJsonContains('config_account->child_bm_id', $bmId);
+                                ->orWhereJsonContains('config_account->bm_id', $bmId)
+                                ->orWhereJsonContains('config_account->child_bm_id', $bmId);
                         })
                         ->pluck('id')
                         ->toArray();
@@ -2485,6 +2501,7 @@ class MetaService
             $accountSpend = $metaAccounts->map(function ($account) use ($spendByAccount) {
                 $record = $spendByAccount->get($account->id);
                 $amountSpend = $record ? (float) $record->total_spend : 0.0;
+
                 return [
                     'account_id' => (string) ($account->account_id ?? $account->id),
                     'account_name' => $account->account_name
@@ -2493,6 +2510,7 @@ class MetaService
                     'amount_spent' => $amountSpend,
                 ];
             })->values()->toArray();
+
             return ServiceReturn::success(data: [
                 'total_spend' => $totalResult->getData()['spend'],
                 'today_spend' => $todayResult->getData()['spend'],
@@ -2504,12 +2522,11 @@ class MetaService
         }
     }
 
-
     public function getReportInsights(string $datePreset): ServiceReturn
     {
         try {
             $user = Auth::user();
-            if (!$user) {
+            if (! $user) {
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
@@ -2523,11 +2540,11 @@ class MetaService
                 if ($bmId) {
                     $sessionServiceUserIds = $this->serviceUserRepository->query()
                         ->where('status', ServiceUserStatus::ACTIVE->value)
-                        ->whereHas('package', fn($q) => $q->where('platform', PlatformType::META->value))
+                        ->whereHas('package', fn ($q) => $q->where('platform', PlatformType::META->value))
                         ->where(function ($q) use ($bmId) {
                             $q->whereJsonContains('config_account->business_manager_id', $bmId)
-                              ->orWhereJsonContains('config_account->bm_id', $bmId)
-                              ->orWhereJsonContains('config_account->child_bm_id', $bmId);
+                                ->orWhereJsonContains('config_account->bm_id', $bmId)
+                                ->orWhereJsonContains('config_account->child_bm_id', $bmId);
                         })
                         ->pluck('id')
                         ->toArray();
@@ -2552,7 +2569,7 @@ class MetaService
             if (empty($serviceUserIds)) {
                 return ServiceReturn::success(data: [
                     'total_spend_period' => 0,
-                    'chart' => []
+                    'chart' => [],
                 ]);
             }
             // 2. Tính toán khoảng thời gian (StartDate - EndDate)
@@ -2573,7 +2590,7 @@ class MetaService
                 ->orderBy('date', 'ASC')
                 ->get([
                     'date',
-                    DB::raw('SUM(spend::numeric) as total_spend')
+                    DB::raw('SUM(spend::numeric) as total_spend'),
                 ])
                 ->keyBy('date');
 
@@ -2585,15 +2602,17 @@ class MetaService
                     'date' => $record->date->format('Y-m-d'),
                 ];
             }
+
             return ServiceReturn::success(data: [
                 'total_spend_period' => collect($chartData)->sum('value'),
-                'chart' => $chartData
+                'chart' => $chartData,
             ]);
         } catch (\Exception $exception) {
             Logging::error(
-                message: "Error get report insights from database: " . $exception->getMessage(),
+                message: 'Error get report insights from database: '.$exception->getMessage(),
                 exception: $exception,
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
@@ -2603,12 +2622,12 @@ class MetaService
     {
         try {
             $user = Auth::user();
-            if (!$user) {
+            if (! $user) {
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
             // Chỉ cho phép agency và customer
-            if (!in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
+            if (! in_array($user->role, [UserRole::AGENCY->value, UserRole::CUSTOMER->value])) {
                 return ServiceReturn::error(message: __('common_error.permission_denied'));
             }
 
@@ -2735,6 +2754,7 @@ class MetaService
             // 6. Ngân sách: với trả sau thì không có top-up upfront, chỉ hiển thị chi tiêu
             $hasPostpay = $serviceUsers->contains(function ($serviceUser) {
                 $config = $serviceUser->config_account ?? [];
+
                 return ($config['payment_type'] ?? '') === 'postpay';
             });
             $totalBudget = (float) $serviceUsers->sum('budget') ?? 0.0;
@@ -2835,18 +2855,19 @@ class MetaService
     private function formatNumber(int $number): string
     {
         if ($number >= 1000000) {
-            return number_format($number / 1000000, 1, '.', '') . 'M';
+            return number_format($number / 1000000, 1, '.', '').'M';
         }
         if ($number >= 1000) {
-            return number_format($number / 1000, 1, '.', '') . 'K';
+            return number_format($number / 1000, 1, '.', '').'K';
         }
+
         return (string) $number;
     }
 
     /**
      * Kiểm tra và tự động tạm dừng tài khoản nếu spending > balance + threshold
-     * @param float $threshold Ngưỡng cảnh báo (mặc định 100 USD)
-     * @return ServiceReturn
+     *
+     * @param  float  $threshold  Ngưỡng cảnh báo (mặc định 100 USD)
      */
     public function checkAndAutoPauseAccounts(float $threshold = 100.0): ServiceReturn
     {
@@ -2863,7 +2884,10 @@ class MetaService
 
             foreach ($accounts as $account) {
                 try {
-                    $balance = (float) ($account->balance ?? 0);
+                    $balance = $this->normalizeMetaAccountMoney(
+                        $account->balance,
+                        $account->currency
+                    ) ?? 0.0;
                     if ($balance <= 0) {
                         continue;
                     }
@@ -2914,13 +2938,17 @@ class MetaService
                             'campaigns_paused' => $campaigns->count(),
                             'notification_sent' => $notificationResult->isSuccess(),
                         ]);
+
                         continue;
                     }
 
                     // Kiểm tra nếu chi tiêu tích lũy (lifetime) > balance + threshold
                     // Meta Ads API hỗ trợ date_preset: "maximum" để lấy lifetime spending
                     // amount_spent là chi tiêu tích lũy (lifetime) từ Meta API, ưu tiên dùng
-                    $lifetimeSpending = (float) ($account->amount_spent ?? 0);
+                    $lifetimeSpending = $this->normalizeMetaAccountMoney(
+                        $account->amount_spent,
+                        $account->currency
+                    ) ?? 0.0;
 
                     // Nếu không có amount_spent, lấy từ insights database (maximum = tất cả insights đã sync)
                     if ($lifetimeSpending == 0) {
@@ -2930,6 +2958,7 @@ class MetaService
                         );
                         if ($insightsResult->isError()) {
                             $errors++;
+
                             continue;
                         }
                         $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
@@ -3008,13 +3037,14 @@ class MetaService
                 message: 'MetaService@checkAndAutoPauseAccounts: Unexpected error',
                 exception: $e
             );
+
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }
 
     private function normalizePaymentCard(mixed $fundingSourceDetails): ?string
     {
-        if (!is_array($fundingSourceDetails)) {
+        if (! is_array($fundingSourceDetails)) {
             return null;
         }
 
@@ -3041,6 +3071,23 @@ class MetaService
         return $type;
     }
 
+    private function normalizeMetaAccountMoney(mixed $value, ?string $currency): ?float
+    {
+        if ($value === null || $value === '' || ! is_numeric($value)) {
+            return null;
+        }
+
+        $amount = (float) $value;
+        $zeroDecimalCurrencies = [
+            'BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW',
+            'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+        ];
+
+        return in_array(strtoupper($currency ?: 'USD'), $zeroDecimalCurrencies, true)
+            ? $amount
+            : $amount / 100;
+    }
+
     private function resolvePaymentCardFromAccountData(array $accountData): ?string
     {
         $paymentCard = $this->normalizePaymentCard($accountData['funding_source_details'] ?? null);
@@ -3049,7 +3096,7 @@ class MetaService
         }
 
         $accountId = $accountData['id'] ?? null;
-        if (!$accountId) {
+        if (! $accountId) {
             return null;
         }
 
@@ -3060,20 +3107,22 @@ class MetaService
             }
 
             $detail = $detailResult->getData();
+
             return is_array($detail)
                 ? $this->normalizePaymentCard($detail['funding_source_details'] ?? null)
                 : null;
         } catch (\Throwable $e) {
             Logging::error(
-                message: 'MetaService@resolvePaymentCardFromAccountData error: ' . $e->getMessage(),
+                message: 'MetaService@resolvePaymentCardFromAccountData error: '.$e->getMessage(),
                 context: ['account_id' => $accountId],
                 exception: $e
             );
+
             return null;
         }
     }
 
-    private function findAdsAccountForServiceUser(ServiceUser $serviceUser, string $accountId): ?\App\Models\MetaAccount
+    private function findAdsAccountForServiceUser(ServiceUser $serviceUser, string $accountId): ?MetaAccount
     {
         $query = $this->metaAccountRepository->query()
             ->where('id', $accountId);
@@ -3088,15 +3137,15 @@ class MetaService
         if ($isAdminOrStaff) {
             $config = $serviceUser->config_account ?? [];
             $bmIds = [];
-            if (!empty($config['bm_id'])) {
+            if (! empty($config['bm_id'])) {
                 $bmIds[] = (string) $config['bm_id'];
             }
-            if (!empty($config['child_bm_id'])) {
+            if (! empty($config['child_bm_id'])) {
                 $bmIds[] = (string) $config['child_bm_id'];
             }
             if (isset($config['accounts']) && is_array($config['accounts'])) {
                 foreach ($config['accounts'] as $accConf) {
-                    if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                    if (! empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
                         foreach ($accConf['bm_ids'] as $bmId) {
                             $bmIds[] = (string) $bmId;
                         }
@@ -3107,7 +3156,7 @@ class MetaService
 
             $query->where(function ($subQ) use ($serviceUser, $bmIds) {
                 $subQ->where('service_user_id', $serviceUser->id);
-                if (!empty($bmIds)) {
+                if (! empty($bmIds)) {
                     $subQ->orWhereIn('business_manager_id', $bmIds);
                     $subQ->orWhereIn('account_id', function ($accessQuery) use ($bmIds) {
                         $accessQuery->select('account_id')
@@ -3123,7 +3172,7 @@ class MetaService
         return $query->first();
     }
 
-    private function findCampaignForServiceUser(ServiceUser $serviceUser, string $campaignId): ?\App\Models\MetaAdsCampaign
+    private function findCampaignForServiceUser(ServiceUser $serviceUser, string $campaignId): ?MetaAdsCampaign
     {
         return $this->metaAdsCampaignRepository->query()
             ->where('id', $campaignId)
@@ -3138,15 +3187,15 @@ class MetaService
                 if ($isAdminOrStaff) {
                     $config = $serviceUser->config_account ?? [];
                     $bmIds = [];
-                    if (!empty($config['bm_id'])) {
+                    if (! empty($config['bm_id'])) {
                         $bmIds[] = (string) $config['bm_id'];
                     }
-                    if (!empty($config['child_bm_id'])) {
+                    if (! empty($config['child_bm_id'])) {
                         $bmIds[] = (string) $config['child_bm_id'];
                     }
                     if (isset($config['accounts']) && is_array($config['accounts'])) {
                         foreach ($config['accounts'] as $accConf) {
-                            if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                            if (! empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
                                 foreach ($accConf['bm_ids'] as $bmId) {
                                     $bmIds[] = (string) $bmId;
                                 }
@@ -3157,7 +3206,7 @@ class MetaService
 
                     $accQ->where(function ($subQ) use ($serviceUser, $bmIds) {
                         $subQ->where('service_user_id', $serviceUser->id);
-                        if (!empty($bmIds)) {
+                        if (! empty($bmIds)) {
                             $subQ->orWhereIn('business_manager_id', $bmIds);
                             $subQ->orWhereIn('account_id', function ($accessQuery) use ($bmIds) {
                                 $accessQuery->select('account_id')
@@ -3172,5 +3221,4 @@ class MetaService
             })
             ->first();
     }
-
 }
