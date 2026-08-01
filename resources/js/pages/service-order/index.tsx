@@ -14,25 +14,25 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
 import useCheckRole from '@/hooks/use-check-role';
 import AppLayout from '@/layouts/app-layout';
 import { _PlatformType, _UserRole } from '@/lib/types/constants';
-import type { ChildBusinessManager } from '@/pages/business-manager/types/type';
+import { cn } from '@/lib/utils';
 import { AccountFormEdit } from '@/pages/service-order/components/AccountFormEdit';
 import { AccountInfoCell } from '@/pages/service-order/components/AccountInfoCell';
-import {
-    useServiceOrderAdminDialog,
-    type BmAccount,
-} from '@/pages/service-order/hooks/use-admin-approve-dialog';
+import { useServiceOrderAdminDialog } from '@/pages/service-order/hooks/use-admin-approve-dialog';
 import { useServiceOrderEditConfigDialog } from '@/pages/service-order/hooks/use-edit-config-dialog';
 import type {
     ServiceOrder,
@@ -43,11 +43,27 @@ import {
     service_orders_destroy,
     service_purchase_index,
 } from '@/routes';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    Head,
+    router as inertiaRouter,
+    Link,
+    router,
+    usePage,
+} from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ChevronDown, Filter, Package, Pencil, Plus, RefreshCw, Search, ShoppingBag, Trash2, X } from 'lucide-react';
+import {
+    ChevronDown,
+    Filter,
+    Package,
+    Pencil,
+    Plus,
+    RefreshCw,
+    Search,
+    ShoppingBag,
+    Trash2,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { router as inertiaRouter } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 
 interface SearchableSelectProps {
@@ -56,7 +72,12 @@ interface SearchableSelectProps {
     placeholder: string;
     searchPlaceholder?: string;
     emptyText?: string;
-    options: { value: string; label: string; sublabel?: string; disabled?: boolean }[];
+    options: {
+        value: string;
+        label: string;
+        sublabel?: string;
+        disabled?: boolean;
+    }[];
     disabled?: boolean;
     className?: string;
 }
@@ -102,33 +123,32 @@ function SearchableSelect({
                     aria-expanded={open}
                     disabled={disabled}
                     className={cn(
-                        "w-full justify-between text-left font-normal h-10 px-3 py-2 border-input bg-background focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                        !value && "text-muted-foreground",
-                        className
+                        'h-10 w-full justify-between border-input bg-background px-3 py-2 text-left font-normal focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                        !value && 'text-muted-foreground',
+                        className,
                     )}
                 >
                     <span className="truncate">
-                        {selectedOption ? (
-                            selectedOption.sublabel ? (
-                                `${selectedOption.label} (${selectedOption.sublabel})`
-                            ) : (
-                                selectedOption.label
-                            )
-                        ) : (
-                            placeholder
-                        )}
+                        {selectedOption
+                            ? selectedOption.sublabel
+                                ? `${selectedOption.label} (${selectedOption.sublabel})`
+                                : selectedOption.label
+                            : placeholder}
                     </span>
-                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+            <PopoverContent
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+                align="start"
+            >
                 <div className="flex items-center border-b px-3">
                     <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                     <Input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder={searchPlaceholder}
-                        className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+                        className="flex h-10 w-full rounded-md border-none bg-transparent px-0 py-3 text-sm outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                 </div>
                 <ScrollArea className="max-h-[280px] overflow-y-auto p-1">
@@ -148,15 +168,17 @@ function SearchableSelect({
                                         setOpen(false);
                                     }}
                                     className={cn(
-                                        "relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-left",
-                                        opt.value === value && "bg-accent text-accent-foreground font-medium",
-                                        opt.disabled && "opacity-50 pointer-events-none"
+                                        'relative flex w-full cursor-default items-center rounded-sm px-2 py-1.5 text-left text-sm transition-colors outline-none select-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+                                        opt.value === value &&
+                                            'bg-accent font-medium text-accent-foreground',
+                                        opt.disabled &&
+                                            'pointer-events-none opacity-50',
                                     )}
                                 >
                                     <span className="block truncate">
                                         {opt.label}
                                         {opt.sublabel && (
-                                            <span className="text-xs text-muted-foreground ml-1 block">
+                                            <span className="ml-1 block text-xs text-muted-foreground">
                                                 {opt.sublabel}
                                             </span>
                                         )}
@@ -187,10 +209,16 @@ const STATUS_OPTIONS: Array<{ value: string; labelKey: string }> = [
     { value: '', labelKey: 'service_orders.filter.all_status' },
     { value: 'PENDING', labelKey: 'service_orders.filter.status_pending' },
     { value: 'ACTIVE', labelKey: 'service_orders.filter.status_active' },
-    { value: 'PROCESSING', labelKey: 'service_orders.filter.status_processing' },
+    {
+        value: 'PROCESSING',
+        labelKey: 'service_orders.filter.status_processing',
+    },
     { value: 'FAILED', labelKey: 'service_orders.filter.status_failed' },
     { value: 'CANCELLED', labelKey: 'service_orders.filter.status_cancelled' },
-    { value: 'QUEUE_JOB_PENDING', labelKey: 'service_orders.filter.status_queue_job_pending' },
+    {
+        value: 'QUEUE_JOB_PENDING',
+        labelKey: 'service_orders.filter.status_queue_job_pending',
+    },
 ];
 
 const PLATFORM_OPTIONS: Array<{ value: string; labelKey: string }> = [
@@ -218,6 +246,7 @@ const ServiceOrdersIndex = ({
     const { t } = useTranslation();
     const { props, url } = usePage();
     const checkRole = useCheckRole(props.auth);
+    const canViewFinancials = checkRole([_UserRole.ADMIN]);
     const is_admin_view = checkRole([
         _UserRole.ADMIN,
         _UserRole.MANAGER,
@@ -385,14 +414,18 @@ const ServiceOrdersIndex = ({
             const resolvedAccountIds = config.resolved_account_ids;
             const accountIdVal = config.account_id || '';
             const accountIdsVal =
-                Array.isArray(resolvedAccountIds) && resolvedAccountIds.length > 0
+                Array.isArray(resolvedAccountIds) &&
+                resolvedAccountIds.length > 0
                     ? resolvedAccountIds
-                    : Array.isArray(config.account_ids) && config.account_ids.length > 0
-                    ? config.account_ids.filter(Boolean)
-                    : accountIdVal
-                      ? [accountIdVal]
-                      : [''];
-            setEditAccountIdList(accountIdsVal.length > 0 ? accountIdsVal : ['']);
+                    : Array.isArray(config.account_ids) &&
+                        config.account_ids.length > 0
+                      ? config.account_ids.filter(Boolean)
+                      : accountIdVal
+                        ? [accountIdVal]
+                        : [''];
+            setEditAccountIdList(
+                accountIdsVal.length > 0 ? accountIdsVal : [''],
+            );
             setEditFanpageList([config.info_fanpage || '']);
             setEditWebsiteList([config.info_website || '']);
         }
@@ -734,7 +767,7 @@ const ServiceOrdersIndex = ({
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                    className="border-blue-300 text-blue-600 hover:bg-blue-50"
                                     onClick={handleApprove}
                                 >
                                     <RefreshCw className="mr-1 h-3 w-3" />
@@ -766,10 +799,13 @@ const ServiceOrdersIndex = ({
             });
         }
 
-        return baseColumns;
+        return canViewFinancials
+            ? baseColumns
+            : baseColumns.filter((column) => column.id !== 'total_cost');
     }, [
         t,
         is_admin_view,
+        canViewFinancials,
         openDialogForOrder,
         openEditDialogForOrder,
         getStatusInfo,
@@ -821,25 +857,36 @@ const ServiceOrdersIndex = ({
 
                         {/* Tìm kiếm tên khách */}
                         <div className="relative">
-                            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <Search className="absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                             <input
                                 type="text"
-                                className="h-8 w-[180px] rounded-md border bg-background pl-7 pr-2 text-xs outline-none focus:ring-2 focus:ring-ring"
-                                placeholder={t('service_orders.filter.search_placeholder')}
+                                className="h-8 w-[180px] rounded-md border bg-background pr-2 pl-7 text-xs outline-none focus:ring-2 focus:ring-ring"
+                                placeholder={t(
+                                    'service_orders.filter.search_placeholder',
+                                )}
                                 value={filterSearch}
-                                onChange={(e) => setFilterSearch(e.target.value)}
+                                onChange={(e) =>
+                                    setFilterSearch(e.target.value)
+                                }
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         inertiaRouter.get(
                                             window.location.pathname,
                                             {
-                                                'filter[search]': filterSearch || undefined,
-                                                'filter[status]': filterStatus || undefined,
-                                                'filter[platform]': filterPlatform || undefined,
-                                                'filter[user_id]': filterUserId || undefined,
+                                                'filter[search]':
+                                                    filterSearch || undefined,
+                                                'filter[status]':
+                                                    filterStatus || undefined,
+                                                'filter[platform]':
+                                                    filterPlatform || undefined,
+                                                'filter[user_id]':
+                                                    filterUserId || undefined,
                                                 page: 1,
                                             } as any,
-                                            { preserveState: true, replace: true },
+                                            {
+                                                preserveState: true,
+                                                replace: true,
+                                            },
                                         );
                                     }
                                 }}
@@ -850,7 +897,12 @@ const ServiceOrdersIndex = ({
                         <div className="w-[200px]">
                             <SearchableSelect
                                 options={[
-                                    { value: '', label: t('service_orders.filter.all_customers') },
+                                    {
+                                        value: '',
+                                        label: t(
+                                            'service_orders.filter.all_customers',
+                                        ),
+                                    },
                                     ...customers.map((c) => ({
                                         value: c.id,
                                         label: c.name,
@@ -859,8 +911,12 @@ const ServiceOrdersIndex = ({
                                 ]}
                                 value={filterUserId}
                                 onValueChange={(val) => setFilterUserId(val)}
-                                placeholder={t('service_orders.filter.customer_placeholder')}
-                                searchPlaceholder={t('service_orders.filter.search_customer')}
+                                placeholder={t(
+                                    'service_orders.filter.customer_placeholder',
+                                )}
+                                searchPlaceholder={t(
+                                    'service_orders.filter.search_customer',
+                                )}
                                 className="h-8 text-xs"
                             />
                         </div>
@@ -900,10 +956,14 @@ const ServiceOrdersIndex = ({
                                 inertiaRouter.get(
                                     window.location.pathname,
                                     {
-                                        'filter[search]': filterSearch || undefined,
-                                        'filter[status]': filterStatus || undefined,
-                                        'filter[platform]': filterPlatform || undefined,
-                                        'filter[user_id]': filterUserId || undefined,
+                                        'filter[search]':
+                                            filterSearch || undefined,
+                                        'filter[status]':
+                                            filterStatus || undefined,
+                                        'filter[platform]':
+                                            filterPlatform || undefined,
+                                        'filter[user_id]':
+                                            filterUserId || undefined,
                                         page: 1,
                                     } as any,
                                     { preserveState: true, replace: true },
@@ -915,7 +975,10 @@ const ServiceOrdersIndex = ({
                         </Button>
 
                         {/* Nút reset - chỉ hiện khi có filter đang active */}
-                        {(filterSearch || filterStatus || filterPlatform || filterUserId) && (
+                        {(filterSearch ||
+                            filterStatus ||
+                            filterPlatform ||
+                            filterUserId) && (
                             <Button
                                 size="sm"
                                 variant="ghost"
@@ -973,13 +1036,24 @@ const ServiceOrdersIndex = ({
                                 </DialogHeader>
 
                                 <div className="flex-1 space-y-4 overflow-y-auto py-2 pr-2">
-                                    {selectedOrder?.config_account?.top_up_amount != null && (
+                                    {selectedOrder?.config_account
+                                        ?.top_up_amount != null && (
                                         <div className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-sm">
                                             <span className="font-medium text-muted-foreground">
-                                                {t('service_orders.table.top_up_amount')}:
+                                                {t(
+                                                    'service_orders.table.top_up_amount',
+                                                )}
+                                                :
                                             </span>{' '}
                                             <span className="font-semibold text-primary">
-                                                {Number(selectedOrder.config_account.top_up_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                                                {Number(
+                                                    selectedOrder.config_account
+                                                        .top_up_amount,
+                                                ).toLocaleString('en-US', {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
+                                                })}{' '}
+                                                USD
                                             </span>
                                         </div>
                                     )}
@@ -1097,9 +1171,7 @@ const ServiceOrdersIndex = ({
                                                             .filter(
                                                                 (bm) =>
                                                                     !bmIdList.some(
-                                                                        (
-                                                                            id,
-                                                                        ) =>
+                                                                        (id) =>
                                                                             id.trim() ===
                                                                             (bm
                                                                                 .bm_ids?.[0] ||
@@ -1107,14 +1179,26 @@ const ServiceOrdersIndex = ({
                                                                     ),
                                                             )
                                                             .map((bm) => ({
-                                                                value: bm.bm_ids?.[0] || bm.id,
-                                                                label: bm.bm_name || bm.name,
-                                                                sublabel: bm.bm_ids?.[0] || bm.id,
+                                                                value:
+                                                                    bm
+                                                                        .bm_ids?.[0] ||
+                                                                    bm.id,
+                                                                label:
+                                                                    bm.bm_name ||
+                                                                    bm.name,
+                                                                sublabel:
+                                                                    bm
+                                                                        .bm_ids?.[0] ||
+                                                                    bm.id,
                                                             }))}
                                                         value=""
-                                                        onValueChange={(value) => {
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
                                                             if (value) {
-                                                                handleSelectBmFromList(value);
+                                                                handleSelectBmFromList(
+                                                                    value,
+                                                                );
                                                                 addToListUnique(
                                                                     bmIdList,
                                                                     setBmIdList,
@@ -1124,15 +1208,33 @@ const ServiceOrdersIndex = ({
                                                         }}
                                                         placeholder={
                                                             loadingBmList
-                                                                ? t('service_orders.form.loading_child_bms')
+                                                                ? t(
+                                                                      'service_orders.form.loading_child_bms',
+                                                                  )
                                                                 : isApproveMeta
-                                                                  ? t('service_orders.form.select_bm_from_list')
-                                                                  : t('service_orders.form.select_mcc_from_list')
+                                                                  ? t(
+                                                                        'service_orders.form.select_bm_from_list',
+                                                                    )
+                                                                  : t(
+                                                                        'service_orders.form.select_mcc_from_list',
+                                                                    )
                                                         }
                                                         searchPlaceholder={
                                                             isApproveMeta
-                                                                ? t('service_orders.form.filter_bm_placeholder', { defaultValue: 'Lọc danh sách BM...' })
-                                                                : t('service_orders.form.filter_mcc_placeholder', { defaultValue: 'Lọc danh sách MCC...' })
+                                                                ? t(
+                                                                      'service_orders.form.filter_bm_placeholder',
+                                                                      {
+                                                                          defaultValue:
+                                                                              'Lọc danh sách BM...',
+                                                                      },
+                                                                  )
+                                                                : t(
+                                                                      'service_orders.form.filter_mcc_placeholder',
+                                                                      {
+                                                                          defaultValue:
+                                                                              'Lọc danh sách MCC...',
+                                                                      },
+                                                                  )
                                                         }
                                                         disabled={loadingBmList}
                                                     />
@@ -1273,15 +1375,29 @@ const ServiceOrdersIndex = ({
                                                     </Label>
                                                     <SearchableSelect
                                                         key={`account-tab-bm-${bmId}`}
-                                                        options={bmList.map((bm) => ({
-                                                            value: bm.bm_ids?.[0] || bm.id,
-                                                            label: bm.bm_name || bm.name,
-                                                            sublabel: bm.bm_ids?.[0] || bm.id,
-                                                        }))}
+                                                        options={bmList.map(
+                                                            (bm) => ({
+                                                                value:
+                                                                    bm
+                                                                        .bm_ids?.[0] ||
+                                                                    bm.id,
+                                                                label:
+                                                                    bm.bm_name ||
+                                                                    bm.name,
+                                                                sublabel:
+                                                                    bm
+                                                                        .bm_ids?.[0] ||
+                                                                    bm.id,
+                                                            }),
+                                                        )}
                                                         value={bmId || ''}
-                                                        onValueChange={(value) => {
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
                                                             if (value) {
-                                                                handleSelectBmFromList(value);
+                                                                handleSelectBmFromList(
+                                                                    value,
+                                                                );
                                                                 addToListUnique(
                                                                     bmIdList,
                                                                     setBmIdList,
@@ -1291,15 +1407,33 @@ const ServiceOrdersIndex = ({
                                                         }}
                                                         placeholder={
                                                             loadingBmList
-                                                                ? t('service_orders.form.loading_child_bms')
+                                                                ? t(
+                                                                      'service_orders.form.loading_child_bms',
+                                                                  )
                                                                 : isApproveMeta
-                                                                  ? t('service_orders.form.select_bm_from_list')
-                                                                  : t('service_orders.form.select_mcc_from_list')
+                                                                  ? t(
+                                                                        'service_orders.form.select_bm_from_list',
+                                                                    )
+                                                                  : t(
+                                                                        'service_orders.form.select_mcc_from_list',
+                                                                    )
                                                         }
                                                         searchPlaceholder={
                                                             isApproveMeta
-                                                                ? t('service_orders.form.filter_bm_placeholder', { defaultValue: 'Lọc danh sách BM...' })
-                                                                : t('service_orders.form.filter_mcc_placeholder', { defaultValue: 'Lọc danh sách MCC...' })
+                                                                ? t(
+                                                                      'service_orders.form.filter_bm_placeholder',
+                                                                      {
+                                                                          defaultValue:
+                                                                              'Lọc danh sách BM...',
+                                                                      },
+                                                                  )
+                                                                : t(
+                                                                      'service_orders.form.filter_mcc_placeholder',
+                                                                      {
+                                                                          defaultValue:
+                                                                              'Lọc danh sách MCC...',
+                                                                      },
+                                                                  )
                                                         }
                                                         disabled={loadingBmList}
                                                     />
@@ -1321,9 +1455,7 @@ const ServiceOrdersIndex = ({
                                                             .filter(
                                                                 (acc) =>
                                                                     !accountIdList.some(
-                                                                        (
-                                                                            id,
-                                                                        ) =>
+                                                                        (id) =>
                                                                             id.trim() ===
                                                                             acc.account_id,
                                                                     ),
@@ -1331,10 +1463,13 @@ const ServiceOrdersIndex = ({
                                                             .map((acc) => ({
                                                                 value: acc.account_id,
                                                                 label: `${acc.account_name || acc.account_id} — ${acc.account_id} (${acc.currency})${acc.service_user_id ? ' [Đã gán]' : ''}`,
-                                                                sublabel: acc.account_id,
+                                                                sublabel:
+                                                                    acc.account_id,
                                                             }))}
                                                         value=""
-                                                        onValueChange={(value) => {
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
                                                             if (value) {
                                                                 addToListUnique(
                                                                     accountIdList,
@@ -1348,13 +1483,28 @@ const ServiceOrdersIndex = ({
                                                         }}
                                                         placeholder={
                                                             !bmId
-                                                                ? t('service_orders.form.select_bm_first')
+                                                                ? t(
+                                                                      'service_orders.form.select_bm_first',
+                                                                  )
                                                                 : loadingBmAccounts
-                                                                  ? t('service_orders.form.loading_child_bms')
-                                                                  : t('service_orders.form.select_account_in_bm_mcc')
+                                                                  ? t(
+                                                                        'service_orders.form.loading_child_bms',
+                                                                    )
+                                                                  : t(
+                                                                        'service_orders.form.select_account_in_bm_mcc',
+                                                                    )
                                                         }
-                                                        searchPlaceholder={t('service_orders.form.search_account_placeholder', { defaultValue: 'Tìm kiếm tài khoản...' })}
-                                                        disabled={loadingBmAccounts || !bmId}
+                                                        searchPlaceholder={t(
+                                                            'service_orders.form.search_account_placeholder',
+                                                            {
+                                                                defaultValue:
+                                                                    'Tìm kiếm tài khoản...',
+                                                            },
+                                                        )}
+                                                        disabled={
+                                                            loadingBmAccounts ||
+                                                            !bmId
+                                                        }
                                                     />
                                                     {formErrors.account_id && (
                                                         <p className="text-xs text-red-500">
@@ -1509,7 +1659,9 @@ const ServiceOrdersIndex = ({
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            handleSubmitApprove(accountIdList.filter(Boolean));
+                                            handleSubmitApprove(
+                                                accountIdList.filter(Boolean),
+                                            );
                                         }}
                                         disabled={approveProcessing}
                                     >
@@ -1819,20 +1971,38 @@ const ServiceOrdersIndex = ({
                                                                 .filter(
                                                                     (bm) =>
                                                                         !editBmIdList.some(
-                                                                            (id) =>
+                                                                            (
+                                                                                id,
+                                                                            ) =>
                                                                                 id.trim() ===
-                                                                                (bm.bm_ids?.[0] || bm.id),
+                                                                                (bm
+                                                                                    .bm_ids?.[0] ||
+                                                                                    bm.id),
                                                                         ),
                                                                 )
                                                                 .map((bm) => ({
-                                                                    value: bm.bm_ids?.[0] || bm.id,
+                                                                    value:
+                                                                        bm
+                                                                            .bm_ids?.[0] ||
+                                                                        bm.id,
                                                                     label: `${bm.bm_name || bm.name} (${bm.bm_ids?.[0] || bm.id})`,
-                                                                    sublabel: bm.bm_ids?.[0] || bm.id,
+                                                                    sublabel:
+                                                                        bm
+                                                                            .bm_ids?.[0] ||
+                                                                        bm.id,
                                                                 }))}
                                                             value=""
-                                                            onValueChange={(value) => {
-                                                                if (value && value !== '__empty__') {
-                                                                    handleEditSelectBmFromList(value);
+                                                            onValueChange={(
+                                                                value,
+                                                            ) => {
+                                                                if (
+                                                                    value &&
+                                                                    value !==
+                                                                        '__empty__'
+                                                                ) {
+                                                                    handleEditSelectBmFromList(
+                                                                        value,
+                                                                    );
                                                                     addToListUnique(
                                                                         editBmIdList,
                                                                         setEditBmIdList,
@@ -1842,17 +2012,37 @@ const ServiceOrdersIndex = ({
                                                             }}
                                                             placeholder={
                                                                 editLoadingBmList
-                                                                    ? t('service_orders.form.loading_child_bms')
+                                                                    ? t(
+                                                                          'service_orders.form.loading_child_bms',
+                                                                      )
                                                                     : isEditMeta
-                                                                      ? t('service_orders.form.select_bm_from_list')
-                                                                      : t('service_orders.form.select_mcc_from_list')
+                                                                      ? t(
+                                                                            'service_orders.form.select_bm_from_list',
+                                                                        )
+                                                                      : t(
+                                                                            'service_orders.form.select_mcc_from_list',
+                                                                        )
                                                             }
                                                             searchPlaceholder={
                                                                 isEditMeta
-                                                                    ? t('service_orders.form.filter_bm_placeholder', { defaultValue: 'Lọc danh sách BM...' })
-                                                                    : t('service_orders.form.filter_mcc_placeholder', { defaultValue: 'Lọc danh sách MCC...' })
+                                                                    ? t(
+                                                                          'service_orders.form.filter_bm_placeholder',
+                                                                          {
+                                                                              defaultValue:
+                                                                                  'Lọc danh sách BM...',
+                                                                          },
+                                                                      )
+                                                                    : t(
+                                                                          'service_orders.form.filter_mcc_placeholder',
+                                                                          {
+                                                                              defaultValue:
+                                                                                  'Lọc danh sách MCC...',
+                                                                          },
+                                                                      )
                                                             }
-                                                            disabled={editLoadingBmList}
+                                                            disabled={
+                                                                editLoadingBmList
+                                                            }
                                                         />
                                                     </div>
 
@@ -1986,15 +2176,33 @@ const ServiceOrdersIndex = ({
                                                         </Label>
                                                         <SearchableSelect
                                                             key={`edit-account-tab-bm-${editBmId}`}
-                                                            options={editBmList.map((bm) => ({
-                                                                value: bm.bm_ids?.[0] || bm.id,
-                                                                label: `${bm.bm_name || bm.name} (${bm.bm_ids?.[0] || bm.id})`,
-                                                                sublabel: bm.bm_ids?.[0] || bm.id,
-                                                            }))}
-                                                            value={editBmId || ''}
-                                                            onValueChange={(value) => {
-                                                                if (value && value !== '__empty__') {
-                                                                    handleEditSelectBmFromList(value);
+                                                            options={editBmList.map(
+                                                                (bm) => ({
+                                                                    value:
+                                                                        bm
+                                                                            .bm_ids?.[0] ||
+                                                                        bm.id,
+                                                                    label: `${bm.bm_name || bm.name} (${bm.bm_ids?.[0] || bm.id})`,
+                                                                    sublabel:
+                                                                        bm
+                                                                            .bm_ids?.[0] ||
+                                                                        bm.id,
+                                                                }),
+                                                            )}
+                                                            value={
+                                                                editBmId || ''
+                                                            }
+                                                            onValueChange={(
+                                                                value,
+                                                            ) => {
+                                                                if (
+                                                                    value &&
+                                                                    value !==
+                                                                        '__empty__'
+                                                                ) {
+                                                                    handleEditSelectBmFromList(
+                                                                        value,
+                                                                    );
                                                                     addToListUnique(
                                                                         editBmIdList,
                                                                         setEditBmIdList,
@@ -2004,17 +2212,37 @@ const ServiceOrdersIndex = ({
                                                             }}
                                                             placeholder={
                                                                 editLoadingBmList
-                                                                    ? t('service_orders.form.loading_child_bms')
+                                                                    ? t(
+                                                                          'service_orders.form.loading_child_bms',
+                                                                      )
                                                                     : isEditMeta
-                                                                      ? t('service_orders.form.select_bm_from_list')
-                                                                      : t('service_orders.form.select_mcc_from_list')
+                                                                      ? t(
+                                                                            'service_orders.form.select_bm_from_list',
+                                                                        )
+                                                                      : t(
+                                                                            'service_orders.form.select_mcc_from_list',
+                                                                        )
                                                             }
                                                             searchPlaceholder={
                                                                 isEditMeta
-                                                                    ? t('service_orders.form.filter_bm_placeholder', { defaultValue: 'Lọc danh sách BM...' })
-                                                                    : t('service_orders.form.filter_mcc_placeholder', { defaultValue: 'Lọc danh sách MCC...' })
+                                                                    ? t(
+                                                                          'service_orders.form.filter_bm_placeholder',
+                                                                          {
+                                                                              defaultValue:
+                                                                                  'Lọc danh sách BM...',
+                                                                          },
+                                                                      )
+                                                                    : t(
+                                                                          'service_orders.form.filter_mcc_placeholder',
+                                                                          {
+                                                                              defaultValue:
+                                                                                  'Lọc danh sách MCC...',
+                                                                          },
+                                                                      )
                                                             }
-                                                            disabled={editLoadingBmList}
+                                                            disabled={
+                                                                editLoadingBmList
+                                                            }
                                                         />
                                                     </div>
 
@@ -2030,46 +2258,87 @@ const ServiceOrdersIndex = ({
                                                             *
                                                         </Label>
                                                         <SearchableSelect
-                                                            options={editBmAccounts.map((acc: any) => {
-                                                                const alreadyInList = editAccountIdList.some(
-                                                                    (id) => id.trim() === acc.account_id,
-                                                                );
-                                                                const alreadyAssigned = !!acc.service_user_id;
-                                                                let suffix = '';
-                                                                if (alreadyInList) {
-                                                                    suffix = ' [Đã chọn]';
-                                                                } else if (alreadyAssigned) {
-                                                                    suffix = ' [Đã gán KH khác]';
-                                                                } else {
-                                                                    suffix = ' [Chưa gán]';
-                                                                }
-                                                                return {
-                                                                    value: acc.account_id,
-                                                                    label: `${acc.account_name || acc.account_id} — ${acc.account_id} (${acc.currency})${suffix}`,
-                                                                    sublabel: acc.account_id,
-                                                                    disabled: alreadyInList,
-                                                                };
-                                                            })}
+                                                            options={editBmAccounts.map(
+                                                                (acc: any) => {
+                                                                    const alreadyInList =
+                                                                        editAccountIdList.some(
+                                                                            (
+                                                                                id,
+                                                                            ) =>
+                                                                                id.trim() ===
+                                                                                acc.account_id,
+                                                                        );
+                                                                    const alreadyAssigned =
+                                                                        !!acc.service_user_id;
+                                                                    let suffix =
+                                                                        '';
+                                                                    if (
+                                                                        alreadyInList
+                                                                    ) {
+                                                                        suffix =
+                                                                            ' [Đã chọn]';
+                                                                    } else if (
+                                                                        alreadyAssigned
+                                                                    ) {
+                                                                        suffix =
+                                                                            ' [Đã gán KH khác]';
+                                                                    } else {
+                                                                        suffix =
+                                                                            ' [Chưa gán]';
+                                                                    }
+                                                                    return {
+                                                                        value: acc.account_id,
+                                                                        label: `${acc.account_name || acc.account_id} — ${acc.account_id} (${acc.currency})${suffix}`,
+                                                                        sublabel:
+                                                                            acc.account_id,
+                                                                        disabled:
+                                                                            alreadyInList,
+                                                                    };
+                                                                },
+                                                            )}
                                                             value=""
-                                                            onValueChange={(value) => {
-                                                                if (value && value !== '__empty__') {
+                                                            onValueChange={(
+                                                                value,
+                                                            ) => {
+                                                                if (
+                                                                    value &&
+                                                                    value !==
+                                                                        '__empty__'
+                                                                ) {
                                                                     addToListUnique(
                                                                         editAccountIdList,
                                                                         setEditAccountIdList,
                                                                         value,
                                                                     );
-                                                                    setEditAccountIdInput(value);
+                                                                    setEditAccountIdInput(
+                                                                        value,
+                                                                    );
                                                                 }
                                                             }}
                                                             placeholder={
                                                                 !editBmId
-                                                                    ? t('service_orders.form.select_bm_first')
+                                                                    ? t(
+                                                                          'service_orders.form.select_bm_first',
+                                                                      )
                                                                     : editLoadingBmAccounts
-                                                                      ? t('service_orders.form.loading_child_bms')
-                                                                      : t('service_orders.form.select_account_in_bm_mcc')
+                                                                      ? t(
+                                                                            'service_orders.form.loading_child_bms',
+                                                                        )
+                                                                      : t(
+                                                                            'service_orders.form.select_account_in_bm_mcc',
+                                                                        )
                                                             }
-                                                            searchPlaceholder={t('service_orders.form.search_account_placeholder', { defaultValue: 'Tìm kiếm tài khoản...' })}
-                                                            disabled={editLoadingBmAccounts || !editBmId}
+                                                            searchPlaceholder={t(
+                                                                'service_orders.form.search_account_placeholder',
+                                                                {
+                                                                    defaultValue:
+                                                                        'Tìm kiếm tài khoản...',
+                                                                },
+                                                            )}
+                                                            disabled={
+                                                                editLoadingBmAccounts ||
+                                                                !editBmId
+                                                            }
                                                         />
                                                     </div>
 
@@ -2229,7 +2498,8 @@ const ServiceOrdersIndex = ({
                                                                 'service_orders.form.info_fanpage',
                                                             )}
                                                         </Label>
-                                                        {editFanpageList.length < 999 && (
+                                                        {editFanpageList.length <
+                                                            999 && (
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"

@@ -15,21 +15,19 @@ use App\Service\UserService;
 use App\Service\WalletService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+
 class UserController extends Controller
 {
-
     public function __construct(
         protected UserService $userService,
         protected WalletService $walletService,
-    ) {
-
-    }
+    ) {}
 
     public function listCustomer(Request $request)
     {
         $data = [];
         $authUser = $request->user();
-        
+
         // Xử lý wallet nếu có wallet_user_id trong query
         if ($request->has('wallet_user_id')) {
             $userId = $request->string('wallet_user_id')->toString();
@@ -40,7 +38,7 @@ class UserController extends Controller
                 $data['walletError'] = $walletResult->getMessage();
             }
         }
-        
+
         $params = $this->extractQueryPagination($request);
         $result = $this->userService->getListCustomerPagination(new QueryListDTO(
             perPage: $params->get('per_page'),
@@ -122,9 +120,11 @@ class UserController extends Controller
         $result = $this->userService->createEmployee($validated);
         if ($result->isSuccess()) {
             FlashMessage::success(__('common_success.add_success'));
+
             return redirect()->route('user_list_employee');
         }
         FlashMessage::error($result->getMessage());
+
         return redirect()->back()->withInput();
     }
 
@@ -134,9 +134,11 @@ class UserController extends Controller
         $result = $this->userService->updateEmployee($id, $validated);
         if ($result->isSuccess()) {
             FlashMessage::success(__('common_success.update_success'));
+
             return redirect()->route('user_list_employee');
         }
         FlashMessage::error($result->getMessage());
+
         return redirect()->back()->withInput();
     }
 
@@ -146,9 +148,11 @@ class UserController extends Controller
         $result = $this->userService->updateUser($id, $validated);
         if ($result->isSuccess()) {
             FlashMessage::success(__('common_success.update_success'));
+
             return redirect()->route('user_list');
         }
         FlashMessage::error($result->getMessage());
+
         return redirect()->back()->withInput();
     }
 
@@ -160,6 +164,7 @@ class UserController extends Controller
         } else {
             FlashMessage::error($result->getMessage());
         }
+
         return redirect()->route('user_list_employee');
     }
 
@@ -171,30 +176,33 @@ class UserController extends Controller
         } else {
             FlashMessage::error($result->getMessage());
         }
+
         return redirect()->route('user_list');
     }
 
     public function toggleDisable(string $id, ToggleDisableRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        $result = $this->userService->toggleDisable($id, (bool)$validated['disabled']);
+        $result = $this->userService->toggleDisable($id, (bool) $validated['disabled']);
         if ($result->isSuccess()) {
             FlashMessage::success(__('common_success.update_success'));
         } else {
             FlashMessage::error($result->getMessage());
         }
+
         return redirect()->route('user_list_employee');
     }
 
     public function userToggleDisable(string $id, ToggleDisableRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        $result = $this->userService->userToggleDisable($id, (bool)$validated['disabled']);
+        $result = $this->userService->userToggleDisable($id, (bool) $validated['disabled']);
         if ($result->isSuccess()) {
             FlashMessage::success(__('common_success.update_success'));
         } else {
             FlashMessage::error($result->getMessage());
         }
+
         return redirect()->route('user_list');
     }
 
@@ -203,22 +211,34 @@ class UserController extends Controller
         $result = $this->userService->findEmployee($id);
         if ($result->isError()) {
             FlashMessage::error($result->getMessage());
+
             return redirect()->route('user_list_employee');
         }
+
         return $this->rendering('user/create-employee', [
             'employee' => $result->getData(),
         ]);
     }
 
-    public function editUserScreen(string $id)
+    public function editUserScreen(Request $request, string $id)
     {
         $result = $this->userService->findUser($id);
         if ($result->isError()) {
             FlashMessage::error($result->getMessage());
+
             return redirect()->route('user_list');
         }
+        $user = $result->getData();
+        if ((int) $request->user()?->role !== UserRole::ADMIN->value) {
+            $user->makeHidden([
+                'email',
+                'email_verified_at',
+                'telegram_id',
+            ]);
+        }
+
         return $this->rendering('user/create-user', [
-            'user' => $result->getData(),
+            'user' => $user,
         ]);
     }
 
@@ -228,6 +248,7 @@ class UserController extends Controller
         if ($result->isError()) {
             return response()->json(['success' => false, 'message' => $result->getMessage()], 422);
         }
+
         return response()->json(['success' => true, 'data' => $result->getData()]);
     }
 
@@ -238,12 +259,14 @@ class UserController extends Controller
             'employee_id' => 'required|string',
         ]);
 
-        $result = $this->userService->assignEmployee((string)$request->manager_id, (string)$request->employee_id);
+        $result = $this->userService->assignEmployee((string) $request->manager_id, (string) $request->employee_id);
         if ($result->isError()) {
             FlashMessage::error($result->getMessage());
+
             return response()->json(['success' => false, 'message' => $result->getMessage()], 422);
         }
         FlashMessage::success(__('user.assign_employee_success', ['default' => 'Gán nhân viên thành công']));
+
         return response()->json(['success' => true]);
     }
 
@@ -254,12 +277,14 @@ class UserController extends Controller
             'employee_id' => 'required|string',
         ]);
 
-        $result = $this->userService->unassignEmployee((string)$request->manager_id, (string)$request->employee_id);
+        $result = $this->userService->unassignEmployee((string) $request->manager_id, (string) $request->employee_id);
         if ($result->isError()) {
             FlashMessage::error($result->getMessage());
+
             return response()->json(['success' => false, 'message' => $result->getMessage()], 422);
         }
         FlashMessage::success(__('user.unassign_employee_success', ['default' => 'Hủy gán nhân viên thành công']));
+
         return response()->json(['success' => true]);
     }
 

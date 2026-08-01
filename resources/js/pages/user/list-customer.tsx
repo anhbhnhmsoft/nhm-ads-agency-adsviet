@@ -1,4 +1,18 @@
 import { DataTable } from '@/components/table/data-table';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import useCheckRole from '@/hooks/use-check-role';
 import AppLayout from '@/layouts/app-layout';
@@ -23,23 +37,9 @@ import {
 import { router, usePage } from '@inertiajs/react';
 import { ColumnDef, ColumnVisibilityState } from '@tanstack/react-table';
 import axios from 'axios';
+import { Monitor } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Monitor } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 
 type Props = {
     paginator: CustomerListPagination;
@@ -68,16 +68,19 @@ const ListCustomer = ({
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const managerFilterId = filters?.manager_id ?? null;
 
-    const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({
-        phone: false,
-        social: false,
-    });
-    const [selectedTopUpUser, setSelectedTopUpUser] = useState<CustomerListItem | null>(null);
+    const [columnVisibility, setColumnVisibility] =
+        useState<ColumnVisibilityState>({
+            phone: false,
+            social: false,
+        });
+    const [selectedTopUpUser, setSelectedTopUpUser] =
+        useState<CustomerListItem | null>(null);
     const [isTopUpDialogOpen, setIsTopUpDialogOpen] = useState(false);
     const [topUpAmount, setTopUpAmount] = useState('');
     const [processingTopUp, setProcessingTopUp] = useState(false);
 
-    const [selectedDeductUser, setSelectedDeductUser] = useState<CustomerListItem | null>(null);
+    const [selectedDeductUser, setSelectedDeductUser] =
+        useState<CustomerListItem | null>(null);
     const [isDeductDialogOpen, setIsDeductDialogOpen] = useState(false);
     const [deductAmount, setDeductAmount] = useState('');
     const [deductReason, setDeductReason] = useState('');
@@ -101,7 +104,7 @@ const ListCustomer = ({
                 onFinish: () => {
                     setProcessingTopUp(false);
                 },
-            }
+            },
         );
     };
 
@@ -110,21 +113,25 @@ const ListCustomer = ({
         if (!selectedDeductUser || amount <= 0) return;
 
         setProcessingDeduct(true);
-        axios.post('/wallets/deduct-balance', {
-            user_id: selectedDeductUser.id,
-            amount,
-            reason: deductReason || undefined,
-        }).then(() => {
-            setIsDeductDialogOpen(false);
-            setDeductAmount('');
-            setDeductReason('');
-            setSelectedDeductUser(null);
-            router.reload({ only: ['paginator'] });
-        }).catch((err) => {
-            alert(err?.response?.data?.message || 'Lỗi trừ tiền');
-        }).finally(() => {
-            setProcessingDeduct(false);
-        });
+        axios
+            .post('/wallets/deduct-balance', {
+                user_id: selectedDeductUser.id,
+                amount,
+                reason: deductReason || undefined,
+            })
+            .then(() => {
+                setIsDeductDialogOpen(false);
+                setDeductAmount('');
+                setDeductReason('');
+                setSelectedDeductUser(null);
+                router.reload({ only: ['paginator'] });
+            })
+            .catch((err) => {
+                alert(err?.response?.data?.message || 'Lỗi trừ tiền');
+            })
+            .finally(() => {
+                setProcessingDeduct(false);
+            });
     };
 
     const actionCell = useActionCell<CustomerListItem>({
@@ -163,20 +170,21 @@ const ListCustomer = ({
                 accessorKey: 'username',
                 header: t('common.username'),
             },
-            {
-                accessorKey: 'email',
-                header: t('common.email'),
-                cell: (cell) => {
-                    return cell.row.original.email || '-';
-                },
-            },
-            {
-                accessorKey: 'telegram_id',
-                header: t('common.telegram_id'),
-                cell: (cell) => {
-                    return cell.row.original.telegram_id || '-';
-                },
-            },
+            ...(isAdmin
+                ? [
+                      {
+                          accessorKey: 'email',
+                          header: t('common.email'),
+                          cell: (cell: any) => cell.row.original.email || '-',
+                      },
+                      {
+                          accessorKey: 'telegram_id',
+                          header: t('common.telegram_id'),
+                          cell: (cell: any) =>
+                              cell.row.original.telegram_id || '-',
+                      },
+                  ]
+                : []),
             {
                 id: 'managed_by',
                 header: t('user.manager_owner', {
@@ -223,14 +231,19 @@ const ListCustomer = ({
             },
             {
                 accessorKey: 'wallet_balance',
-                header: t('wallet.balance', { defaultValue: 'Số dư tiền balance' }),
+                header: t('wallet.balance', {
+                    defaultValue: 'Số dư tiền balance',
+                }),
                 cell: (cell) => {
                     const balance = cell.row.original.wallet_balance;
-                    if (balance === undefined || balance === null) return '0.00 USDT';
-                    return Number(balance).toLocaleString('vi-VN', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                    }) + ' USDT';
+                    if (balance === undefined || balance === null)
+                        return '0.00 USDT';
+                    return (
+                        Number(balance).toLocaleString('vi-VN', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                        }) + ' USDT'
+                    );
                 },
             },
             {
@@ -244,80 +257,91 @@ const ListCustomer = ({
                     return t(userRolesLabel[cell.row.original.role]);
                 },
             },
-            {
-                id: 'social',
-                header: t('common.social_authentication'),
-                cell: (cell) => {
-                    const row = cell.row.original;
-                    const hasEmail = !!row.email_verified_at;
-                    const hasTelegram = !!row.using_telegram;
+            ...(isAdmin
+                ? [
+                      {
+                          id: 'social',
+                          header: t('common.social_authentication'),
+                          cell: (cell: any) => {
+                              const row = cell.row.original;
+                              const hasEmail = !!row.email_verified_at;
+                              const hasTelegram = !!row.using_telegram;
 
-                    if (hasEmail && hasTelegram) {
-                        return (
-                            <div className="text-sm">
-                                {t('user.authenticated_both', {
-                                    defaultValue: 'Đã xác thực cả 2',
-                                })}
-                            </div>
-                        );
-                    }
-                    return (
-                        <div className="flex flex-col gap-2">
-                            {hasEmail && (
-                                <div className="text-sm">
-                                    {t('common.using_email')}
-                                </div>
-                            )}
-                            {hasTelegram && (
-                                <div className="text-sm">
-                                    {t('common.using_telegram')}
-                                </div>
-                            )}
-                            {!hasEmail && !hasTelegram && (
-                                <div className="text-sm text-gray-400">-</div>
-                            )}
-                        </div>
-                    );
-                },
-            },
-            {
-                id: 'manual_topup',
-                header: t('wallet.top_up', { defaultValue: 'Nạp tiền thủ công' }),
-                cell: ({ row }) => {
-                    return (
-                        <div className="flex gap-1">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    setSelectedTopUpUser(row.original);
-                                    setTopUpAmount('');
-                                    setIsTopUpDialogOpen(true);
-                                }}
-                            >
-                                Nạp tiền
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-300 hover:bg-red-50"
-                                onClick={() => {
-                                    setSelectedDeductUser(row.original);
-                                    setDeductAmount('');
-                                    setDeductReason('');
-                                    setIsDeductDialogOpen(true);
-                                }}
-                            >
-                                Trừ tiền
-                            </Button>
-                        </div>
-                    );
-                },
-                meta: {
-                    headerClassName: 'text-center',
-                    cellClassName: 'text-center',
-                },
-            },
+                              if (hasEmail && hasTelegram) {
+                                  return (
+                                      <div className="text-sm">
+                                          {t('user.authenticated_both', {
+                                              defaultValue: 'Đã xác thực cả 2',
+                                          })}
+                                      </div>
+                                  );
+                              }
+
+                              return (
+                                  <div className="flex flex-col gap-2">
+                                      {hasEmail && (
+                                          <div className="text-sm">
+                                              {t('common.using_email')}
+                                          </div>
+                                      )}
+                                      {hasTelegram && (
+                                          <div className="text-sm">
+                                              {t('common.using_telegram')}
+                                          </div>
+                                      )}
+                                      {!hasEmail && !hasTelegram && (
+                                          <div className="text-sm text-gray-400">
+                                              -
+                                          </div>
+                                      )}
+                                  </div>
+                              );
+                          },
+                      },
+                  ]
+                : []),
+            ...(isAdmin
+                ? [
+                      {
+                          id: 'manual_topup',
+                          header: t('wallet.top_up', {
+                              defaultValue: 'Nạp tiền thủ công',
+                          }),
+                          cell: ({ row }: any) => (
+                              <div className="flex gap-1">
+                                  <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                          setSelectedTopUpUser(row.original);
+                                          setTopUpAmount('');
+                                          setIsTopUpDialogOpen(true);
+                                      }}
+                                  >
+                                      Nạp tiền
+                                  </Button>
+                                  <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="border-red-300 text-red-600 hover:bg-red-50"
+                                      onClick={() => {
+                                          setSelectedDeductUser(row.original);
+                                          setDeductAmount('');
+                                          setDeductReason('');
+                                          setIsDeductDialogOpen(true);
+                                      }}
+                                  >
+                                      Trừ tiền
+                                  </Button>
+                              </div>
+                          ),
+                          meta: {
+                              headerClassName: 'text-center',
+                              cellClassName: 'text-center',
+                          },
+                      },
+                  ]
+                : []),
             {
                 id: 'action',
                 header: t('common.action'),
@@ -391,14 +415,18 @@ const ListCustomer = ({
                 showEmployeeSelect={canFilterEmployee}
             />
             <Separator className={'my-4'} />
-            <div className="flex justify-between items-center mb-4 gap-2">
+            <div className="mb-4 flex items-center justify-between gap-2">
                 <h3 className="text-lg font-medium text-gray-900">
-                    {t('user.customer_list_title', { defaultValue: 'Danh sách khách hàng' })}
+                    {t('user.customer_list_title', {
+                        defaultValue: 'Danh sách khách hàng',
+                    })}
                 </h3>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm">
-                            {t('common.columns', { defaultValue: 'Hiển thị cột' })}
+                            {t('common.columns', {
+                                defaultValue: 'Hiển thị cột',
+                            })}
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-[200px]">
@@ -413,19 +441,23 @@ const ListCustomer = ({
                         >
                             {t('common.phone')}
                         </DropdownMenuCheckboxItem>
+                        {isAdmin && (
+                            <DropdownMenuCheckboxItem
+                                checked={columnVisibility['social'] !== false}
+                                onCheckedChange={(value) =>
+                                    setColumnVisibility((prev) => ({
+                                        ...prev,
+                                        social: value,
+                                    }))
+                                }
+                            >
+                                {t('common.social_authentication')}
+                            </DropdownMenuCheckboxItem>
+                        )}
                         <DropdownMenuCheckboxItem
-                            checked={columnVisibility['social'] !== false}
-                            onCheckedChange={(value) =>
-                                setColumnVisibility((prev) => ({
-                                    ...prev,
-                                    social: value,
-                                }))
+                            checked={
+                                columnVisibility['wallet_balance'] !== false
                             }
-                        >
-                            {t('common.social_authentication')}
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                            checked={columnVisibility['wallet_balance'] !== false}
                             onCheckedChange={(value) =>
                                 setColumnVisibility((prev) => ({
                                     ...prev,
@@ -433,25 +465,33 @@ const ListCustomer = ({
                                 }))
                             }
                         >
-                            {t('wallet.balance', { defaultValue: 'Số dư tiền balance' })}
+                            {t('wallet.balance', {
+                                defaultValue: 'Số dư tiền balance',
+                            })}
                         </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                            checked={columnVisibility['manual_topup'] !== false}
-                            onCheckedChange={(value) =>
-                                setColumnVisibility((prev) => ({
-                                    ...prev,
-                                    manual_topup: value,
-                                }))
-                            }
-                        >
-                            {t('wallet.top_up', { defaultValue: 'Nạp tiền thủ công' })}
-                        </DropdownMenuCheckboxItem>
+                        {isAdmin && (
+                            <DropdownMenuCheckboxItem
+                                checked={
+                                    columnVisibility['manual_topup'] !== false
+                                }
+                                onCheckedChange={(value) =>
+                                    setColumnVisibility((prev) => ({
+                                        ...prev,
+                                        manual_topup: value,
+                                    }))
+                                }
+                            >
+                                {t('wallet.top_up', {
+                                    defaultValue: 'Nạp tiền thủ công',
+                                })}
+                            </DropdownMenuCheckboxItem>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-            <DataTable 
-                columns={columns} 
-                paginator={paginator} 
+            <DataTable
+                columns={columns}
+                paginator={paginator}
                 columnVisibility={columnVisibility}
                 onColumnVisibilityChange={setColumnVisibility}
             />
@@ -459,140 +499,195 @@ const ListCustomer = ({
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 user={selectedUser}
+                isAdmin={isAdmin}
             />
-            <Dialog open={isTopUpDialogOpen} onOpenChange={setIsTopUpDialogOpen}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {t('user.manual_top_up_title', {
-                                defaultValue: 'Nạp tiền thủ công cho khách hàng',
-                            })}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">
-                                {t('common.customer', { defaultValue: 'Khách hàng' })}
-                            </label>
-                            <div className="font-semibold text-sm">
-                                {selectedTopUpUser?.name} ({selectedTopUpUser?.username})
+            {isAdmin && (
+                <Dialog
+                    open={isTopUpDialogOpen}
+                    onOpenChange={setIsTopUpDialogOpen}
+                >
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {t('user.manual_top_up_title', {
+                                    defaultValue:
+                                        'Nạp tiền thủ công cho khách hàng',
+                                })}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-500">
+                                    {t('common.customer', {
+                                        defaultValue: 'Khách hàng',
+                                    })}
+                                </label>
+                                <div className="text-sm font-semibold">
+                                    {selectedTopUpUser?.name} (
+                                    {selectedTopUpUser?.username})
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-500">
+                                    {t('wallet.balance', {
+                                        defaultValue: 'Số dư hiện tại',
+                                    })}
+                                </label>
+                                <div className="text-sm font-medium text-gray-900">
+                                    {selectedTopUpUser?.wallet_balance?.toLocaleString(
+                                        'vi-VN',
+                                        {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        },
+                                    ) ?? '0.00'}{' '}
+                                    USDT
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="top_up_amount"
+                                    className="text-sm font-medium text-gray-500"
+                                >
+                                    {t('wallet.amount', {
+                                        defaultValue: 'Số tiền nạp (USDT)',
+                                    })}
+                                </label>
+                                <Input
+                                    id="top_up_amount"
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={topUpAmount}
+                                    onChange={(e) =>
+                                        setTopUpAmount(e.target.value)
+                                    }
+                                    placeholder="Nhập số tiền..."
+                                />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">
-                                {t('wallet.balance', { defaultValue: 'Số dư hiện tại' })}
-                            </label>
-                            <div className="text-sm font-medium text-gray-900">
-                                {selectedTopUpUser?.wallet_balance?.toLocaleString('vi-VN', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                }) ?? '0.00'}{' '}
-                                USDT
-                            </div>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsTopUpDialogOpen(false)}
+                            >
+                                {t('common.cancel', { defaultValue: 'Hủy' })}
+                            </Button>
+                            <Button
+                                onClick={handleTopUpSubmit}
+                                disabled={
+                                    !topUpAmount ||
+                                    Number(topUpAmount) <= 0 ||
+                                    processingTopUp
+                                }
+                            >
+                                {processingTopUp
+                                    ? t('common.processing', {
+                                          defaultValue: 'Đang xử lý...',
+                                      })
+                                    : t('wallet.top_up', {
+                                          defaultValue: 'Nạp tiền',
+                                      })}
+                            </Button>
                         </div>
-                        <div className="space-y-2">
-                            <label htmlFor="top_up_amount" className="text-sm font-medium text-gray-500">
-                                {t('wallet.amount', { defaultValue: 'Số tiền nạp (USDT)' })}
-                            </label>
-                            <Input
-                                id="top_up_amount"
-                                type="number"
-                                min="0"
-                                step="any"
-                                value={topUpAmount}
-                                onChange={(e) => setTopUpAmount(e.target.value)}
-                                placeholder="Nhập số tiền..."
-                            />
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsTopUpDialogOpen(false)}
-                        >
-                            {t('common.cancel', { defaultValue: 'Hủy' })}
-                        </Button>
-                        <Button
-                            onClick={handleTopUpSubmit}
-                            disabled={!topUpAmount || Number(topUpAmount) <= 0 || processingTopUp}
-                        >
-                            {processingTopUp ? t('common.processing', { defaultValue: 'Đang xử lý...' }) : t('wallet.top_up', { defaultValue: 'Nạp tiền' })}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                    </DialogContent>
+                </Dialog>
+            )}
 
-            <Dialog open={isDeductDialogOpen} onOpenChange={setIsDeductDialogOpen}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>
-                            Trừ tiền từ ví khách hàng
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">
-                                Khách hàng
-                            </label>
-                            <div className="font-semibold text-sm">
-                                {selectedDeductUser?.name} ({selectedDeductUser?.username})
+            {isAdmin && (
+                <Dialog
+                    open={isDeductDialogOpen}
+                    onOpenChange={setIsDeductDialogOpen}
+                >
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Trừ tiền từ ví khách hàng</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-500">
+                                    Khách hàng
+                                </label>
+                                <div className="text-sm font-semibold">
+                                    {selectedDeductUser?.name} (
+                                    {selectedDeductUser?.username})
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-500">
+                                    Số dư hiện tại
+                                </label>
+                                <div className="text-sm font-medium text-gray-900">
+                                    {selectedDeductUser?.wallet_balance?.toLocaleString(
+                                        'vi-VN',
+                                        {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        },
+                                    ) ?? '0.00'}{' '}
+                                    USDT
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="deduct_amount"
+                                    className="text-sm font-medium text-gray-500"
+                                >
+                                    Số tiền trừ (USDT) *
+                                </label>
+                                <Input
+                                    id="deduct_amount"
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={deductAmount}
+                                    onChange={(e) =>
+                                        setDeductAmount(e.target.value)
+                                    }
+                                    placeholder="Nhập số tiền muốn trừ..."
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="deduct_reason"
+                                    className="text-sm font-medium text-gray-500"
+                                >
+                                    Lý do
+                                </label>
+                                <Input
+                                    id="deduct_reason"
+                                    value={deductReason}
+                                    onChange={(e) =>
+                                        setDeductReason(e.target.value)
+                                    }
+                                    placeholder="Nhập lý do trừ tiền..."
+                                />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-500">
-                                Số dư hiện tại
-                            </label>
-                            <div className="text-sm font-medium text-gray-900">
-                                {selectedDeductUser?.wallet_balance?.toLocaleString('vi-VN', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                }) ?? '0.00'}{' '}
-                                USDT
-                            </div>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsDeductDialogOpen(false)}
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleDeductSubmit}
+                                disabled={
+                                    !deductAmount ||
+                                    Number(deductAmount) <= 0 ||
+                                    processingDeduct
+                                }
+                            >
+                                {processingDeduct
+                                    ? 'Đang xử lý...'
+                                    : 'Trừ tiền'}
+                            </Button>
                         </div>
-                        <div className="space-y-2">
-                            <label htmlFor="deduct_amount" className="text-sm font-medium text-gray-500">
-                                Số tiền trừ (USDT) *
-                            </label>
-                            <Input
-                                id="deduct_amount"
-                                type="number"
-                                min="0"
-                                step="any"
-                                value={deductAmount}
-                                onChange={(e) => setDeductAmount(e.target.value)}
-                                placeholder="Nhập số tiền muốn trừ..."
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label htmlFor="deduct_reason" className="text-sm font-medium text-gray-500">
-                                Lý do
-                            </label>
-                            <Input
-                                id="deduct_reason"
-                                value={deductReason}
-                                onChange={(e) => setDeductReason(e.target.value)}
-                                placeholder="Nhập lý do trừ tiền..."
-                            />
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsDeductDialogOpen(false)}
-                        >
-                            Hủy
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleDeductSubmit}
-                            disabled={!deductAmount || Number(deductAmount) <= 0 || processingDeduct}
-                        >
-                            {processingDeduct ? 'Đang xử lý...' : 'Trừ tiền'}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                    </DialogContent>
+                </Dialog>
+            )}
         </>
     );
 };

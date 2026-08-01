@@ -9,7 +9,12 @@ import { Input } from '@/components/ui/input';
 import { _WalletStatus, userRolesLabel } from '@/lib/types/constants';
 import { useWallet } from '@/pages/user/hooks/use-wallet';
 import { CustomerListItem } from '@/pages/user/types/type';
-import { wallet_lock, wallet_reset_password, wallet_top_up, wallet_unlock } from '@/routes';
+import {
+    wallet_lock,
+    wallet_reset_password,
+    wallet_top_up,
+    wallet_unlock,
+} from '@/routes';
 import { router, usePage } from '@inertiajs/react';
 import { Check, OctagonX } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -19,9 +24,15 @@ type Props = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     user: CustomerListItem | null;
+    isAdmin: boolean;
 };
 
-export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
+export default function UserInfoDialog({
+    open,
+    onOpenChange,
+    user,
+    isAdmin,
+}: Props) {
     const { t } = useTranslation();
     const { props } = usePage();
     const globalWarningThreshold =
@@ -74,18 +85,26 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                         </label>
                         <div className="text-sm">{user.username}</div>
                     </div>
-                    <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">
-                            {t('common.email')}
-                        </label>
-                        <div className="text-sm">{user.email || '-'}</div>
-                    </div>
-                    <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">
-                            {t('common.telegram_id')}
-                        </label>
-                        <div className="text-sm">{user.telegram_id || '-'}</div>
-                    </div>
+                    {isAdmin && (
+                        <>
+                            <div className="grid gap-1">
+                                <label className="text-sm font-medium text-gray-500">
+                                    {t('common.email')}
+                                </label>
+                                <div className="text-sm">
+                                    {user.email || '-'}
+                                </div>
+                            </div>
+                            <div className="grid gap-1">
+                                <label className="text-sm font-medium text-gray-500">
+                                    {t('common.telegram_id')}
+                                </label>
+                                <div className="text-sm">
+                                    {user.telegram_id || '-'}
+                                </div>
+                            </div>
+                        </>
+                    )}
                     <div className="grid gap-1">
                         <label className="text-sm font-medium text-gray-500">
                             {t('common.phone')}
@@ -162,29 +181,31 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                             />
                         </div>
                     </div>
-                    <div className="grid gap-1">
-                        <label className="text-sm font-medium text-gray-500">
-                            {t('common.social_authentication')}
-                        </label>
-                        <div className="flex flex-col gap-1">
-                            {user.email_verified_at && (
-                                <div className="text-sm">
-                                    {t('common.using_email')}
-                                </div>
-                            )}
-                            {user.using_telegram && (
-                                <div className="text-sm">
-                                    {t('common.using_telegram')}
-                                </div>
-                            )}
-                            {!user.email_verified_at &&
-                                !user.using_telegram && (
-                                    <div className="text-sm text-gray-400">
-                                        -
+                    {isAdmin && (
+                        <div className="grid gap-1">
+                            <label className="text-sm font-medium text-gray-500">
+                                {t('common.social_authentication')}
+                            </label>
+                            <div className="flex flex-col gap-1">
+                                {user.email_verified_at && (
+                                    <div className="text-sm">
+                                        {t('common.using_email')}
                                     </div>
                                 )}
+                                {user.using_telegram && (
+                                    <div className="text-sm">
+                                        {t('common.using_telegram')}
+                                    </div>
+                                )}
+                                {!user.email_verified_at &&
+                                    !user.using_telegram && (
+                                        <div className="text-sm text-gray-400">
+                                            -
+                                        </div>
+                                    )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                     <div className="col-span-full mt-2 border-t pt-4">
                         <div className="mb-2 text-base font-medium">
                             {t('common.internal_wallet')}
@@ -234,7 +255,8 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                                 </div>
                                 <div className="mt-4 flex flex-col gap-4">
                                     <div className="flex items-center gap-2">
-                                        {walletStatus === _WalletStatus.LOCKED ? (
+                                        {walletStatus ===
+                                        _WalletStatus.LOCKED ? (
                                             <Button
                                                 type="button"
                                                 variant="secondary"
@@ -275,51 +297,67 @@ export default function UserInfoDialog({ open, onOpenChange, user }: Props) {
                                                 {t('wallet.lock')}
                                             </Button>
                                         )}
-                                        <div className="h-4 w-px bg-gray-300 mx-2" />
-                                        <Input
-                                            placeholder={t('wallet.amount')}
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={walletTopUpAmount}
-                                            onChange={(e) =>
-                                                setWalletTopUpAmount(e.target.value)
-                                            }
-                                            className="w-48"
-                                        />
-                                        <Button
-                                            type="button"
-                                            onClick={() => {
-                                                const amount = Number(walletTopUpAmount);
-                                                if (amount > 0) {
-                                                    router.post(
-                                                        wallet_top_up({
-                                                            userId: user.id,
-                                                        }).url,
-                                                        { amount },
-                                                        {
-                                                            preserveScroll: true,
-                                                            onSuccess: () => {
-                                                                setWalletTopUpAmount(
-                                                                    '',
-                                                                );
-                                                                refetchWallet();
-                                                            },
-                                                        },
-                                                    );
-                                                }
-                                            }}
-                                        >
-                                            {t('wallet.top_up')}
-                                        </Button>
+                                        {isAdmin && (
+                                            <>
+                                                <div className="mx-2 h-4 w-px bg-gray-300" />
+                                                <Input
+                                                    placeholder={t(
+                                                        'wallet.amount',
+                                                    )}
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={walletTopUpAmount}
+                                                    onChange={(e) =>
+                                                        setWalletTopUpAmount(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-48"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const amount =
+                                                            Number(
+                                                                walletTopUpAmount,
+                                                            );
+                                                        if (amount > 0) {
+                                                            router.post(
+                                                                wallet_top_up({
+                                                                    userId: user.id,
+                                                                }).url,
+                                                                { amount },
+                                                                {
+                                                                    preserveScroll: true,
+                                                                    onSuccess:
+                                                                        () => {
+                                                                            setWalletTopUpAmount(
+                                                                                '',
+                                                                            );
+                                                                            refetchWallet();
+                                                                        },
+                                                                },
+                                                            );
+                                                        }
+                                                    }}
+                                                >
+                                                    {t('wallet.top_up')}
+                                                </Button>
+                                            </>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Input
-                                            placeholder={t('wallet.new_password')}
+                                            placeholder={t(
+                                                'wallet.new_password',
+                                            )}
                                             type="password"
                                             value={walletPassword}
                                             onChange={(e) =>
-                                                setWalletPassword(e.target.value)
+                                                setWalletPassword(
+                                                    e.target.value,
+                                                )
                                             }
                                             className="w-72"
                                         />

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Common\Constants\User\UserRole;
 use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Http\Requests\Supplier\SupplierStoreRequest;
@@ -20,11 +21,20 @@ class SupplierController extends Controller
     ) {
     }
 
+    private function authorizeAdmin(Request $request): void
+    {
+        if ((int) $request->user()?->role !== UserRole::ADMIN->value) {
+            abort(403, __('common_error.permission_denied'));
+        }
+    }
+
     /**
      * Hiển thị danh sách nhà cung cấp
      */
     public function index(Request $request): Response
     {
+        $this->authorizeAdmin($request);
+
         $params = $this->extractQueryPagination($request);
         $result = $this->supplierService->getListSupplier(new QueryListDTO(
             perPage: $params->get('per_page'),
@@ -45,8 +55,10 @@ class SupplierController extends Controller
     /**
      * Hiển thị form tạo nhà cung cấp
      */
-    public function createView(): Response
+    public function createView(Request $request): Response
     {
+        $this->authorizeAdmin($request);
+
         return $this->rendering(
             view: 'supplier/create',
             data: []
@@ -58,6 +70,8 @@ class SupplierController extends Controller
      */
     public function create(SupplierStoreRequest $request): RedirectResponse
     {
+        $this->authorizeAdmin($request);
+
         $form = $request->validated();
         $result = $this->supplierService->createSupplier($form);
 
@@ -71,8 +85,10 @@ class SupplierController extends Controller
     /**
      * Hiển thị form chỉnh sửa nhà cung cấp
      */
-    public function editView(string $id): Response|RedirectResponse
+    public function editView(Request $request, string $id): Response|RedirectResponse
     {
+        $this->authorizeAdmin($request);
+
         $result = $this->supplierService->getSupplierById($id);
         if ($result->isError()) {
             return redirect()->route('suppliers_index')->withErrors(['error' => $result->getMessage()]);
@@ -91,6 +107,8 @@ class SupplierController extends Controller
      */
     public function update(string $id, SupplierUpdateRequest $request): RedirectResponse
     {
+        $this->authorizeAdmin($request);
+
         $form = $request->validated();
         $result = $this->supplierService->updateSupplier($id, $form);
 
@@ -104,8 +122,10 @@ class SupplierController extends Controller
     /**
      * Xóa nhà cung cấp
      */
-    public function destroy(string $id): RedirectResponse
+    public function destroy(Request $request, string $id): RedirectResponse
     {
+        $this->authorizeAdmin($request);
+
         $result = $this->supplierService->deleteSupplier($id);
         if ($result->isError()) {
             return back()->withErrors(['error' => $result->getMessage()]);
@@ -116,8 +136,10 @@ class SupplierController extends Controller
     /**
      * Toggle disabled status
      */
-    public function toggleDisable(string $id): RedirectResponse
+    public function toggleDisable(Request $request, string $id): RedirectResponse
     {
+        $this->authorizeAdmin($request);
+
         $result = $this->supplierService->toggleDisable($id);
         if ($result->isError()) {
             return back()->withErrors(['error' => $result->getMessage()]);
@@ -125,4 +147,3 @@ class SupplierController extends Controller
         return back()->with('success', 'Cập nhật trạng thái thành công');
     }
 }
-

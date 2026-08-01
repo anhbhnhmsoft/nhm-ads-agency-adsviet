@@ -19,11 +19,12 @@ use App\Http\Requests\Wallet\WalletMyWithdrawRequest;
 use App\Http\Requests\Wallet\WalletResetPasswordRequest;
 use App\Http\Requests\Wallet\WalletTopUpRequest;
 use App\Http\Requests\Wallet\WalletWithdrawRequest;
+use App\Models\ServiceUser;
 use App\Service\CoinRemitterService;
 use App\Service\ConfigService;
 use App\Service\PaymentoService;
-use App\Service\UserService;
 use App\Service\UserPreviewService;
+use App\Service\UserService;
 use App\Service\WalletService;
 use App\Service\WalletTransactionService;
 use Illuminate\Http\JsonResponse;
@@ -53,12 +54,12 @@ class WalletController extends Controller
         $isPreview = $this->userPreviewService->isPreviewActive($request);
         $walletResult = $this->walletService->getWalletForUser(
             (string) $user->id,
-            !$isPreview,
+            ! $isPreview,
         );
         $wallet = $walletResult->isSuccess() ? $walletResult->getData() : null;
         $walletError = $walletResult->isError() ? $walletResult->getMessage() : null;
 
-        if ($wallet && !$isPreview) {
+        if ($wallet && ! $isPreview) {
             $this->reconcileCoinRemitterDepositsForWallet((int) $wallet['id']);
             $this->reconcilePaymentoDepositsForWallet((int) $wallet['id']);
 
@@ -301,7 +302,7 @@ class WalletController extends Controller
 
         $walletResult = $this->walletService->getWalletForUser(
             (string) $user->id,
-            !$this->userPreviewService->isPreviewActive($request),
+            ! $this->userPreviewService->isPreviewActive($request),
         );
         if ($walletResult->isError()) {
             return response()->json([
@@ -435,7 +436,7 @@ class WalletController extends Controller
             'wallet_password' => ['nullable', 'string'],
         ]);
 
-        $serviceUser = \App\Models\ServiceUser::query()
+        $serviceUser = ServiceUser::query()
             ->find($request->input('service_user_id'), ['id', 'user_id']);
         if (! $serviceUser || empty($serviceUser->user_id)) {
             return response()->json([
@@ -569,6 +570,10 @@ class WalletController extends Controller
 
     public function topUp(string $userId, WalletTopUpRequest $request): RedirectResponse
     {
+        if ((int) $request->user()?->role !== UserRole::ADMIN->value) {
+            abort(403);
+        }
+
         $data = $request->validated();
         $result = $this->walletService->topUp($userId, (float) $data['amount']);
         $result->isSuccess() ? FlashMessage::success(__('common_success.update_success')) : FlashMessage::error($result->getMessage());
@@ -599,8 +604,11 @@ class WalletController extends Controller
     public function deductBalance(Request $request): JsonResponse
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['success' => false, 'message' => 'Permission denied'], 401);
+        }
+        if ((int) $user->role !== UserRole::ADMIN->value) {
+            return response()->json(['success' => false, 'message' => 'Permission denied'], 403);
         }
 
         $request->validate([

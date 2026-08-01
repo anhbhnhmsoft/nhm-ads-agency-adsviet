@@ -15,6 +15,8 @@ class ListCustomerResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $canViewPrivateContact = (int) $request->user()?->role === UserRole::ADMIN->value;
+
         // Lấy người trực tiếp giới thiệu (owner)
         $referral = $this->referredBy?->referrer;
         $manager = null;
@@ -35,13 +37,13 @@ class ListCustomerResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'username' => $this->username,
-            'email' => $this->email,
-            'telegram_id' => $this->telegram_id,
+            'email' => $canViewPrivateContact ? $this->email : null,
+            'telegram_id' => $canViewPrivateContact ? $this->telegram_id : null,
             'phone' => $this->phone,
             'role' => $this->role,
             'disabled' => $this->disabled,
-            'using_telegram' => !empty($this->telegram_id),
-            'email_verified_at' => $this->email_verified_at,
+            'using_telegram' => $canViewPrivateContact && ! empty($this->telegram_id),
+            'email_verified_at' => $canViewPrivateContact ? $this->email_verified_at : null,
             'referral_code' => $this->referral_code,
             'warning_threshold' => $this->warning_threshold,
             'wallet_status' => optional($this->wallet)->status,

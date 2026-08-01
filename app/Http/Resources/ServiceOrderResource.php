@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Common\Constants\Platform\PlatformType;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
+use App\Common\Constants\User\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
@@ -17,6 +18,10 @@ class ServiceOrderResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $canViewFinancials = ! in_array((int) $request->user()?->role, [
+            UserRole::MANAGER->value,
+            UserRole::EMPLOYEE->value,
+        ], true);
         $status = ServiceUserStatus::tryFrom((int) $this->status);
         $package = $this->package;
 
@@ -131,10 +136,10 @@ class ServiceOrderResource extends JsonResource
                 ] : null,
             ],
             'budget' => $this->budget,
-            'open_fee' => $package?->open_fee,
-            'top_up_fee' => $package?->top_up_fee,
-            'spending_fee' => $spendingFeePercent,
-            'total_cost' => $totalCost,
+            'open_fee' => $canViewFinancials ? $package?->open_fee : null,
+            'top_up_fee' => $canViewFinancials ? $package?->top_up_fee : null,
+            'spending_fee' => $canViewFinancials ? $spendingFeePercent : null,
+            'total_cost' => $canViewFinancials ? $totalCost : null,
             'config_account' => $normalizedConfig,
             'description' => $this->description,
             'created_at' => optional($this->created_at)->toIso8601String(),
