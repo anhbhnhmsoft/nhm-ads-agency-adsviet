@@ -2015,7 +2015,26 @@ GAQL;
 
     protected function persistTodaySpendInsight(?string $serviceUserId, string $googleAccountDbId, float $spend, ?string $timezone): void
     {
-        $date = Carbon::now($timezone ?: config('app.timezone'))->toDateString();
+        $timezoneAliases = [
+            'America/Godthab' => 'America/Nuuk',
+            'Asia/Saigon' => 'Asia/Ho_Chi_Minh',
+        ];
+        $resolvedTimezone = ($timezoneAliases[$timezone] ?? $timezone) ?: config('app.timezone');
+
+        try {
+            $date = Carbon::now($resolvedTimezone)->toDateString();
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'GoogleAdsService@persistTodaySpendInsight: Invalid account timezone, using application timezone',
+                context: [
+                    'google_account_id' => $googleAccountDbId,
+                    'timezone' => $timezone,
+                    'fallback_timezone' => config('app.timezone'),
+                ],
+                exception: $exception
+            );
+            $date = Carbon::now(config('app.timezone'))->toDateString();
+        }
 
         $this->googleAdsAccountInsightRepository->query()->updateOrCreate(
             [
