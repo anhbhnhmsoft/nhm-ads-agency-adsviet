@@ -152,7 +152,7 @@ class AuthService
      *      email: string,
      *      password: string,
      *      role: UserRole::CUSTOMER|UserRole::AGENCY,
-     *      refer_code: string,
+     *      refer_code?: string|null,
      * } $data
      * @return ServiceReturn
      */
@@ -160,9 +160,10 @@ class AuthService
     {
         DB::beginTransaction();
         try {
-            // Kiểm tra refer code có tồn tại trong hệ thống hay không
-            $userRefer = $this->userRepository->getUserToRegisterByReferCode($data['refer_code']);
-            if (!$userRefer) {
+            $userRefer = !empty($data['refer_code'])
+                ? $this->userRepository->getUserToRegisterByReferCode($data['refer_code'])
+                : null;
+            if (!empty($data['refer_code']) && !$userRefer) {
                 return ServiceReturn::error(message: __('common_validation.refer_code.invalid'));
             }
             /**
@@ -179,13 +180,12 @@ class AuthService
                 'referral_code' => Helper::generateReferCodeUser(UserRole::from($data['role'])),
             ];
             $user = $this->userRepository->create($register);
-            // Tạo mới user referral
-            // referrer_id: user sở hữu referral_code (người giới thiệu/upline)
-            // referred_id: user mới đăng ký (người được giới thiệu/downline)
-            $this->userReferralRepository->create([
-                'referrer_id' => $userRefer->id,
-                'referred_id' => $user->id,
-            ]);
+            if ($userRefer) {
+                $this->userReferralRepository->create([
+                    'referrer_id' => $userRefer->id,
+                    'referred_id' => $user->id,
+                ]);
+            }
             /**
              * Gửi mail và xác thực OTP
              */
@@ -365,9 +365,10 @@ class AuthService
                 return ServiceReturn::error(message: __('auth.register.validation.token_invalid'));
             }
 
-            // Kiểm tra refer code có tồn tại trong hệ thống hay không
-            $userRefer = $this->userRepository->getUserToRegisterByReferCode($data['refer_code']);
-            if (!$userRefer) {
+            $userRefer = !empty($data['refer_code'])
+                ? $this->userRepository->getUserToRegisterByReferCode($data['refer_code'])
+                : null;
+            if (!empty($data['refer_code']) && !$userRefer) {
                 return ServiceReturn::error(message: __('auth.register.validation.refer_code_invalid'));
             }
 
@@ -390,13 +391,12 @@ class AuthService
                 return ServiceReturn::error(message: __('common_error.server_error'));
             }
 
-            // Tạo mới user referral
-            // referrer_id: user sở hữu referral_code (người giới thiệu/upline)
-            // referred_id: user mới đăng ký (người được giới thiệu/downline)
-            $this->userReferralRepository->create([
-                'referrer_id' => $userRefer->id,
-                'referred_id' => $user->id,
-            ]);
+            if ($userRefer) {
+                $this->userReferralRepository->create([
+                    'referrer_id' => $userRefer->id,
+                    'referred_id' => $user->id,
+                ]);
+            }
             if ($forApi) {
                 // Tạo token Sanctum
                 $token = $user->createToken('api-token')->plainTextToken;
@@ -599,9 +599,10 @@ class AuthService
     {
         DB::beginTransaction();
         try {
-            // Kiểm tra refer code có tồn tại trong hệ thống hay không
-            $userRefer = $this->userRepository->getUserToRegisterByReferCode($data['refer_code']);
-            if (!$userRefer) {
+            $userRefer = !empty($data['refer_code'])
+                ? $this->userRepository->getUserToRegisterByReferCode($data['refer_code'])
+                : null;
+            if (!empty($data['refer_code']) && !$userRefer) {
                 return ServiceReturn::error(message: __('common_validation.refer_code.invalid'));
             }
 
@@ -633,13 +634,12 @@ class AuthService
                 return ServiceReturn::error(message: __('common_error.server_error'));
             }
 
-            // Tạo mới user referral
-            // referrer_id: user sở hữu referral_code (người giới thiệu/upline)
-            // referred_id: user mới đăng ký (người được giới thiệu/downline)
-            $this->userReferralRepository->create([
-                'referrer_id' => $userRefer->id,
-                'referred_id' => $user->id,
-            ]);
+            if ($userRefer) {
+                $this->userReferralRepository->create([
+                    'referrer_id' => $userRefer->id,
+                    'referred_id' => $user->id,
+                ]);
+            }
 
             DB::commit();
 

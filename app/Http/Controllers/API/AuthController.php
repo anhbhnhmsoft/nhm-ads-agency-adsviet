@@ -83,7 +83,7 @@ class AuthController extends Controller
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
                 'password' => [new PasswordRule],
                 'role' => ['required', Rule::in([UserRole::CUSTOMER->value, UserRole::AGENCY->value])],
-                'refer_code' => 'required|string|exists:users,referral_code',
+                'refer_code' => 'nullable|string|exists:users,referral_code',
             ],
             [
                 'name.required' => __('common_validation.name.required'),
@@ -99,7 +99,6 @@ class AuthController extends Controller
                 'email.max' => __('common_validation.email.max', ['max' => 255]),
                 'role.required' => __('common_validation.role.required'),
                 'role.in' => __('common_validation.role.invalid'),
-                'refer_code.required' => __('common_validation.refer_code.required'),
                 'refer_code.string' => __('common_validation.refer_code.invalid'),
                 'refer_code.exists' => __('common_validation.refer_code.invalid'),
             ]
@@ -258,7 +257,7 @@ class AuthController extends Controller
                 'username' => ['required', 'string', 'max:255', 'unique:users,username'],
                 'password' => [new PasswordRule],
                 'role' => ['required', Rule::in([UserRole::CUSTOMER->value, UserRole::AGENCY->value])],
-                'refer_code' => 'required|string|exists:users,referral_code',
+                'refer_code' => 'nullable|string|exists:users,referral_code',
                 'token' => ['required', 'string'],
             ],
             [
@@ -271,7 +270,6 @@ class AuthController extends Controller
                 'username.unique' => __('common_validation.username.unique'),
                 'role.required' => __('common_validation.role.required'),
                 'role.in' => __('common_validation.role.invalid'),
-                'refer_code.required' => __('common_validation.refer_code.required'),
                 'refer_code.string' => __('common_validation.refer_code.invalid'),
                 'refer_code.exists' => __('common_validation.refer_code.invalid'),
                 'token.required' => __('common_validation.token_invalid'),

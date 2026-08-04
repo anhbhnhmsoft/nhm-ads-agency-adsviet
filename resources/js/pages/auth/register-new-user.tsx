@@ -211,7 +211,6 @@ const RegisterNewUser = ({ social_data }: Props) => {
 
                     <div className="grid gap-2">
                         <Label htmlFor="refer_code">
-                            <span className="text-red-500">*</span>
                             {t('common.refer_code')}
                         </Label>
                         <Input
@@ -222,7 +221,6 @@ const RegisterNewUser = ({ social_data }: Props) => {
                             }
                             type="text"
                             name="refer_code"
-                            required
                             autoFocus
                             tabIndex={1}
                             placeholder={t('common.refer_code')}
