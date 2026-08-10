@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Common\Constants\User\UserRole;
 use App\Core\BaseRepository;
 use App\Models\UserReferral;
 
@@ -25,6 +26,9 @@ class UserReferralRepository extends BaseRepository
     {
         return $this->query()
             ->where('referrer_id', $managerId)
+            ->whereHas('referred', function ($query): void {
+                $query->where('role', UserRole::EMPLOYEE->value);
+            })
             ->whereNull('deleted_at')
             ->pluck('referred_id')
             ->toArray();

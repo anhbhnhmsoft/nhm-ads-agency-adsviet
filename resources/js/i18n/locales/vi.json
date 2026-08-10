@@ -442,8 +442,8 @@
             "banner_title": "Bạn đang xem giao diện {{type}}",
             "current_account": "Tài khoản đang xem",
             "original_login": "Đăng nhập gốc",
-            "back_to_admin": "Quay lại admin",
-            "admin_fallback": "Admin",
+            "back_to_management": "Quay lại màn quản lý",
+            "actor_fallback": "Tài khoản quản trị",
             "account_types": {
                 "customer": "khách hàng",
                 "agency": "agency",

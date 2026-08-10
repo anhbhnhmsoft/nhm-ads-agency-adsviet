@@ -25,6 +25,8 @@ class GoogleAccount extends Model
         'balance',
         'balance_exhausted',
         'amount_spent',
+        'spending_limit',
+        'total_spent',
         'last_synced_at',
     ];
 
@@ -34,6 +36,8 @@ class GoogleAccount extends Model
         'balance' => 'decimal:2',
         'balance_exhausted' => 'boolean',
         'amount_spent' => 'decimal:2',
+        'spending_limit' => 'decimal:2',
+        'total_spent' => 'decimal:2',
         'last_synced_at' => 'datetime',
     ];
 

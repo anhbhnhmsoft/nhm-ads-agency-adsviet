@@ -133,7 +133,8 @@ class ServicePurchaseService
                 $postpayMinBalanceRaw = $this->configRepository
                     ->findByKey(ConfigName::POSTPAY_MIN_BALANCE->value)?->value;
                 $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 100;
-                if (! $isPrepay && (float) $wallet->balance < $postpayMinBalance) {
+                // Với trả sau, số dư SAU KHI trừ chi phí đơn (phí mở TK...) vẫn phải >= ngưỡng tối thiểu
+                if (! $isPrepay && ((float) $wallet->balance - $totalCost) < $postpayMinBalance) {
                     return ServiceReturn::error(
                         message: __('services.validation.postpay_min_wallet', ['amount' => $postpayMinBalance])
                     );

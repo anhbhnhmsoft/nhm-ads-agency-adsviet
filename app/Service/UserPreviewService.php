@@ -17,7 +17,10 @@ class UserPreviewService
 
     public function canManagePreview(?User $user): bool
     {
-        return (int) $user?->role === UserRole::ADMIN->value;
+        return in_array((int) $user?->role, [
+            UserRole::ADMIN->value,
+            UserRole::MANAGER->value,
+        ], true);
     }
 
     public function start(Request $request, User $target): void
@@ -161,18 +164,32 @@ class UserPreviewService
         );
     }
 
-    public function findPreviewableUser(string $userId): ?User
+    public function findPreviewableUser(string $userId, ?User $actor): ?User
     {
-        return User::query()
+        if (!$actor instanceof User || !$this->canManagePreview($actor)) {
+            return null;
+        }
+
+        $query = User::query()
             ->where('id', $userId)
-            ->whereIn('role', [
+            ->where('disabled', false);
+
+        if ((int) $actor->role === UserRole::MANAGER->value) {
+            $query->whereIn('role', [
+                UserRole::CUSTOMER->value,
+                UserRole::AGENCY->value,
+            ]);
+        } else {
+            // Admins retain the existing ability to preview staff accounts as well.
+            $query->whereIn('role', [
                 UserRole::CUSTOMER->value,
                 UserRole::AGENCY->value,
                 UserRole::MANAGER->value,
                 UserRole::EMPLOYEE->value,
-            ])
-            ->where('disabled', false)
-            ->first();
+            ]);
+        }
+
+        return $query->first();
     }
 
     private function resolvePreviewTarget(Request $request, ?User $actor): ?User
@@ -188,7 +205,7 @@ class UserPreviewService
             return null;
         }
 
-        $target = $this->findPreviewableUser($previewUserId);
+        $target = $this->findPreviewableUser($previewUserId, $actor);
         if ($target instanceof User) {
             return $target;
         }

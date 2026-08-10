@@ -124,12 +124,9 @@ class UserService
                 ]);
             }
 
-            $hasEmployeeFilter = false;
-
             if (!empty($filter['employee_id'])) {
                 $employeeId = (string) $filter['employee_id'];
                 $filter['referrer_ids'] = [$employeeId];
-                $hasEmployeeFilter = true;
             }
 
             // Phân quyền hiển thị danh sách khách hàng theo vai trò người dùng hiện tại
@@ -137,19 +134,7 @@ class UserService
             if ($currentUser) {
                 switch ($currentUser->role) {
                     case UserRole::MANAGER->value:
-                        $employeeIds = $this->userReferralRepository
-                            ->getAssignedEmployeeIds((string)$currentUser->id);
-
-                        if ($hasEmployeeFilter) {
-                            // Đã lọc theo nhân viên cụ thể nên chỉ giữ nguyên referrer_ids hiện có
-                            $filter['referrer_ids'] = $filter['referrer_ids'] ?? [];
-                        } else {
-                            $filter['referrer_ids'] = array_values(array_unique(array_merge(
-                                $filter['referrer_ids'] ?? [],
-                                [$currentUser->id],
-                                $employeeIds
-                            )));
-                        }
+                        // Manager xem toàn bộ khách hàng; các bộ lọc chủ động vẫn được giữ.
                         break;
                     case UserRole::EMPLOYEE->value:
                         $filter['referrer_ids'] = [$currentUser->id];

@@ -801,6 +801,8 @@ GAQL;
                             $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $customerId);
                             $balance = $balanceData['balance'] ?? null;
                             $balanceExhausted = $balanceData['exhausted'] ?? false;
+                            $spendingLimit = $balanceData['spending_limit'] ?? null;
+                            $totalSpent = $balanceData['total_spent'] ?? null;
 
                             $todaySpend = 0.0;
                             try {
@@ -840,6 +842,8 @@ GAQL;
                                 'balance' => $balance,
                                 'balance_exhausted' => $balanceExhausted,
                                 'amount_spent' => $todaySpend,
+                                'spending_limit' => $spendingLimit,
+                                'total_spent' => $totalSpent,
                                 'last_synced_at' => now(),
                             ];
 
@@ -1743,6 +1747,8 @@ GAQL;
 
                             $balance = null;
                             $balanceExhausted = false;
+                            $spendingLimit = null;
+                            $totalSpent = null;
                             $todaySpend = 0.0;
 
                             if ($hasServiceUser) {
@@ -1750,6 +1756,8 @@ GAQL;
                                     $balanceData = $this->getAccountBalance($googleAdsService, (string) $accountId, (string) $customerManagerId);
                                     $balance = $balanceData['balance'] ?? null;
                                     $balanceExhausted = $balanceData['exhausted'] ?? false;
+                                    $spendingLimit = $balanceData['spending_limit'] ?? null;
+                                    $totalSpent = $balanceData['total_spent'] ?? null;
                                 } catch (\Throwable $balanceError) {
                                     Logging::error(
                                         message: 'GoogleAdsService@syncFromManagerId: Failed to get account balance, but will still sync account',
@@ -1788,6 +1796,8 @@ GAQL;
                                 'balance' => $balance,
                                 'balance_exhausted' => $balanceExhausted,
                                 'amount_spent' => $todaySpend,
+                                'spending_limit' => $spendingLimit,
+                                'total_spent' => $totalSpent,
                                 'last_synced_at' => now(),
                             ];
 
@@ -2152,7 +2162,7 @@ GAQL;
      * @param GoogleAdsServiceClient $googleAdsService
      * @param string $accountId
      * @param string $customerId
-     * @return array ['balance' => float|null, 'exhausted' => bool]
+     * @return array ['balance' => float|null, 'exhausted' => bool, 'spending_limit' => float|null, 'total_spent' => float|null]
      */
     protected function getAccountBalance(
         GoogleAdsServiceClient $googleAdsService,
@@ -2161,6 +2171,8 @@ GAQL;
     ): array {
         $balance = null;
         $balanceExhausted = false;
+        $spendingLimit = null;
+        $totalSpent = null;
 
         try {
             // Query từ account_budget để lấy giới hạn chi tiêu và số tiền đã tiêu
@@ -2225,6 +2237,8 @@ GAQL;
                         // Tài khoản trả sau, không có balance cố định
                         $balance = null;
                         $balanceExhausted = false;
+                        $spendingLimit = null;
+                        $totalSpent = $this->convertMicrosToUnit($amountServedMicros);
 
                         Logging::web('GoogleAdsService@getAccountBalance: Account is INFINITE (Automatic Payments)', [
                             'account_id' => $accountId,
@@ -2237,6 +2251,8 @@ GAQL;
                     // Chuyển đổi từ micros sang đơn vị tiền tệ (1 đơn vị = 1,000,000 micros)
                     $approvedLimit = $this->convertMicrosToUnit($approvedLimitMicros);
                     $amountServed = $this->convertMicrosToUnit($amountServedMicros);
+                    $spendingLimit = $approvedLimit;
+                    $totalSpent = $amountServed;
 
                     // Tính số dư còn lại
                     $balance = $approvedLimit !== null && $amountServed !== null
@@ -2277,6 +2293,8 @@ GAQL;
         return [
             'balance' => $balance,
             'exhausted' => $balanceExhausted,
+            'spending_limit' => $spendingLimit,
+            'total_spent' => $totalSpent,
         ];
     }
 
@@ -3048,6 +3066,167 @@ GAQL;
     }
 
     /**
+     * Tìm GoogleAccount thuộc service user (hoặc thuộc MCC của service user với admin/staff).
+     */
+    protected function resolveGoogleAccountForServiceUser(ServiceUser $serviceUser, ?string $accountId)
+    {
+        $accountIdDigits = preg_replace('/[^0-9]/', '', (string) $accountId);
+
+        $query = $this->googleAccountRepository->query()
+            ->where(function ($query) use ($accountId, $accountIdDigits) {
+                $query->where('id', $accountId)
+                    ->orWhere('account_id', $accountId)
+                    ->orWhere('account_id', $accountIdDigits);
+            });
+
+        $user = Auth::user();
+        $isAdminOrStaff = $user && in_array($user->role, [
+            UserRole::ADMIN->value,
+            UserRole::MANAGER->value,
+            UserRole::EMPLOYEE->value,
+        ]);
+
+        if ($isAdminOrStaff) {
+            $config = $serviceUser->config_account ?? [];
+            $mccIds = [];
+            if (!empty($config['bm_id'])) {
+                $mccIds[] = (string) $config['bm_id'];
+            }
+            if (!empty($config['google_manager_id'])) {
+                $mccIds[] = (string) $config['google_manager_id'];
+            }
+            if (isset($config['accounts']) && is_array($config['accounts'])) {
+                foreach ($config['accounts'] as $accConf) {
+                    if (!empty($accConf['bm_ids']) && is_array($accConf['bm_ids'])) {
+                        foreach ($accConf['bm_ids'] as $mccId) {
+                            $mccIds[] = (string) $mccId;
+                        }
+                    }
+                }
+            }
+            $mccIds = array_values(array_unique(array_filter($mccIds)));
+
+            $query->where(function ($subQ) use ($serviceUser, $mccIds) {
+                $subQ->where('service_user_id', $serviceUser->id);
+                if (!empty($mccIds)) {
+                    $subQ->orWhereIn('customer_manager_id', $mccIds);
+                }
+            });
+        } else {
+            $query->where('service_user_id', $serviceUser->id);
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Đặt giới hạn chi tiêu tài khoản Google Ads về mức đã tiêu (amount_served),
+     * tức thu hồi toàn bộ số dư còn lại. Dùng khi hoàn tiền tài khoản die.
+     */
+    public function resetAccountSpendingLimit(string $serviceUserId, ?string $accountId): ServiceReturn
+    {
+        $serviceUserResult = $this->validateServiceUser($serviceUserId);
+        if ($serviceUserResult->isError()) {
+            return $serviceUserResult;
+        }
+
+        /** @var ServiceUser $serviceUser */
+        $serviceUser = $serviceUserResult->getData();
+
+        try {
+            $googleAccount = $this->resolveGoogleAccountForServiceUser($serviceUser, $accountId);
+            if (!$googleAccount || empty($googleAccount->account_id)) {
+                return ServiceReturn::error(message: __('google_ads.error.account_not_found'));
+            }
+
+            $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
+            if (empty($loginCustomerId)) {
+                return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
+            }
+
+            $client = $this->buildGoogleAdsClient($loginCustomerId);
+            $customerId = preg_replace('/[^0-9]/', '', (string) $googleAccount->account_id);
+            $googleAdsService = $client->getGoogleAdsServiceClient();
+
+            $query = <<<GAQL
+SELECT
+  account_budget.resource_name,
+  account_budget.approved_spending_limit_micros,
+  account_budget.amount_served_micros,
+  account_budget.approved_spending_limit_type
+FROM account_budget
+WHERE account_budget.status = 'APPROVED'
+ORDER BY account_budget.id DESC
+LIMIT 1
+GAQL;
+
+            $searchRequest = new SearchGoogleAdsRequest([
+                'customer_id' => $customerId,
+                'query' => $query,
+            ]);
+            $iterator = $googleAdsService->search($searchRequest)->getIterator();
+
+            if (!$iterator->valid()) {
+                return ServiceReturn::error(message: __('google_ads.error.account_budget_not_found'));
+            }
+
+            /** @var GoogleAdsRow $row */
+            $row = $iterator->current();
+            $accountBudget = $row->getAccountBudget();
+            if (!$accountBudget || !$accountBudget->getResourceName()) {
+                return ServiceReturn::error(message: __('google_ads.error.account_budget_not_found'));
+            }
+
+            $amountServedMicros = (int) ($accountBudget->getAmountServedMicros() ?? 0);
+
+            $proposal = new AccountBudgetProposal();
+            $proposal->setAccountBudget($accountBudget->getResourceName());
+            $proposal->setProposalType(AccountBudgetProposalType::UPDATE);
+            $proposal->setProposedSpendingLimitMicros($amountServedMicros);
+
+            $operation = new AccountBudgetProposalOperation();
+            $operation->setCreate($proposal);
+
+            $proposalService = $client->getAccountBudgetProposalServiceClient();
+            $mutateRequest = MutateAccountBudgetProposalRequest::build($customerId, $operation);
+            $mutateResponse = $proposalService->mutateAccountBudgetProposal($mutateRequest);
+
+            $this->googleAccountRepository->query()
+                ->where('id', $googleAccount->id)
+                ->update([
+                    'balance' => 0,
+                    'balance_exhausted' => true,
+                    'spending_limit' => $this->convertMicrosToUnit($amountServedMicros),
+                    'total_spent' => $this->convertMicrosToUnit($amountServedMicros),
+                ]);
+
+            return ServiceReturn::success(data: [
+                'resource_name' => $mutateResponse->getResult()?->getResourceName(),
+                'account_budget' => $accountBudget->getResourceName(),
+                'new_limit' => $this->convertMicrosToUnit($amountServedMicros),
+            ]);
+        } catch (GoogleAdsException | ApiException $e) {
+            Logging::error(
+                message: 'GoogleAdsService@resetAccountSpendingLimit API error: ' . $e->getMessage(),
+                context: [
+                    'service_user_id' => $serviceUserId,
+                    'account_id' => $accountId,
+                ],
+                exception: $e
+            );
+
+            return ServiceReturn::error(message: __('google_ads.error.failed_to_update_account_spending_limit'));
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'GoogleAdsService@resetAccountSpendingLimit unexpected error: ' . $e->getMessage(),
+                exception: $e
+            );
+
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
      * Tăng giới hạn chi tiêu ở cấp tài khoản Google Ads bằng AccountBudgetProposal.
      */
     public function increaseAccountSpendingLimit(string $serviceUserId, ?string $accountId, float $amount): ServiceReturn
@@ -3065,6 +3244,8 @@ GAQL;
         }
 
         try {
+            $accountIdDigits = preg_replace('/[^0-9]/', '', (string) $accountId);
+
             $query = $this->googleAccountRepository->query()
                 ->where(function ($query) use ($accountId, $accountIdDigits) {
                     $query->where('id', $accountId)
@@ -3177,6 +3358,8 @@ GAQL;
                 ->update([
                     'balance' => $balance,
                     'balance_exhausted' => $balance <= 0,
+                    'spending_limit' => $this->convertMicrosToUnit($newLimitMicros),
+                    'total_spent' => $this->convertMicrosToUnit($amountServedMicros),
                 ]);
 
             return ServiceReturn::success(data: [

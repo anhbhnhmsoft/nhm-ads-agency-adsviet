@@ -174,8 +174,8 @@
             "banner_title": "You are viewing the {{type}} interface",
             "current_account": "Viewing account",
             "original_login": "Original login",
-            "back_to_admin": "Back to admin",
-            "admin_fallback": "Admin",
+            "back_to_management": "Back to management",
+            "actor_fallback": "Management account",
             "account_types": {
                 "customer": "customer",
                 "agency": "agency",

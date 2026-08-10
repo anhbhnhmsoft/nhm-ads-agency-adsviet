@@ -613,6 +613,12 @@ class BusinessManagerService
 
                         $customerName = !empty($config['display_name']) ? $config['display_name'] : $ownerName;
 
+                        $googleSpendingLimit = $account->spending_limit !== null ? (float) $account->spending_limit : null;
+                        $googleTotalSpent = $account->total_spent !== null
+                            ? (float) $account->total_spent
+                            : (float) $spendValue;
+                        $googleRemaining = $this->calculateGoogleRemainingAmount($account);
+
                         $accountsList[] = [
                             'id' => (string) $account->id,
                             'account_id' => $account->account_id,
@@ -637,9 +643,9 @@ class BusinessManagerService
                             'account_status' => $account->account_status,
                             'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
                             'account_status_severity' => $this->getAccountStatusSeverity((int) $platform, $status),
-                            'spend_cap' => null,
-                            'amount_spent' => '0',
-                            'remaining_amount' => null,
+                            'spend_cap' => $googleSpendingLimit,
+                            'amount_spent' => $googleTotalSpent,
+                            'remaining_amount' => $googleRemaining,
                             'created_time' => null,
                             'account_type' => null,
                             'timezone' => $this->formatTimezone($account->time_zone ?? null),
@@ -1203,6 +1209,25 @@ class BusinessManagerService
         }
 
         return max(0.0, $limit - $spent);
+    }
+
+    /**
+     * Số dư còn lại của tài khoản Google Ads.
+     * Ưu tiên balance đã sync từ account_budget (limit - amount_served),
+     * fallback sang spending_limit - total_spent khi balance chưa có.
+     */
+    private function calculateGoogleRemainingAmount($account): ?float
+    {
+        if (($account->balance ?? null) !== null) {
+            return max(0.0, (float) $account->balance);
+        }
+
+        $limit = $account->spending_limit !== null ? (float) $account->spending_limit : null;
+        if ($limit === null || $limit <= 0) {
+            return null;
+        }
+
+        return max(0.0, $limit - (float) ($account->total_spent ?? 0));
     }
 
     private function getMetaDisableReasonLabel(mixed $reason): ?string
@@ -1907,6 +1932,12 @@ class BusinessManagerService
                     $mccDisplayName = $mccNameMap[$accountMccId] ?? null;
                     $parentMccId = $mccParentMap[$accountMccId] ?? null;
 
+                    $googleSpendingLimit = $account->spending_limit !== null ? (float) $account->spending_limit : null;
+                    $googleTotalSpent = $account->total_spent !== null
+                        ? (float) $account->total_spent
+                        : (float) $spendValue;
+                    $googleRemaining = $this->calculateGoogleRemainingAmount($account);
+
                     $accountsList[] = [
                         'id' => (string) $account->id,
                         'account_id' => $account->account_id,
@@ -1932,9 +1963,9 @@ class BusinessManagerService
                         'account_status' => $account->account_status,
                         'account_status_label' => $this->getAccountStatusLabel((int) $platform, $status),
                         'account_status_severity' => $this->getAccountStatusSeverity((int) $platform, $status),
-                        'spend_cap' => null,
-                        'amount_spent' => '0',
-                        'remaining_amount' => null,
+                        'spend_cap' => $googleSpendingLimit,
+                        'amount_spent' => $googleTotalSpent,
+                        'remaining_amount' => $googleRemaining,
                         'created_time' => null,
                         'account_type' => null,
                         'timezone' => $this->formatTimezone($account->time_zone ?? null),

@@ -23,7 +23,7 @@ class AdminPreviewController
             return redirect()->route('user_list');
         }
 
-        $target = $this->userPreviewService->findPreviewableUser($userId);
+        $target = $this->userPreviewService->findPreviewableUser($userId, $actor);
         if (!$target) {
             FlashMessage::error(__('user.preview.cannot_open'));
 

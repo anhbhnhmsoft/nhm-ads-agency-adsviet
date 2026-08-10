@@ -174,8 +174,8 @@
             "banner_title": "您正在查看{{type}}界面",
             "current_account": "当前查看账号",
             "original_login": "原始登录账号",
-            "back_to_admin": "返回管理员",
-            "admin_fallback": "管理员",
+            "back_to_management": "返回管理界面",
+            "actor_fallback": "管理账号",
             "account_types": {
                 "customer": "客户",
                 "agency": "代理",

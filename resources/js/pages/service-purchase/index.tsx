@@ -402,19 +402,6 @@ const ServicePurchaseIndex = ({
         // Mark all fields as touched on submit
         setTouchedFields({ topUpAmount: true /*, budget: true */ });
 
-        if (paymentType === 'postpay') {
-            if (wallet_balance < postpayMinBalance) {
-                alert(
-                    t('service_purchase.postpay_min_wallet', {
-                        defaultValue:
-                            'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau.',
-                        amount: postpayMinBalance,
-                    }),
-                );
-                return;
-            }
-        }
-
         const isPrepay = paymentType === 'prepay';
         const sanitizedTopUp = isPrepay
             ? normalizeCurrencyInput(topUpAmount)
@@ -440,6 +427,21 @@ const ServicePurchaseIndex = ({
 
         if (wallet_balance < totalCost) {
             alert(t('service_purchase.insufficient_balance'));
+            return;
+        }
+
+        // Trả sau: số dư còn lại sau khi trừ chi phí đơn phải >= ngưỡng tối thiểu
+        if (
+            paymentType === 'postpay' &&
+            wallet_balance - totalCost < postpayMinBalance
+        ) {
+            alert(
+                t('service_purchase.postpay_min_wallet', {
+                    defaultValue:
+                        'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau.',
+                    amount: postpayMinBalance,
+                }),
+            );
             return;
         }
 
@@ -701,6 +703,9 @@ const ServicePurchaseIndex = ({
                 previewAccountsCount,
             );
         const hasInsufficientBalance = wallet_balance < totalCost;
+        const belowPostpayMinBalance =
+            paymentType === 'postpay' &&
+            wallet_balance - totalCost < postpayMinBalance;
         const showAccountInfo =
             selectedPackage.platform === _PlatformType.META ||
             selectedPackage.platform === _PlatformType.GOOGLE;
@@ -1052,24 +1057,23 @@ const ServicePurchaseIndex = ({
                                 </div>
                             </div>
                         )}
-                        {paymentType === 'postpay' &&
-                            wallet_balance < postpayMinBalance && (
-                                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                                    <div className="flex items-center gap-2 text-amber-800">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <span className="text-sm font-medium">
-                                            {t(
-                                                'service_purchase.postpay_min_wallet_warning',
-                                                {
-                                                    defaultValue:
-                                                        'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau',
-                                                    amount: postpayMinBalance,
-                                                },
-                                            )}
-                                        </span>
-                                    </div>
+                        {belowPostpayMinBalance && (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                                <div className="flex items-center gap-2 text-amber-800">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <span className="text-sm font-medium">
+                                        {t(
+                                            'service_purchase.postpay_min_wallet_warning',
+                                            {
+                                                defaultValue:
+                                                    'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau',
+                                                amount: postpayMinBalance,
+                                            },
+                                        )}
+                                    </span>
                                 </div>
-                            )}
+                            </div>
+                        )}
                     </div>
 
                     {/* 
@@ -1286,6 +1290,7 @@ const ServicePurchaseIndex = ({
                         onClick={handlePurchase}
                         disabled={
                             hasInsufficientBalance ||
+                            belowPostpayMinBalance ||
                             !!topUpError ||
                             purchaseForm.processing ||
                             (is_staff_purchase && !selectedCustomerId)

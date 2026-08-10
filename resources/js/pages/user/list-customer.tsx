@@ -62,6 +62,7 @@ const ListCustomer = ({
     const { props } = usePage();
     const checkRole = useCheckRole(props.auth as any);
     const isAdmin = checkRole([_UserRole.ADMIN]);
+    const canManagePreview = checkRole([_UserRole.ADMIN, _UserRole.MANAGER]);
     const [selectedUser, setSelectedUser] = useState<CustomerListItem | null>(
         null,
     );
@@ -348,7 +349,7 @@ const ListCustomer = ({
                 cell: ({ row }) => {
                     const user = row.original;
                     const canPreview =
-                        isAdmin &&
+                        canManagePreview &&
                         !user.disabled &&
                         [_UserRole.CUSTOMER, _UserRole.AGENCY].includes(
                             user.role,
@@ -398,6 +399,7 @@ const ListCustomer = ({
             t,
             actionCell,
             isAdmin,
+            canManagePreview,
             managerFilterId,
             setSelectedTopUpUser,
             setTopUpAmount,

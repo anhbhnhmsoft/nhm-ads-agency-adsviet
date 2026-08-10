@@ -56,7 +56,7 @@ export function PreviewModeBanner({ actor, preview }: Props) {
                         </div>
                         <div className="text-xs text-amber-800">
                             {t('user.preview.original_login')}:{' '}
-                            {actor?.name ?? t('user.preview.admin_fallback')}
+                            {actor?.name ?? t('user.preview.actor_fallback')}
                             {actor?.username ? ` (${actor.username})` : ''}
                         </div>
                     </div>
@@ -76,7 +76,7 @@ export function PreviewModeBanner({ actor, preview }: Props) {
                         }
                     >
                         <ArrowLeft className="mr-2 size-4" />
-                        {t('user.preview.back_to_admin')}
+                        {t('user.preview.back_to_management')}
                     </Button>
                 </div>
             </div>

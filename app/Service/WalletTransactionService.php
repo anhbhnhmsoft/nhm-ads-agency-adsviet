@@ -1785,7 +1785,23 @@ class WalletTransactionService
                 if (!$account) {
                     return ServiceReturn::error(message: __('wallet.error.account_not_linked'));
                 }
-                $remaining = 0.0; // Google không có account-level spend_cap
+                $accountCurrency = $account->currency ?? 'USD';
+
+                // Google: số dư còn lại = balance đã sync (approved_spending_limit - amount_served)
+                if (($account->balance ?? null) !== null) {
+                    $remaining = max(0.0, (float) $account->balance);
+                } elseif (($account->spending_limit ?? null) !== null) {
+                    $remaining = max(0.0, (float) $account->spending_limit - (float) ($account->total_spent ?? 0));
+                }
+
+                // Fallback: dùng total_topped_up khi chưa sync được account_budget
+                if ($remaining <= 0) {
+                    $suConfig = $serviceUser->config_account ?? [];
+                    $totalToppedUp = (float) ($suConfig["topped_up_{$accountId}"] ?? 0);
+                    if ($totalToppedUp > 0) {
+                        $remaining = max(0.0, $totalToppedUp - (float) ($account->total_spent ?? 0));
+                    }
+                }
             }
 
             if ($remaining <= 0) {
@@ -1891,6 +1907,35 @@ class WalletTransactionService
                     }
                 } catch (\Throwable $e) {
                     Logging::error('refundAdAccountBalance: failed to query/pause campaigns: '.$e->getMessage());
+                }
+            }
+
+            // Thu hồi giới hạn chi tiêu trên Google + pause tất cả campaigns
+            if ((int) $platform === PlatformType::GOOGLE->value) {
+                try {
+                    $resetLimit = $this->googleAdsService->resetAccountSpendingLimit($serviceUserId, $accountId);
+                    if ($resetLimit->isError()) {
+                        Logging::error('refundAdAccountBalance: failed to reset google spending limit: '.$resetLimit->getMessage());
+                    }
+                } catch (\Throwable $e) {
+                    Logging::error('refundAdAccountBalance: failed to reset google spending limit: '.$e->getMessage());
+                }
+
+                try {
+                    $activeCampaigns = (new \App\Models\GoogleAdsCampaign())->query()
+                        ->where('google_account_id', $account->id)
+                        ->where('status', 'ENABLED')
+                        ->pluck('id')
+                        ->all();
+                    foreach ($activeCampaigns as $campaignId) {
+                        try {
+                            $this->googleAdsService->updateCampaignStatus($serviceUserId, (string) $campaignId, 'PAUSED');
+                        } catch (\Throwable $e) {
+                            Logging::error('refundAdAccountBalance: failed to pause google campaign '.$campaignId.': '.$e->getMessage());
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Logging::error('refundAdAccountBalance: failed to query/pause google campaigns: '.$e->getMessage());
                 }
             }
 

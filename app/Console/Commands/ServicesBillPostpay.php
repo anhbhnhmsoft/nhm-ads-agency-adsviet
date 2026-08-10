@@ -9,6 +9,7 @@ use App\Common\Constants\Wallet\WalletTransactionStatus;
 use App\Common\Constants\Wallet\WalletTransactionType;
 use App\Common\Constants\Google\GoogleCampaignStatus;
 use App\Common\Constants\ServicePackage\AccountBillingSource;
+use App\Common\Constants\Config\ConfigName;
 use App\Core\Logging;
 use App\Models\ServiceUserTransactionLog;
 use App\Repositories\ServiceUserRepository;
@@ -19,6 +20,7 @@ use App\Repositories\GoogleAdsCampaignRepository;
 use App\Service\TelegramService;
 use App\Service\WalletTransactionService;
 use App\Service\MailService;
+use App\Service\ConfigService;
 use App\Service\MetaService;
 use App\Service\GoogleAdsService;
 use Carbon\Carbon;
@@ -44,8 +46,19 @@ class ServicesBillPostpay extends Command
         protected MetaService $metaService,
         protected GoogleAdsService $googleAdsService,
         protected WalletTransactionService $walletTransactionService,
+        protected ConfigService $configService,
     ) {
         parent::__construct();
+    }
+
+    /**
+     * Ngưỡng ví tối thiểu cho trả sau, lấy từ cấu hình (fallback 100 USD).
+     */
+    private function minWalletBalance(): float
+    {
+        $value = $this->configService->getValue(ConfigName::POSTPAY_MIN_BALANCE);
+
+        return is_numeric($value) ? (float) $value : self::MIN_WALLET_BALANCE;
     }
 
     public function handle(): int
@@ -116,7 +129,8 @@ class ServicesBillPostpay extends Command
                                 return 'skip';
                             }
 
-                            $requiredWalletBalance = max($chargeAmount, self::MIN_WALLET_BALANCE);
+                            $minWalletBalance = $this->minWalletBalance();
+                            $requiredWalletBalance = max($chargeAmount, $minWalletBalance);
                             if ((float) $wallet->balance < $requiredWalletBalance) {
                                 Logging::web('services:bill-postpay insufficient balance, pause campaigns', [
                                     'service_user_id' => $locked->id,
@@ -124,7 +138,7 @@ class ServicesBillPostpay extends Command
                                     'balance' => $wallet->balance,
                                     'unbilled_spend' => $unbilledSpend,
                                     'spending_fee' => $chargeAmount,
-                                    'minimum_wallet_balance' => self::MIN_WALLET_BALANCE,
+                                    'minimum_wallet_balance' => $minWalletBalance,
                                     'charge_amount' => $chargeAmount,
                                 ]);
 
@@ -132,7 +146,7 @@ class ServicesBillPostpay extends Command
 
                                 $user = $wallet->user;
                                 if ($user) {
-                                    \App\Core\UserLocale::run($user, function () use ($user, $wallet, $chargeAmount) {
+                                    \App\Core\UserLocale::run($user, function () use ($user, $wallet, $chargeAmount, $minWalletBalance) {
                                         $shortName = $user->name ?? $user->username ?? 'Customer';
                                         $balanceFormatted = number_format((float) $wallet->balance, 2);
                                         $chargeFormatted = number_format($chargeAmount, 2);
@@ -143,7 +157,7 @@ class ServicesBillPostpay extends Command
                                             'charge' => $chargeFormatted,
                                             'monthly_fee' => $spendingFeeFormatted,
                                             'open_fee' => number_format(0, 2),
-                                            'min_wallet' => number_format(self::MIN_WALLET_BALANCE, 2),
+                                            'min_wallet' => number_format($minWalletBalance, 2),
                                         ]);
 
                                         if (!empty($user->telegram_id)) {

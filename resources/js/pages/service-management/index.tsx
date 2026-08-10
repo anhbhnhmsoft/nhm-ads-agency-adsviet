@@ -908,7 +908,8 @@ const ServiceManagementIndex = ({
                         (account as any).payment_type !== 'postpay' &&
                         (account as any).remaining_amount != null &&
                         Number((account as any).remaining_amount) > 0 &&
-                        account.platform === _PlatformType.META &&
+                        (account.platform === _PlatformType.META ||
+                            account.platform === _PlatformType.GOOGLE) &&
                         ((account as any).account_status_severity === 'error' ||
                             (account as any).status_severity === 'error' ||
                             account.account_status === 2);
