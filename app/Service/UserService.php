@@ -63,19 +63,21 @@ class UserService
         $currentUser = Auth::user();
         try {
             $filter = $queryListDTO->filter ?? [];
-            $filter['roles'] = [
-                UserRole::ADMIN->value,
-                UserRole::MANAGER->value,
-                UserRole::EMPLOYEE->value,
-            ];
+            if ($currentUser && $currentUser->role === UserRole::ADMIN->value) {
+                $filter['roles'] = [
+                    UserRole::ADMIN->value,
+                    UserRole::MANAGER->value,
+                    UserRole::EMPLOYEE->value,
+                ];
+            } else {
+                $filter['roles'] = [
+                    UserRole::MANAGER->value,
+                    UserRole::EMPLOYEE->value,
+                ];
+            }
 
             if ($currentUser) {
                 $filter['exclude_user_id'] = $currentUser->id;
-            }
-
-            // Nếu là manager, chỉ lấy employees được gán cho manager đó
-            if ($currentUser && $currentUser->role === UserRole::MANAGER->value) {
-                $filter['manager_id'] = $currentUser->id;
             }
 
             $query = $this->userRepository->filterQuery($filter);
