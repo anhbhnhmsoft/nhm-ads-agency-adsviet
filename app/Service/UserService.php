@@ -134,10 +134,8 @@ class UserService
             if ($currentUser) {
                 switch ($currentUser->role) {
                     case UserRole::MANAGER->value:
-                        // Manager xem toàn bộ khách hàng; các bộ lọc chủ động vẫn được giữ.
-                        break;
                     case UserRole::EMPLOYEE->value:
-                        $filter['referrer_ids'] = [$currentUser->id];
+                        // Manager và Employee xem toàn bộ khách hàng; các bộ lọc chủ động vẫn được giữ.
                         break;
                     case UserRole::AGENCY->value:
                         $filter['referrer_ids'] = [$currentUser->id];
