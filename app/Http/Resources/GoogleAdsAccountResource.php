@@ -27,6 +27,10 @@ class GoogleAdsAccountResource extends JsonResource
             'primary_email' => $this->primary_email,
             'balance' => $this->balance,
             'balance_exhausted' => $this->balance_exhausted,
+            'spending_limit' => $this->spending_limit,
+            'total_spent' => $this->total_spent,
+            'amount_spent' => $this->amount_spent,
+            'remaining_amount' => $this->balance !== null ? max(0.0, (float) $this->balance) : ($this->spending_limit !== null ? max(0.0, (float) $this->spending_limit - (float) ($this->total_spent ?? 0)) : null),
             'last_synced_at' => $this->last_synced_at,
         ];
     }
