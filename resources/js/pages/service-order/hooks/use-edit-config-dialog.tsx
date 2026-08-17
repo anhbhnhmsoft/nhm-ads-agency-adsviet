@@ -155,68 +155,100 @@ export const useServiceOrderEditConfigDialog = () => {
                     : 'prepay';
             setSelectedOrder(order);
 
-            const configAccounts = config.accounts;
-            if (Array.isArray(configAccounts) && configAccounts.length > 0) {
-                setUseAccountsStructure(true);
-                setAccounts(configAccounts.map(cleanAccountData));
-                setPaymentType(packagePaymentType);
-            } else {
-                setUseAccountsStructure(false);
-                setMetaEmail((config.meta_email as string) || '');
-                setDisplayName((config.display_name as string) || '');
-                
-                const resolvedBmIds = Array.isArray(config.resolved_bm_ids)
-                    ? (config.resolved_bm_ids as string[]).filter(Boolean)
-                    : [];
-                const bmIdVal =
-                    (config.bm_id as string) ||
-                    resolvedBmIds[0] ||
-                    '';
-                setBmId(bmIdVal);
-                
-                setInfoFanpage(
-                    isGoogle ? '' : (config.info_fanpage as string) || '',
-                );
-                setInfoWebsite(
-                    isGoogle ? '' : (config.info_website as string) || '',
-                );
-                setPaymentType(packagePaymentType);
-                setAssetAccess(
-                    (config.asset_access as 'full_asset' | 'basic_asset') ||
-                        'full_asset',
-                );
-                setTimezoneBm((config.timezone_bm as string) || '');
+            // Enforce single/admin tabbed structure across all orders
+            setUseAccountsStructure(false);
 
-                const resolvedAccountIds = Array.isArray(config.resolved_account_ids)
-                    ? (config.resolved_account_ids as string[]).filter(Boolean)
-                    : [];
-                const accountIdVal = (config.account_id as string) || '';
-                const accountIdsVal = resolvedAccountIds.length > 0
-                    ? resolvedAccountIds
-                    : Array.isArray(config.account_ids)
-                    ? (config.account_ids as string[]).filter(Boolean)
-                    : accountIdVal ? [accountIdVal] : [];
+            const configAccounts = Array.isArray(config.accounts) ? config.accounts : [];
+            const firstAcc = configAccounts.length > 0 ? configAccounts[0] : null;
 
-                // Restore assign fields — detect correct tab from config
-                const hasAccounts = accountIdsVal.length > 0;
-                const hasBm = !!bmIdVal || resolvedBmIds.length > 0;
+            const metaEmailVal = (config.meta_email as string) || (firstAcc?.meta_email as string) || '';
+            const displayNameVal = (config.display_name as string) || (firstAcc?.display_name as string) || '';
+            
+            const resolvedBmIds = Array.isArray(config.resolved_bm_ids)
+                ? (config.resolved_bm_ids as string[]).filter(Boolean)
+                : [];
+            
+            const accBmIds = configAccounts.flatMap((a: any) => a.bm_ids || []);
+            const allBmIds = Array.from(new Set([
+                ...(config.bm_id ? [config.bm_id as string] : []),
+                ...resolvedBmIds,
+                ...accBmIds,
+            ])).filter(Boolean);
 
-                // Detection order: explicit assign_mode → account_ids present → bm_id present → default 'bm'
-                const assignModeVal = (config.assign_mode as AssignMode)
-                    || (hasAccounts ? 'account' : hasBm ? 'bm' : 'bm');
-                setAssignMode(assignModeVal);
+            const bmIdVal = allBmIds[0] || '';
+            setBmId(bmIdVal);
+            
+            const accFanpages = configAccounts.flatMap((a: any) => a.fanpages || (a.info_fanpage ? [a.info_fanpage] : []));
+            const allFanpages = Array.from(new Set([
+                ...(config.info_fanpage ? [config.info_fanpage as string] : []),
+                ...accFanpages,
+            ])).filter(Boolean);
+            const infoFanpageVal = isGoogle ? '' : (allFanpages[0] || '');
+            setInfoFanpage(infoFanpageVal);
 
-                setAccountIdInput(accountIdVal);
-                setAccountIdList(accountIdsVal.length > 0 ? accountIdsVal : ['']);
+            const accWebsites = configAccounts.flatMap((a: any) => a.websites || (a.info_website ? [a.info_website] : []));
+            const allWebsites = Array.from(new Set([
+                ...(config.info_website ? [config.info_website as string] : []),
+                ...accWebsites,
+            ])).filter(Boolean);
+            const infoWebsiteVal = allWebsites[0] || '';
+            setInfoWebsite(infoWebsiteVal);
 
-                if (bmIdVal && !isGoogle) {
-                    fetchBmAccounts(bmIdVal, order.package?.platform ?? undefined);
+            setPaymentType(packagePaymentType);
+            setAssetAccess(
+                (config.asset_access as 'full_asset' | 'basic_asset') ||
+                    (firstAcc?.asset_access as 'full_asset' | 'basic_asset') ||
+                    'full_asset',
+            );
+            setTimezoneBm(
+                (config.timezone_bm as string) ||
+                    (firstAcc?.timezone_bm as string) ||
+                    '',
+            );
+
+            const resolvedAccountIds = Array.isArray(config.resolved_account_ids)
+                ? (config.resolved_account_ids as string[]).filter(Boolean)
+                : [];
+            const accAccountIds = configAccounts.map((a: any) => a.account_id).filter(Boolean);
+            const rawConfigAccountIds = Array.isArray(config.account_ids)
+                ? (config.account_ids as string[]).filter(Boolean)
+                : [];
+            const accountIdVal = (config.account_id as string) || accAccountIds[0] || '';
+
+            const accountIdsVal = Array.from(new Set([
+                ...resolvedAccountIds,
+                ...rawConfigAccountIds,
+                ...accAccountIds,
+                ...(accountIdVal ? [accountIdVal] : []),
+            ])).filter(Boolean);
+
+            const hasAccounts = accountIdsVal.length > 0;
+            const hasBm = !!bmIdVal || allBmIds.length > 0;
+
+            let assignModeVal: AssignMode = 'bm';
+            if (config.assign_mode === 'account' || config.assign_mode === 'bm') {
+                assignModeVal = config.assign_mode;
+                if (assignModeVal === 'account' && !hasAccounts && hasBm) {
+                    assignModeVal = 'bm';
+                } else if (assignModeVal === 'bm' && !hasBm && hasAccounts) {
+                    assignModeVal = 'account';
                 }
+            } else {
+                assignModeVal = hasAccounts ? 'account' : 'bm';
             }
+            setAssignMode(assignModeVal);
+
+            setAccountIdInput(accountIdVal);
+            setAccountIdList(accountIdsVal.length > 0 ? accountIdsVal : ['']);
+
+            if (bmIdVal && !isGoogle) {
+                fetchBmAccounts(bmIdVal, order.package?.platform ?? undefined);
+            }
+
             fetchBmList(order.package?.platform ?? undefined);
             setDialogOpen(true);
         },
-        [resetFormState, cleanAccountData, fetchBmList, fetchBmAccounts],
+        [resetFormState, fetchBmList, fetchBmAccounts],
     );
 
     const handleSubmitUpdate = useCallback(() => {

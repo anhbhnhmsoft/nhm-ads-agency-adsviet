@@ -405,29 +405,53 @@ const ServiceOrdersIndex = ({
     useEffect(() => {
         if (editDialogOpen && selectedEditOrder) {
             const config = selectedEditOrder.config_account || {};
-            const resolvedBmIds = config.resolved_bm_ids;
-            setEditBmIdList(
-                Array.isArray(resolvedBmIds) && resolvedBmIds.length > 0
-                    ? resolvedBmIds
-                    : [config.bm_id || ''],
-            );
-            const resolvedAccountIds = config.resolved_account_ids;
-            const accountIdVal = config.account_id || '';
-            const accountIdsVal =
-                Array.isArray(resolvedAccountIds) &&
-                resolvedAccountIds.length > 0
-                    ? resolvedAccountIds
-                    : Array.isArray(config.account_ids) &&
-                        config.account_ids.length > 0
-                      ? config.account_ids.filter(Boolean)
-                      : accountIdVal
-                        ? [accountIdVal]
-                        : [''];
+            const configAccounts = Array.isArray(config.accounts) ? config.accounts : [];
+
+            const resolvedBmIds = Array.isArray(config.resolved_bm_ids)
+                ? config.resolved_bm_ids.filter(Boolean)
+                : [];
+            const accBmIds = configAccounts.flatMap((a: any) => a.bm_ids || []);
+            const allBmIds = Array.from(new Set([
+                ...(config.bm_id ? [config.bm_id] : []),
+                ...resolvedBmIds,
+                ...accBmIds,
+            ])).filter(Boolean);
+
+            setEditBmIdList(allBmIds.length > 0 ? allBmIds : ['']);
+
+            const resolvedAccountIds = Array.isArray(config.resolved_account_ids)
+                ? config.resolved_account_ids.filter(Boolean)
+                : [];
+            const accAccountIds = configAccounts.map((a: any) => a.account_id).filter(Boolean);
+            const rawConfigAccountIds = Array.isArray(config.account_ids)
+                ? config.account_ids.filter(Boolean)
+                : [];
+            const accountIdVal = config.account_id || accAccountIds[0] || '';
+
+            const accountIdsVal = Array.from(new Set([
+                ...resolvedAccountIds,
+                ...rawConfigAccountIds,
+                ...accAccountIds,
+                ...(accountIdVal ? [accountIdVal] : []),
+            ])).filter(Boolean);
+
             setEditAccountIdList(
                 accountIdsVal.length > 0 ? accountIdsVal : [''],
             );
-            setEditFanpageList([config.info_fanpage || '']);
-            setEditWebsiteList([config.info_website || '']);
+
+            const accFanpages = configAccounts.flatMap((a: any) => a.fanpages || (a.info_fanpage ? [a.info_fanpage] : []));
+            const allFanpages = Array.from(new Set([
+                ...(config.info_fanpage ? [config.info_fanpage] : []),
+                ...accFanpages,
+            ])).filter(Boolean);
+            setEditFanpageList(allFanpages.length > 0 ? allFanpages : ['']);
+
+            const accWebsites = configAccounts.flatMap((a: any) => a.websites || (a.info_website ? [a.info_website] : []));
+            const allWebsites = Array.from(new Set([
+                ...(config.info_website ? [config.info_website] : []),
+                ...accWebsites,
+            ])).filter(Boolean);
+            setEditWebsiteList(allWebsites.length > 0 ? allWebsites : ['']);
         }
     }, [editDialogOpen, selectedEditOrder, setEditAccountIdList]);
 
