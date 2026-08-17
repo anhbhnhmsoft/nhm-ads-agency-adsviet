@@ -77,6 +77,7 @@ const ServicePurchaseIndex = ({
         topUpAmount?: boolean;
         budget?: boolean;
     }>({});
+    const [accountQuantity, setAccountQuantity] = useState<number>(1);
     const [accounts, setAccounts] = useState<AccountFormData[]>([
         {
             meta_email: '',
@@ -166,6 +167,7 @@ const ServicePurchaseIndex = ({
         setSelectedPackage(null);
         setShowCalculator(false);
         setTouchedFields({});
+        setAccountQuantity(1);
         setAccounts([
             {
                 meta_email: '',
@@ -407,22 +409,28 @@ const ServicePurchaseIndex = ({
             ? normalizeCurrencyInput(topUpAmount)
             : '';
         const payloadTopUp = sanitizedTopUp ? sanitizedTopUp : '0';
-        const accountsCountForFee = accounts.length > 0 ? accounts.length : 1;
-        const filteredAccounts = accounts.filter(
-            (acc) =>
-                acc.meta_email ||
-                acc.display_name ||
-                (acc.bm_ids &&
-                    acc.bm_ids.some(
-                        (id) => id != null && String(id).trim() !== '',
-                    )),
+        const validQuantity = Math.min(20, Math.max(1, accountQuantity));
+
+        const singleAccount = accounts[0] || {
+            meta_email: '',
+            display_name: '',
+            bm_ids: [],
+            fanpages: [],
+            websites: [],
+            timezone_bm: '',
+            asset_access: 'full_asset',
+        };
+
+        const replicatedAccounts: AccountFormData[] = Array.from(
+            { length: validQuantity },
+            () => ({ ...singleAccount })
         );
 
-        const { totalCost } = calculateTotalCost(
+        const { totalCost, chargeOpenFee } = calculateTotalCost(
             selectedPackage,
             topUpAmount,
             paymentType,
-            accountsCountForFee,
+            validQuantity,
         );
 
         if (wallet_balance < totalCost) {
@@ -430,16 +438,17 @@ const ServicePurchaseIndex = ({
             return;
         }
 
-        // Trả sau: số dư còn lại sau khi trừ chi phí đơn phải >= ngưỡng tối thiểu
+        // Trả sau: ví cần >= ngưỡng tối thiểu + phí mở tất cả tài khoản
+        const requiredPostpayBalance = postpayMinBalance + chargeOpenFee;
         if (
             paymentType === 'postpay' &&
-            wallet_balance - totalCost < postpayMinBalance
+            wallet_balance < requiredPostpayBalance
         ) {
             alert(
                 t('service_purchase.postpay_min_wallet', {
                     defaultValue:
                         'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau.',
-                    amount: postpayMinBalance,
+                    amount: requiredPostpayBalance,
                 }),
             );
             return;
@@ -455,8 +464,6 @@ const ServicePurchaseIndex = ({
         }
 
         const payloadBudget = '0';
-
-        const hasAccounts = filteredAccounts.length > 0;
 
         const bmMccConfig = {
             bm_id: bm_id || undefined,
@@ -474,7 +481,7 @@ const ServicePurchaseIndex = ({
             purchaseForm.data.timezone_bm,
             payloadBudget,
             bmMccConfig,
-            hasAccounts ? filteredAccounts : undefined,
+            replicatedAccounts,
             () => {
                 resetPurchaseDraft();
             },
@@ -690,7 +697,7 @@ const ServicePurchaseIndex = ({
                 ? validateTopUpAmount(topUpAmount, minTopUpAmount)
                 : null;
 
-        const previewAccountsCount = accounts.length > 0 ? accounts.length : 1;
+        const previewAccountsCount = accountQuantity;
         const topUpFeePercent = getEffectiveTopUpFeePercent(selectedPackage);
         const spendingFeePercent =
             getEffectiveSpendingFeePercent(selectedPackage);
@@ -798,100 +805,125 @@ const ServicePurchaseIndex = ({
 
                     {showAccountInfo && (
                         <div className="space-y-4 rounded-lg bg-gray-50 p-4">
-                            <div className="flex items-center justify-between">
-                                <div className="font-medium text-gray-800">
-                                    {accountInfoTitle}
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3">
+                                <div>
+                                    <div className="font-semibold text-gray-800">
+                                        {accountInfoTitle}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        {t('service_purchase.single_form_hint', {
+                                            defaultValue:
+                                                'Điền thông tin 1 lần bên dưới, áp dụng cho tất cả tài khoản.',
+                                        })}
+                                    </div>
                                 </div>
-                                {accounts.length < 3 && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            setAccounts([
-                                                ...accounts,
-                                                {
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        {t('service_purchase.quantity_label', {
+                                            defaultValue: 'Số lượng tài khoản:',
+                                        })}
+                                    </span>
+                                    <div className="flex items-center">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 w-8 rounded-r-none p-0"
+                                            onClick={() =>
+                                                setAccountQuantity((prev) =>
+                                                    Math.max(1, prev - 1),
+                                                )
+                                            }
+                                            disabled={accountQuantity <= 1}
+                                        >
+                                            -
+                                        </Button>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            max={20}
+                                            value={accountQuantity}
+                                            onChange={(e) => {
+                                                const val = parseInt(
+                                                    e.target.value,
+                                                    10,
+                                                );
+                                                if (!isNaN(val)) {
+                                                    setAccountQuantity(
+                                                        Math.min(
+                                                            20,
+                                                            Math.max(1, val),
+                                                        ),
+                                                    );
+                                                }
+                                            }}
+                                            className="h-8 w-16 rounded-none text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 w-8 rounded-l-none p-0"
+                                            onClick={() =>
+                                                setAccountQuantity((prev) =>
+                                                    Math.min(20, prev + 1),
+                                                )
+                                            }
+                                            disabled={accountQuantity >= 20}
+                                        >
+                                            +
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Render single account form */}
+                            <div className="space-y-4">
+                                <AccountForm
+                                    account={
+                                        accounts[0] || {
+                                            meta_email: '',
+                                            display_name: '',
+                                            bm_ids: [],
+                                            fanpages: [],
+                                            websites: [],
+                                            timezone_bm: '',
+                                            asset_access: 'full_asset',
+                                        }
+                                    }
+                                    accountIndex={0}
+                                    platform={selectedPackage.platform}
+                                    metaTimezones={meta_timezones}
+                                    googleTimezones={google_timezones}
+                                    metaEmailError={
+                                        (purchaseForm.errors as any)?.[
+                                            'accounts.0.meta_email'
+                                        ] || purchaseForm.errors.meta_email
+                                    }
+                                    onUpdate={(index, updater) => {
+                                        setAccounts((prevAccounts) => {
+                                            const newAccounts = [...prevAccounts];
+                                            const currentAccount =
+                                                newAccounts[0] || {
                                                     meta_email: '',
                                                     display_name: '',
                                                     bm_ids: [],
-                                                    fanpages:
-                                                        selectedPackage.platform ===
-                                                            _PlatformType.META
-                                                            ? []
-                                                            : [],
+                                                    fanpages: [],
                                                     websites: [],
                                                     timezone_bm: '',
                                                     asset_access: 'full_asset',
-                                                },
-                                            ]);
-                                        }}
-                                    >
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        {t('service_purchase.add_account', {
-                                            defaultValue: 'Thêm tài khoản',
-                                        })}
-                                    </Button>
-                                )}
-                            </div>
-
-                            {/* Render accounts using AccountForm component */}
-                            <div className="space-y-4">
-                                {accounts.map((account, idx) => {
-                                    const metaEmailError = (
-                                        purchaseForm.errors as any
-                                    )?.[`accounts.${idx}.meta_email`];
-
-                                    return (
-                                        <AccountForm
-                                            key={idx}
-                                            account={account}
-                                            accountIndex={idx}
-                                            platform={selectedPackage.platform}
-                                            metaTimezones={meta_timezones}
-                                            googleTimezones={google_timezones}
-                                            metaEmailError={metaEmailError}
-                                            onUpdate={(index, updater) => {
-                                                setAccounts((prevAccounts) => {
-                                                    const newAccounts = [
-                                                        ...prevAccounts,
-                                                    ];
-                                                    const currentAccount =
-                                                        newAccounts[index] || {
-                                                            meta_email: '',
-                                                            display_name: '',
-                                                            bm_ids: [],
-                                                            fanpages: [],
-                                                            websites: [],
-                                                            timezone_bm: '',
-                                                            asset_access:
-                                                                'full_asset',
-                                                        };
-                                                    if (
-                                                        typeof updater ===
-                                                        'function'
-                                                    ) {
-                                                        newAccounts[index] =
-                                                            updater(
-                                                                currentAccount,
-                                                            );
-                                                    } else {
-                                                        newAccounts[index] =
-                                                            updater;
-                                                    }
-                                                    return newAccounts;
-                                                });
-                                            }}
-                                            onRemove={(index) => {
-                                                setAccounts(
-                                                    accounts.filter(
-                                                        (_, i) => i !== index,
-                                                    ),
-                                                );
-                                            }}
-                                            canRemove={accounts.length > 1}
-                                        />
-                                    );
-                                })}
+                                                };
+                                            if (typeof updater === 'function') {
+                                                newAccounts[0] = updater(currentAccount);
+                                            } else {
+                                                newAccounts[0] = updater;
+                                            }
+                                            return newAccounts;
+                                        });
+                                    }}
+                                    onRemove={() => {}}
+                                    canRemove={false}
+                                />
                             </div>
                         </div>
                     )}

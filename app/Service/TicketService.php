@@ -14,6 +14,9 @@ use App\Core\Logging;
 use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Models\Ticket;
+use App\Common\Constants\Config\ConfigName;
+use App\Repositories\ConfigRepository;
+use App\Repositories\WalletRepository;
 use App\Repositories\TicketConversationRepository;
 use App\Repositories\TicketRepository;
 use App\Repositories\UserReferralRepository;
@@ -42,6 +45,8 @@ class TicketService
         protected ServicePackageRepository $servicePackageRepository,
         protected UserWalletTransactionRepository $transactionRepository,
         protected TelegramService $telegramService,
+        protected WalletRepository $walletRepository,
+        protected ConfigRepository $configRepository,
     ) {
     }
 
@@ -955,6 +960,30 @@ class TicketService
             $data['payment_type'] = $paymentType;
             if ($paymentType === ServicePackagePaymentType::POSTPAY->value) {
                 $data['top_up_amount'] = 0;
+
+                // Validate minimum balance for postpay (maintenance min balance + open fee for each account)
+                $accountsCount = 1;
+                if (isset($data['accounts']) && is_array($data['accounts']) && !empty($data['accounts'])) {
+                    $accountsCount = count($data['accounts']);
+                }
+                $openFee = (float) $package->open_fee;
+                $openFeePayable = $openFee * $accountsCount;
+
+                $postpayMinBalanceRaw = $this->configRepository
+                    ->findByKey(ConfigName::POSTPAY_MIN_BALANCE->value)?->value;
+                $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 100;
+                $requiredBalance = $postpayMinBalance + $openFeePayable;
+
+                $wallet = $this->walletRepository->findByUserId($user->id);
+                if (! $wallet) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
+                }
+
+                if ((float) $wallet->balance < $requiredBalance) {
+                    return ServiceReturn::error(
+                        message: __('services.validation.postpay_min_wallet', ['amount' => $requiredBalance])
+                    );
+                }
             }
 
             // Tạo description từ notes (user mô tả vấn đề)
