@@ -333,7 +333,7 @@ class BusinessManagerService
 
             // Filter theo customer nếu có
             if (!empty($filter['customer_id'])) {
-                $query->where('user_id', (int) $filter['customer_id']);
+                $query->where('user_id', (string) $filter['customer_id']);
             }
 
             $serviceUsers = $query->get();
@@ -378,8 +378,8 @@ class BusinessManagerService
             // Danh sách tài khoản quảng cáo
             $accountsList = [];
 
-            // Lấy accounts từ platform config
-            if ($user && $user->role === UserRole::ADMIN->value) {
+            // Lấy accounts từ platform config (chỉ lấy khi KHÔNG lọc theo customer_id cụ thể)
+            if ($user && $user->role === UserRole::ADMIN->value && empty($filter['customer_id'])) {
                 $platformConfigAccounts = $this->getAccountsFromPlatformConfig(
                     $dateStart,
                     $dateEnd,
@@ -831,6 +831,15 @@ class BusinessManagerService
                 ));
             }
 
+            // Filter theo customer nếu có
+            $customerIdFilter = !empty($filter['customer_id']) ? trim((string) $filter['customer_id']) : null;
+            if ($customerIdFilter !== null) {
+                $accountsList = array_values(array_filter(
+                    $accountsList,
+                    fn ($item) => (string) ($item['owner_id'] ?? '') === $customerIdFilter
+                ));
+            }
+
             // Filter theo BM/MCC được chọn từ trang Quản lý BM/MCC
             $managerId = isset($filter['manager_id']) && $filter['manager_id'] !== ''
                 ? trim((string) $filter['manager_id'])
@@ -893,11 +902,27 @@ class BusinessManagerService
                 ],
             ];
 
-            if ($viewMode === 'account' && $dateStart && $dateEnd) {
+            $hasSpend = $filter['has_spend'] ?? null;
+
+            if ($hasSpend === 'has_spend') {
                 $accountsList = array_values(array_filter(
                     $accountsList,
                     fn ($item) => (float) ($item['total_spend'] ?? 0) > 0
                 ));
+            } elseif ($hasSpend === 'no_spend') {
+                $accountsList = array_values(array_filter(
+                    $accountsList,
+                    fn ($item) => (float) ($item['total_spend'] ?? 0) <= 0
+                ));
+            } elseif ($hasSpend === 'all') {
+                // Giữ lại tất cả tài khoản kể cả tài khoản 0$ chi tiêu
+            } else {
+                if ($viewMode === 'account' && $dateStart && $dateEnd) {
+                    $accountsList = array_values(array_filter(
+                        $accountsList,
+                        fn ($item) => (float) ($item['total_spend'] ?? 0) > 0
+                    ));
+                }
             }
 
             foreach ($accountsList as $accountItem) {

@@ -18,19 +18,17 @@ function deepMerge<T>(target: T, source: NestedPartial<T>): T {
     const result = { ...target };
 
     for (const key in source) {
-        if (source[key] !== undefined) {
-            if (
-                typeof source[key] === 'object' &&
-                source[key] !== null &&
-                !Array.isArray(source[key])
-            ) {
-                result[key] = deepMerge(
-                    (target as any)[key],
-                    source[key],
-                ) as any;
-            } else {
-                result[key] = source[key] as any;
-            }
+        if (
+            typeof source[key] === 'object' &&
+            source[key] !== null &&
+            !Array.isArray(source[key])
+        ) {
+            result[key] = deepMerge(
+                (target as any)[key],
+                source[key],
+            ) as any;
+        } else {
+            result[key] = source[key] as any;
         }
     }
 

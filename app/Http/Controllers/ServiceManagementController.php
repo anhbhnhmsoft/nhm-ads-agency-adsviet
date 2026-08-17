@@ -137,10 +137,10 @@ class ServiceManagementController extends Controller
                 'childManagers' => fn () => $this->businessManagerService->getChildManagersForFilter(),
                 'customers' => fn () => \App\Models\User::query()
                     ->whereHas('serviceUsers')
-                    ->select('id', 'name')
+                    ->select('id', 'name', 'username', 'email')
                     ->orderBy('name')
                     ->get()
-                    ->map(fn ($u) => ['id' => (string) $u->id, 'name' => $u->name])
+                    ->map(fn ($u) => ['id' => (string) $u->id, 'name' => $u->name ?: ($u->username ?: $u->email)])
                     ->toArray(),
             ]
         );

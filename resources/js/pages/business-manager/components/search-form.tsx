@@ -55,6 +55,7 @@ type SearchQuery = {
     end_date?: string;
     child_manager_id?: string;
     customer_id?: string;
+    has_spend?: string;
 };
 
 type Props = {
@@ -158,7 +159,7 @@ const BusinessManagerSearchForm = ({
                 <CardTitle>{t('common.search')}</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <Field>
                         <FieldLabel htmlFor="keyword">
                             {t('common.keyword')}
@@ -178,17 +179,25 @@ const BusinessManagerSearchForm = ({
                             {t('service_management.customer', { defaultValue: 'Khách hàng' })}
                         </FieldLabel>
                         <Select
-                            value={query.customer_id || undefined}
+                            value={query.customer_id || 'all'}
                             onValueChange={(value) => {
-                                setQuery({ customer_id: value || undefined });
+                                setQuery({
+                                    customer_id:
+                                        value === 'all' ? undefined : value,
+                                });
                             }}
                         >
                             <SelectTrigger id="customer">
                                 <SelectValue
-                                    placeholder={t('common.all', { defaultValue: 'Tất cả' })}
+                                    placeholder={t('common.all', {
+                                        defaultValue: 'Tất cả',
+                                    })}
                                 />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="all">
+                                    {t('common.all', { defaultValue: 'Tất cả' })}
+                                </SelectItem>
                                 {customers.map((c) => (
                                     <SelectItem key={c.id} value={c.id}>
                                         {c.name}
@@ -202,12 +211,13 @@ const BusinessManagerSearchForm = ({
                             {t('common.platform', { defaultValue: 'Nền tảng' })}
                         </FieldLabel>
                         <Select
-                            value={platformValue}
+                            value={platformValue || 'all'}
                             onValueChange={(value) => {
                                 setQuery({
-                                    platform: value
-                                        ? (Number(value) as PlatformTypeEnum)
-                                        : undefined,
+                                    platform:
+                                        value && value !== 'all'
+                                            ? (Number(value) as PlatformTypeEnum)
+                                            : undefined,
                                     child_manager_id: undefined,
                                 });
                             }}
@@ -220,6 +230,9 @@ const BusinessManagerSearchForm = ({
                                 />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="all">
+                                    {t('common.all', { defaultValue: 'Tất cả' })}
+                                </SelectItem>
                                 <SelectItem
                                     value={_PlatformType.META.toString()}
                                 >
@@ -244,8 +257,12 @@ const BusinessManagerSearchForm = ({
                             })}
                         </FieldLabel>
                         <Select
-                            value={query.child_manager_id || undefined}
+                            value={query.child_manager_id || 'all'}
                             onValueChange={(value) => {
+                                if (value === 'all') {
+                                    setQuery({ child_manager_id: undefined });
+                                    return;
+                                }
                                 const selectedChild = platformChildOptions.find(
                                     (item) => item.id === value,
                                 );
@@ -280,6 +297,9 @@ const BusinessManagerSearchForm = ({
                                 />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="all">
+                                    {t('common.all', { defaultValue: 'Tất cả' })}
+                                </SelectItem>
                                 {platformChildOptions.map((item) => (
                                     <SelectItem key={item.id} value={item.id}>
                                         {item.name} ({item.id})
@@ -295,9 +315,54 @@ const BusinessManagerSearchForm = ({
                             })}
                         </FieldLabel>
                         <DateRangePicker
+                            className="w-full"
                             date={dateRange}
                             onDateChange={handleDateRangeChange}
                         />
+                    </Field>
+                    <Field>
+                        <FieldLabel htmlFor="has_spend">
+                            {t('service_management.filter.spend_status', {
+                                defaultValue: 'Lọc chi tiêu',
+                            })}
+                        </FieldLabel>
+                        <Select
+                            value={query.has_spend || 'all'}
+                            onValueChange={(value) => {
+                                setQuery({
+                                    has_spend:
+                                        value === 'all' ? undefined : value,
+                                });
+                            }}
+                        >
+                            <SelectTrigger id="has_spend">
+                                <SelectValue
+                                    placeholder={t(
+                                        'service_management.filter.all_spend',
+                                        {
+                                            defaultValue: 'Tất cả',
+                                        },
+                                    )}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">
+                                    {t('service_management.filter.all_spend', {
+                                        defaultValue: 'Tất cả tài khoản',
+                                    })}
+                                </SelectItem>
+                                <SelectItem value="has_spend">
+                                    {t('service_management.filter.has_spend', {
+                                        defaultValue: 'Có chi tiêu (> 0$)',
+                                    })}
+                                </SelectItem>
+                                <SelectItem value="no_spend">
+                                    {t('service_management.filter.no_spend', {
+                                        defaultValue: 'Chưa chi tiêu (= 0$)',
+                                    })}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
                     </Field>
                 </div>
             </CardContent>
