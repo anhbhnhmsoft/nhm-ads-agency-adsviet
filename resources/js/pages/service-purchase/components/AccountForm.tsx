@@ -52,9 +52,7 @@ export const AccountForm = ({
 
     const addBmId = () => {
         const bmIds = account.bm_ids || [];
-        if (bmIds.length < 3) {
-            updateField('bm_ids', [...bmIds, '']);
-        }
+        updateField('bm_ids', [...bmIds, '']);
     };
 
     const removeBmId = (index: number) => {
@@ -67,9 +65,7 @@ export const AccountForm = ({
 
     const addFanpage = () => {
         const fanpages = account.fanpages || [];
-        if (fanpages.length < 3) {
-            updateField('fanpages', [...fanpages, '']);
-        }
+        updateField('fanpages', [...fanpages, '']);
     };
 
     const removeFanpage = (index: number) => {
@@ -82,9 +78,7 @@ export const AccountForm = ({
 
     const addWebsite = () => {
         const websites = account.websites || [];
-        if (websites.length < 3) {
-            updateField('websites', [...websites, '']);
-        }
+        updateField('websites', [...websites, '']);
     };
 
     const removeWebsite = (index: number) => {
@@ -179,20 +173,18 @@ export const AccountForm = ({
                                   defaultValue: 'ID MCC',
                               }) + ':'}
                     </Label>
-                    {(account.bm_ids?.length || 0) < 3 && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addBmId}
-                            className="h-7 text-xs"
-                        >
-                            <Plus className="mr-1 h-3 w-3" />
-                            {t('service_purchase.add_bm_mcc', {
-                                defaultValue: 'Thêm BM/MCC',
-                            })}
-                        </Button>
-                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addBmId}
+                        className="h-7 text-xs"
+                    >
+                        <Plus className="mr-1 h-3 w-3" />
+                        {t('service_purchase.add_bm_mcc', {
+                            defaultValue: 'Thêm BM/MCC',
+                        })}
+                    </Button>
                 </div>
                 <div className="space-y-2">
                     {(account.bm_ids && account.bm_ids.length > 0
@@ -249,20 +241,18 @@ export const AccountForm = ({
                                     defaultValue: 'Thông tin fanpage',
                                 }) + ':'}
                             </Label>
-                            {(account.fanpages?.length || 0) < 3 && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addFanpage}
-                                    className="h-7 text-xs"
-                                >
-                                    <Plus className="mr-1 h-3 w-3" />
-                                    {t('service_purchase.add_fanpage', {
-                                        defaultValue: 'Thêm fanpage',
-                                    })}
-                                </Button>
-                            )}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={addFanpage}
+                                className="h-7 text-xs"
+                            >
+                                <Plus className="mr-1 h-3 w-3" />
+                                {t('service_purchase.add_fanpage', {
+                                    defaultValue: 'Thêm fanpage',
+                                })}
+                            </Button>
                         </div>
                         <div className="space-y-2">
                             {(account.fanpages && account.fanpages.length > 0
@@ -330,20 +320,18 @@ export const AccountForm = ({
                             defaultValue: 'Thông tin website',
                         }) + ':'}
                     </Label>
-                    {(account.websites?.length || 0) < 3 && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addWebsite}
-                            className="h-7 text-xs"
-                        >
-                            <Plus className="mr-1 h-3 w-3" />
-                            {t('service_purchase.add_website', {
-                                defaultValue: 'Thêm website',
-                            })}
-                        </Button>
-                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addWebsite}
+                        className="h-7 text-xs"
+                    >
+                        <Plus className="mr-1 h-3 w-3" />
+                        {t('service_purchase.add_website', {
+                            defaultValue: 'Thêm website',
+                        })}
+                    </Button>
                 </div>
                 <div className="space-y-2">
                     {(account.websites && account.websites.length > 0

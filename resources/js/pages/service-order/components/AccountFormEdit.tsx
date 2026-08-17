@@ -73,7 +73,6 @@ export const AccountFormEdit = ({
     const addBmId = () => {
         setLocalBmIds((prev) => {
             const base = prev && prev.length > 0 ? [...prev] : [''];
-            if (base.length >= 3) return base;
             return [...base, ''];
         });
     };
@@ -108,7 +107,6 @@ export const AccountFormEdit = ({
     const addFanpage = () => {
         setLocalFanpages((prev) => {
             const base = prev && prev.length > 0 ? [...prev] : [''];
-            if (base.length >= 3) return base;
             return [...base, ''];
         });
     };
@@ -143,7 +141,6 @@ export const AccountFormEdit = ({
     const addWebsite = () => {
         setLocalWebsites((prev) => {
             const base = prev && prev.length > 0 ? [...prev] : [''];
-            if (base.length >= 3) return base;
             return [...base, ''];
         });
     };
@@ -230,20 +227,18 @@ export const AccountFormEdit = ({
                               })}
                         :
                     </Label>
-                    {(localBmIds?.length || 0) < 3 && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addBmId}
-                            className="h-7 text-xs"
-                        >
-                            <Plus className="mr-1 h-3 w-3" />
-                            {t('service_purchase.add_bm_mcc', {
-                                defaultValue: 'Thêm BM/MCC',
-                            })}
-                        </Button>
-                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addBmId}
+                        className="h-7 text-xs"
+                    >
+                        <Plus className="mr-1 h-3 w-3" />
+                        {t('service_purchase.add_bm_mcc', {
+                            defaultValue: 'Thêm BM/MCC',
+                        })}
+                    </Button>
                 </div>
                 {(localBmIds && localBmIds.length > 0 ? localBmIds : ['']).map(
                     (bmId, idx) => (
@@ -282,20 +277,18 @@ export const AccountFormEdit = ({
                             })}
                             :
                         </Label>
-                        {(localFanpages?.length || 0) < 3 && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={addFanpage}
-                                className="h-7 text-xs"
-                            >
-                                <Plus className="mr-1 h-3 w-3" />
-                                {t('service_purchase.add_fanpage', {
-                                    defaultValue: 'Thêm fanpage',
-                                })}
-                            </Button>
-                        )}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addFanpage}
+                            className="h-7 text-xs"
+                        >
+                            <Plus className="mr-1 h-3 w-3" />
+                            {t('service_purchase.add_fanpage', {
+                                defaultValue: 'Thêm fanpage',
+                            })}
+                        </Button>
                     </div>
                     <div className="space-y-2">
                         {(localFanpages && localFanpages.length > 0
@@ -343,20 +336,18 @@ export const AccountFormEdit = ({
                         })}
                         :
                     </Label>
-                    {(localWebsites?.length || 0) < 3 && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addWebsite}
-                            className="h-7 text-xs"
-                        >
-                            <Plus className="mr-1 h-3 w-3" />
-                            {t('service_purchase.add_website', {
-                                defaultValue: 'Thêm website',
-                            })}
-                        </Button>
-                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addWebsite}
+                        className="h-7 text-xs"
+                    >
+                        <Plus className="mr-1 h-3 w-3" />
+                        {t('service_purchase.add_website', {
+                            defaultValue: 'Thêm website',
+                        })}
+                    </Button>
                 </div>
                 <div className="space-y-2">
                     {(localWebsites && localWebsites.length > 0

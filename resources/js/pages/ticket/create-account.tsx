@@ -271,7 +271,7 @@ export default function CreateAccountPage({
                                 defaultValue: 'Thông tin tài khoản',
                             })}
                         </Label>
-                        {accounts.length < 3 && (
+                        {accounts.length < 20 && (
                             <Button
                                 type="button"
                                 variant="outline"
