@@ -831,7 +831,13 @@
         "choose_customer": "Chọn khách hàng...",
         "please_select_customer_first": "Vui lòng chọn khách hàng ở trên để xem gói dịch vụ và mua hộ",
         "wallet_balance_of_customer": "Số dư ví khách",
-        "customer_required": "Vui lòng chọn khách hàng trước khi mua"
+        "customer_required": "Vui lòng chọn khách hàng trước khi mua",
+        "single_form_hint": "Điền thông tin 1 lần bên dưới, áp dụng cho tất cả tài khoản.",
+        "quantity_label": "Số lượng tài khoản:",
+        "budget_unlimited_hint": "Để trống hoặc nhập 0 để không giới hạn ngân sách",
+        "auto_stock_account": "Kho tài khoản tự động",
+        "account_inventory_ready": "Kho tài khoản tự động",
+        "account_inventory_available": "{{available}} / {{total}} tài khoản sẵn sàng giao"
     },
     "service_orders": {
         "title": "Đơn dịch vụ của bạn",

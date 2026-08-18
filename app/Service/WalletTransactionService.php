@@ -1675,9 +1675,10 @@ class WalletTransactionService
                 return ServiceReturn::error(message: __('wallet.validation.transaction_invalid'));
             }
 
-            if (now()->greaterThanOrEqualTo($transaction->expires_at)) {
-                return ServiceReturn::error(message: __('wallet.validation.transaction_expired'));
-            }
+            // Bỏ kiểm tra hết hạn để không báo lỗi khi kiểm tra giao dịch
+            // if ($transaction->expires_at && now()->greaterThanOrEqualTo($transaction->expires_at)) {
+            //     return ServiceReturn::error(message: __('wallet.validation.transaction_expired'));
+            // }
             // Kiểm tra là lệnh nạp tiền
             if ((int) $transaction->type !== WalletTransactionType::DEPOSIT->value) {
                 return ServiceReturn::error(message: __('wallet.validation.transaction_invalid'));

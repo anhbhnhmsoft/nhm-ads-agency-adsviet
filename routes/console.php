@@ -3,9 +3,9 @@
 use App\Jobs\SyncAllPlatformsJob;
 use Illuminate\Support\Facades\Schedule;
 
-// Kiểm tra và xử lý giao dịch hết hạn mỗi 5 phút
-Schedule::command('transactions:expire')
-    ->everyFiveMinutes();
+// Kiểm tra và xử lý giao dịch hết hạn mỗi 5 phút (Đã tắt theo yêu cầu không tự động hủy đơn)
+// Schedule::command('transactions:expire')
+//     ->everyFiveMinutes();
 
 // Sync ads service user mỗi 5 phút để cập nhật spend sát hơn cho rule khóa creditline
 Schedule::command('app:sync-ads-service-user')->everyFiveMinutes();

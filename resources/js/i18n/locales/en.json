@@ -873,7 +873,13 @@
         "choose_customer": "Choose customer...",
         "please_select_customer_first": "Please select a customer above to view packages and purchase on their behalf",
         "wallet_balance_of_customer": "Customer wallet balance",
-        "customer_required": "Please select a customer before purchasing"
+        "customer_required": "Please select a customer before purchasing",
+        "single_form_hint": "Fill in the information once below, applicable to all accounts.",
+        "quantity_label": "Account quantity:",
+        "budget_unlimited_hint": "Leave blank or enter 0 for unlimited budget",
+        "auto_stock_account": "Automatic account inventory",
+        "account_inventory_ready": "Automatic account inventory",
+        "account_inventory_available": "{{available}} / {{total}} accounts ready for delivery"
     },
     "service_orders": {
         "title": "Your service orders",
