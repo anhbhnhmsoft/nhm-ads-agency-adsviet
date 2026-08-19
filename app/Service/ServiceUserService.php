@@ -289,16 +289,18 @@ class ServiceUserService
                 // ── Nâng spend_cap Meta ──
                 if ($platform === PlatformType::META->value) {
                     $topUpAmount = (float) ($newConfig['top_up_amount'] ?? $currentConfig['top_up_amount'] ?? 0);
-                    if ($topUpAmount > 0 && !empty($selectedAccountId)) {
-                        $spendCapResult = $this->metaBusinessService->increaseAdAccountSpendCap(
-                            $selectedAccountId,
-                            $topUpAmount
-                        );
-                        if ($spendCapResult->isError()) {
-                            Logging::error(
-                                message: 'ServiceUserService@approveServiceUser increaseAdAccountSpendCap failed: '.$spendCapResult->getMessage(),
-                                context: ['account_id' => $selectedAccountId, 'top_up_amount' => $topUpAmount]
+                    if ($topUpAmount > 0 && !empty($accountIds)) {
+                        foreach ($accountIds as $accId) {
+                            $spendCapResult = $this->metaBusinessService->increaseAdAccountSpendCap(
+                                $accId,
+                                $topUpAmount
                             );
+                            if ($spendCapResult->isError()) {
+                                Logging::error(
+                                    message: 'ServiceUserService@approveServiceUser increaseAdAccountSpendCap failed: '.$spendCapResult->getMessage(),
+                                    context: ['account_id' => $accId, 'top_up_amount' => $topUpAmount]
+                                );
+                            }
                         }
                     }
                 }

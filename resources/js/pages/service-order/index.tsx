@@ -1674,6 +1674,14 @@ const ServiceOrdersIndex = ({
                                     </>
                                 </div>
 
+                                {Object.keys(formErrors).length > 0 && (
+                                    <div className="rounded-md bg-destructive/10 p-3 text-xs text-destructive font-medium space-y-1 my-2 border border-destructive/20">
+                                        {Object.entries(formErrors).map(([key, msg]) => (
+                                            <div key={key}>• {msg}</div>
+                                        ))}
+                                    </div>
+                                )}
+
                                 <DialogFooter>
                                     <Button
                                         variant="outline"

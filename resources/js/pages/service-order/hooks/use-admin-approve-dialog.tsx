@@ -238,6 +238,8 @@ export const useServiceOrderAdminDialog = () => {
     const handleSubmitApprove = useCallback((overrideAccountIds?: string[] | string | null) => {
         if (!selectedOrder) return;
 
+        form.clearErrors();
+
         // Normalize overrideAccountIds thành array
         let accountIdsFromOverride: string[] = [];
         if (Array.isArray(overrideAccountIds)) {
@@ -251,6 +253,12 @@ export const useServiceOrderAdminDialog = () => {
             const accountIdFromForm = form.data.account_id_input?.trim();
             if (accountIdsFromOverride.length === 0 && !accountIdFromForm) {
                 form.setError('account_id', 'Vui lòng nhập ID tài khoản khi chọn tab Gán tài khoản');
+                return;
+            }
+        } else if (assignMode === 'bm') {
+            const bmIdFromForm = form.data.bm_id?.trim();
+            if (!bmIdFromForm) {
+                form.setError('bm_id', 'Vui lòng chọn hoặc nhập ID BM/MCC khi chọn tab Gán BM');
                 return;
             }
         }
