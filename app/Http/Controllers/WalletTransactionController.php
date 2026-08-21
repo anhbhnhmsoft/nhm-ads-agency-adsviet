@@ -127,6 +127,8 @@ class WalletTransactionController extends Controller
             'wallet_ids' => $walletIds,
             'type' => $request->input('type'),
             'status' => $request->input('status'),
+            'from_date' => $request->input('from_date'),
+            'to_date' => $request->input('to_date'),
         ];
         
         $result = $this->walletTransactionService->getTransactionsWithFilters(
@@ -153,8 +155,102 @@ class WalletTransactionController extends Controller
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
             ],
-            'filters' => $request->only(['type', 'status', 'user_id']),
+            'filters' => $request->only(['type', 'status', 'user_id', 'from_date', 'to_date']),
             'canApprove' => in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value]),
+        ]);
+    }
+
+    public function export(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $walletIds = null;
+
+        if ($user->role === UserRole::CUSTOMER->value) {
+            $walletResult = $this->walletService->findByUserId($user->id);
+            if (!$walletResult->isSuccess()) {
+                $walletIds = [];
+            } else {
+                $walletIds = [$walletResult->getData()->id];
+            }
+        } elseif (in_array($user->role, [UserRole::EMPLOYEE->value, UserRole::MANAGER->value, UserRole::AGENCY->value])) {
+            $walletIds = $this->walletService->getWalletIdsForManagedUsers((int) $user->id);
+        } elseif (in_array($user->role, [UserRole::ADMIN->value, UserRole::MANAGER->value, UserRole::EMPLOYEE->value])) {
+            if ($request->has('user_id') && $request->user_id) {
+                $searchName = trim((string) $request->user_id);
+                if (is_numeric($searchName)) {
+                    $walletId = $this->walletService->getWalletIdByUserId((int) $searchName);
+                    if ($walletId) {
+                        $walletIds = [$walletId];
+                    }
+                } else {
+                    $walletIds = \App\Models\UserWallet::query()
+                        ->whereHas('user', fn($q) => $q->where('name', 'ilike', "%{$searchName}%"))
+                        ->pluck('id')
+                        ->toArray();
+                }
+            }
+        }
+
+        $filters = [
+            'wallet_ids' => $walletIds,
+            'type' => $request->input('type'),
+            'status' => $request->input('status'),
+            'from_date' => $request->input('from_date'),
+            'to_date' => $request->input('to_date'),
+        ];
+
+        $result = $this->walletTransactionService->getAllTransactionsWithFilters($filters);
+        $transactions = $result->isSuccess() ? $result->getData() : collect();
+
+        $typeOptions = WalletTransactionType::getOptions();
+        $statusOptions = WalletTransactionStatus::getOptions();
+
+        $filename = 'transactions_report_' . date('Y-m-d_H-i-s') . '.csv';
+
+        return response()->streamDownload(function () use ($transactions, $typeOptions, $statusOptions) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($file, [
+                'ID Giao dịch',
+                'Thời gian',
+                'Khách hàng',
+                'Loại giao dịch',
+                'Số tiền (USDT)',
+                'Số dư sau GD',
+                'Trạng thái',
+                'Mô tả',
+            ]);
+
+            foreach ($transactions as $tx) {
+                $typeText = $typeOptions[$tx->type] ?? 'Không xác định';
+                $statusText = $statusOptions[$tx->status] ?? 'Không xác định';
+                $customerName = $tx->wallet?->user?->name ?? 'N/A';
+                $createdAt = $tx->created_at ? $tx->created_at->format('Y-m-d H:i:s') : '';
+                $description = (string) ($tx->description ?? '');
+                if ($description !== '' && str_starts_with($description, 'wallet.transaction_description.')) {
+                    $description = __($description);
+                }
+
+                fputcsv($file, [
+                    (string) $tx->id,
+                    $createdAt,
+                    $customerName,
+                    $typeText,
+                    number_format((float) $tx->amount, 2, '.', ''),
+                    $tx->balance_after !== null ? number_format((float) $tx->balance_after, 2, '.', '') : '',
+                    $statusText,
+                    $description,
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 

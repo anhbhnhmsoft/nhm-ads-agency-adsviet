@@ -15,6 +15,8 @@ export interface TransactionsIndexProps {
         type?: string;
         status?: string;
         user_id?: string;
+        from_date?: string;
+        to_date?: string;
     };
     canApprove: boolean;
 }

@@ -1536,6 +1536,14 @@ class WalletTransactionService
                 }
             }
 
+            // Lọc theo date range (from_date / to_date)
+            if (!empty($filters['from_date'])) {
+                $query->where('created_at', '>=', \Carbon\Carbon::parse($filters['from_date'])->startOfDay());
+            }
+            if (!empty($filters['to_date'])) {
+                $query->where('created_at', '<=', \Carbon\Carbon::parse($filters['to_date'])->endOfDay());
+            }
+
             $paginator = $query->paginate($queryListDTO->perPage, ['*'], 'page', $queryListDTO->page);
             return ServiceReturn::success(data: $paginator);
         } catch (QueryException $exception) {
@@ -1543,15 +1551,61 @@ class WalletTransactionService
                 message: 'Lỗi khi lấy danh sách giao dịch WalletTransactionService@getTransactionsWithFilters: ' . $exception->getMessage(),
                 exception: $exception
             );
-            // Trả về paginator rỗng khi có lỗi
-            return ServiceReturn::success(
-                data: new LengthAwarePaginator(
-                    items: [],
-                    total: 0,
-                    perPage: $queryListDTO->perPage,
-                    currentPage: $queryListDTO->page
-                )
+            return ServiceReturn::error(message: $exception->getMessage());
+        }
+    }
+
+    // Lấy toàn bộ danh sách giao dịch theo bộ lọc (không phân trang, phục vụ xuất file Excel/CSV)
+    public function getAllTransactionsWithFilters(array $filters = []): ServiceReturn
+    {
+        try {
+            $query = $this->transactionRepository->query()
+                ->with('wallet.user')
+                ->latest('created_at');
+
+            if (!empty($filters['wallet_ids'])) {
+                $query->whereIn('wallet_id', $filters['wallet_ids']);
+            }
+
+            if (!empty($filters['type'])) {
+                $typeValue = (int) $filters['type'];
+                $validTypeValues = array_column(WalletTransactionType::cases(), 'value');
+                if (in_array($typeValue, $validTypeValues, true)) {
+                    if ($typeValue === WalletTransactionType::REFUND->value) {
+                        $query->whereIn('type', [
+                            WalletTransactionType::REFUND->value,
+                            WalletTransactionType::ACCOUNT_REFUND->value,
+                        ]);
+                    } else {
+                        $query->where('type', $typeValue);
+                    }
+                }
+            }
+
+            if (!empty($filters['status'])) {
+                $statusValue = (int) $filters['status'];
+                $validStatusValues = array_column(WalletTransactionStatus::cases(), 'value');
+                if (in_array($statusValue, $validStatusValues, true)) {
+                    $query->where('status', $statusValue);
+                }
+            }
+
+            if (!empty($filters['from_date'])) {
+                $query->where('created_at', '>=', \Carbon\Carbon::parse($filters['from_date'])->startOfDay());
+            }
+            if (!empty($filters['to_date'])) {
+                $query->where('created_at', '<=', \Carbon\Carbon::parse($filters['to_date'])->endOfDay());
+            }
+
+            $transactions = $query->get();
+            $transactionsWithBalance = $this->withBalanceAfter($transactions);
+            return ServiceReturn::success(data: $transactionsWithBalance);
+        } catch (\Throwable $exception) {
+            Logging::error(
+                message: 'Lỗi khi lấy danh sách giao dịch export WalletTransactionService@getAllTransactionsWithFilters: ' . $exception->getMessage(),
+                exception: $exception
             );
+            return ServiceReturn::error(message: $exception->getMessage());
         }
     }
 

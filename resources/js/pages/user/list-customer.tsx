@@ -319,7 +319,7 @@ const ListCustomer = ({
                                           setIsTopUpDialogOpen(true);
                                       }}
                                   >
-                                      Nạp tiền
+                                      {t('wallet.top_up', { defaultValue: 'Nạp tiền' })}
                                   </Button>
                                   <Button
                                       variant="outline"
@@ -332,7 +332,7 @@ const ListCustomer = ({
                                           setIsDeductDialogOpen(true);
                                       }}
                                   >
-                                      Trừ tiền
+                                      {t('wallet.deduct', { defaultValue: 'Trừ tiền' })}
                                   </Button>
                               </div>
                           ),
@@ -564,7 +564,9 @@ const ListCustomer = ({
                                     onChange={(e) =>
                                         setTopUpAmount(e.target.value)
                                     }
-                                    placeholder="Nhập số tiền..."
+                                    placeholder={t('wallet.enter_amount_placeholder', {
+                                        defaultValue: 'Nhập số tiền...',
+                                    })}
                                 />
                             </div>
                         </div>
@@ -603,12 +605,18 @@ const ListCustomer = ({
                 >
                     <DialogContent className="max-w-md">
                         <DialogHeader>
-                            <DialogTitle>Trừ tiền từ ví khách hàng</DialogTitle>
+                            <DialogTitle>
+                                {t('wallet.deduct_title', {
+                                    defaultValue: 'Trừ tiền từ ví khách hàng',
+                                })}
+                            </DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-500">
-                                    Khách hàng
+                                    {t('common.customer', {
+                                        defaultValue: 'Khách hàng',
+                                    })}
                                 </label>
                                 <div className="text-sm font-semibold">
                                     {selectedDeductUser?.name} (
@@ -617,7 +625,9 @@ const ListCustomer = ({
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-500">
-                                    Số dư hiện tại
+                                    {t('wallet.current_balance', {
+                                        defaultValue: 'Số dư hiện tại',
+                                    })}
                                 </label>
                                 <div className="text-sm font-medium text-gray-900">
                                     {selectedDeductUser?.wallet_balance?.toLocaleString(
@@ -635,7 +645,9 @@ const ListCustomer = ({
                                     htmlFor="deduct_amount"
                                     className="text-sm font-medium text-gray-500"
                                 >
-                                    Số tiền trừ (USDT) *
+                                    {t('wallet.deduct_amount', {
+                                        defaultValue: 'Số tiền trừ (USDT) *',
+                                    })}
                                 </label>
                                 <Input
                                     id="deduct_amount"
@@ -646,7 +658,13 @@ const ListCustomer = ({
                                     onChange={(e) =>
                                         setDeductAmount(e.target.value)
                                     }
-                                    placeholder="Nhập số tiền muốn trừ..."
+                                    placeholder={t(
+                                        'wallet.enter_deduct_amount_placeholder',
+                                        {
+                                            defaultValue:
+                                                'Nhập số tiền muốn trừ...',
+                                        },
+                                    )}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -654,7 +672,9 @@ const ListCustomer = ({
                                     htmlFor="deduct_reason"
                                     className="text-sm font-medium text-gray-500"
                                 >
-                                    Lý do
+                                    {t('wallet.reason', {
+                                        defaultValue: 'Lý do',
+                                    })}
                                 </label>
                                 <Input
                                     id="deduct_reason"
@@ -662,7 +682,13 @@ const ListCustomer = ({
                                     onChange={(e) =>
                                         setDeductReason(e.target.value)
                                     }
-                                    placeholder="Nhập lý do trừ tiền..."
+                                    placeholder={t(
+                                        'wallet.enter_reason_placeholder',
+                                        {
+                                            defaultValue:
+                                                'Nhập lý do trừ tiền...',
+                                        },
+                                    )}
                                 />
                             </div>
                         </div>
@@ -671,7 +697,7 @@ const ListCustomer = ({
                                 variant="outline"
                                 onClick={() => setIsDeductDialogOpen(false)}
                             >
-                                Hủy
+                                {t('common.cancel', { defaultValue: 'Hủy' })}
                             </Button>
                             <Button
                                 variant="destructive"
@@ -683,8 +709,12 @@ const ListCustomer = ({
                                 }
                             >
                                 {processingDeduct
-                                    ? 'Đang xử lý...'
-                                    : 'Trừ tiền'}
+                                    ? t('common.processing', {
+                                          defaultValue: 'Đang xử lý...',
+                                      })
+                                    : t('wallet.deduct', {
+                                          defaultValue: 'Trừ tiền',
+                                      })}
                             </Button>
                         </div>
                     </DialogContent>

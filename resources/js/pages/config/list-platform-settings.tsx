@@ -229,6 +229,56 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
         }
     };
 
+    const formatExpiresLabel = (label?: string) => {
+        if (!label)
+            return t('platform.token_not_checked', {
+                defaultValue: 'Chưa kiểm tra',
+            });
+        if (label === 'Không có hạn cố định')
+            return t('platform.no_fixed_expiration', {
+                defaultValue: 'Không có hạn cố định',
+            });
+        if (label === 'Tạm thời bị chặn')
+            return t('platform.temporarily_blocked', {
+                defaultValue: 'Tạm thời bị chặn',
+            });
+        if (label === 'Không hợp lệ')
+            return t('platform.invalid_token', {
+                defaultValue: 'Không hợp lệ',
+            });
+        if (label === 'Chưa xác định')
+            return t('platform.unknown_token', {
+                defaultValue: 'Chưa xác định',
+            });
+        if (label === 'đã hết hạn')
+            return t('platform.expired', {
+                defaultValue: 'Đã hết hạn',
+            });
+
+        const daysMatch = label.match(/^(\d+)\s*ngày$/);
+        if (daysMatch)
+            return t('platform.days_left', {
+                count: Number(daysMatch[1]),
+                defaultValue: `còn ${daysMatch[1]} ngày`,
+            });
+
+        const hoursMatch = label.match(/^(\d+)\s*giờ$/);
+        if (hoursMatch)
+            return t('platform.hours_left', {
+                count: Number(hoursMatch[1]),
+                defaultValue: `còn ${hoursMatch[1]} giờ`,
+            });
+
+        const minutesMatch = label.match(/^(\d+)\s*phút$/);
+        if (minutesMatch)
+            return t('platform.minutes_left', {
+                count: Number(minutesMatch[1]),
+                defaultValue: `còn ${minutesMatch[1]} phút`,
+            });
+
+        return label;
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -449,11 +499,7 @@ const ListPlatformSettings = ({ googleFields, metaFields }: Props) => {
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                                                     <span>
-                                                        {item.token_status?.expires_label ||
-                                                            t('platform.token_not_checked', {
-                                                                defaultValue:
-                                                                    'Chưa kiểm tra',
-                                                            })}
+                                                        {formatExpiresLabel(item.token_status?.expires_label)}
                                                     </span>
                                                     {item.token_status?.checked_at && (
                                                         <span>

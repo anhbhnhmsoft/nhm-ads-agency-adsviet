@@ -232,13 +232,25 @@ const ConfigIndex = ({
                                             {renderInput(
                                                 _ConfigName.COINREMITTER_TRC20_API_KEY,
                                                 'TRC20 API key',
-                                                'Nhập API key ví TRC20',
+                                                t(
+                                                    'config.coinremitter_trc20_api_key_placeholder',
+                                                    {
+                                                        defaultValue:
+                                                            'Nhập API key ví TRC20',
+                                                    },
+                                                ),
                                                 'password',
                                             )}
                                             {renderInput(
                                                 _ConfigName.COINREMITTER_TRC20_PASSWORD,
                                                 'TRC20 API password',
-                                                'Nhập API password ví TRC20',
+                                                t(
+                                                    'config.coinremitter_trc20_password_placeholder',
+                                                    {
+                                                        defaultValue:
+                                                            'Nhập API password ví TRC20',
+                                                    },
+                                                ),
                                                 'password',
                                             )}
                                         </div>
@@ -249,13 +261,25 @@ const ConfigIndex = ({
                                             {renderInput(
                                                 _ConfigName.COINREMITTER_BEP20_API_KEY,
                                                 'BEP20 API key',
-                                                'Nhập API key ví BEP20',
+                                                t(
+                                                    'config.coinremitter_bep20_api_key_placeholder',
+                                                    {
+                                                        defaultValue:
+                                                            'Nhập API key ví BEP20',
+                                                    },
+                                                ),
                                                 'password',
                                             )}
                                             {renderInput(
                                                 _ConfigName.COINREMITTER_BEP20_PASSWORD,
                                                 'BEP20 API password',
-                                                'Nhập API password ví BEP20',
+                                                t(
+                                                    'config.coinremitter_bep20_password_placeholder',
+                                                    {
+                                                        defaultValue:
+                                                            'Nhập API password ví BEP20',
+                                                    },
+                                                ),
                                                 'password',
                                             )}
                                         </div>
@@ -298,13 +322,25 @@ const ConfigIndex = ({
                                         {renderInput(
                                             _ConfigName.PAYMENTO_API_KEY,
                                             'Paymento API key',
-                                            'Nhập Merchant API key',
+                                            t(
+                                                'config.paymento_api_key_placeholder',
+                                                {
+                                                    defaultValue:
+                                                        'Nhập Merchant API key',
+                                                },
+                                            ),
                                             'password',
                                         )}
                                         {renderInput(
                                             _ConfigName.PAYMENTO_SECRET_KEY,
                                             'Paymento secret key',
-                                            'Nhập secret key dùng ký webhook',
+                                            t(
+                                                'config.paymento_secret_key_placeholder',
+                                                {
+                                                    defaultValue:
+                                                        'Nhập secret key dùng ký webhook',
+                                                },
+                                            ),
                                             'password',
                                         )}
                                     </div>

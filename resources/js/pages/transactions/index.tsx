@@ -1,3 +1,4 @@
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,10 +13,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
+import { formatDateForQuery } from '@/lib/utils';
 import { transactions_index } from '@/routes';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Clock, Filter, Search } from 'lucide-react';
-import React, { ReactNode, useState } from 'react';
+import { Clock, Download, Filter, Search } from 'lucide-react';
+import React, { ReactNode, useMemo, useState } from 'react';
+import type { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
 import type { TransactionsIndexProps } from './types/type';
 
@@ -47,7 +50,31 @@ const TransactionsIndex = ({
         type: filters.type || '',
         status: filters.status || '',
         user_id: filters.user_id || '',
+        from_date: filters.from_date || '',
+        to_date: filters.to_date || '',
     });
+
+    const dateRange: DateRange | undefined = useMemo(() => {
+        if (filterForm.data.from_date || filterForm.data.to_date) {
+            return {
+                from: filterForm.data.from_date
+                    ? new Date(filterForm.data.from_date)
+                    : undefined,
+                to: filterForm.data.to_date
+                    ? new Date(filterForm.data.to_date)
+                    : undefined,
+            };
+        }
+        return undefined;
+    }, [filterForm.data.from_date, filterForm.data.to_date]);
+
+    const handleDateRangeChange = (date: DateRange | undefined) => {
+        filterForm.setData((prev) => ({
+            ...prev,
+            from_date: date?.from ? formatDateForQuery(date.from) || '' : '',
+            to_date: date?.to ? formatDateForQuery(date.to) || '' : '',
+        }));
+    };
 
     const approveForm = useForm<{ tx_hash?: string }>({
         tx_hash: '',
@@ -63,6 +90,8 @@ const TransactionsIndex = ({
                 type: filterForm.data.type || undefined,
                 status: filterForm.data.status || undefined,
                 user_id: filterForm.data.user_id || undefined,
+                from_date: filterForm.data.from_date || undefined,
+                to_date: filterForm.data.to_date || undefined,
             },
             {
                 preserveState: true,
@@ -148,14 +177,34 @@ const TransactionsIndex = ({
                         defaultValue: 'Quản lý giao dịch',
                     })}
                 </h1>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                >
-                    <Filter className="mr-2 h-4 w-4" />
-                    {t('common.filter', { defaultValue: 'Lọc' })}
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            const params = new URLSearchParams();
+                            if (filterForm.data.type) params.append('type', filterForm.data.type);
+                            if (filterForm.data.status) params.append('status', filterForm.data.status);
+                            if (filterForm.data.user_id) params.append('user_id', filterForm.data.user_id);
+                            if (filterForm.data.from_date) params.append('from_date', filterForm.data.from_date);
+                            if (filterForm.data.to_date) params.append('to_date', filterForm.data.to_date);
+                            window.location.href = `/transactions/export?${params.toString()}`;
+                        }}
+                    >
+                        <Download className="mr-2 h-4 w-4" />
+                        {t('transactions.download_history', {
+                            defaultValue: 'Tải lịch sử giao dịch',
+                        })}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFilters(!showFilters)}
+                    >
+                        <Filter className="mr-2 h-4 w-4" />
+                        {t('common.filter', { defaultValue: 'Lọc' })}
+                    </Button>
+                </div>
             </div>
 
             {showFilters && (
@@ -167,7 +216,7 @@ const TransactionsIndex = ({
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleFilter} className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-3">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="filter-type">
                                         {t('transactions.type', {
@@ -326,6 +375,18 @@ const TransactionsIndex = ({
                                         </option>
                                     </select>
                                 </div>
+                                <div className="space-y-2">
+                                    <Label>
+                                        {t('business_manager.filter.period', {
+                                            defaultValue: 'Khoảng thời gian',
+                                        })}
+                                    </Label>
+                                    <DateRangePicker
+                                        className="w-full"
+                                        date={dateRange}
+                                        onDateChange={handleDateRangeChange}
+                                    />
+                                </div>
                                 {canApprove && (
                                     <div className="space-y-2">
                                         <Label htmlFor="filter-user-id">
@@ -373,6 +434,24 @@ const TransactionsIndex = ({
                                 >
                                     {t('common.reset', {
                                         defaultValue: 'Đặt lại',
+                                    })}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        const params = new URLSearchParams();
+                                        if (filterForm.data.type) params.append('type', filterForm.data.type);
+                                        if (filterForm.data.status) params.append('status', filterForm.data.status);
+                                        if (filterForm.data.user_id) params.append('user_id', filterForm.data.user_id);
+                                        if (filterForm.data.from_date) params.append('from_date', filterForm.data.from_date);
+                                        if (filterForm.data.to_date) params.append('to_date', filterForm.data.to_date);
+                                        window.location.href = `/transactions/export?${params.toString()}`;
+                                    }}
+                                >
+                                    <Download className="mr-2 h-4 w-4" />
+                                    {t('transactions.download_history', {
+                                        defaultValue: 'Tải lịch sử giao dịch',
                                     })}
                                 </Button>
                             </div>
