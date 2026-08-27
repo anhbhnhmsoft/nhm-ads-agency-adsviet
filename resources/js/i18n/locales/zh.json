@@ -325,6 +325,9 @@
     },
     "service_management": {
         "title": "服务管理",
+        "download": "下载",
+        "download_csv": "导出 CSV",
+        "downloading": "正在下载...",
         "filter": {
             "spend_status": "消耗状态",
             "all_spend": "所有账户",

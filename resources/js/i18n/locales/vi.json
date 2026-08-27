@@ -229,6 +229,9 @@
     },
     "service_management": {
         "title": "Quản lý tài khoản",
+        "download": "Tải xuống",
+        "download_csv": "Xuất file CSV",
+        "downloading": "Đang tải xuống...",
         "filter": {
             "spend_status": "Lọc chi tiêu",
             "all_spend": "Tất cả tài khoản",

@@ -22,7 +22,7 @@ import type { _PlatformType as PlatformTypeEnum } from '@/lib/types/constants';
 import { _PlatformType } from '@/lib/types/constants';
 import { formatDateForQuery } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
-import { RotateCcw, Search } from 'lucide-react';
+import { Download, Loader2, RotateCcw, Search } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
@@ -63,6 +63,8 @@ type Props = {
     setQuery: (query: Partial<SearchQuery>) => void;
     handleSearch: () => void;
     handleReset?: () => void;
+    handleExport?: () => void;
+    exportLoading?: boolean;
 };
 
 const BusinessManagerSearchForm = ({
@@ -70,6 +72,8 @@ const BusinessManagerSearchForm = ({
     setQuery,
     handleSearch,
     handleReset,
+    handleExport,
+    exportLoading,
 }: Props) => {
     const { t } = useTranslation();
     const { props } = usePage<InertiaPageProps<PageProps>>();
@@ -383,6 +387,23 @@ const BusinessManagerSearchForm = ({
                         >
                             <RotateCcw />
                             {t('common.reset', { defaultValue: 'Reset' })}
+                        </Button>
+                    )}
+                    {handleExport && (
+                        <Button
+                            className="cursor-pointer"
+                            variant="outline"
+                            onClick={() => handleExport()}
+                            disabled={exportLoading}
+                        >
+                            {exportLoading ? (
+                                <Loader2 className="animate-spin" />
+                            ) : (
+                                <Download />
+                            )}
+                            {t('service_management.download', {
+                                defaultValue: 'Tải xuống',
+                            })}
                         </Button>
                     )}
                 </CardAction>

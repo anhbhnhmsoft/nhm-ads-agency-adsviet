@@ -5,6 +5,7 @@ import axios from 'axios';
 import {
     ArrowLeft,
     Columns,
+    Download,
     Loader2,
     Pause,
     Play,
@@ -281,6 +282,31 @@ const ServiceManagementIndex = ({
         },
         [],
     );
+
+    const [exportLoading, setExportLoading] = useState(false);
+
+    const handleExport = useCallback(() => {
+        try {
+            setExportLoading(true);
+            const params = new URLSearchParams();
+            Object.entries(query).forEach(([key, val]) => {
+                if (val !== undefined && val !== null && val !== '') {
+                    params.set(`filter[${key}]`, String(val));
+                }
+            });
+            window.location.href = `/service-management/export?${params.toString()}`;
+            setTimeout(() => {
+                setExportLoading(false);
+            }, 2000);
+        } catch (e) {
+            setExportLoading(false);
+            toast.error(
+                t('common_error.server_error', {
+                    defaultValue: 'Đã có lỗi xảy ra',
+                }),
+            );
+        }
+    }, [query, t]);
 
     // Unassign dialog state
     const [unassignDialogOpen, setUnassignDialogOpen] = useState(false);
@@ -1793,6 +1819,8 @@ const ServiceManagementIndex = ({
                             setQuery={setQuery}
                             handleSearch={handleSearch}
                             handleReset={handleReset}
+                            handleExport={handleExport}
+                            exportLoading={exportLoading}
                         />
                         {(lastSyncedAt ||
                             query.platform === _PlatformType.META ||
@@ -1843,8 +1871,24 @@ const ServiceManagementIndex = ({
                             </div>
                         )}
 
-                        {/* Column visibility toggle */}
-                        <div className="mb-2 flex justify-end">
+                        {/* Column visibility toggle & Export */}
+                        <div className="mb-2 flex items-center justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleExport}
+                                disabled={exportLoading}
+                                className="cursor-pointer"
+                            >
+                                {exportLoading ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Download className="mr-2 h-4 w-4" />
+                                )}
+                                {t('service_management.download_csv', {
+                                    defaultValue: 'Xuất file CSV',
+                                })}
+                            </Button>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" size="sm">

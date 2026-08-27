@@ -325,6 +325,9 @@
     },
     "service_management": {
         "title": "Service management",
+        "download": "Download",
+        "download_csv": "Export CSV",
+        "downloading": "Downloading...",
         "filter": {
             "spend_status": "Spend status",
             "all_spend": "All accounts",

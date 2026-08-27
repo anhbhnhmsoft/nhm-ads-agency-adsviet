@@ -7,6 +7,7 @@ use App\Core\Controller;
 use App\Core\QueryListDTO;
 use App\Jobs\GoogleAds\SyncGooglePlatformJob;
 use App\Jobs\MetaApi\SyncMetaPlatformJob;
+use App\Models\User;
 use App\Service\BusinessManagerService;
 use App\Service\PlatformSettingService;
 use App\Service\ServiceUserService;
@@ -14,6 +15,7 @@ use App\Service\WalletTransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ServiceManagementController extends Controller
 {
@@ -135,7 +137,7 @@ class ServiceManagementController extends Controller
                 'stats' => fn () => $stats,
                 'totals' => fn () => $totals,
                 'childManagers' => fn () => $this->businessManagerService->getChildManagersForFilter(),
-                'customers' => fn () => \App\Models\User::query()
+                'customers' => fn () => User::query()
                     ->whereHas('serviceUsers')
                     ->select('id', 'name', 'username', 'email')
                     ->orderBy('name')
@@ -144,6 +146,109 @@ class ServiceManagementController extends Controller
                     ->toArray(),
             ]
         );
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $params = $this->extractQueryPagination($request);
+        $filter = $params->get('filter') ?? [];
+        $filter['view'] = 'account';
+
+        $result = $this->businessManagerService->getListBusinessManagers(
+            new QueryListDTO(
+                perPage: 0,
+                page: 1,
+                filter: $filter,
+                sortBy: $params->get('sort_by'),
+                sortDirection: $params->get('direction'),
+            )
+        );
+
+        $data = $result->isError() ? null : $result->getData();
+        $items = $data['items'] ?? [];
+
+        $filename = 'service_management_report_' . date('Y-m-d_H-i-s') . '.csv';
+
+        return response()->streamDownload(function () use ($items) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($file, [
+                __('service_management.export_column.account_name'),
+                __('service_management.export_column.account_id'),
+                __('service_management.export_column.customer_name'),
+                __('service_management.export_column.bm_name'),
+                __('service_management.export_column.platform'),
+                __('service_management.export_column.total_spend'),
+                __('service_management.export_column.currency'),
+                __('service_management.export_column.account_status'),
+                __('service_management.export_column.disable_reason'),
+                __('service_management.export_column.spend_cap'),
+                __('service_management.export_column.remaining_amount'),
+                __('service_management.export_column.amount_spent'),
+                __('service_management.export_column.total_balance'),
+                __('service_management.export_column.created_time'),
+                __('service_management.export_column.last_synced_at'),
+            ], ',', '"', '\\');
+
+            foreach ($items as $item) {
+                $platformText = match ((int) ($item['platform'] ?? 0)) {
+                    PlatformType::META->value => 'Meta Ads',
+                    PlatformType::GOOGLE->value => 'Google Ads',
+                    default => __('service_management.export_column.platform_other'),
+                };
+
+                $totalSpend = is_numeric($item['total_spend'] ?? null)
+                    ? number_format((float) $item['total_spend'], 2, '.', '')
+                    : '0.00';
+
+                $spendCap = is_numeric($item['spend_cap'] ?? null)
+                    ? number_format((float) $item['spend_cap'], 2, '.', '')
+                    : '';
+
+                $remainingAmount = is_numeric($item['remaining_amount'] ?? null)
+                    ? number_format((float) $item['remaining_amount'], 2, '.', '')
+                    : '';
+
+                $amountSpent = is_numeric($item['amount_spent'] ?? null)
+                    ? number_format((float) $item['amount_spent'], 2, '.', '')
+                    : '';
+
+                $totalBalance = is_numeric($item['total_balance'] ?? null)
+                    ? number_format((float) $item['total_balance'], 2, '.', '')
+                    : '';
+
+                $createdTime = !empty($item['created_time'])
+                    ? date('Y-m-d H:i:s', is_numeric($item['created_time']) ? (int) $item['created_time'] : strtotime((string) $item['created_time']))
+                    : '';
+
+                $lastSyncedAt = !empty($item['last_synced_at'])
+                    ? date('Y-m-d H:i:s', strtotime((string) $item['last_synced_at']))
+                    : '';
+
+                fputcsv($file, [
+                    $item['account_name'] ?? '',
+                    $item['account_id'] ?? '',
+                    $item['customer_name'] ?? ($item['owner_name'] ?? ''),
+                    $item['bm_name'] ?? '',
+                    $platformText,
+                    $totalSpend,
+                    strtoupper((string) ($item['currency'] ?? 'USD')),
+                    $item['account_status_label'] ?? ($item['account_status'] ?? ''),
+                    $item['disable_reason'] ?? '',
+                    $spendCap,
+                    $remainingAmount,
+                    $amountSpent,
+                    $totalBalance,
+                    $createdTime,
+                    $lastSyncedAt,
+                ], ',', '"', '\\');
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     private function attachRefundState(array $account, array $refundLookup): array

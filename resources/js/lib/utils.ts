@@ -37,9 +37,10 @@ export function formatMoney(
     if (val === null || val === undefined || isNaN(val)) return '-';
 
     const normalizedCurrency = (currency || 'USD').toUpperCase();
+    const isZeroDecimal = ['VND', 'JPY', 'KRW'].includes(normalizedCurrency);
     const isVietnamese = language.toLowerCase().startsWith('vi');
     const numberOptions: Intl.NumberFormatOptions = {
-        minimumFractionDigits: 0,
+        minimumFractionDigits: isZeroDecimal ? 0 : 2,
         maximumFractionDigits: 2,
     };
 

@@ -1067,8 +1067,14 @@ class BusinessManagerService
             $perPage = $queryListDTO->perPage ?? 10;
             $page = $queryListDTO->page ?? 1;
             $total = count($bmArray);
-            $offset = ($page - 1) * $perPage;
-            $paginatedData = array_slice($bmArray, $offset, $perPage);
+
+            if ($perPage > 0) {
+                $offset = ($page - 1) * $perPage;
+                $paginatedData = array_slice($bmArray, $offset, $perPage);
+            } else {
+                $paginatedData = $bmArray;
+                $perPage = $total > 0 ? $total : 10;
+            }
 
             $paginator = new LengthAwarePaginator(
                 items: $paginatedData,
@@ -1080,6 +1086,7 @@ class BusinessManagerService
 
             return ServiceReturn::success(data: [
                 'paginator' => $paginator,
+                'items' => $bmArray,
                 'stats' => $stats,
                 'totals' => $totals,
             ]);

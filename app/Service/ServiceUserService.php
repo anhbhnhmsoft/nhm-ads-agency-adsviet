@@ -144,8 +144,10 @@ class ServiceUserService
                     $currentUserId = $serviceUser->user_id;
                     if ($platform === PlatformType::META->value) {
                         foreach ($accountIds as $selectedAccountId) {
+                            $normId = preg_replace('/^act_/', '', trim($selectedAccountId));
+                            $idsToMatch = array_values(array_unique([$selectedAccountId, $normId, 'act_' . $normId]));
                             $existingOwner = $this->metaAccountRepository->query()
-                                ->where('account_id', $selectedAccountId)
+                                ->whereIn('account_id', $idsToMatch)
                                 ->where('service_user_id', '!=', $serviceUser->id)
                                 ->whereNotNull('service_user_id')
                                 ->whereHas('serviceUser', fn ($q) => $q
@@ -162,8 +164,10 @@ class ServiceUserService
                         }
                     } elseif ($platform === PlatformType::GOOGLE->value) {
                         foreach ($accountIds as $selectedAccountId) {
+                            $cleanId = preg_replace('/[^0-9]/', '', (string) $selectedAccountId);
+                            $idsToMatch = array_values(array_filter(array_unique([$selectedAccountId, $cleanId])));
                             $existingOwner = $this->googleAccountRepository->query()
-                                ->where('account_id', $selectedAccountId)
+                                ->whereIn('account_id', $idsToMatch)
                                 ->where('service_user_id', '!=', $serviceUser->id)
                                 ->whereNotNull('service_user_id')
                                 ->whereHas('serviceUser', fn ($q) => $q
@@ -226,9 +230,11 @@ class ServiceUserService
                 if ($assignMode === 'account' && !empty($accountIds)) {
                     if ($platform === PlatformType::META->value) {
                         foreach ($accountIds as $selectedAccountId) {
+                            $normId = preg_replace('/^act_/', '', trim($selectedAccountId));
+                            $idsToMatch = array_values(array_unique([$selectedAccountId, $normId, 'act_' . $normId]));
                             // Double-check lần cuối trong transaction (lock row)
                             $conflictAccount = $this->metaAccountRepository->query()
-                                ->where('account_id', $selectedAccountId)
+                                ->whereIn('account_id', $idsToMatch)
                                 ->whereNotNull('service_user_id')
                                 ->where('service_user_id', '!=', $serviceUser->id)
                                 ->whereHas('serviceUser', fn ($q) => $q
@@ -243,13 +249,15 @@ class ServiceUserService
                                 );
                             }
                             $this->metaAccountRepository->query()
-                                ->where('account_id', $selectedAccountId)
+                                ->whereIn('account_id', $idsToMatch)
                                 ->update(['service_user_id' => $serviceUser->id]);
                         }
                     } elseif ($platform === PlatformType::GOOGLE->value) {
                         foreach ($accountIds as $selectedAccountId) {
+                            $cleanId = preg_replace('/[^0-9]/', '', (string) $selectedAccountId);
+                            $idsToMatch = array_values(array_filter(array_unique([$selectedAccountId, $cleanId])));
                             $conflictAccount = $this->googleAccountRepository->query()
-                                ->where('account_id', $selectedAccountId)
+                                ->whereIn('account_id', $idsToMatch)
                                 ->whereNotNull('service_user_id')
                                 ->where('service_user_id', '!=', $serviceUser->id)
                                 ->whereHas('serviceUser', fn ($q) => $q
@@ -264,7 +272,7 @@ class ServiceUserService
                                 );
                             }
                             $this->googleAccountRepository->query()
-                                ->where('account_id', $selectedAccountId)
+                                ->whereIn('account_id', $idsToMatch)
                                 ->update(['service_user_id' => $serviceUser->id]);
                         }
                     }
@@ -603,9 +611,11 @@ class ServiceUserService
                 foreach ($accountIds as $selectedAccountId) {
                     if (!$selectedAccountId) continue;
                     if ($platform === PlatformType::META->value) {
+                        $normId = preg_replace('/^act_/', '', trim($selectedAccountId));
+                        $idsToMatch = array_values(array_unique([$selectedAccountId, $normId, 'act_' . $normId]));
                         // Defensive check
                         $conflict = $this->metaAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
+                            ->whereIn('account_id', $idsToMatch)
                             ->whereNotNull('service_user_id')
                             ->where('service_user_id', '!=', $serviceUser->id)
                             ->whereHas('serviceUser', fn($q) => $q
@@ -621,11 +631,13 @@ class ServiceUserService
                             continue; // Bỏ qua account đang bị khách khác dùng
                         }
                         $this->metaAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
+                            ->whereIn('account_id', $idsToMatch)
                             ->update(['service_user_id' => $serviceUser->id]);
                     } elseif ($platform === PlatformType::GOOGLE->value) {
+                        $cleanId = preg_replace('/[^0-9]/', '', (string) $selectedAccountId);
+                        $idsToMatch = array_values(array_filter(array_unique([$selectedAccountId, $cleanId])));
                         $conflict = $this->googleAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
+                            ->whereIn('account_id', $idsToMatch)
                             ->whereNotNull('service_user_id')
                             ->where('service_user_id', '!=', $serviceUser->id)
                             ->whereHas('serviceUser', fn($q) => $q
@@ -634,7 +646,7 @@ class ServiceUserService
                             ->first();
                         if ($conflict) continue;
                         $this->googleAccountRepository->query()
-                            ->where('account_id', $selectedAccountId)
+                            ->whereIn('account_id', $idsToMatch)
                             ->update(['service_user_id' => $serviceUser->id]);
                     }
                 }
