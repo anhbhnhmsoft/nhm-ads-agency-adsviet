@@ -1335,6 +1335,7 @@ class MetaService
                         'date' => $insight['date_start'],
                     ],
                     [
+                        'service_user_id' => $metaAccount->service_user_id ?? null,
                         'spend' => $insight['spend'] ?? null,
                         'impressions' => $insight['impressions'] ?? null,
                         'reach' => $insight['reach'] ?? null,
@@ -2065,6 +2066,7 @@ class MetaService
                                             'date' => $insight['date_start'],
                                         ],
                                         [
+                                            'service_user_id' => $serviceUser->id ?? $metaAccount->service_user_id ?? null,
                                             'spend' => $insight['spend'] ?? null,
                                             'impressions' => $insight['impressions'] ?? null,
                                             'reach' => $insight['reach'] ?? null,
