@@ -76,6 +76,8 @@ interface SearchableSelectProps {
         value: string;
         label: string;
         sublabel?: string;
+        badge?: string;
+        badgeVariant?: 'default' | 'success' | 'warning' | 'destructive' | 'secondary';
         disabled?: boolean;
     }[];
     disabled?: boolean;
@@ -103,6 +105,7 @@ function SearchableSelect({
         return (
             opt.label.toLowerCase().includes(query) ||
             (opt.sublabel && opt.sublabel.toLowerCase().includes(query)) ||
+            (opt.badge && opt.badge.toLowerCase().includes(query)) ||
             opt.value.toLowerCase().includes(query)
         );
     });
@@ -175,14 +178,37 @@ function SearchableSelect({
                                             'pointer-events-none opacity-50',
                                     )}
                                 >
-                                    <span className="block truncate">
-                                        {opt.label}
-                                        {opt.sublabel && (
-                                            <span className="ml-1 block text-xs text-muted-foreground">
-                                                {opt.sublabel}
+                                    <div className="flex w-full items-center justify-between gap-2 overflow-hidden">
+                                        <div className="min-w-0 flex-1">
+                                            <span className="block truncate font-medium text-foreground">
+                                                {opt.label}
+                                            </span>
+                                            {opt.sublabel && (
+                                                <span className="block truncate text-xs text-muted-foreground">
+                                                    {opt.sublabel}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {opt.badge && (
+                                            <span
+                                                className={cn(
+                                                    'shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium leading-none',
+                                                    opt.badgeVariant === 'success' &&
+                                                        'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+                                                    opt.badgeVariant === 'warning' &&
+                                                        'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+                                                    opt.badgeVariant === 'destructive' &&
+                                                        'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
+                                                    opt.badgeVariant === 'secondary' &&
+                                                        'bg-secondary text-secondary-foreground',
+                                                    (!opt.badgeVariant || opt.badgeVariant === 'default') &&
+                                                        'bg-muted text-muted-foreground',
+                                                )}
+                                            >
+                                                {opt.badge}
                                             </span>
                                         )}
-                                    </span>
+                                    </div>
                                 </button>
                             ))}
                         </div>
@@ -1484,12 +1510,16 @@ const ServiceOrdersIndex = ({
                                                                             acc.account_id,
                                                                     ),
                                                             )
-                                                            .map((acc) => ({
-                                                                value: acc.account_id,
-                                                                label: `${acc.account_name || acc.account_id} — ${acc.account_id} (${acc.currency})${acc.service_user_id ? ' [Đã gán]' : ''}`,
-                                                                sublabel:
-                                                                    acc.account_id,
-                                                            }))}
+                                                            .map((acc) => {
+                                                                const alreadyAssigned = !!acc.service_user_id;
+                                                                return {
+                                                                    value: acc.account_id,
+                                                                    label: acc.account_name || acc.account_id,
+                                                                    sublabel: `${acc.account_id}${acc.currency ? ` (${acc.currency})` : ''}`,
+                                                                    badge: alreadyAssigned ? 'Đã gán' : 'Chưa gán',
+                                                                    badgeVariant: (alreadyAssigned ? 'destructive' : 'success') as 'destructive' | 'success',
+                                                                };
+                                                            })}
                                                         value=""
                                                         onValueChange={(
                                                             value,
@@ -2302,27 +2332,36 @@ const ServiceOrdersIndex = ({
                                                                         );
                                                                     const alreadyAssigned =
                                                                         !!acc.service_user_id;
-                                                                    let suffix =
-                                                                        '';
+                                                                    let badge = 'Chưa gán';
+                                                                    let badgeVariant:
+                                                                        | 'success'
+                                                                        | 'warning'
+                                                                        | 'destructive'
+                                                                        | 'secondary' =
+                                                                        'success';
                                                                     if (
                                                                         alreadyInList
                                                                     ) {
-                                                                        suffix =
-                                                                            ' [Đã chọn]';
+                                                                        badge =
+                                                                            'Đã chọn';
+                                                                        badgeVariant =
+                                                                            'secondary';
                                                                     } else if (
                                                                         alreadyAssigned
                                                                     ) {
-                                                                        suffix =
-                                                                            ' [Đã gán KH khác]';
-                                                                    } else {
-                                                                        suffix =
-                                                                            ' [Chưa gán]';
+                                                                        badge =
+                                                                            'Đã gán KH khác';
+                                                                        badgeVariant =
+                                                                            'destructive';
                                                                     }
                                                                     return {
                                                                         value: acc.account_id,
-                                                                        label: `${acc.account_name || acc.account_id} — ${acc.account_id} (${acc.currency})${suffix}`,
-                                                                        sublabel:
+                                                                        label:
+                                                                            acc.account_name ||
                                                                             acc.account_id,
+                                                                        sublabel: `${acc.account_id}${acc.currency ? ` (${acc.currency})` : ''}`,
+                                                                        badge,
+                                                                        badgeVariant,
                                                                         disabled:
                                                                             alreadyInList,
                                                                     };
