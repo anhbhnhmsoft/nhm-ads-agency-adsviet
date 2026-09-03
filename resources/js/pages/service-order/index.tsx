@@ -144,6 +144,7 @@ function SearchableSelect({
             <PopoverContent
                 className="w-[var(--radix-popover-trigger-width)] p-0"
                 align="start"
+                onWheel={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center border-b px-3">
                     <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -154,7 +155,10 @@ function SearchableSelect({
                         className="flex h-10 w-full rounded-md border-none bg-transparent px-0 py-3 text-sm outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                 </div>
-                <ScrollArea className="max-h-[280px] overflow-y-auto p-1">
+                <div
+                    className="max-h-[280px] overflow-y-auto p-1 overscroll-contain"
+                    onWheel={(e) => e.stopPropagation()}
+                >
                     {filteredOptions.length === 0 ? (
                         <div className="py-6 text-center text-sm text-muted-foreground">
                             {emptyText}
@@ -213,7 +217,7 @@ function SearchableSelect({
                             ))}
                         </div>
                     )}
-                </ScrollArea>
+                </div>
             </PopoverContent>
         </Popover>
     );
