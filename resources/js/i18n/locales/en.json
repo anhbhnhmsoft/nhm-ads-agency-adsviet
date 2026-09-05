@@ -974,9 +974,19 @@
             "budget": "Budget",
             "availability": "Availability",
             "budget_unlimited": "Unlimited",
+            "wallet_balance": "Wallet Balance",
+            "unbilled_spend": "Unbilled Spend",
+            "billing_status": "Billing Status",
             "status": "Order status",
             "created_at": "Created at",
             "actions": "Actions"
+        },
+        "billing": {
+            "low_balance": "Low Balance",
+            "healthy": "Healthy",
+            "ready_to_charge": "Ready to Charge",
+            "prepay": "Prepaid",
+            "fee_estimate": "Fee: "
         },
         "filter": {
             "search_placeholder": "Search customer...",
@@ -991,6 +1001,9 @@
             "status_cancelled": "Cancelled",
             "status_queue_job_pending": "Queued",
             "all_platforms": "All platforms",
+            "all_billing_status": "All wallet status",
+            "billing_low_balance": "🔴 Low Wallet (< $100)",
+            "billing_healthy": "🟢 Healthy Wallet (>= $100)",
             "search_button": "Filter",
             "reset_button": "Clear filter"
         },

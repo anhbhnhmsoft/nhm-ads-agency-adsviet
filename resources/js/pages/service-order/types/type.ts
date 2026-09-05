@@ -68,6 +68,16 @@ export type ServiceOrder = {
     top_up_fee?: number;
     spending_fee?: number;
     total_cost?: number; // Tổng chi phí được tính ở backend
+    wallet_balance?: number;
+    total_spend?: number;
+    billed_spend?: number;
+    unbilled_spend?: number;
+    pending_fee?: number;
+    billing_health?: {
+        status: 'healthy' | 'low_balance' | 'ready_to_charge' | 'prepay';
+        min_wallet_required: number;
+        is_low_balance: boolean;
+    };
     config_account?: ServiceOrderConfigAccount | null;
     description?: string | null;
     created_at?: string | null;

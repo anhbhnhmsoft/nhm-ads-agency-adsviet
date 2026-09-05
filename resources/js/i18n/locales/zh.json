@@ -974,9 +974,19 @@
             "budget": "预算",
             "availability": "可用性",
             "budget_unlimited": "无限",
+            "wallet_balance": "钱包余额",
+            "unbilled_spend": "未结算消耗",
+            "billing_status": "钱包状态",
             "status": "订单状态",
             "created_at": "创建于",
             "actions": "行动"
+        },
+        "billing": {
+            "low_balance": "余额不足",
+            "healthy": "正常",
+            "ready_to_charge": "达到扣费阈值",
+            "prepay": "预付费",
+            "fee_estimate": "费用: "
         },
         "filter": {
             "search_placeholder": "搜索客户...",
@@ -991,6 +1001,9 @@
             "status_cancelled": "已取消",
             "status_queue_job_pending": "排队中",
             "all_platforms": "所有平台",
+            "all_billing_status": "所有钱包状态",
+            "billing_low_balance": "🔴 钱包余额不足 (< 100$)",
+            "billing_healthy": "🟢 钱包余额正常 (>= 100$)",
             "search_button": "筛选",
             "reset_button": "清除筛选"
         },

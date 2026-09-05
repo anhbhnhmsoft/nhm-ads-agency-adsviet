@@ -115,6 +115,54 @@ class ServiceOrderResource extends JsonResource
             $totalCost = $openFeePayable;
         }
 
+        $walletBalance = (float) ($user?->wallet?->balance ?? 0.0);
+
+        // Tính tổng chi tiêu thực tế từ các tài khoản đã liên kết
+        $totalSpend = 0.0;
+        $currencyService = app(\App\Service\CurrencyExchangeService::class);
+        $zeroDecimal = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
+
+        if ($platform === PlatformType::META->value && $this->relationLoaded('metaAccount')) {
+            foreach ($this->metaAccount as $a) {
+                $raw = (float) ($a->amount_spent ?? 0);
+                $currency = strtoupper($a->currency ?? 'USD');
+                $amount = in_array($currency, $zeroDecimal) ? $raw : $raw / 100;
+                $totalSpend += $currencyService->convert($amount, $currency, 'USD');
+            }
+        } elseif ($platform === PlatformType::GOOGLE->value && $this->relationLoaded('googleAccounts')) {
+            foreach ($this->googleAccounts as $a) {
+                $raw = (float) ($a->amount_spent ?? 0);
+                $currency = strtoupper($a->currency ?? 'USD');
+                $amount = in_array($currency, $zeroDecimal) ? $raw : $raw / 100;
+                $totalSpend += $currencyService->convert($amount, $currency, 'USD');
+            }
+        }
+
+        $billedSpend = max(0.0, (float) ($config['spending_fee_billed_spend'] ?? 0.0));
+        $unbilledSpend = max(0.0, $totalSpend - $billedSpend);
+
+        $effectiveFeePercent = $spendingFeePercent;
+        if ($effectiveFeePercent <= 0 && ($config['billing_source'] ?? '') === 'customer_card') {
+            $effectiveFeePercent = $topUpFeePercent;
+        }
+
+        $pendingFee = round($unbilledSpend * ($effectiveFeePercent / 100), 2);
+        $minWalletRequired = 100.0;
+        $isLowBalance = $walletBalance < $minWalletRequired || ($pendingFee > 0 && $walletBalance < $pendingFee);
+
+        $billingStatus = 'healthy';
+        if ($isPostpay || ($config['billing_source'] ?? '') === 'customer_card') {
+            if ($isLowBalance) {
+                $billingStatus = 'low_balance';
+            } elseif ($unbilledSpend >= 100.0) {
+                $billingStatus = 'ready_to_charge';
+            } else {
+                $billingStatus = 'healthy';
+            }
+        } else {
+            $billingStatus = 'prepay';
+        }
+
         return [
             'id' => (string) $this->id,
             'status' => $this->status,
@@ -134,6 +182,16 @@ class ServiceOrderResource extends JsonResource
                 'referrer' => $referral ? [
                     'name' => $referral->name,
                 ] : null,
+            ],
+            'wallet_balance' => $walletBalance,
+            'total_spend' => round($totalSpend, 2),
+            'billed_spend' => round($billedSpend, 2),
+            'unbilled_spend' => round($unbilledSpend, 2),
+            'pending_fee' => $pendingFee,
+            'billing_health' => [
+                'status' => $billingStatus,
+                'min_wallet_required' => $minWalletRequired,
+                'is_low_balance' => $isLowBalance,
             ],
             'budget' => $this->budget,
             'open_fee' => $canViewFinancials ? $package?->open_fee : null,

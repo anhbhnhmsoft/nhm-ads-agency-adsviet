@@ -144,6 +144,14 @@ class ServicesBillPostpay extends Command
 
                                 $this->pauseAllCampaignsForServiceUser($locked);
 
+                                $this->walletTransactionService->notifySupportGroupPostpayInsufficientBalance(
+                                    $locked,
+                                    (float) $wallet->balance,
+                                    $minWalletBalance,
+                                    $chargeAmount,
+                                    $unbilledSpend,
+                                );
+
                                 $user = $wallet->user;
                                 if ($user) {
                                     \App\Core\UserLocale::run($user, function () use ($user, $wallet, $chargeAmount, $minWalletBalance) {

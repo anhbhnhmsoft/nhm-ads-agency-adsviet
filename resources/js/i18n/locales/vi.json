@@ -933,10 +933,20 @@
             "postpay_label": "Khách hàng trả sau",
             "budget": "Ngân sách",
             "budget_unlimited": "Không giới hạn",
+            "wallet_balance": "Số dư ví",
+            "unbilled_spend": "Chi tiêu chưa thu",
+            "billing_status": "Trạng thái ví",
             "status": "Trạng thái đơn",
             "availability": "Trạng thái sử dụng",
             "created_at": "Thời gian tạo",
             "actions": "Thao tác"
+        },
+        "billing": {
+            "low_balance": "Thiếu số dư ví",
+            "healthy": "Đủ điều kiện",
+            "ready_to_charge": "Đạt ngưỡng charge",
+            "prepay": "Trả trước",
+            "fee_estimate": "Phí: "
         },
         "filter": {
             "search_placeholder": "Tìm khách hàng...",
@@ -951,6 +961,9 @@
             "status_cancelled": "Đã hủy",
             "status_queue_job_pending": "Đợi job",
             "all_platforms": "Tất cả nền tảng",
+            "all_billing_status": "Tất cả trạng thái ví",
+            "billing_low_balance": "🔴 Ví thiếu tiền (< 100$)",
+            "billing_healthy": "🟢 Ví đủ điều kiện (>= 100$)",
             "search_button": "Lọc",
             "reset_button": "Xóa bộ lọc"
         },

@@ -50,6 +50,19 @@ class ServiceUserRepository extends BaseRepository
             });
         }
 
+        // Lọc theo trạng thái ví / thanh toán
+        if (!empty($filters['billing_status'])) {
+            if ($filters['billing_status'] === 'low_balance') {
+                $query->whereHas('user.wallet', function ($walletQuery) {
+                    $walletQuery->where('balance', '<', 100);
+                });
+            } elseif ($filters['billing_status'] === 'healthy') {
+                $query->whereHas('user.wallet', function ($walletQuery) {
+                    $walletQuery->where('balance', '>=', 100);
+                });
+            }
+        }
+
         return $query;
     }
 
@@ -70,11 +83,12 @@ class ServiceUserRepository extends BaseRepository
     {
         return $query->with([
             'package:id,name,platform,payment_type,billing_source,open_fee,top_up_fee,spending_fee',
-            'metaAccount:id,service_user_id,account_id,business_manager_id',
-            'googleAccounts:id,service_user_id,account_id,customer_manager_id',
+            'metaAccount:id,service_user_id,account_id,business_manager_id,amount_spent,currency',
+            'googleAccounts:id,service_user_id,account_id,customer_manager_id,amount_spent,currency',
             'user' => function ($userQuery) {
-                $userQuery->select('id', 'name', 'referral_code')
+                $userQuery->select('id', 'name', 'username', 'referral_code')
                     ->with([
+                        'wallet:id,user_id,balance',
                         'referredBy' => function ($referredQuery) {
                             $referredQuery->select('id', 'referrer_id', 'referred_id')
                                 ->with([

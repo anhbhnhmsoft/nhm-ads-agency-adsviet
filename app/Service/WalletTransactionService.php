@@ -24,6 +24,8 @@ use App\Service\UserAlertService;
 use App\Service\MailService;
 use App\Service\NotificationService;
 use App\Common\Constants\NotificationType\NotificationType;
+use App\Core\Cache\CacheKey;
+use App\Core\Cache\Caching;
 use App\Models\User;
 use App\Models\UserWalletTransaction;
 use App\Models\ServiceUser;
@@ -304,6 +306,73 @@ class WalletTransactionService
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'WalletTransactionService@notifySupportGroupSpendingFee error: '.$e->getMessage(),
+                exception: $e
+            );
+        }
+    }
+
+    public function notifySupportGroupPostpayInsufficientBalance(
+        ServiceUser $serviceUser,
+        float $currentBalance,
+        float $minWalletBalance,
+        float $chargeAmount,
+        float $unbilledSpend,
+    ): void {
+        try {
+            $supportGroupId = config('services.telegram.support_group_id');
+            if (empty($supportGroupId)) {
+                return;
+            }
+
+            $cacheKey = 'postpay_insufficient_group_notified_' . $serviceUser->id;
+            if (Caching::getCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, $cacheKey)) {
+                return;
+            }
+
+            $serviceUser->loadMissing(['user', 'package']);
+            $customer = $serviceUser->user;
+            $package = $serviceUser->package;
+            if (!$customer || !$package) {
+                return;
+            }
+
+            $platform = PlatformType::tryFrom((int) $package->platform)?->label() ?? (string) $package->platform;
+            $timezone = (string) config('services.telegram.timezone', 'Asia/Ho_Chi_Minh');
+            $now = now($timezone);
+
+            $message = __('wallet.telegram.postpay_insufficient_group_alert', [
+                'name' => htmlspecialchars($customer->name ?? $customer->username ?? ('User ' . $customer->id), ENT_QUOTES, 'UTF-8'),
+                'order_code' => htmlspecialchars((string) $serviceUser->id, ENT_QUOTES, 'UTF-8'),
+                'package' => htmlspecialchars((string) $package->name, ENT_QUOTES, 'UTF-8'),
+                'platform' => htmlspecialchars($platform, ENT_QUOTES, 'UTF-8'),
+                'balance' => htmlspecialchars(number_format($currentBalance, 2), ENT_QUOTES, 'UTF-8'),
+                'min_wallet' => htmlspecialchars(number_format($minWalletBalance, 2), ENT_QUOTES, 'UTF-8'),
+                'charge_amount' => htmlspecialchars(number_format($chargeAmount, 2), ENT_QUOTES, 'UTF-8'),
+                'unbilled_spend' => htmlspecialchars(number_format($unbilledSpend, 2), ENT_QUOTES, 'UTF-8'),
+                'time' => $now->format('d/m/Y H:i:s'),
+            ]);
+
+            $this->telegramService->sendNotification(
+                chatId: (string) $supportGroupId,
+                message: $message,
+                userId: null,
+                type: NotificationType::WALLET,
+                data: [
+                    'service_user_id' => (string) $serviceUser->id,
+                    'user_id' => (string) $customer->id,
+                ]
+            );
+
+            // Cache 4 tiếng để tránh spam group liên tục mỗi 30 phút nếu khách chưa nạp ví
+            Caching::setCache(
+                CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED,
+                now()->toDateTimeString(),
+                $cacheKey,
+                240
+            );
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'WalletTransactionService@notifySupportGroupPostpayInsufficientBalance error: ' . $e->getMessage(),
                 exception: $e
             );
         }

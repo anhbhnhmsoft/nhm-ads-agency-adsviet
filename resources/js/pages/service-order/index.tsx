@@ -257,6 +257,18 @@ const PLATFORM_OPTIONS: Array<{ value: string; labelKey: string }> = [
     { value: '2', labelKey: 'Google Ads' },
 ];
 
+const BILLING_STATUS_OPTIONS: Array<{ value: string; labelKey: string }> = [
+    { value: '', labelKey: 'service_orders.filter.all_billing_status' },
+    {
+        value: 'low_balance',
+        labelKey: 'service_orders.filter.billing_low_balance',
+    },
+    {
+        value: 'healthy',
+        labelKey: 'service_orders.filter.billing_healthy',
+    },
+];
+
 const STATUS_COLORS: Record<string, string> = {
     PENDING: 'bg-amber-500 text-white',
     QUEUE_JOB_PENDING: 'bg-[#4285f4] text-white',
@@ -298,6 +310,7 @@ const ServiceOrdersIndex = ({
     const [filterStatus, setFilterStatus] = useState('');
     const [filterPlatform, setFilterPlatform] = useState('');
     const [filterUserId, setFilterUserId] = useState('');
+    const [filterBillingStatus, setFilterBillingStatus] = useState('');
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -305,6 +318,7 @@ const ServiceOrdersIndex = ({
         setFilterStatus(params.get('filter[status]') || '');
         setFilterPlatform(params.get('filter[platform]') || '');
         setFilterUserId(params.get('filter[user_id]') || '');
+        setFilterBillingStatus(params.get('filter[billing_status]') || '');
     }, [url]);
 
     const [searchBmQuery, setSearchBmQuery] = useState('');
@@ -731,6 +745,114 @@ const ServiceOrdersIndex = ({
                     );
                 },
             },
+            ...(canViewFinancials
+                ? [
+                      {
+                          id: 'wallet_balance',
+                          header: t('service_orders.table.wallet_balance'),
+                          meta: {
+                              headerClassName: 'text-right',
+                              cellClassName: 'text-right',
+                          },
+                          cell: ({ row }: { row: { original: ServiceOrder } }) => {
+                              const balance = row.original.wallet_balance ?? 0;
+                              const isLow = balance < 100;
+                              return (
+                                  <span
+                                      className={cn(
+                                          'text-xs font-semibold',
+                                          isLow
+                                              ? 'text-red-500 dark:text-red-400'
+                                              : 'text-emerald-600 dark:text-emerald-400',
+                                      )}
+                                  >
+                                      {Number(balance).toFixed(2)} USD
+                                  </span>
+                              );
+                          },
+                      },
+                      {
+                          id: 'unbilled_spend',
+                          header: t('service_orders.table.unbilled_spend'),
+                          meta: {
+                              headerClassName: 'text-right',
+                              cellClassName: 'text-right',
+                          },
+                          cell: ({ row }: { row: { original: ServiceOrder } }) => {
+                              const unbilled = row.original.unbilled_spend ?? 0;
+                              const pendingFee = row.original.pending_fee ?? 0;
+                              return (
+                                  <div className="flex flex-col items-end text-xs">
+                                      <span className="font-medium text-foreground">
+                                          {Number(unbilled).toFixed(2)} USD
+                                      </span>
+                                      {pendingFee > 0 && (
+                                          <span className="text-[11px] text-muted-foreground">
+                                              {t('service_orders.table.pending_fee_short', {
+                                                  defaultValue: 'Phí',
+                                              })}
+                                              : ~{Number(pendingFee).toFixed(2)} USD
+                                          </span>
+                                      )}
+                                  </div>
+                              );
+                          },
+                      },
+                      {
+                          id: 'billing_status',
+                          header: t('service_orders.table.billing_status'),
+                          meta: {
+                              headerClassName: 'text-center',
+                              cellClassName: 'text-center',
+                          },
+                          cell: ({ row }: { row: { original: ServiceOrder } }) => {
+                              const health = row.original.billing_health;
+                              if (!health) {
+                                  return (
+                                      <span className="text-xs text-muted-foreground">-</span>
+                                  );
+                              }
+                              if (health.status === 'low_balance') {
+                                  return (
+                                      <Badge
+                                          variant="destructive"
+                                          className="bg-red-500 text-[11px] text-white whitespace-nowrap"
+                                      >
+                                          {t('service_orders.billing.low_balance')}
+                                      </Badge>
+                                  );
+                              }
+                              if (health.status === 'ready_to_charge') {
+                                  return (
+                                      <Badge className="bg-blue-500 text-[11px] text-white whitespace-nowrap">
+                                          {t('service_orders.billing.ready_to_charge')}
+                                      </Badge>
+                                  );
+                              }
+                              if (health.status === 'healthy') {
+                                  return (
+                                      <Badge className="bg-emerald-500 text-[11px] text-white whitespace-nowrap">
+                                          {t('service_orders.billing.healthy')}
+                                      </Badge>
+                                  );
+                              }
+                              if (health.status === 'prepay') {
+                                  return (
+                                      <Badge
+                                          variant="secondary"
+                                          className="text-[11px] whitespace-nowrap"
+                                      >
+                                          {t('service_orders.billing.prepay')}
+                                      </Badge>
+                                  );
+                              }
+                              return (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                              );
+                          },
+                      },
+                  ]
+                : []),
             {
                 id: 'status',
                 header: t('service_orders.table.status'),
@@ -935,6 +1057,8 @@ const ServiceOrdersIndex = ({
                                                     filterPlatform || undefined,
                                                 'filter[user_id]':
                                                     filterUserId || undefined,
+                                                'filter[billing_status]':
+                                                    filterBillingStatus || undefined,
                                                 page: 1,
                                             } as any,
                                             {
@@ -975,7 +1099,7 @@ const ServiceOrdersIndex = ({
                             />
                         </div>
 
-                        {/* Lọc trạng thái */}
+                        {/* Lọc trạng thái đơn */}
                         <select
                             className="h-8 rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
                             value={filterStatus}
@@ -1001,6 +1125,19 @@ const ServiceOrdersIndex = ({
                             ))}
                         </select>
 
+                        {/* Lọc trạng thái ví / Sức khỏe thanh toán */}
+                        <select
+                            className="h-8 rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                            value={filterBillingStatus}
+                            onChange={(e) => setFilterBillingStatus(e.target.value)}
+                        >
+                            {BILLING_STATUS_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {t(opt.labelKey)}
+                                </option>
+                            ))}
+                        </select>
+
                         {/* Nút tìm kiếm */}
                         <Button
                             size="sm"
@@ -1018,6 +1155,8 @@ const ServiceOrdersIndex = ({
                                             filterPlatform || undefined,
                                         'filter[user_id]':
                                             filterUserId || undefined,
+                                        'filter[billing_status]':
+                                            filterBillingStatus || undefined,
                                         page: 1,
                                     } as any,
                                     { preserveState: true, replace: true },
@@ -1032,7 +1171,8 @@ const ServiceOrdersIndex = ({
                         {(filterSearch ||
                             filterStatus ||
                             filterPlatform ||
-                            filterUserId) && (
+                            filterUserId ||
+                            filterBillingStatus) && (
                             <Button
                                 size="sm"
                                 variant="ghost"
@@ -1042,6 +1182,7 @@ const ServiceOrdersIndex = ({
                                     setFilterStatus('');
                                     setFilterPlatform('');
                                     setFilterUserId('');
+                                    setFilterBillingStatus('');
                                     inertiaRouter.get(
                                         window.location.pathname,
                                         { page: 1 } as any,
