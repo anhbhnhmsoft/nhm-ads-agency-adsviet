@@ -877,50 +877,113 @@ class ServiceUserService
                 );
             }
 
-            // Thực hiện trừ tiền ví và ghi log
-            return DB::transaction(function () use ($serviceUser, $wallet, $chargeAmount, $unbilledSpend, $spendingFeePercent, $billedSpend, $totalSpend, $config) {
-                $wallet->update(['balance' => (float) $wallet->balance - $chargeAmount]);
+            // Thực hiện trừ tiền ví và ghi log với lock row chống duplicate/spam charge
+            return DB::transaction(function () use ($serviceUser, $spendingFeePercent, $totalSpend) {
+                $lockedServiceUser = $this->serviceUserRepository->query()
+                    ->with(['package'])
+                    ->where('id', $serviceUser->id)
+                    ->lockForUpdate()
+                    ->first();
 
-                $packageName = $serviceUser->package?->name ?? 'Dịch vụ';
+                if (!$lockedServiceUser) {
+                    return ServiceReturn::error(message: __('common_error.not_found'));
+                }
+
+                $currentConfig = $lockedServiceUser->config_account ?? [];
+                if (!is_array($currentConfig)) {
+                    $currentConfig = [];
+                }
+
+                $currentBilledSpend = max(0.0, (float) ($currentConfig['spending_fee_billed_spend'] ?? 0.0));
+                $recalculatedUnbilledSpend = max(0.0, $totalSpend - $currentBilledSpend);
+
+                if ($recalculatedUnbilledSpend <= 0) {
+                    return ServiceReturn::success(
+                        data: [
+                            'total_spend' => $totalSpend,
+                            'billed_spend' => $currentBilledSpend,
+                            'unbilled_spend' => 0.0,
+                            'charge_amount' => 0.0,
+                        ],
+                        message: __('services.flash.sync_and_bill_no_unbilled', [
+                            'total_spend' => number_format($totalSpend, 2),
+                        ])
+                    );
+                }
+
+                $recalculatedChargeAmount = round($recalculatedUnbilledSpend * ($spendingFeePercent / 100), 2);
+                if ($recalculatedChargeAmount <= 0) {
+                    return ServiceReturn::success(
+                        data: [
+                            'total_spend' => $totalSpend,
+                            'billed_spend' => $currentBilledSpend,
+                            'unbilled_spend' => $recalculatedUnbilledSpend,
+                            'charge_amount' => 0.0,
+                        ],
+                        message: __('services.flash.sync_and_bill_fee_zero')
+                    );
+                }
+
+                $wallet = \App\Models\UserWallet::where('user_id', $lockedServiceUser->user_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$wallet) {
+                    return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
+                }
+
+                if ((float) $wallet->balance < $recalculatedChargeAmount) {
+                    return ServiceReturn::error(
+                        message: __('services.flash.sync_and_bill_insufficient_balance', [
+                            'unbilled_spend' => number_format($recalculatedUnbilledSpend, 2),
+                            'charge_amount' => number_format($recalculatedChargeAmount, 2),
+                            'balance' => number_format((float) $wallet->balance, 2),
+                        ])
+                    );
+                }
+
+                $wallet->update(['balance' => (float) $wallet->balance - $recalculatedChargeAmount]);
+
+                $packageName = $lockedServiceUser->package?->name ?? 'Dịch vụ';
                 $walletTransaction = $this->walletTransactionRepository->create([
                     'wallet_id' => $wallet->id,
-                    'amount' => -$chargeAmount,
+                    'amount' => -$recalculatedChargeAmount,
                     'type' => WalletTransactionType::SPENDING_FEE->value,
                     'status' => WalletTransactionStatus::COMPLETED->value,
-                    'description' => "Manual sync & bill postpay spending fee ({$spendingFeePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$totalSpend}): {$packageName}",
-                    'reference_id' => (string) $serviceUser->id,
+                    'description' => "Manual sync & bill postpay spending fee ({$spendingFeePercent}% on {$recalculatedUnbilledSpend} USD spend from {$currentBilledSpend} to {$totalSpend}): {$packageName}",
+                    'reference_id' => (string) $lockedServiceUser->id,
                     'withdraw_info' => [
                         'purpose' => 'spending_fee',
                         'manual_sync' => true,
-                        'spend_amount' => $unbilledSpend,
+                        'spend_amount' => $recalculatedUnbilledSpend,
                         'spending_fee_percent' => $spendingFeePercent,
-                        'spending_fee_amount' => $chargeAmount,
-                        'billed_spend_before' => $billedSpend,
+                        'spending_fee_amount' => $recalculatedChargeAmount,
+                        'billed_spend_before' => $currentBilledSpend,
                         'billed_spend_after' => $totalSpend,
                         'charged_at' => now()->toDateTimeString(),
                     ],
                 ]);
 
                 ServiceUserTransactionLog::create([
-                    'service_user_id' => $serviceUser->id,
-                    'amount' => $chargeAmount,
+                    'service_user_id' => $lockedServiceUser->id,
+                    'amount' => $recalculatedChargeAmount,
                     'type' => ServiceUserTransactionType::FEE->value,
                     'status' => ServiceUserTransactionStatus::COMPLETED->value,
                     'reference_id' => (string) $walletTransaction->id,
-                    'description' => "Manual sync & bill postpay spending fee ({$spendingFeePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$totalSpend}): {$packageName}",
+                    'description' => "Manual sync & bill postpay spending fee ({$spendingFeePercent}% on {$recalculatedUnbilledSpend} USD spend from {$currentBilledSpend} to {$totalSpend}): {$packageName}",
                 ]);
 
-                $config['spending_fee_billed_spend'] = $totalSpend;
-                $config['spending_fee_last_charged_at'] = now()->toDateTimeString();
-                $serviceUser->config_account = $config;
-                $serviceUser->last_postpay_billed_at = now();
-                $serviceUser->save();
+                $currentConfig['spending_fee_billed_spend'] = $totalSpend;
+                $currentConfig['spending_fee_last_charged_at'] = now()->toDateTimeString();
+                $lockedServiceUser->config_account = $currentConfig;
+                $lockedServiceUser->last_postpay_billed_at = now();
+                $lockedServiceUser->save();
 
                 app(WalletTransactionService::class)->notifySupportGroupSpendingFee(
                     $walletTransaction,
                     $packageName,
-                    $unbilledSpend,
-                    $chargeAmount,
+                    $recalculatedUnbilledSpend,
+                    $recalculatedChargeAmount,
                 );
 
                 return ServiceReturn::success(
@@ -928,12 +991,12 @@ class ServiceUserService
                         'total_spend' => $totalSpend,
                         'billed_spend' => $totalSpend,
                         'unbilled_spend' => 0.0,
-                        'charge_amount' => $chargeAmount,
+                        'charge_amount' => $recalculatedChargeAmount,
                         'new_balance' => (float) $wallet->balance,
                     ],
                     message: __('services.flash.sync_and_bill_success', [
-                        'charge_amount' => number_format($chargeAmount, 2),
-                        'unbilled_spend' => number_format($unbilledSpend, 2),
+                        'charge_amount' => number_format($recalculatedChargeAmount, 2),
+                        'unbilled_spend' => number_format($recalculatedUnbilledSpend, 2),
                         'balance' => number_format((float) $wallet->balance, 2),
                     ])
                 );
