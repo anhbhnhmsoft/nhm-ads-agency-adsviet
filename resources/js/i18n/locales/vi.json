@@ -981,7 +981,11 @@
             "approve": "Xác nhận",
             "cancel": "Hủy",
             "edit": "Chỉnh sửa",
-            "delete": "Xóa"
+            "delete": "Xóa",
+            "sync_and_bill": "Sync & Thu phí",
+            "sync_and_bill_tooltip": "Đồng bộ chi tiêu thực tế từ API và tự động thu phí chi tiêu vào ví",
+            "sync_and_bill_confirm": "Đồng bộ chi tiêu từ API và thực hiện thu phí chi tiêu cho đơn hàng này ngay bây giờ?",
+            "syncing": "Đang xử lý..."
         },
         "confirm_cancel": "Bạn có chắc muốn hủy đơn dịch vụ này?",
         "confirm_delete": "Bạn có chắc chắn muốn xóa đơn dịch vụ này? Hành động này không thể hoàn tác.",

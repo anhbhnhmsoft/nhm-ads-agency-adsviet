@@ -151,5 +151,20 @@ class ServiceOrderController extends Controller
 
         return redirect()->back();
     }
+
+    /**
+     * Admin/Manager/Employee đồng bộ chi tiêu mới nhất và thu phí chi tiêu cho đơn trả sau
+     */
+    public function syncAndBill(string $id): RedirectResponse
+    {
+        $result = $this->serviceUserService->syncAndBillPostpay($id);
+        if ($result->isError()) {
+            FlashMessage::error($result->getMessage());
+        } else {
+            FlashMessage::success($result->getMessage());
+        }
+
+        return redirect()->back();
+    }
 }
 

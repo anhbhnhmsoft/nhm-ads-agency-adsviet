@@ -48,6 +48,10 @@ return [
         'order_cancel_success' => 'Service order cancelled.',
         'order_delete_success' => 'Service order deleted.',
         'config_update_success' => 'Account configuration updated.',
+        'sync_and_bill_no_unbilled' => 'Latest spend synced ($:total_spend). All spend has already been fully billed.',
+        'sync_and_bill_fee_zero' => 'This service package has no spending fee or fee is 0.',
+        'sync_and_bill_insufficient_balance' => 'Unbilled spend $:unbilled_spend (Fee required: $:charge_amount). Customer wallet balance is $:balance, insufficient to charge.',
+        'sync_and_bill_success' => 'Successfully synced and charged $:charge_amount for $:unbilled_spend new spend. Remaining wallet balance: $:balance.',
     ],
     'notifications' => [
         'new_package_title' => 'New service package: :name',

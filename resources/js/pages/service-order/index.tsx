@@ -41,6 +41,7 @@ import type {
 import {
     service_orders_cancel,
     service_orders_destroy,
+    service_orders_sync_and_bill,
     service_purchase_index,
 } from '@/routes';
 import {
@@ -295,6 +296,8 @@ const ServiceOrdersIndex = ({
         _UserRole.EMPLOYEE,
     ]);
     const orders = paginator?.data ?? [];
+
+    const [processingSyncId, setProcessingSyncId] = useState<string | null>(null);
 
     // Multi-input lists for approve dialog
     const [bmIdList, setBmIdList] = useState<string[]>(['']);
@@ -907,6 +910,27 @@ const ServiceOrdersIndex = ({
                         openEditDialogForOrder(order);
                     };
 
+                    const handleSyncAndBill = () => {
+                        if (
+                            !window.confirm(
+                                t('service_orders.actions.sync_and_bill_confirm'),
+                            )
+                        ) {
+                            return;
+                        }
+                        setProcessingSyncId(order.id);
+                        router.post(
+                            service_orders_sync_and_bill({ id: order.id }).url,
+                            {},
+                            {
+                                preserveScroll: true,
+                                onFinish: () => {
+                                    setProcessingSyncId(null);
+                                },
+                            },
+                        );
+                    };
+
                     const handleDelete = () => {
                         if (
                             !window.confirm(t('service_orders.confirm_delete'))
@@ -918,6 +942,8 @@ const ServiceOrdersIndex = ({
                             { preserveScroll: true },
                         );
                     };
+
+                    const isSyncing = processingSyncId === order.id;
 
                     return (
                         <div className="flex gap-2">
@@ -940,17 +966,41 @@ const ServiceOrdersIndex = ({
                                 </>
                             )}
                             {!isPending && order.status === 6 && (
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-blue-300 text-blue-600 hover:bg-blue-50"
-                                    onClick={handleApprove}
-                                >
-                                    <RefreshCw className="mr-1 h-3 w-3" />
-                                    {t('service_orders.actions.reassign', {
-                                        defaultValue: 'Gán lại',
-                                    })}
-                                </Button>
+                                <>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                        disabled={isSyncing}
+                                        onClick={handleSyncAndBill}
+                                        title={t(
+                                            'service_orders.actions.sync_and_bill_tooltip',
+                                        )}
+                                    >
+                                        <RefreshCw
+                                            className={cn(
+                                                'mr-1 h-3 w-3',
+                                                isSyncing && 'animate-spin',
+                                            )}
+                                        />
+                                        {isSyncing
+                                            ? t('service_orders.actions.syncing')
+                                            : t(
+                                                  'service_orders.actions.sync_and_bill',
+                                              )}
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                                        onClick={handleApprove}
+                                    >
+                                        <RefreshCw className="mr-1 h-3 w-3" />
+                                        {t('service_orders.actions.reassign', {
+                                            defaultValue: 'Gán lại',
+                                        })}
+                                    </Button>
+                                </>
                             )}
                             <Button
                                 size="sm"

@@ -264,6 +264,7 @@ Route::middleware([
         Route::get('/', [ServiceOrderController::class, 'index'])->name('service_orders_index');
         Route::post('/{id}/approve', [ServiceOrderController::class, 'approve'])->name('service_orders_approve');
         Route::post('/{id}/cancel', [ServiceOrderController::class, 'cancel'])->name('service_orders_cancel');
+        Route::post('/{id}/sync-and-bill', [ServiceOrderController::class, 'syncAndBill'])->name('service_orders_sync_and_bill');
         Route::put('/{id}/config', [ServiceOrderController::class, 'updateConfig'])->name('service_orders_update_config');
         Route::delete('/{id}', [ServiceOrderController::class, 'destroy'])->name('service_orders_destroy');
     });

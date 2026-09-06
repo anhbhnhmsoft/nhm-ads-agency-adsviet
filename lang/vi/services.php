@@ -53,6 +53,10 @@ return [
         'order_delete_success' => 'Đã xóa đơn dịch vụ.',
         'config_update_success' => 'Đã cập nhật cấu hình tài khoản.',
         'account_unassigned' => 'Đã gỡ gán tài khoản khỏi dịch vụ.',
+        'sync_and_bill_no_unbilled' => 'Đã đồng bộ chi tiêu mới nhất (:total_spend $). Toàn bộ chi tiêu đã được thu phí đầy đủ trước đó.',
+        'sync_and_bill_fee_zero' => 'Gói dịch vụ không có phí chi tiêu hoặc phí bằng 0.',
+        'sync_and_bill_insufficient_balance' => 'Chi tiêu chưa thu :unbilled_spend $ (Phí cần thu: :charge_amount $). Ví khách hàng hiện tại chỉ còn :balance $, không đủ để thanh toán.',
+        'sync_and_bill_success' => 'Đồng bộ và thu phí thành công :charge_amount $ cho :unbilled_spend $ chi tiêu mới. Số dư ví còn lại: :balance $.',
     ],
     'service_packages' => [
         'cashback_percent_tooltip' => 'Cashback dựa theo tổng chi tiêu của khách từ đầu tháng đến cuối tháng.',

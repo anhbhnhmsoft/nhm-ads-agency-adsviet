@@ -759,4 +759,193 @@ class ServiceUserService
         return AccountBillingSource::ADVIET_CARD->value;
     }
 
+    /**
+     * Admin/Manager/Employee đồng bộ chi tiêu mới nhất từ API và thu phí ngay cho đơn hàng trả sau
+     */
+    public function syncAndBillPostpay(string $id): ServiceReturn
+    {
+        try {
+            $serviceUser = $this->serviceUserRepository->query()
+                ->with(['package', 'user.wallet'])
+                ->find($id);
+
+            if (!$serviceUser) {
+                return ServiceReturn::error(message: __('common_error.not_found'));
+            }
+
+            // Bước 1: Đồng bộ dữ liệu tài khoản từ Platform API
+            $platform = (int) ($serviceUser->package?->platform ?? 0);
+            if ($platform === PlatformType::META->value) {
+                $syncResult = $this->metaService->syncMetaAccounts($serviceUser);
+                if ($syncResult->isError()) {
+                    Logging::error('syncAndBillPostpay: syncMetaAccounts error: ' . $syncResult->getMessage(), [
+                        'service_user_id' => $serviceUser->id,
+                    ]);
+                }
+            } elseif ($platform === PlatformType::GOOGLE->value) {
+                $googleSyncJob = new \App\Jobs\GoogleAds\SyncGoogleServiceUserJob($serviceUser);
+                $googleSyncJob->handle(app(\App\Service\GoogleAdsService::class));
+            }
+
+            // Bước 2: Tính toán chi tiêu thực tế và phí chưa thu
+            $config = $serviceUser->config_account ?? [];
+            if (!is_array($config)) {
+                $config = [];
+            }
+
+            $spendingFeePercent = (float) ($serviceUser->package?->spending_fee ?? 0);
+            if ($spendingFeePercent <= 0 && ($serviceUser->package?->billing_source === AccountBillingSource::CUSTOMER_CARD->value)) {
+                $spendingFeePercent = (float) ($serviceUser->package?->top_up_fee ?? 0);
+            }
+
+            $currencyService = app(\App\Service\CurrencyExchangeService::class);
+            $zeroDecimal = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
+
+            $totalSpend = 0.0;
+            if ($platform === PlatformType::META->value) {
+                $metaAccounts = DB::table('meta_accounts')
+                    ->where('service_user_id', $serviceUser->id)
+                    ->whereNull('deleted_at')
+                    ->select('amount_spent', 'currency')
+                    ->get();
+                foreach ($metaAccounts as $a) {
+                    $raw = (float) ($a->amount_spent ?? 0);
+                    $curr = strtoupper($a->currency ?? 'USD');
+                    $amt = in_array($curr, $zeroDecimal) ? $raw : $raw / 100;
+                    $totalSpend += $currencyService->convert($amt, $curr, 'USD');
+                }
+            } elseif ($platform === PlatformType::GOOGLE->value) {
+                $googleAccounts = DB::table('google_accounts')
+                    ->where('service_user_id', $serviceUser->id)
+                    ->whereNull('deleted_at')
+                    ->select('amount_spent', 'currency')
+                    ->get();
+                foreach ($googleAccounts as $a) {
+                    $raw = (float) ($a->amount_spent ?? 0);
+                    $curr = strtoupper($a->currency ?? 'USD');
+                    $amt = in_array($curr, $zeroDecimal) ? $raw : $raw / 100;
+                    $totalSpend += $currencyService->convert($amt, $curr, 'USD');
+                }
+            }
+
+            $billedSpend = 0.0;
+            if (isset($config['spending_fee_billed_spend']) && is_numeric($config['spending_fee_billed_spend'])) {
+                $billedSpend = max(0.0, (float) $config['spending_fee_billed_spend']);
+            }
+
+            $unbilledSpend = max(0.0, $totalSpend - $billedSpend);
+
+            if ($unbilledSpend <= 0) {
+                return ServiceReturn::success(
+                    data: [
+                        'total_spend' => $totalSpend,
+                        'billed_spend' => $billedSpend,
+                        'unbilled_spend' => 0.0,
+                        'charge_amount' => 0.0,
+                    ],
+                    message: __('services.flash.sync_and_bill_no_unbilled', [
+                        'total_spend' => number_format($totalSpend, 2),
+                    ])
+                );
+            }
+
+            $chargeAmount = round($unbilledSpend * ($spendingFeePercent / 100), 2);
+            if ($chargeAmount <= 0) {
+                return ServiceReturn::success(
+                    data: [
+                        'total_spend' => $totalSpend,
+                        'billed_spend' => $billedSpend,
+                        'unbilled_spend' => $unbilledSpend,
+                        'charge_amount' => 0.0,
+                    ],
+                    message: __('services.flash.sync_and_bill_fee_zero')
+                );
+            }
+
+            $wallet = $this->walletRepository->findByUserId((string) $serviceUser->user_id);
+            if (!$wallet) {
+                return ServiceReturn::error(message: __('wallet.error.wallet_not_found'));
+            }
+
+            if ((float) $wallet->balance < $chargeAmount) {
+                return ServiceReturn::error(
+                    message: __('services.flash.sync_and_bill_insufficient_balance', [
+                        'unbilled_spend' => number_format($unbilledSpend, 2),
+                        'charge_amount' => number_format($chargeAmount, 2),
+                        'balance' => number_format((float) $wallet->balance, 2),
+                    ])
+                );
+            }
+
+            // Thực hiện trừ tiền ví và ghi log
+            return DB::transaction(function () use ($serviceUser, $wallet, $chargeAmount, $unbilledSpend, $spendingFeePercent, $billedSpend, $totalSpend, $config) {
+                $wallet->update(['balance' => (float) $wallet->balance - $chargeAmount]);
+
+                $packageName = $serviceUser->package?->name ?? 'Dịch vụ';
+                $walletTransaction = $this->walletTransactionRepository->create([
+                    'wallet_id' => $wallet->id,
+                    'amount' => -$chargeAmount,
+                    'type' => WalletTransactionType::SPENDING_FEE->value,
+                    'status' => WalletTransactionStatus::COMPLETED->value,
+                    'description' => "Manual sync & bill postpay spending fee ({$spendingFeePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$totalSpend}): {$packageName}",
+                    'reference_id' => (string) $serviceUser->id,
+                    'withdraw_info' => [
+                        'purpose' => 'spending_fee',
+                        'manual_sync' => true,
+                        'spend_amount' => $unbilledSpend,
+                        'spending_fee_percent' => $spendingFeePercent,
+                        'spending_fee_amount' => $chargeAmount,
+                        'billed_spend_before' => $billedSpend,
+                        'billed_spend_after' => $totalSpend,
+                        'charged_at' => now()->toDateTimeString(),
+                    ],
+                ]);
+
+                ServiceUserTransactionLog::create([
+                    'service_user_id' => $serviceUser->id,
+                    'amount' => $chargeAmount,
+                    'type' => ServiceUserTransactionType::FEE->value,
+                    'status' => ServiceUserTransactionStatus::COMPLETED->value,
+                    'reference_id' => (string) $walletTransaction->id,
+                    'description' => "Manual sync & bill postpay spending fee ({$spendingFeePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$totalSpend}): {$packageName}",
+                ]);
+
+                $config['spending_fee_billed_spend'] = $totalSpend;
+                $config['spending_fee_last_charged_at'] = now()->toDateTimeString();
+                $serviceUser->config_account = $config;
+                $serviceUser->last_postpay_billed_at = now();
+                $serviceUser->save();
+
+                app(WalletTransactionService::class)->notifySupportGroupSpendingFee(
+                    $walletTransaction,
+                    $packageName,
+                    $unbilledSpend,
+                    $chargeAmount,
+                );
+
+                return ServiceReturn::success(
+                    data: [
+                        'total_spend' => $totalSpend,
+                        'billed_spend' => $totalSpend,
+                        'unbilled_spend' => 0.0,
+                        'charge_amount' => $chargeAmount,
+                        'new_balance' => (float) $wallet->balance,
+                    ],
+                    message: __('services.flash.sync_and_bill_success', [
+                        'charge_amount' => number_format($chargeAmount, 2),
+                        'unbilled_spend' => number_format($unbilledSpend, 2),
+                        'balance' => number_format((float) $wallet->balance, 2),
+                    ])
+                );
+            });
+        } catch (\Throwable $e) {
+            Logging::error('ServiceUserService@syncAndBillPostpay error: ' . $e->getMessage(), [
+                'service_user_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return ServiceReturn::error(message: __('common_error.server_error') . ': ' . $e->getMessage());
+        }
+    }
+
 }

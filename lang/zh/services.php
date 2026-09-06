@@ -46,6 +46,10 @@ return [
         'order_cancel_success' => '服务订单已取消。',
         'order_delete_success' => '服务订单已删除。',
         'config_update_success' => '帐户配置已更新。',
+        'sync_and_bill_no_unbilled' => '已同步最新支出 ($:total_spend)。所有支出此前均已全额扣费。',
+        'sync_and_bill_fee_zero' => '该服务套餐没有支出手续费或费率为0。',
+        'sync_and_bill_insufficient_balance' => '未结算支出 $:unbilled_spend (需扣费: $:charge_amount)。客户钱包当前余额 $:balance，余额不足。',
+        'sync_and_bill_success' => '成功同步并收取 $:charge_amount 费用 (对应 $:unbilled_spend 新增支出)。钱包剩余余额: $:balance。',
     ],
     'notifications' => [
         'new_package_title' => '新服务包：:name',
