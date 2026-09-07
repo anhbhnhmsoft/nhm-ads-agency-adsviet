@@ -978,11 +978,41 @@ class MetaService
             }
         }
 
+        $this->setupSettingContextForServiceUser($serviceUser);
+
+        $assignMode = $serviceUserConfig['assign_mode'] ?? 'account';
+        $accountIds = [];
+        if (! empty($serviceUserConfig['account_ids'])) {
+            $accountIds = array_values(array_filter((array) $serviceUserConfig['account_ids']));
+        } elseif (! empty($serviceUserConfig['account_id'])) {
+            $accountIds = [(string) $serviceUserConfig['account_id']];
+        } elseif (! empty($serviceUserConfig['accounts']) && is_array($serviceUserConfig['accounts'])) {
+            foreach ($serviceUserConfig['accounts'] as $acc) {
+                if (! empty($acc['id'])) {
+                    $accountIds[] = (string) $acc['id'];
+                } elseif (! empty($acc['account_id'])) {
+                    $accountIds[] = (string) $acc['account_id'];
+                }
+            }
+        }
+
+        // Lấy thêm các account_id hiện đang gán cho service_user này trong DB
+        $dbAccountIds = $this->metaAccountRepository->query()
+            ->where('service_user_id', $serviceUser->id)
+            ->pluck('account_id')
+            ->toArray();
+        $accountIds = array_values(array_unique(array_filter(array_merge($accountIds, $dbAccountIds))));
+
+        // Nếu đơn hàng gán theo Account và có danh sách account_id cụ thể -> Dùng Batch API đồng bộ nhanh gọn trong 1 request
+        if ($assignMode !== 'bm' && ! empty($accountIds)) {
+            $this->syncMetaAccountsByIdsBatched($serviceUser, $accountIds, $bmId ? (string) $bmId : null);
+
+            return ServiceReturn::success();
+        }
+
         if (! $bmId) {
             return ServiceReturn::error('Missing bm_id in service user config');
         }
-
-        $this->setupSettingContextForServiceUser($serviceUser);
 
         if (! $childBmId) {
             $this->syncBusinessManagers($bmId);
@@ -1457,6 +1487,12 @@ class MetaService
     private function syncMetaAccountsForManagers(array $bmIds): void
     {
         $uniqueBmIds = array_values(array_unique(array_filter($bmIds)));
+
+        if (count($uniqueBmIds) > 1) {
+            $this->syncMetaAccountsFromManagerEdgesBatched($uniqueBmIds);
+
+            return;
+        }
 
         foreach ($uniqueBmIds as $bmId) {
             $ownerAccountIds = $this->syncMetaAccountsFromManagerEdge((string) $bmId, 'owner', maxAccounts: null);
@@ -1944,6 +1980,107 @@ class MetaService
 
             $after = $data['paging']['cursors']['after'] ?? null;
         } while ($after);
+    }
+
+    /**
+     * Đồng bộ trực tiếp danh sách tài khoản theo ID qua Batch API (Tối ưu cho đơn hàng gán theo Account)
+     */
+    private function syncMetaAccountsByIdsBatched(ServiceUser $serviceUser, array $accountIds, ?string $fallbackBmId = null): void
+    {
+        $uniqueAccountIds = array_values(array_unique(array_filter(array_map('trim', $accountIds))));
+        if (empty($uniqueAccountIds)) {
+            return;
+        }
+
+        $chunks = array_chunk($uniqueAccountIds, 50);
+        $fields = 'id,name,account_status,disable_reason,spend_cap,amount_spent,balance,currency,created_time,is_prepay_account,timezone_id,timezone_name,funding_source_details,business';
+
+        foreach ($chunks as $chunk) {
+            $batchRequests = [];
+            foreach ($chunk as $accId) {
+                $accIdFormatted = str_starts_with($accId, 'act_') ? $accId : "act_{$accId}";
+                $batchRequests[] = [
+                    'method' => 'GET',
+                    'relative_url' => "{$accIdFormatted}?fields={$fields}",
+                    'name' => "acc_{$accId}",
+                ];
+            }
+
+            $batchResponse = $this->metaBusinessService->callBatch($batchRequests);
+            if ($batchResponse->isError()) {
+                Logging::error('syncMetaAccountsByIdsBatched: Batch call failed: '.$batchResponse->getMessage(), [
+                    'service_user_id' => $serviceUser->id,
+                ]);
+
+                continue;
+            }
+
+            $responses = $batchResponse->getData();
+            foreach ($responses as $index => $res) {
+                $status = (int) ($res['code'] ?? 0);
+                $body = json_decode($res['body'] ?? '{}', true);
+
+                if ($status === 200 && is_array($body) && ! empty($body['id'])) {
+                    $business = $body['business'] ?? null;
+                    $ownerBmId = $business['id'] ?? $fallbackBmId;
+                    $ownerBmName = $business['name'] ?? null;
+
+                    if ($ownerBmId && ! $this->isMetaBusinessManagerHidden((string) $ownerBmId)) {
+                        try {
+                            $this->upsertMetaBusinessManager(
+                                ['bm_id' => $ownerBmId],
+                                [
+                                    'parent_bm_id' => null,
+                                    'name' => $ownerBmName ?? $ownerBmId,
+                                    'verification_status' => null,
+                                    'is_primary' => false,
+                                    'is_direct_access' => false,
+                                    'access_source' => MetaBusinessManagerSource::RELATED,
+                                    'last_synced_at' => now(),
+                                ]
+                            );
+                        } catch (\Throwable $e) {
+                            Logging::error('syncMetaAccountsByIdsBatched: cannot upsert BM: '.$e->getMessage());
+                        }
+                    }
+
+                    $updateData = [
+                        'business_manager_id' => $ownerBmId,
+                        'account_name' => $body['name'] ?? ('act_'.($body['account_id'] ?? $body['id'])),
+                        'account_status' => $body['account_status'] ?? null,
+                        'disable_reason' => $body['disable_reason'] ?? null,
+                        'spend_cap' => $body['spend_cap'] ?? 0,
+                        'amount_spent' => $body['amount_spent'] ?? 0,
+                        'balance' => $body['balance'] ?? 0,
+                        'currency' => $body['currency'] ?? 'USD',
+                        'created_time' => ($body['created_time'] ?? null) ? Carbon::parse($body['created_time']) : null,
+                        'is_prepay_account' => (bool) ($body['is_prepay_account'] ?? false),
+                        'timezone_id' => $body['timezone_id'] ?? null,
+                        'timezone_name' => $body['timezone_name'] ?? null,
+                        'payment_card' => $this->resolvePaymentCardFromAccountData($body),
+                        'service_user_id' => $serviceUser->id,
+                        'last_synced_at' => now(),
+                    ];
+
+                    try {
+                        $this->metaAccountRepository->query()->updateOrCreate(
+                            ['account_id' => (string) $body['id']],
+                            $updateData
+                        );
+                    } catch (\Throwable $e) {
+                        Logging::error('syncMetaAccountsByIdsBatched: cannot updateOrCreate account: '.$e->getMessage(), [
+                            'account_id' => $body['id'] ?? null,
+                            'service_user_id' => $serviceUser->id,
+                        ]);
+                    }
+                } else {
+                    Logging::error('syncMetaAccountsByIdsBatched: account failed in batch: '.($body['error']['message'] ?? 'Status '.$status), [
+                        'account_id' => $chunk[$index] ?? null,
+                        'service_user_id' => $serviceUser->id,
+                    ]);
+                }
+            }
+        }
     }
 
     /**
