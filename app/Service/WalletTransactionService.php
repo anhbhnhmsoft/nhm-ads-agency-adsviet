@@ -363,12 +363,13 @@ class WalletTransactionService
                 ]
             );
 
-            // Cache 4 tiếng để tránh spam group liên tục mỗi 30 phút nếu khách chưa nạp ví
+            // Cache đến hết ngày (chỉ gửi 1 lần duy nhất trong ngày) để tránh spam group nếu khách chưa nạp ví
+            $expireMinutes = max(60, (int) now()->diffInMinutes(now()->endOfDay()) + 60);
             Caching::setCache(
                 CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED,
                 now()->toDateTimeString(),
                 $cacheKey,
-                240
+                $expireMinutes
             );
         } catch (\Throwable $e) {
             Logging::error(

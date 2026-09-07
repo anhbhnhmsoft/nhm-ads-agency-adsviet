@@ -24,6 +24,8 @@ use App\Service\ConfigService;
 use App\Service\MetaService;
 use App\Service\GoogleAdsService;
 use Carbon\Carbon;
+use App\Core\Cache\CacheKey;
+use App\Core\Cache\Caching;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -153,7 +155,8 @@ class ServicesBillPostpay extends Command
                                 );
 
                                 $user = $wallet->user;
-                                if ($user) {
+                                $userNotifyCacheKey = 'postpay_insufficient_user_notified_' . $locked->id;
+                                if ($user && !Caching::getCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, $userNotifyCacheKey)) {
                                     \App\Core\UserLocale::run($user, function () use ($user, $wallet, $chargeAmount, $minWalletBalance) {
                                         $shortName = $user->name ?? $user->username ?? 'Customer';
                                         $balanceFormatted = number_format((float) $wallet->balance, 2);
@@ -180,6 +183,14 @@ class ServicesBillPostpay extends Command
                                             );
                                         }
                                     });
+
+                                    $expireMinutes = max(60, (int) now()->diffInMinutes(now()->endOfDay()) + 60);
+                                    Caching::setCache(
+                                        CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED,
+                                        now()->toDateTimeString(),
+                                        $userNotifyCacheKey,
+                                        $expireMinutes
+                                    );
                                 }
 
                                 return 'skip';
@@ -228,6 +239,10 @@ class ServicesBillPostpay extends Command
                             $locked->config_account = $config;
                             $locked->last_postpay_billed_at = now();
                             $locked->save();
+
+                            // Xóa cache cảnh báo thiếu tiền vì đã thu phí thành công
+                            Caching::clearCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, 'postpay_insufficient_group_notified_' . $locked->id);
+                            Caching::clearCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, 'postpay_insufficient_user_notified_' . $locked->id);
 
                             return $locked;
                         });
