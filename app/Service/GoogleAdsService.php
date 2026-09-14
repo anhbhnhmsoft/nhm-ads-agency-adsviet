@@ -1480,6 +1480,37 @@ GAQL;
             $ids = [(string) $config['google_customer_id']];
         }
 
+        // Hỗ trợ account_ids hoặc account_id khi gán theo chế độ account
+        if (empty($ids) && !empty($config['account_ids']) && is_array($config['account_ids'])) {
+            $ids = $config['account_ids'];
+        }
+        if (empty($ids) && !empty($config['account_id'])) {
+            $ids = [(string) $config['account_id']];
+        }
+
+        // Hỗ trợ đọc từ accounts list
+        if (empty($ids) && !empty($config['accounts']) && is_array($config['accounts'])) {
+            foreach ($config['accounts'] as $acc) {
+                if (!empty($acc['account_id'])) {
+                    $ids[] = $acc['account_id'];
+                }
+                if (!empty($acc['account_ids']) && is_array($acc['account_ids'])) {
+                    $ids = array_merge($ids, $acc['account_ids']);
+                }
+            }
+        }
+
+        // Hỗ trợ đọc từ google_accounts trong database đã được gán cho service_user_id này
+        if (empty($ids) && !empty($serviceUser->id)) {
+            $dbIds = $this->googleAccountRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->pluck('account_id')
+                ->toArray();
+            if (!empty($dbIds)) {
+                $ids = $dbIds;
+            }
+        }
+
         if (empty($ids)) {
             $ids = $this->fetchCustomerIdsFromManager($serviceUser);
         }
@@ -1503,13 +1534,10 @@ GAQL;
             $managerId = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
         }
         if (!$managerId) {
-            Logging::error(
-                message: 'GoogleAdsService@fetchCustomerIdsFromManager: No manager ID found in config',
-                context: [
-                    'service_user_id' => $serviceUser->id,
-                    'config_account' => $config,
-                ]
-            );
+            Logging::web('GoogleAdsService@fetchCustomerIdsFromManager: No manager ID found in config', [
+                'service_user_id' => $serviceUser->id,
+                'config_account' => $config,
+            ]);
             return [];
         }
 
@@ -2133,14 +2161,45 @@ GAQL;
     protected function resolveLoginCustomerId(ServiceUser $serviceUser): ?string
     {
         $config = $serviceUser->config_account ?? [];
-        $id = Arr::get($config, 'google_manager_id');
+        $id = Arr::get($config, 'google_manager_id') ?? Arr::get($config, 'bm_id');
         if ($id) {
             return preg_replace('/[^0-9]/', '', (string) $id);
         }
 
+        if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
+            foreach ($config['accounts'] as $acc) {
+                if (isset($acc['bm_ids']) && is_array($acc['bm_ids']) && !empty($acc['bm_ids'])) {
+                    return preg_replace('/[^0-9]/', '', (string) $acc['bm_ids'][0]);
+                }
+            }
+        }
+
+        // Tìm từ database google_accounts xem tài khoản này thuộc MCC nào (customer_manager_id)
+        $customerIds = $this->extractGoogleCustomerIds($serviceUser);
+        if (!empty($customerIds) || !empty($serviceUser->id)) {
+            $managerIdFromDb = $this->googleAccountRepository->query()
+                ->where(function ($q) use ($serviceUser, $customerIds) {
+                    if (!empty($serviceUser->id)) {
+                        $q->where('service_user_id', $serviceUser->id);
+                    }
+                    if (!empty($customerIds)) {
+                        $cleanIds = array_map(fn($cid) => preg_replace('/[^0-9]/', '', (string) $cid), $customerIds);
+                        $q->orWhereIn('account_id', array_merge($customerIds, $cleanIds));
+                    }
+                })
+                ->whereNotNull('customer_manager_id')
+                ->where('customer_manager_id', '!=', '')
+                ->value('customer_manager_id');
+
+            if ($managerIdFromDb) {
+                return preg_replace('/[^0-9]/', '', (string) $managerIdFromDb);
+            }
+        }
+
         // Lấy từ platform config (database hoặc .env)
         $platformConfig = $this->getPlatformConfig();
-        return $platformConfig['login_customer_id'];
+        $loginId = $platformConfig['login_customer_id'] ?? null;
+        return $loginId ? preg_replace('/[^0-9]/', '', (string) $loginId) : null;
     }
 
     protected function mapStatusToInt(mixed $status): int

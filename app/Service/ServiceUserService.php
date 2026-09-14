@@ -274,6 +274,17 @@ class ServiceUserService
                             $this->googleAccountRepository->query()
                                 ->whereIn('account_id', $idsToMatch)
                                 ->update(['service_user_id' => $serviceUser->id]);
+
+                            if (empty($newConfig['google_manager_id'])) {
+                                $detectedManagerId = $this->googleAccountRepository->query()
+                                    ->whereIn('account_id', $idsToMatch)
+                                    ->whereNotNull('customer_manager_id')
+                                    ->where('customer_manager_id', '!=', '')
+                                    ->value('customer_manager_id');
+                                if ($detectedManagerId) {
+                                    $newConfig['google_manager_id'] = $detectedManagerId;
+                                }
+                            }
                         }
                     }
                 }
@@ -646,6 +657,20 @@ class ServiceUserService
                         $this->googleAccountRepository->query()
                             ->whereIn('account_id', $idsToMatch)
                             ->update(['service_user_id' => $serviceUser->id]);
+
+                        if (empty($serviceUser->config_account['google_manager_id'])) {
+                            $detectedManagerId = $this->googleAccountRepository->query()
+                                ->whereIn('account_id', $idsToMatch)
+                                ->whereNotNull('customer_manager_id')
+                                ->where('customer_manager_id', '!=', '')
+                                ->value('customer_manager_id');
+                            if ($detectedManagerId) {
+                                $updatedConfig = $serviceUser->config_account ?? [];
+                                $updatedConfig['google_manager_id'] = $detectedManagerId;
+                                $serviceUser->config_account = $updatedConfig;
+                                $serviceUser->save();
+                            }
+                        }
                     }
                 }
             }
