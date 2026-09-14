@@ -32,7 +32,7 @@ export const useServiceOrderEditConfigDialog = () => {
     const [timezoneBm, setTimezoneBm] = useState('');
 
     // Additional states matching Approve dialog
-    const [assignMode, setAssignMode] = useState<AssignMode>('bm');
+    const [assignMode, setAssignMode] = useState<AssignMode>('account');
     const [bmList, setBmList] = useState<BmListItem[]>([]);
     const [loadingBmList, setLoadingBmList] = useState(false);
     const [bmAccounts, setBmAccounts] = useState<BmAccount[]>([]);
@@ -122,7 +122,7 @@ export const useServiceOrderEditConfigDialog = () => {
         setAssetAccess('full_asset');
         setTimezoneBm('');
         
-        setAssignMode('bm');
+        setAssignMode('account');
         setBmAccounts([]);
         setAccountIdInput('');
         setAccountIdList(['']);
@@ -222,21 +222,7 @@ export const useServiceOrderEditConfigDialog = () => {
                 ...(accountIdVal ? [accountIdVal] : []),
             ])).filter(Boolean);
 
-            const hasAccounts = accountIdsVal.length > 0;
-            const hasBm = !!bmIdVal || allBmIds.length > 0;
-
-            let assignModeVal: AssignMode = 'bm';
-            if (config.assign_mode === 'account' || config.assign_mode === 'bm') {
-                assignModeVal = config.assign_mode;
-                if (assignModeVal === 'account' && !hasAccounts && hasBm) {
-                    assignModeVal = 'bm';
-                } else if (assignModeVal === 'bm' && !hasBm && hasAccounts) {
-                    assignModeVal = 'account';
-                }
-            } else {
-                assignModeVal = hasAccounts ? 'account' : 'bm';
-            }
-            setAssignMode(assignModeVal);
+            setAssignMode('account');
 
             setAccountIdInput(accountIdVal);
             setAccountIdList(accountIdsVal.length > 0 ? accountIdsVal : ['']);
@@ -281,27 +267,17 @@ export const useServiceOrderEditConfigDialog = () => {
         } else {
             payload.meta_email = metaEmail || undefined;
             payload.display_name = displayName || undefined;
-            payload.assign_mode = assignMode;
+            payload.assign_mode = 'account';
             payload.child_bm_id = null;
 
-            if (assignMode === 'account') {
-                // Tab "Gán tài khoản" active → clear BM data, keep account IDs
-                payload.bm_id = undefined;
-                payload.info_fanpage = undefined;
-                payload.info_website = undefined;
-                const filteredAccountIds = accountIdList.filter((id) => id.trim());
-                payload.account_id =
-                    filteredAccountIds.length > 0 ? filteredAccountIds[0] : null;
-                (payload as any).account_ids =
-                    filteredAccountIds.length > 0 ? filteredAccountIds : null;
-            } else {
-                // Tab "Gán BM" active → keep BM data, clear account IDs
-                payload.bm_id = bmId || undefined;
-                payload.info_fanpage = infoFanpage || undefined;
-                payload.info_website = infoWebsite || undefined;
-                payload.account_id = null;
-                (payload as any).account_ids = null;
-            }
+            payload.bm_id = bmId || undefined;
+            payload.info_fanpage = infoFanpage || undefined;
+            payload.info_website = infoWebsite || undefined;
+            const filteredAccountIds = accountIdList.filter((id) => id.trim());
+            payload.account_id =
+                filteredAccountIds.length > 0 ? filteredAccountIds[0] : null;
+            (payload as any).account_ids =
+                filteredAccountIds.length > 0 ? filteredAccountIds : null;
 
             payload.asset_access = assetAccess || undefined;
             payload.timezone_bm = timezoneBm || undefined;

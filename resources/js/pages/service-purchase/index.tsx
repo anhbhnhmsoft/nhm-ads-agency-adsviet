@@ -447,7 +447,7 @@ const ServicePurchaseIndex = ({
             alert(
                 t('service_purchase.postpay_min_wallet', {
                     defaultValue:
-                        'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau.',
+                        'Your wallet must have at least {{amount}} USDT to use postpaid payment.',
                     amount: requiredPostpayBalance,
                 }),
             );
@@ -1098,7 +1098,7 @@ const ServicePurchaseIndex = ({
                                             'service_purchase.postpay_min_wallet_warning',
                                             {
                                                 defaultValue:
-                                                    'Ví của bạn cần tối thiểu {{amount}} USDT để chọn thanh toán trả sau',
+                                                    'Your wallet must have at least {{amount}} USDT to use postpaid payment.',
                                                 amount: postpayMinBalance,
                                             },
                                         )}

@@ -283,13 +283,11 @@ class ServiceUserService
                 $serviceUser->status = ServiceUserStatus::ACTIVE->value;
                 $serviceUser->save();
 
-                // ── Gán BM: sync accounts từ Meta API rồi assign ──
-                if ($assignMode === 'bm' && !empty($bmIdSubmitted)) {
-                    if ($platform === PlatformType::META->value) {
-                        // Sync accounts từ Meta API → cập nhật service_user_id
-                        $this->metaService->syncMetaAccounts($serviceUser);
-                    } elseif ($platform === PlatformType::GOOGLE->value) {
-                        // Google: sync rồi assign theo customer_manager_id
+                // ── Gán BM / Account: sync accounts từ Meta API ngay lập tức để tài khoản hiển thị ngay ra ngoài ──
+                if ($platform === PlatformType::META->value) {
+                    $this->metaService->syncMetaAccounts($serviceUser);
+                } elseif ($platform === PlatformType::GOOGLE->value) {
+                    if ($assignMode === 'bm' && !empty($bmIdSubmitted)) {
                         $this->syncGoogleAccountsForBm($serviceUser, $bmIdSubmitted);
                     }
                 }

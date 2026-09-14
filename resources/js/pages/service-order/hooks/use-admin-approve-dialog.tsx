@@ -45,8 +45,8 @@ export const useServiceOrderAdminDialog = () => {
     const [useAccountsStructure, setUseAccountsStructure] = useState(false);
     const accountsRef = useRef<AccountFormData[]>([]);
 
-    // Assign mode: 'bm' = gán BM, 'account' = gán tài khoản cụ thể
-    const [assignMode, setAssignMode] = useState<AssignMode>('bm');
+    // Assign mode: 'account' = gán tài khoản cụ thể
+    const [assignMode, setAssignMode] = useState<AssignMode>('account');
 
     // BM/MCC list for dropdown
     const [bmList, setBmList] = useState<BmListItem[]>([]);
@@ -56,10 +56,6 @@ export const useServiceOrderAdminDialog = () => {
     const [bmAccounts, setBmAccounts] = useState<BmAccount[]>([]);
     const [loadingBmAccounts, setLoadingBmAccounts] = useState(false);
 
-    // ---- Tab "Gán BM" ----
-    // bmId = ID BM nhập tay hoặc chọn từ dropdown
-
-    // ---- Tab "Gán tài khoản" ----
     // accountIdInput = ID tài khoản nhập tay (như act_xxx)
 
     const form = useForm({
@@ -146,7 +142,7 @@ export const useServiceOrderAdminDialog = () => {
             setUseAccountsStructure(false);
             accountsRef.current = [];
             setBmAccounts([]);
-            setAssignMode('bm');
+            setAssignMode('account');
 
             const config = order.config_account || {};
             const typedConfig: ServiceOrderConfigAccount = config;
@@ -225,15 +221,12 @@ export const useServiceOrderAdminDialog = () => {
 
     // Determine account_id to send to backend
     const getAccountIdToSubmit = useCallback((overrideAccountId?: string | null): string | null => {
-        if (assignMode === 'account') {
-            // Ưu tiên override từ component cha (currentAccountId từ accountIdList)
-            const fromOverride = overrideAccountId?.trim();
-            if (fromOverride) return fromOverride;
-            // Fallback: từ form data
-            return form.data.account_id_input?.trim() || null;
-        }
-        return null;
-    }, [assignMode, form.data.account_id_input]);
+        // Ưu tiên override từ component cha (currentAccountId từ accountIdList)
+        const fromOverride = overrideAccountId?.trim();
+        if (fromOverride) return fromOverride;
+        // Fallback: từ form data
+        return form.data.account_id_input?.trim() || null;
+    }, [form.data.account_id_input]);
 
     const handleSubmitApprove = useCallback((overrideAccountIds?: string[] | string | null) => {
         if (!selectedOrder) return;
@@ -248,19 +241,11 @@ export const useServiceOrderAdminDialog = () => {
             accountIdsFromOverride = [overrideAccountIds.trim()];
         }
 
-        // Validate: tab "Gán tài khoản" phải nhập ID
-        if (assignMode === 'account') {
-            const accountIdFromForm = form.data.account_id_input?.trim();
-            if (accountIdsFromOverride.length === 0 && !accountIdFromForm) {
-                form.setError('account_id', 'Vui lòng nhập ID tài khoản khi chọn tab Gán tài khoản');
-                return;
-            }
-        } else if (assignMode === 'bm') {
-            const bmIdFromForm = form.data.bm_id?.trim();
-            if (!bmIdFromForm) {
-                form.setError('bm_id', 'Vui lòng chọn hoặc nhập ID BM/MCC khi chọn tab Gán BM');
-                return;
-            }
+        // Validate: phải có ít nhất 1 account ID
+        const accountIdFromForm = form.data.account_id_input?.trim();
+        if (accountIdsFromOverride.length === 0 && !accountIdFromForm) {
+            form.setError('account_id', 'Vui lòng nhập hoặc chọn ID tài khoản');
+            return;
         }
 
         const currentAccounts = accountsRef.current;
@@ -284,12 +269,10 @@ export const useServiceOrderAdminDialog = () => {
 
         // Xác định danh sách account_ids gửi lên backend
         let finalAccountIds: string[] = [];
-        if (assignMode === 'account') {
-            if (accountIdsFromOverride.length > 0) {
-                finalAccountIds = accountIdsFromOverride;
-            } else if (form.data.account_id_input?.trim()) {
-                finalAccountIds = [form.data.account_id_input.trim()];
-            }
+        if (accountIdsFromOverride.length > 0) {
+            finalAccountIds = accountIdsFromOverride;
+        } else if (form.data.account_id_input?.trim()) {
+            finalAccountIds = [form.data.account_id_input.trim()];
         }
 
         form.transform(() => ({
@@ -298,7 +281,7 @@ export const useServiceOrderAdminDialog = () => {
             child_bm_id: null,
             account_id: finalAccountIds[0] || null,
             account_ids: finalAccountIds.length > 0 ? finalAccountIds : null,
-            assign_mode: assignMode,
+            assign_mode: 'account',
             accounts: accountsToSubmit,
             payment_type:
                 selectedOrder.package?.payment_type === 'postpay'
@@ -314,7 +297,7 @@ export const useServiceOrderAdminDialog = () => {
                 setAccounts([]);
                 accountsRef.current = [];
                 setUseAccountsStructure(false);
-                setAssignMode('bm');
+                setAssignMode('account');
                 form.reset();
                 form.clearErrors();
             },
@@ -326,7 +309,6 @@ export const useServiceOrderAdminDialog = () => {
         form,
         selectedOrder,
         useAccountsStructure,
-        assignMode,
         getAccountIdToSubmit,
     ]);
 
@@ -337,7 +319,7 @@ export const useServiceOrderAdminDialog = () => {
                 setSelectedOrder(null);
                 setAccounts([]);
                 setUseAccountsStructure(false);
-                setAssignMode('bm');
+                setAssignMode('account');
                 setBmAccounts([]);
                 form.reset();
                 form.clearErrors();

@@ -62,9 +62,18 @@ class MetaService
             $existing = $this->metaBusinessManagerRepository->findByBmId($bmId);
             $isDirectUpdate = (bool) ($data['is_direct_access'] ?? false);
 
-            if ($existing && (bool) ($existing->is_direct_access ?? false) && ! $isDirectUpdate) {
-                $data['is_direct_access'] = true;
-                $data['access_source'] = $existing->access_source ?: MetaBusinessManagerSource::SELF;
+            if ($existing) {
+                // Giữ lại tên thật nếu bản ghi mới có tên rỗng hoặc bị gán bằng chính ID
+                if (!empty($existing->name) && (string) $existing->name !== (string) $bmId) {
+                    if (empty($data['name']) || (string) $data['name'] === (string) $bmId) {
+                        $data['name'] = $existing->name;
+                    }
+                }
+
+                if ((bool) ($existing->is_direct_access ?? false) && ! $isDirectUpdate) {
+                    $data['is_direct_access'] = true;
+                    $data['access_source'] = $existing->access_source ?: MetaBusinessManagerSource::SELF;
+                }
             }
         }
 

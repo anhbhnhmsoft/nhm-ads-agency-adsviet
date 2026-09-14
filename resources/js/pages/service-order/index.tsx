@@ -134,7 +134,7 @@ function SearchableSelect({
                 >
                     <span className="truncate">
                         {selectedOption
-                            ? selectedOption.sublabel
+                            ? selectedOption.sublabel && selectedOption.sublabel !== selectedOption.label
                                 ? `${selectedOption.label} (${selectedOption.sublabel})`
                                 : selectedOption.label
                             : placeholder}
@@ -188,7 +188,7 @@ function SearchableSelect({
                                             <span className="block truncate font-medium text-foreground">
                                                 {opt.label}
                                             </span>
-                                            {opt.sublabel && (
+                                            {opt.sublabel && opt.sublabel !== opt.label && (
                                                 <span className="block truncate text-xs text-muted-foreground">
                                                     {opt.sublabel}
                                                 </span>
@@ -906,10 +906,6 @@ const ServiceOrdersIndex = ({
                         );
                     };
 
-                    const handleEdit = () => {
-                        openEditDialogForOrder(order);
-                    };
-
                     const handleSyncAndBill = () => {
                         if (
                             !window.confirm(
@@ -1002,14 +998,6 @@ const ServiceOrdersIndex = ({
                                     </Button>
                                 </>
                             )}
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleEdit}
-                            >
-                                <Pencil className="mr-1 h-3 w-3" />
-                                {t('service_orders.actions.edit')}
-                            </Button>
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -1349,553 +1337,293 @@ const ServiceOrdersIndex = ({
                                     </div>
 
                                     <>
-                                        {/* Tabs: Gán BM / Gán tài khoản */}
+                                        {/* 1. Dropdown chọn BM có sẵn */}
                                         <div className="space-y-2">
-                                            <div className="flex gap-1 rounded-lg border p-1">
-                                                <button
-                                                    type="button"
-                                                    className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                        assignMode === 'bm'
-                                                            ? 'bg-primary text-primary-foreground'
-                                                            : 'text-muted-foreground hover:bg-muted'
-                                                    }`}
-                                                    onClick={() =>
-                                                        setAssignMode('bm')
+                                            <Label htmlFor="select_bm_from_list_account">
+                                                {isApproveMeta
+                                                    ? t(
+                                                          'service_orders.form.select_bm_available',
+                                                      )
+                                                    : t(
+                                                          'service_orders.form.select_mcc_available',
+                                                      )}
+                                            </Label>
+                                            <SearchableSelect
+                                                key={`account-tab-bm-${bmId}`}
+                                                options={bmList.map(
+                                                    (bm) => ({
+                                                        value:
+                                                            bm
+                                                                .bm_ids?.[0] ||
+                                                            bm.id,
+                                                        label:
+                                                            bm.bm_name ||
+                                                            bm.name,
+                                                        sublabel:
+                                                            bm
+                                                                .bm_ids?.[0] ||
+                                                            bm.id,
+                                                    }),
+                                                )}
+                                                value={bmId || ''}
+                                                onValueChange={(
+                                                    value,
+                                                ) => {
+                                                    if (value) {
+                                                        handleSelectBmFromList(
+                                                            value,
+                                                        );
+                                                        addToListUnique(
+                                                            bmIdList,
+                                                            setBmIdList,
+                                                            value,
+                                                        );
                                                     }
-                                                >
-                                                    {isApproveMeta
+                                                }}
+                                                placeholder={
+                                                    loadingBmList
                                                         ? t(
-                                                              'service_orders.form.assign_bm',
+                                                              'service_orders.form.loading_child_bms',
+                                                          )
+                                                        : isApproveMeta
+                                                          ? t(
+                                                                'service_orders.form.select_bm_from_list',
+                                                            )
+                                                          : t(
+                                                                'service_orders.form.select_mcc_from_list',
+                                                            )
+                                                }
+                                                searchPlaceholder={
+                                                    isApproveMeta
+                                                        ? t(
+                                                              'service_orders.form.filter_bm_placeholder',
+                                                              {
+                                                                  defaultValue:
+                                                                      'Lọc danh sách BM...',
+                                                              },
                                                           )
                                                         : t(
-                                                              'service_orders.form.assign_mcc',
-                                                          )}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                        assignMode === 'account'
-                                                            ? 'bg-primary text-primary-foreground'
-                                                            : 'text-muted-foreground hover:bg-muted'
-                                                    }`}
-                                                    onClick={() => {
-                                                        setAssignMode(
-                                                            'account',
-                                                        );
-                                                        if (bmId)
-                                                            handleSelectBmFromList(
-                                                                bmId,
-                                                            );
-                                                    }}
-                                                >
-                                                    {t(
-                                                        'service_orders.form.assign_account',
-                                                    )}
-                                                </button>
-                                            </div>
+                                                              'service_orders.form.filter_mcc_placeholder',
+                                                              {
+                                                                  defaultValue:
+                                                                      'Lọc danh sách MCC...',
+                                                              },
+                                                          )
+                                                }
+                                                disabled={loadingBmList}
+                                            />
                                         </div>
 
-                                        {assignMode === 'bm' ? (
-                                            <>
-                                                {/* ==== TAB GÁN BM ==== */}
-
-                                                {/* Dropdown chọn BM có sẵn */}
-                                                <div className="space-y-2">
-                                                    <Label>
-                                                        {isApproveMeta
-                                                            ? t(
-                                                                  'service_orders.form.select_bm_available',
-                                                              )
-                                                            : t(
-                                                                  'service_orders.form.select_mcc_available',
-                                                              )}
-                                                    </Label>
-                                                    <SearchableSelect
-                                                        key={`bm-tab-bm-${bmIdList.join(',')}`}
-                                                        options={bmList
-                                                            .filter(
-                                                                (bm) =>
-                                                                    !bmIdList.some(
-                                                                        (id) =>
-                                                                            id.trim() ===
-                                                                            (bm
-                                                                                .bm_ids?.[0] ||
-                                                                                bm.id),
-                                                                    ),
-                                                            )
-                                                            .map((bm) => ({
-                                                                value:
-                                                                    bm
-                                                                        .bm_ids?.[0] ||
-                                                                    bm.id,
-                                                                label:
-                                                                    bm.bm_name ||
-                                                                    bm.name,
-                                                                sublabel:
-                                                                    bm
-                                                                        .bm_ids?.[0] ||
-                                                                    bm.id,
-                                                            }))}
-                                                        value=""
-                                                        onValueChange={(
-                                                            value,
-                                                        ) => {
-                                                            if (value) {
-                                                                handleSelectBmFromList(
-                                                                    value,
-                                                                );
-                                                                addToListUnique(
-                                                                    bmIdList,
-                                                                    setBmIdList,
-                                                                    value,
-                                                                );
-                                                            }
-                                                        }}
-                                                        placeholder={
-                                                            loadingBmList
-                                                                ? t(
-                                                                      'service_orders.form.loading_child_bms',
-                                                                  )
-                                                                : isApproveMeta
-                                                                  ? t(
-                                                                        'service_orders.form.select_bm_from_list',
-                                                                    )
-                                                                  : t(
-                                                                        'service_orders.form.select_mcc_from_list',
-                                                                    )
-                                                        }
-                                                        searchPlaceholder={
-                                                            isApproveMeta
-                                                                ? t(
-                                                                      'service_orders.form.filter_bm_placeholder',
-                                                                      {
-                                                                          defaultValue:
-                                                                              'Lọc danh sách BM...',
-                                                                      },
-                                                                  )
-                                                                : t(
-                                                                      'service_orders.form.filter_mcc_placeholder',
-                                                                      {
-                                                                          defaultValue:
-                                                                              'Lọc danh sách MCC...',
-                                                                      },
-                                                                  )
-                                                        }
-                                                        disabled={loadingBmList}
-                                                    />
-                                                </div>
-
-                                                {/* Input ID BM nhập tay + nút thêm */}
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <Label>
-                                                            {isApproveMeta
-                                                                ? t(
-                                                                      'service_orders.form.bm_id_label',
-                                                                  )
-                                                                : t(
-                                                                      'service_orders.form.mcc_id_label',
-                                                                  )}
-                                                        </Label>
-                                                        {bmIdList.length <
-                                                            999 && (
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-7 text-xs"
-                                                                onClick={() =>
-                                                                    setBmIdList(
-                                                                        [
-                                                                            ...bmIdList,
-                                                                            '',
-                                                                        ],
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Plus className="mr-1 h-3 w-3" />
-                                                                {isApproveMeta
-                                                                    ? t(
-                                                                          'service_orders.form.add_bm',
-                                                                      )
-                                                                    : t(
-                                                                          'service_orders.form.add_mcc',
-                                                                      )}
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        {bmIdList.map(
-                                                            (val, idx) => (
-                                                                <div
-                                                                    key={`bm-${idx}`}
-                                                                    className="flex gap-2"
-                                                                >
-                                                                    <Input
-                                                                        value={
-                                                                            val
-                                                                        }
-                                                                        onChange={(
-                                                                            e,
-                                                                        ) => {
-                                                                            const newList =
-                                                                                [
-                                                                                    ...bmIdList,
-                                                                                ];
-                                                                            newList[
-                                                                                idx
-                                                                            ] =
-                                                                                e.target.value;
-                                                                            setBmIdList(
-                                                                                newList,
-                                                                            );
-                                                                            if (
-                                                                                idx ===
-                                                                                0
-                                                                            )
-                                                                                setBmId(
-                                                                                    e
-                                                                                        .target
-                                                                                        .value,
-                                                                                );
-                                                                        }}
-                                                                        placeholder={
-                                                                            isApproveMeta
-                                                                                ? t(
-                                                                                      'service_orders.form.enter_bm_id',
-                                                                                  )
-                                                                                : t(
-                                                                                      'service_orders.form.enter_mcc_id',
-                                                                                  )
-                                                                        }
-                                                                    />
-                                                                    {bmIdList.length >
-                                                                        1 && (
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            className="text-red-600"
-                                                                            onClick={() =>
-                                                                                setBmIdList(
-                                                                                    bmIdList.filter(
-                                                                                        (
-                                                                                            _,
-                                                                                            i,
-                                                                                        ) =>
-                                                                                            i !==
-                                                                                            idx,
-                                                                                    ),
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
+                                        {/* 2. Dropdown chọn tài khoản có sẵn - BẮT BUỘC */}
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="select_account_from_list"
+                                                className="text-destructive"
+                                            >
+                                                {t(
+                                                    'service_orders.form.select_account_label',
+                                                )}{' '}
+                                                *
+                                            </Label>
+                                            <SearchableSelect
+                                                options={bmAccounts
+                                                    .filter(
+                                                        (acc) =>
+                                                            !accountIdList.some(
+                                                                (id) =>
+                                                                    id.trim() ===
+                                                                    acc.account_id,
                                                             ),
-                                                        )}
-                                                    </div>
-                                                    {formErrors.bm_id && (
-                                                        <p className="text-xs text-red-500">
-                                                            {formErrors.bm_id}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                {/* ==== TAB GÁN TÀI KHOẢN ==== */}
-
-                                                {/* 1. Dropdown chọn BM có sẵn */}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="select_bm_from_list_account">
-                                                        {isApproveMeta
-                                                            ? t(
-                                                                  'service_orders.form.select_bm_available',
-                                                              )
-                                                            : t(
-                                                                  'service_orders.form.select_mcc_available',
-                                                              )}
-                                                    </Label>
-                                                    <SearchableSelect
-                                                        key={`account-tab-bm-${bmId}`}
-                                                        options={bmList.map(
-                                                            (bm) => ({
-                                                                value:
-                                                                    bm
-                                                                        .bm_ids?.[0] ||
-                                                                    bm.id,
-                                                                label:
-                                                                    bm.bm_name ||
-                                                                    bm.name,
-                                                                sublabel:
-                                                                    bm
-                                                                        .bm_ids?.[0] ||
-                                                                    bm.id,
-                                                            }),
-                                                        )}
-                                                        value={bmId || ''}
-                                                        onValueChange={(
+                                                    )
+                                                    .map((acc) => {
+                                                        const alreadyAssigned = !!acc.service_user_id;
+                                                        return {
+                                                            value: acc.account_id,
+                                                            label: acc.account_name || acc.account_id,
+                                                            sublabel: `${acc.account_id}${acc.currency ? ` (${acc.currency})` : ''}`,
+                                                            badge: alreadyAssigned ? 'Đã gán' : 'Chưa gán',
+                                                            badgeVariant: (alreadyAssigned ? 'destructive' : 'success') as 'destructive' | 'success',
+                                                        };
+                                                    })}
+                                                value=""
+                                                onValueChange={(
+                                                    value,
+                                                ) => {
+                                                    if (value) {
+                                                        addToListUnique(
+                                                            accountIdList,
+                                                            setAccountIdList,
                                                             value,
-                                                        ) => {
-                                                            if (value) {
-                                                                handleSelectBmFromList(
-                                                                    value,
-                                                                );
-                                                                addToListUnique(
-                                                                    bmIdList,
-                                                                    setBmIdList,
-                                                                    value,
-                                                                );
-                                                            }
-                                                        }}
-                                                        placeholder={
-                                                            loadingBmList
-                                                                ? t(
-                                                                      'service_orders.form.loading_child_bms',
-                                                                  )
-                                                                : isApproveMeta
-                                                                  ? t(
-                                                                        'service_orders.form.select_bm_from_list',
-                                                                    )
-                                                                  : t(
-                                                                        'service_orders.form.select_mcc_from_list',
-                                                                    )
-                                                        }
-                                                        searchPlaceholder={
-                                                            isApproveMeta
-                                                                ? t(
-                                                                      'service_orders.form.filter_bm_placeholder',
-                                                                      {
-                                                                          defaultValue:
-                                                                              'Lọc danh sách BM...',
-                                                                      },
-                                                                  )
-                                                                : t(
-                                                                      'service_orders.form.filter_mcc_placeholder',
-                                                                      {
-                                                                          defaultValue:
-                                                                              'Lọc danh sách MCC...',
-                                                                      },
-                                                                  )
-                                                        }
-                                                        disabled={loadingBmList}
-                                                    />
-                                                </div>
-
-                                                {/* 2. Dropdown chọn tài khoản có sẵn - BẮT BUỘC */}
-                                                <div className="space-y-2">
-                                                    <Label
-                                                        htmlFor="select_account_from_list"
-                                                        className="text-destructive"
-                                                    >
-                                                        {t(
-                                                            'service_orders.form.select_account_label',
-                                                        )}{' '}
-                                                        *
-                                                    </Label>
-                                                    <SearchableSelect
-                                                        options={bmAccounts
-                                                            .filter(
-                                                                (acc) =>
-                                                                    !accountIdList.some(
-                                                                        (id) =>
-                                                                            id.trim() ===
-                                                                            acc.account_id,
-                                                                    ),
+                                                        );
+                                                        setAccountIdInput(
+                                                            value,
+                                                        );
+                                                    }
+                                                }}
+                                                placeholder={
+                                                    !bmId
+                                                        ? t(
+                                                              'service_orders.form.select_bm_first',
+                                                          )
+                                                        : loadingBmAccounts
+                                                          ? t(
+                                                                'service_orders.form.loading_child_bms',
                                                             )
-                                                            .map((acc) => {
-                                                                const alreadyAssigned = !!acc.service_user_id;
-                                                                return {
-                                                                    value: acc.account_id,
-                                                                    label: acc.account_name || acc.account_id,
-                                                                    sublabel: `${acc.account_id}${acc.currency ? ` (${acc.currency})` : ''}`,
-                                                                    badge: alreadyAssigned ? 'Đã gán' : 'Chưa gán',
-                                                                    badgeVariant: (alreadyAssigned ? 'destructive' : 'success') as 'destructive' | 'success',
-                                                                };
-                                                            })}
-                                                        value=""
-                                                        onValueChange={(
-                                                            value,
-                                                        ) => {
-                                                            if (value) {
-                                                                addToListUnique(
-                                                                    accountIdList,
-                                                                    setAccountIdList,
-                                                                    value,
-                                                                );
-                                                                setAccountIdInput(
-                                                                    value,
-                                                                );
-                                                            }
-                                                        }}
-                                                        placeholder={
-                                                            !bmId
-                                                                ? t(
-                                                                      'service_orders.form.select_bm_first',
-                                                                  )
-                                                                : loadingBmAccounts
-                                                                  ? t(
-                                                                        'service_orders.form.loading_child_bms',
-                                                                    )
-                                                                  : t(
-                                                                        'service_orders.form.select_account_in_bm_mcc',
-                                                                    )
-                                                        }
-                                                        searchPlaceholder={t(
-                                                            'service_orders.form.search_account_placeholder',
-                                                            {
-                                                                defaultValue:
-                                                                    'Tìm kiếm tài khoản...',
-                                                            },
-                                                        )}
-                                                        disabled={
-                                                            loadingBmAccounts ||
-                                                            !bmId
-                                                        }
-                                                    />
-                                                    {formErrors.account_id && (
-                                                        <p className="text-xs text-red-500">
-                                                            {
-                                                                formErrors.account_id
-                                                            }
-                                                        </p>
-                                                    )}
-                                                </div>
+                                                          : t(
+                                                                'service_orders.form.select_account_in_bm_mcc',
+                                                            )
+                                                }
+                                                searchPlaceholder={t(
+                                                    'service_orders.form.search_account_placeholder',
+                                                    {
+                                                        defaultValue:
+                                                            'Tìm kiếm tài khoản...',
+                                                    },
+                                                )}
+                                                disabled={
+                                                    loadingBmAccounts ||
+                                                    !bmId
+                                                }
+                                            />
+                                            {formErrors.account_id && (
+                                                <p className="text-xs text-red-500">
+                                                    {
+                                                        formErrors.account_id
+                                                    }
+                                                </p>
+                                            )}
+                                        </div>
 
-                                                {/* 3. Input ID tài khoản nhập tay + nút thêm */}
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <Label className="text-destructive">
-                                                            {t(
-                                                                'service_orders.form.account_id_label',
-                                                            )}{' '}
-                                                            *
-                                                        </Label>
-                                                        {accountIdList.length <
-                                                            999 && (
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-7 text-xs"
-                                                                onClick={() =>
-                                                                    setAccountIdList(
+                                        {/* 3. Input ID tài khoản nhập tay + nút thêm */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-destructive">
+                                                    {t(
+                                                        'service_orders.form.account_id_label',
+                                                    )}{' '}
+                                                    *
+                                                </Label>
+                                                {accountIdList.length <
+                                                    999 && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 text-xs"
+                                                        onClick={() =>
+                                                            setAccountIdList(
+                                                                [
+                                                                    ...accountIdList,
+                                                                    '',
+                                                                ],
+                                                            )
+                                                        }
+                                                    >
+                                                        <Plus className="mr-1 h-3 w-3" />
+                                                        {t(
+                                                            'service_orders.form.add_account',
+                                                        )}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div className="space-y-2">
+                                                {accountIdList.map(
+                                                    (val, idx) => (
+                                                        <div
+                                                            key={`acc-${idx}`}
+                                                            className="flex gap-2"
+                                                        >
+                                                            <Input
+                                                                value={
+                                                                    val
+                                                                }
+                                                                onChange={(
+                                                                    e,
+                                                                ) => {
+                                                                    const newList =
                                                                         [
                                                                             ...accountIdList,
-                                                                            '',
-                                                                        ],
-                                                                    )
+                                                                        ];
+                                                                    newList[
+                                                                        idx
+                                                                    ] =
+                                                                        e.target.value;
+                                                                    setAccountIdList(
+                                                                        newList,
+                                                                    );
+                                                                    setAccountIdInput(
+                                                                        e
+                                                                            .target
+                                                                            .value,
+                                                                    );
+                                                                }}
+                                                                placeholder={
+                                                                    isApproveMeta
+                                                                        ? 'act_1234567890'
+                                                                        : '123-456-7890'
                                                                 }
-                                                            >
-                                                                <Plus className="mr-1 h-3 w-3" />
-                                                                {t(
-                                                                    'service_orders.form.add_account',
-                                                                )}
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        {accountIdList.map(
-                                                            (val, idx) => (
-                                                                <div
-                                                                    key={`acc-${idx}`}
-                                                                    className="flex gap-2"
+                                                                className={
+                                                                    !val.trim()
+                                                                        ? 'border-destructive'
+                                                                        : ''
+                                                                }
+                                                            />
+                                                            {accountIdList.length >
+                                                                1 && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="text-red-600"
+                                                                    onClick={() =>
+                                                                        setAccountIdList(
+                                                                            accountIdList.filter(
+                                                                                (
+                                                                                    _,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i !==
+                                                                                    idx,
+                                                                            ),
+                                                                        )
+                                                                    }
                                                                 >
-                                                                    <Input
-                                                                        value={
-                                                                            val
-                                                                        }
-                                                                        onChange={(
-                                                                            e,
-                                                                        ) => {
-                                                                            const newList =
-                                                                                [
-                                                                                    ...accountIdList,
-                                                                                ];
-                                                                            newList[
-                                                                                idx
-                                                                            ] =
-                                                                                e.target.value;
-                                                                            setAccountIdList(
-                                                                                newList,
-                                                                            );
-                                                                            setAccountIdInput(
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                            );
-                                                                        }}
-                                                                        placeholder={
-                                                                            isApproveMeta
-                                                                                ? 'act_1234567890'
-                                                                                : '123-456-7890'
-                                                                        }
-                                                                        className={
-                                                                            !val.trim()
-                                                                                ? 'border-destructive'
-                                                                                : ''
-                                                                        }
-                                                                    />
-                                                                    {accountIdList.length >
-                                                                        1 && (
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            className="text-red-600"
-                                                                            onClick={() =>
-                                                                                setAccountIdList(
-                                                                                    accountIdList.filter(
-                                                                                        (
-                                                                                            _,
-                                                                                            i,
-                                                                                        ) =>
-                                                                                            i !==
-                                                                                            idx,
-                                                                                    ),
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {isApproveMeta
-                                                            ? t(
-                                                                  'service_orders.form.account_id_hint_meta',
-                                                              )
-                                                            : t(
-                                                                  'service_orders.form.account_id_hint_google',
-                                                              )}
-                                                    </p>
-                                                </div>
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                {isApproveMeta
+                                                    ? t(
+                                                          'service_orders.form.account_id_hint_meta',
+                                                      )
+                                                    : t(
+                                                          'service_orders.form.account_id_hint_google',
+                                                      )}
+                                            </p>
+                                        </div>
 
-                                                {bmId &&
-                                                    !loadingBmAccounts &&
-                                                    bmAccounts.length === 0 && (
-                                                        <p className="text-xs text-orange-500">
-                                                            {isApproveMeta
-                                                                ? t(
-                                                                      'service_orders.form.account_not_found_in_bm',
-                                                                  )
-                                                                : t(
-                                                                      'service_orders.form.account_not_found_in_mcc',
-                                                                  )}
-                                                        </p>
-                                                    )}
-                                                <p className="text-xs text-muted-foreground italic">
-                                                    {t(
-                                                        'service_orders.form.assign_note',
-                                                    )}
+                                        {bmId &&
+                                            !loadingBmAccounts &&
+                                            bmAccounts.length === 0 && (
+                                                <p className="text-xs text-orange-500">
+                                                    {isApproveMeta
+                                                        ? t(
+                                                              'service_orders.form.account_not_found_in_bm',
+                                                          )
+                                                        : t(
+                                                              'service_orders.form.account_not_found_in_mcc',
+                                                          )}
                                                 </p>
-                                            </>
-                                        )}
+                                            )}
+                                        <p className="text-xs text-muted-foreground italic">
+                                            {t(
+                                                'service_orders.form.assign_note',
+                                            )}
+                                        </p>
                                     </>
                                 </div>
 
@@ -2157,568 +1885,305 @@ const ServiceOrdersIndex = ({
                                                 />
                                             </div>
 
-                                            {/* Tabs: Gán BM / Gán tài khoản */}
+                                            {/* 1. Dropdown chọn BM có sẵn */}
                                             <div className="space-y-2">
-                                                <div className="flex gap-1 rounded-lg border p-1">
-                                                    <button
-                                                        type="button"
-                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                            editAssignMode ===
-                                                            'bm'
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : 'text-muted-foreground hover:bg-muted'
-                                                        }`}
-                                                        onClick={() =>
-                                                            setEditAssignMode(
-                                                                'bm',
-                                                            )
+                                                <Label htmlFor="edit_select_bm_from_list_account">
+                                                    {isEditMeta
+                                                        ? t(
+                                                              'service_orders.form.select_bm_available',
+                                                          )
+                                                        : t(
+                                                              'service_orders.form.select_mcc_available',
+                                                          )}
+                                                </Label>
+                                                <SearchableSelect
+                                                    key={`edit-account-tab-bm-${editBmId}`}
+                                                    options={editBmList.map(
+                                                        (bm) => ({
+                                                            value:
+                                                                bm
+                                                                    .bm_ids?.[0] ||
+                                                                bm.id,
+                                                            label: `${bm.bm_name || bm.name} (${bm.bm_ids?.[0] || bm.id})`,
+                                                            sublabel:
+                                                                bm
+                                                                    .bm_ids?.[0] ||
+                                                                bm.id,
+                                                        }),
+                                                    )}
+                                                    value={
+                                                        editBmId || ''
+                                                    }
+                                                    onValueChange={(
+                                                        value,
+                                                    ) => {
+                                                        if (
+                                                            value &&
+                                                            value !==
+                                                                '__empty__'
+                                                        ) {
+                                                            handleEditSelectBmFromList(
+                                                                value,
+                                                            );
+                                                            addToListUnique(
+                                                                editBmIdList,
+                                                                setEditBmIdList,
+                                                                value,
+                                                            );
                                                         }
-                                                    >
-                                                        {isEditMeta
+                                                    }}
+                                                    placeholder={
+                                                        editLoadingBmList
                                                             ? t(
-                                                                  'service_orders.form.assign_bm',
+                                                                  'service_orders.form.loading_child_bms',
+                                                              )
+                                                            : isEditMeta
+                                                              ? t(
+                                                                    'service_orders.form.select_bm_from_list',
+                                                                )
+                                                              : t(
+                                                                    'service_orders.form.select_mcc_from_list',
+                                                                )
+                                                    }
+                                                    searchPlaceholder={
+                                                        isEditMeta
+                                                            ? t(
+                                                                  'service_orders.form.filter_bm_placeholder',
+                                                                  {
+                                                                      defaultValue:
+                                                                          'Lọc danh sách BM...',
+                                                                  },
                                                               )
                                                             : t(
-                                                                  'service_orders.form.assign_mcc',
-                                                              )}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                                            editAssignMode ===
-                                                            'account'
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : 'text-muted-foreground hover:bg-muted'
-                                                        }`}
-                                                        onClick={() => {
-                                                            setEditAssignMode(
-                                                                'account',
-                                                            );
-                                                            if (editBmId)
-                                                                handleEditSelectBmFromList(
-                                                                    editBmId,
-                                                                );
-                                                        }}
-                                                    >
-                                                        {t(
-                                                            'service_orders.form.assign_account',
-                                                        )}
-                                                    </button>
-                                                </div>
+                                                                  'service_orders.form.filter_mcc_placeholder',
+                                                                  {
+                                                                      defaultValue:
+                                                                          'Lọc danh sách MCC...',
+                                                                  },
+                                                              )
+                                                    }
+                                                    disabled={
+                                                        editLoadingBmList
+                                                    }
+                                                />
                                             </div>
 
-                                            {editAssignMode === 'bm' ? (
-                                                <>
-                                                    {/* ==== TAB GÁN BM ==== */}
-
-                                                    {/* Dropdown chọn BM có sẵn */}
-                                                    <div className="space-y-2">
-                                                        <Label>
-                                                            {isEditMeta
-                                                                ? t(
-                                                                      'service_orders.form.select_bm_available',
-                                                                  )
-                                                                : t(
-                                                                      'service_orders.form.select_mcc_available',
-                                                                  )}
-                                                        </Label>
-                                                        <SearchableSelect
-                                                            key={`edit-bm-tab-bm-${editBmIdList.join(',')}`}
-                                                            options={editBmList
-                                                                .filter(
-                                                                    (bm) =>
-                                                                        !editBmIdList.some(
-                                                                            (
-                                                                                id,
-                                                                            ) =>
-                                                                                id.trim() ===
-                                                                                (bm
-                                                                                    .bm_ids?.[0] ||
-                                                                                    bm.id),
-                                                                        ),
+                                            {/* 2. Dropdown chọn tài khoản có sẵn */}
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="edit_select_account_from_list"
+                                                    className="text-destructive"
+                                                >
+                                                    {t(
+                                                        'service_orders.form.select_account_label',
+                                                    )}{' '}
+                                                    *
+                                                </Label>
+                                                <SearchableSelect
+                                                    options={editBmAccounts.map(
+                                                        (acc: any) => {
+                                                            const alreadyInList =
+                                                                editAccountIdList.some(
+                                                                    (
+                                                                        id,
+                                                                    ) =>
+                                                                        id.trim() ===
+                                                                        acc.account_id,
+                                                                );
+                                                            const alreadyAssigned =
+                                                                !!acc.service_user_id;
+                                                            let badge = 'Chưa gán';
+                                                            let badgeVariant:
+                                                                | 'success'
+                                                                | 'warning'
+                                                                | 'destructive'
+                                                                | 'secondary' =
+                                                                'success';
+                                                            if (
+                                                                alreadyInList
+                                                            ) {
+                                                                badge =
+                                                                    'Đã chọn';
+                                                                badgeVariant =
+                                                                    'secondary';
+                                                            } else if (
+                                                                alreadyAssigned
+                                                            ) {
+                                                                badge =
+                                                                    'Đã gán KH khác';
+                                                                badgeVariant =
+                                                                    'destructive';
+                                                            }
+                                                            return {
+                                                                value: acc.account_id,
+                                                                label:
+                                                                    acc.account_name ||
+                                                                    acc.account_id,
+                                                                sublabel: `${acc.account_id}${acc.currency ? ` (${acc.currency})` : ''}`,
+                                                                badge,
+                                                                badgeVariant,
+                                                                disabled:
+                                                                    alreadyInList,
+                                                            };
+                                                        },
+                                                    )}
+                                                    value=""
+                                                    onValueChange={(
+                                                        value,
+                                                    ) => {
+                                                        if (
+                                                            value &&
+                                                            value !==
+                                                                '__empty__'
+                                                        ) {
+                                                            addToListUnique(
+                                                                editAccountIdList,
+                                                                setEditAccountIdList,
+                                                                value,
+                                                            );
+                                                            setEditAccountIdInput(
+                                                                value,
+                                                            );
+                                                        }
+                                                    }}
+                                                    placeholder={
+                                                        !editBmId
+                                                            ? t(
+                                                                  'service_orders.form.select_bm_first',
+                                                              )
+                                                            : editLoadingBmAccounts
+                                                              ? t(
+                                                                    'service_orders.form.loading_child_bms',
                                                                 )
-                                                                .map((bm) => ({
-                                                                    value:
-                                                                        bm
-                                                                            .bm_ids?.[0] ||
-                                                                        bm.id,
-                                                                    label: `${bm.bm_name || bm.name} (${bm.bm_ids?.[0] || bm.id})`,
-                                                                    sublabel:
-                                                                        bm
-                                                                            .bm_ids?.[0] ||
-                                                                        bm.id,
-                                                                }))}
-                                                            value=""
-                                                            onValueChange={(
-                                                                value,
-                                                            ) => {
-                                                                if (
-                                                                    value &&
-                                                                    value !==
-                                                                        '__empty__'
-                                                                ) {
-                                                                    handleEditSelectBmFromList(
-                                                                        value,
-                                                                    );
-                                                                    addToListUnique(
-                                                                        editBmIdList,
-                                                                        setEditBmIdList,
-                                                                        value,
-                                                                    );
-                                                                }
-                                                            }}
-                                                            placeholder={
-                                                                editLoadingBmList
-                                                                    ? t(
-                                                                          'service_orders.form.loading_child_bms',
-                                                                      )
-                                                                    : isEditMeta
-                                                                      ? t(
-                                                                            'service_orders.form.select_bm_from_list',
-                                                                        )
-                                                                      : t(
-                                                                            'service_orders.form.select_mcc_from_list',
-                                                                        )
-                                                            }
-                                                            searchPlaceholder={
-                                                                isEditMeta
-                                                                    ? t(
-                                                                          'service_orders.form.filter_bm_placeholder',
-                                                                          {
-                                                                              defaultValue:
-                                                                                  'Lọc danh sách BM...',
-                                                                          },
-                                                                      )
-                                                                    : t(
-                                                                          'service_orders.form.filter_mcc_placeholder',
-                                                                          {
-                                                                              defaultValue:
-                                                                                  'Lọc danh sách MCC...',
-                                                                          },
-                                                                      )
-                                                            }
-                                                            disabled={
-                                                                editLoadingBmList
-                                                            }
-                                                        />
-                                                    </div>
+                                                              : t(
+                                                                    'service_orders.form.select_account_in_bm_mcc',
+                                                                )
+                                                    }
+                                                    searchPlaceholder={t(
+                                                        'service_orders.form.search_account_placeholder',
+                                                        {
+                                                            defaultValue:
+                                                                'Tìm kiếm tài khoản...',
+                                                        },
+                                                    )}
+                                                    disabled={
+                                                        editLoadingBmAccounts ||
+                                                        !editBmId
+                                                    }
+                                                />
+                                            </div>
 
-                                                    {/* Input ID BM nhập tay + nút thêm */}
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label>
-                                                                {isEditMeta
-                                                                    ? t(
-                                                                          'service_orders.form.bm_id_label',
-                                                                      )
-                                                                    : t(
-                                                                          'service_orders.form.mcc_id_label',
-                                                                      )}
-                                                            </Label>
-                                                            {editBmIdList.length <
-                                                                999 && (
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="h-7 text-xs"
-                                                                    onClick={() =>
-                                                                        setEditBmIdList(
-                                                                            [
-                                                                                ...editBmIdList,
-                                                                                '',
-                                                                            ],
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Plus className="mr-1 h-3 w-3" />
-                                                                    {isEditMeta
-                                                                        ? t(
-                                                                              'service_orders.form.add_bm',
-                                                                          )
-                                                                        : t(
-                                                                              'service_orders.form.add_mcc',
-                                                                          )}
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            {editBmIdList.map(
-                                                                (val, idx) => (
-                                                                    <div
-                                                                        key={`edit-bm-${idx}`}
-                                                                        className="flex gap-2"
-                                                                    >
-                                                                        <Input
-                                                                            value={
-                                                                                val
-                                                                            }
-                                                                            onChange={(
-                                                                                e,
-                                                                            ) => {
-                                                                                const newList =
-                                                                                    [
-                                                                                        ...editBmIdList,
-                                                                                    ];
-                                                                                newList[
-                                                                                    idx
-                                                                                ] =
-                                                                                    e.target.value;
-                                                                                setEditBmIdList(
-                                                                                    newList,
-                                                                                );
-                                                                                if (
-                                                                                    idx ===
-                                                                                    0
-                                                                                )
-                                                                                    setEditBmId(
-                                                                                        e
-                                                                                            .target
-                                                                                            .value,
-                                                                                    );
-                                                                            }}
-                                                                            placeholder={
-                                                                                isEditMeta
-                                                                                    ? t(
-                                                                                          'service_orders.form.enter_bm_id',
-                                                                                      )
-                                                                                    : t(
-                                                                                          'service_orders.form.enter_mcc_id',
-                                                                                      )
-                                                                            }
-                                                                        />
-                                                                        {editBmIdList.length >
-                                                                            1 && (
-                                                                            <Button
-                                                                                type="button"
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                className="text-red-600"
-                                                                                onClick={() =>
-                                                                                    setEditBmIdList(
-                                                                                        editBmIdList.filter(
-                                                                                            (
-                                                                                                _,
-                                                                                                i,
-                                                                                            ) =>
-                                                                                                i !==
-                                                                                                idx,
-                                                                                        ),
-                                                                                    )
-                                                                                }
-                                                                            >
-                                                                                <X className="h-4 w-4" />
-                                                                            </Button>
-                                                                        )}
-                                                                    </div>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {/* ==== TAB GÁN TÀI KHOẢN ==== */}
-
-                                                    {/* 1. Dropdown chọn BM có sẵn */}
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="edit_select_bm_from_list_account">
-                                                            {isEditMeta
-                                                                ? t(
-                                                                      'service_orders.form.select_bm_available',
-                                                                  )
-                                                                : t(
-                                                                      'service_orders.form.select_mcc_available',
-                                                                  )}
-                                                        </Label>
-                                                        <SearchableSelect
-                                                            key={`edit-account-tab-bm-${editBmId}`}
-                                                            options={editBmList.map(
-                                                                (bm) => ({
-                                                                    value:
-                                                                        bm
-                                                                            .bm_ids?.[0] ||
-                                                                        bm.id,
-                                                                    label: `${bm.bm_name || bm.name} (${bm.bm_ids?.[0] || bm.id})`,
-                                                                    sublabel:
-                                                                        bm
-                                                                            .bm_ids?.[0] ||
-                                                                        bm.id,
-                                                                }),
-                                                            )}
-                                                            value={
-                                                                editBmId || ''
+                                            {/* 3. Input ID tài khoản nhập tay + nút thêm */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-destructive">
+                                                        {t(
+                                                            'service_orders.form.account_id_label',
+                                                        )}{' '}
+                                                        *
+                                                    </Label>
+                                                    {editAccountIdList.length <
+                                                        999 && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-7 text-xs"
+                                                            onClick={() =>
+                                                                setEditAccountIdList(
+                                                                    [
+                                                                        ...editAccountIdList,
+                                                                        '',
+                                                                    ],
+                                                                )
                                                             }
-                                                            onValueChange={(
-                                                                value,
-                                                            ) => {
-                                                                if (
-                                                                    value &&
-                                                                    value !==
-                                                                        '__empty__'
-                                                                ) {
-                                                                    handleEditSelectBmFromList(
-                                                                        value,
-                                                                    );
-                                                                    addToListUnique(
-                                                                        editBmIdList,
-                                                                        setEditBmIdList,
-                                                                        value,
-                                                                    );
-                                                                }
-                                                            }}
-                                                            placeholder={
-                                                                editLoadingBmList
-                                                                    ? t(
-                                                                          'service_orders.form.loading_child_bms',
-                                                                      )
-                                                                    : isEditMeta
-                                                                      ? t(
-                                                                            'service_orders.form.select_bm_from_list',
-                                                                        )
-                                                                      : t(
-                                                                            'service_orders.form.select_mcc_from_list',
-                                                                        )
-                                                            }
-                                                            searchPlaceholder={
-                                                                isEditMeta
-                                                                    ? t(
-                                                                          'service_orders.form.filter_bm_placeholder',
-                                                                          {
-                                                                              defaultValue:
-                                                                                  'Lọc danh sách BM...',
-                                                                          },
-                                                                      )
-                                                                    : t(
-                                                                          'service_orders.form.filter_mcc_placeholder',
-                                                                          {
-                                                                              defaultValue:
-                                                                                  'Lọc danh sách MCC...',
-                                                                          },
-                                                                      )
-                                                            }
-                                                            disabled={
-                                                                editLoadingBmList
-                                                            }
-                                                        />
-                                                    </div>
-
-                                                    {/* 2. Dropdown chọn tài khoản có sẵn */}
-                                                    <div className="space-y-2">
-                                                        <Label
-                                                            htmlFor="edit_select_account_from_list"
-                                                            className="text-destructive"
                                                         >
+                                                            <Plus className="mr-1 h-3 w-3" />
                                                             {t(
-                                                                'service_orders.form.select_account_label',
-                                                            )}{' '}
-                                                            *
-                                                        </Label>
-                                                        <SearchableSelect
-                                                            options={editBmAccounts.map(
-                                                                (acc: any) => {
-                                                                    const alreadyInList =
-                                                                        editAccountIdList.some(
-                                                                            (
-                                                                                id,
-                                                                            ) =>
-                                                                                id.trim() ===
-                                                                                acc.account_id,
-                                                                        );
-                                                                    const alreadyAssigned =
-                                                                        !!acc.service_user_id;
-                                                                    let badge = 'Chưa gán';
-                                                                    let badgeVariant:
-                                                                        | 'success'
-                                                                        | 'warning'
-                                                                        | 'destructive'
-                                                                        | 'secondary' =
-                                                                        'success';
-                                                                    if (
-                                                                        alreadyInList
-                                                                    ) {
-                                                                        badge =
-                                                                            'Đã chọn';
-                                                                        badgeVariant =
-                                                                            'secondary';
-                                                                    } else if (
-                                                                        alreadyAssigned
-                                                                    ) {
-                                                                        badge =
-                                                                            'Đã gán KH khác';
-                                                                        badgeVariant =
-                                                                            'destructive';
+                                                                'service_orders.form.add_account',
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {editAccountIdList.map(
+                                                        (val, idx) => (
+                                                            <div
+                                                                key={`edit-acc-${idx}`}
+                                                                className="flex gap-2"
+                                                            >
+                                                                <Input
+                                                                    value={
+                                                                        val
                                                                     }
-                                                                    return {
-                                                                        value: acc.account_id,
-                                                                        label:
-                                                                            acc.account_name ||
-                                                                            acc.account_id,
-                                                                        sublabel: `${acc.account_id}${acc.currency ? ` (${acc.currency})` : ''}`,
-                                                                        badge,
-                                                                        badgeVariant,
-                                                                        disabled:
-                                                                            alreadyInList,
-                                                                    };
-                                                                },
-                                                            )}
-                                                            value=""
-                                                            onValueChange={(
-                                                                value,
-                                                            ) => {
-                                                                if (
-                                                                    value &&
-                                                                    value !==
-                                                                        '__empty__'
-                                                                ) {
-                                                                    addToListUnique(
-                                                                        editAccountIdList,
-                                                                        setEditAccountIdList,
-                                                                        value,
-                                                                    );
-                                                                    setEditAccountIdInput(
-                                                                        value,
-                                                                    );
-                                                                }
-                                                            }}
-                                                            placeholder={
-                                                                !editBmId
-                                                                    ? t(
-                                                                          'service_orders.form.select_bm_first',
-                                                                      )
-                                                                    : editLoadingBmAccounts
-                                                                      ? t(
-                                                                            'service_orders.form.loading_child_bms',
-                                                                        )
-                                                                      : t(
-                                                                            'service_orders.form.select_account_in_bm_mcc',
-                                                                        )
-                                                            }
-                                                            searchPlaceholder={t(
-                                                                'service_orders.form.search_account_placeholder',
-                                                                {
-                                                                    defaultValue:
-                                                                        'Tìm kiếm tài khoản...',
-                                                                },
-                                                            )}
-                                                            disabled={
-                                                                editLoadingBmAccounts ||
-                                                                !editBmId
-                                                            }
-                                                        />
-                                                    </div>
-
-                                                    {/* 3. Input ID tài khoản nhập tay + nút thêm */}
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label className="text-destructive">
-                                                                {t(
-                                                                    'service_orders.form.account_id_label',
-                                                                )}{' '}
-                                                                *
-                                                            </Label>
-                                                            {editAccountIdList.length <
-                                                                999 && (
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="h-7 text-xs"
-                                                                    onClick={() =>
-                                                                        setEditAccountIdList(
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) => {
+                                                                        const newList =
                                                                             [
                                                                                 ...editAccountIdList,
-                                                                                '',
-                                                                            ],
-                                                                        )
+                                                                            ];
+                                                                        newList[
+                                                                            idx
+                                                                        ] =
+                                                                            e.target.value;
+                                                                        setEditAccountIdList(
+                                                                            newList,
+                                                                        );
+                                                                        setEditAccountIdInput(
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        );
+                                                                    }}
+                                                                    placeholder={
+                                                                        isEditMeta
+                                                                            ? 'act_1234567890'
+                                                                            : '123-456-7890'
                                                                     }
-                                                                >
-                                                                    <Plus className="mr-1 h-3 w-3" />
-                                                                    {t(
-                                                                        'service_orders.form.add_account',
-                                                                    )}
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            {editAccountIdList.map(
-                                                                (val, idx) => (
-                                                                    <div
-                                                                        key={`edit-acc-${idx}`}
-                                                                        className="flex gap-2"
+                                                                    className={
+                                                                        !val.trim()
+                                                                            ? 'border-destructive'
+                                                                            : ''
+                                                                    }
+                                                                />
+                                                                {editAccountIdList.length >
+                                                                    1 && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="text-red-600"
+                                                                        onClick={() =>
+                                                                            setEditAccountIdList(
+                                                                                editAccountIdList.filter(
+                                                                                    (
+                                                                                        _,
+                                                                                        i,
+                                                                                    ) =>
+                                                                                        i !==
+                                                                                        idx,
+                                                                                ),
+                                                                            )
+                                                                        }
                                                                     >
-                                                                        <Input
-                                                                            value={
-                                                                                val
-                                                                            }
-                                                                            onChange={(
-                                                                                e,
-                                                                            ) => {
-                                                                                const newList =
-                                                                                    [
-                                                                                        ...editAccountIdList,
-                                                                                    ];
-                                                                                newList[
-                                                                                    idx
-                                                                                ] =
-                                                                                    e.target.value;
-                                                                                setEditAccountIdList(
-                                                                                    newList,
-                                                                                );
-                                                                                setEditAccountIdInput(
-                                                                                    e
-                                                                                        .target
-                                                                                        .value,
-                                                                                );
-                                                                            }}
-                                                                            placeholder={
-                                                                                isEditMeta
-                                                                                    ? 'act_1234567890'
-                                                                                    : '123-456-7890'
-                                                                            }
-                                                                            className={
-                                                                                !val.trim()
-                                                                                    ? 'border-destructive'
-                                                                                    : ''
-                                                                            }
-                                                                        />
-                                                                        {editAccountIdList.length >
-                                                                            1 && (
-                                                                            <Button
-                                                                                type="button"
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                className="text-red-600"
-                                                                                onClick={() =>
-                                                                                    setEditAccountIdList(
-                                                                                        editAccountIdList.filter(
-                                                                                            (
-                                                                                                _,
-                                                                                                i,
-                                                                                            ) =>
-                                                                                                i !==
-                                                                                                idx,
-                                                                                        ),
-                                                                                    )
-                                                                                }
-                                                                            >
-                                                                                <X className="h-4 w-4" />
-                                                                            </Button>
-                                                                        )}
-                                                                    </div>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {isEditMeta
-                                                                ? t(
-                                                                      'service_orders.form.account_id_hint_meta',
-                                                                  )
-                                                                : t(
-                                                                      'service_orders.form.account_id_hint_google',
-                                                                  )}
-                                                        </p>
-                                                    </div>
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        ),
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {isEditMeta
+                                                        ? t(
+                                                              'service_orders.form.account_id_hint_meta',
+                                                          )
+                                                        : t(
+                                                              'service_orders.form.account_id_hint_google',
+                                                          )}
+                                                </p>
+                                            </div>
 
                                                     {/* 4. Input ID BM khách nhập */}
                                                     <div className="space-y-2">
@@ -2753,8 +2218,6 @@ const ServiceOrdersIndex = ({
                                                             }
                                                         />
                                                     </div>
-                                                </>
-                                            )}
 
                                             {isEditMeta && (
                                                 <div className="space-y-2">
