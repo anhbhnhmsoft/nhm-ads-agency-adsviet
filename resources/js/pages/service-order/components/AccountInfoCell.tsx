@@ -33,15 +33,6 @@ export const AccountInfoCell = ({
     };
 
     const accounts = config.accounts;
-    const resolvedAccountIds = Array.isArray(config.resolved_account_ids)
-        ? config.resolved_account_ids.filter((id: string) => id?.trim())
-        : [];
-    const configAccountIds = Array.isArray(config.account_ids)
-        ? config.account_ids.filter((id: string) => id?.trim())
-        : [];
-    const singleAccountId = config.account_id ? [config.account_id as string] : [];
-    const allAssignedAccounts = Array.from(new Set([...resolvedAccountIds, ...configAccountIds, ...singleAccountId]));
-
     if (Array.isArray(accounts) && accounts.length > 0) {
         const billingSource =
             packageBillingSource ||
@@ -49,18 +40,6 @@ export const AccountInfoCell = ({
             (config as any).payment_source;
         return (
             <div className="space-y-2 text-xs">
-                {allAssignedAccounts.length > 0 && (
-                    <div className="rounded border border-emerald-200 bg-emerald-50/80 p-2 font-medium text-emerald-950">
-                        <span className="font-semibold text-emerald-900">
-                            {t('service_orders.table.assigned_account', {
-                                defaultValue: 'Tài khoản đã gán',
-                            })}:
-                        </span>{' '}
-                        <span className="font-mono font-bold text-emerald-800">
-                            {allAssignedAccounts.join(', ')}
-                        </span>
-                    </div>
-                )}
                 {billingSource && (
                     <div className="rounded border border-indigo-100 bg-indigo-50/50 p-2 font-medium text-indigo-950">
                         <span className="font-semibold text-indigo-900">
@@ -72,10 +51,10 @@ export const AccountInfoCell = ({
                             defaultValue: billingSource === 'customer_card'
                                 ? 'Thẻ của khách'
                                 : billingSource === 'adviet_card'
-                                ? 'Thẻ Adviet'
-                                : billingSource === 'supplier_credit_line'
-                                ? 'Hạn mức nhà cung cấp'
-                                : billingSource,
+                                    ? 'Thẻ Adviet'
+                                    : billingSource === 'supplier_credit_line'
+                                        ? 'Hạn mức nhà cung cấp'
+                                        : billingSource,
                         })}
                     </div>
                 )}
@@ -93,7 +72,6 @@ export const AccountInfoCell = ({
                         : [];
                     const timezone = account.timezone_bm || '';
                     const assetAccess = account.asset_access || '';
-                    const assignedAcc = account.account_id || '';
 
                     if (
                         !email &&
@@ -101,8 +79,7 @@ export const AccountInfoCell = ({
                         bmIds.length === 0 &&
                         fanpages.length === 0 &&
                         websites.length === 0 &&
-                        !timezone &&
-                        !assignedAcc
+                        !timezone
                     ) {
                         return null;
                     }
@@ -119,18 +96,6 @@ export const AccountInfoCell = ({
                                 })}
                             </div>
                             <div className="space-y-1">
-                                {assignedAcc && (
-                                    <div>
-                                        <span className="font-medium text-emerald-800">
-                                            {t('service_orders.table.assigned_account', {
-                                                defaultValue: 'Tài khoản đã gán',
-                                            })}:
-                                        </span>{' '}
-                                        <span className="font-mono font-bold text-emerald-700">
-                                            {assignedAcc}
-                                        </span>
-                                    </div>
-                                )}
                                 {email && (
                                     <div>
                                         <span className="font-medium">
@@ -169,19 +134,19 @@ export const AccountInfoCell = ({
                                         <span className="font-medium">
                                             {isMeta
                                                 ? t(
-                                                      'service_purchase.timezone_bm_label',
-                                                      {
-                                                          defaultValue:
-                                                              'Múi giờ BM',
-                                                      },
-                                                  )
+                                                    'service_purchase.timezone_bm_label',
+                                                    {
+                                                        defaultValue:
+                                                            'Múi giờ BM',
+                                                    },
+                                                )
                                                 : t(
-                                                      'service_purchase.timezone_mcc_label',
-                                                      {
-                                                          defaultValue:
-                                                              'Múi giờ MCC',
-                                                      },
-                                                  )}
+                                                    'service_purchase.timezone_mcc_label',
+                                                    {
+                                                        defaultValue:
+                                                            'Múi giờ MCC',
+                                                    },
+                                                )}
                                             :
                                         </span>{' '}
                                         {resolveTimezoneLabel(timezone)}
@@ -247,19 +212,19 @@ export const AccountInfoCell = ({
                                         </span>{' '}
                                         {assetAccess === 'full_asset'
                                             ? t(
-                                                  'service_purchase.asset_access_full',
-                                                  {
-                                                      defaultValue:
-                                                          'Full access',
-                                                  },
-                                              )
+                                                'service_purchase.asset_access_full',
+                                                {
+                                                    defaultValue:
+                                                        'Full access',
+                                                },
+                                            )
                                             : t(
-                                                  'service_purchase.asset_access_basic',
-                                                  {
-                                                      defaultValue:
-                                                          'Basic access',
-                                                  },
-                                              )}
+                                                'service_purchase.asset_access_basic',
+                                                {
+                                                    defaultValue:
+                                                        'Basic access',
+                                                },
+                                            )}
                                     </div>
                                 )}
                             </div>
@@ -282,24 +247,12 @@ export const AccountInfoCell = ({
         (config as any).payment_source ||
         '';
 
-    if (!email && !name && !bm && !fanpage && !website && !timezone && !billingSource && allAssignedAccounts.length === 0) {
+    if (!email && !name && !bm && !fanpage && !website && !timezone && !billingSource) {
         return <span className="text-xs text-muted-foreground">-</span>;
     }
 
     return (
         <div className="space-y-1 text-xs">
-            {allAssignedAccounts.length > 0 && (
-                <div className="rounded border border-emerald-200 bg-emerald-50/80 p-1.5 font-medium text-emerald-950 mb-1">
-                    <span className="font-semibold text-emerald-900">
-                        {t('service_orders.table.assigned_account', {
-                            defaultValue: 'Tài khoản đã gán',
-                        })}:
-                    </span>{' '}
-                    <span className="font-mono font-bold text-emerald-800">
-                        {allAssignedAccounts.join(', ')}
-                    </span>
-                </div>
-            )}
             {billingSource && (
                 <div>
                     <span className="font-medium">
@@ -312,10 +265,10 @@ export const AccountInfoCell = ({
                             defaultValue: billingSource === 'customer_card'
                                 ? 'Thẻ của khách'
                                 : billingSource === 'adviet_card'
-                                ? 'Thẻ Adviet'
-                                : billingSource === 'supplier_credit_line'
-                                ? 'Hạn mức nhà cung cấp'
-                                : billingSource,
+                                    ? 'Thẻ Adviet'
+                                    : billingSource === 'supplier_credit_line'
+                                        ? 'Hạn mức nhà cung cấp'
+                                        : billingSource,
                         })}
                     </span>
                 </div>
@@ -343,11 +296,11 @@ export const AccountInfoCell = ({
                     <span className="font-medium">
                         {isMeta
                             ? t('service_purchase.timezone_bm_label', {
-                                  defaultValue: 'Múi giờ BM',
-                              })
+                                defaultValue: 'Múi giờ BM',
+                            })
                             : t('service_purchase.timezone_mcc_label', {
-                                  defaultValue: 'Múi giờ MCC',
-                              })}
+                                defaultValue: 'Múi giờ MCC',
+                            })}
                         :
                     </span>{' '}
                     {resolveTimezoneLabel(timezone)}

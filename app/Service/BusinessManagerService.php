@@ -46,8 +46,7 @@ class BusinessManagerService
         protected MetaAdsCampaignRepository $metaAdsCampaignRepository,
         protected GoogleAdsCampaignRepository $googleAdsCampaignRepository,
         protected CurrencyExchangeService $currencyExchangeService,
-    ) {
-    }
+    ) {}
 
     private function resolveActivePlatformSetting(int $platform)
     {
@@ -61,7 +60,7 @@ class BusinessManagerService
         $settingsResult = $this->platformSettingService->getAllActiveByPlatform($platform);
         $settings = $settingsResult->isSuccess() ? collect($settingsResult->getData()) : collect();
         $fallbackSetting = $settings
-            ->sortByDesc(fn ($setting) => optional($setting->updated_at)->getTimestamp() ?? 0)
+            ->sortByDesc(fn($setting) => optional($setting->updated_at)->getTimestamp() ?? 0)
             ->first();
 
         if (!$fallbackSetting) {
@@ -174,7 +173,7 @@ class BusinessManagerService
 
             $metaChildren = $metaChildQuery
                 ->get(['bm_id', 'name', 'parent_bm_id'])
-                ->map(fn ($bm) => [
+                ->map(fn($bm) => [
                     'id' => (string) $bm->bm_id,
                     'name' => $bm->name ?? (string) $bm->bm_id,
                     'parent_id' => $bm->parent_bm_id ? (string) $bm->parent_bm_id : '',
@@ -191,7 +190,7 @@ class BusinessManagerService
                 ->whereNotNull('parent_mcc_id')
                 ->where('parent_mcc_id', $activeGoogleManagerId)
                 ->get(['mcc_id', 'name', 'parent_mcc_id'])
-                ->map(fn ($mcc) => [
+                ->map(fn($mcc) => [
                     'id' => (string) $mcc->mcc_id,
                     'name' => $mcc->name ?? (string) $mcc->mcc_id,
                     'parent_id' => (string) $mcc->parent_mcc_id,
@@ -243,7 +242,7 @@ class BusinessManagerService
 
                 $metaSettingId = session('active_meta_setting_id');
                 $googleSettingId = session('active_google_setting_id');
-                
+
                 if ($metaSettingId || $googleSettingId) {
                     $query->where(function ($subQ) use ($metaSettingId, $googleSettingId, $childManagerId) {
                         $hasFilter = false;
@@ -262,53 +261,39 @@ class BusinessManagerService
                             } elseif ($metaSetting && $metaBmId) {
                                 $subQ->orWhere(function ($metaQ) use ($metaBmId, $childManagerId) {
                                     $metaQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::META->value))
-                                          ->where(function ($matchQ) use ($metaBmId, $childManagerId) {
-                                              $matchQ->where(function ($jsonQ) use ($metaBmId) {
-                                                  $jsonQ->whereJsonContains('config_account->business_manager_id', $metaBmId)
-                                                        ->orWhereJsonContains('config_account->bm_id', $metaBmId)
-                                                        ->orWhereJsonContains('config_account->child_bm_id', $metaBmId);
-                                              })
-                                              ->orWhereHas('metaAccount', function ($accountQ) use ($metaBmId) {
-                                                  $accountQ->where('business_manager_id', $metaBmId)
-                                                      ->orWhereIn('account_id', function ($accessQ) use ($metaBmId) {
-                                                          $accessQ->select('account_id')
-                                                              ->from('meta_account_business_manager_accesses')
-                                                              ->where('source_bm_id', $metaBmId);
-                                                      });
-                                              });
+                                        ->where(function ($jsonQ) use ($metaBmId) {
+                                            $jsonQ->whereJsonContains('config_account->business_manager_id', $metaBmId)
+                                                ->orWhereJsonContains('config_account->bm_id', $metaBmId)
+                                                ->orWhereJsonContains('config_account->child_bm_id', $metaBmId);
+                                        });
 
-                                              if ($childManagerId) {
-                                                  $matchQ->orWhereHas('metaAccount', function ($accountQ) use ($childManagerId) {
-                                                      $accountQ->whereIn('account_id', function ($accessQ) use ($childManagerId) {
-                                                          $accessQ->select('account_id')
-                                                              ->from('meta_account_business_manager_accesses')
-                                                              ->where('source_bm_id', $childManagerId);
-                                                      });
-                                                  });
-                                              }
-                                          });
+                                    if ($childManagerId) {
+                                        $metaQ->orWhere(function ($scopeQ) use ($childManagerId) {
+                                            $scopeQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::META->value))
+                                                ->whereHas('metaAccount', function ($accountQ) use ($childManagerId) {
+                                                    $accountQ->whereIn('account_id', function ($accessQ) use ($childManagerId) {
+                                                        $accessQ->select('account_id')
+                                                            ->from('meta_account_business_manager_accesses')
+                                                            ->where('source_bm_id', $childManagerId);
+                                                    });
+                                                });
+                                        });
+                                    }
                                 });
                                 $hasFilter = true;
                             }
                         }
-                        
+
                         if ($googleSettingId) {
                             $googleSetting = $this->platformSettingService->find($googleSettingId)->getData();
                             if ($googleSetting && isset($googleSetting->config['login_customer_id'])) {
                                 $mccId = (string) $googleSetting->config['login_customer_id'];
                                 $subQ->orWhere(function ($googleQ) use ($mccId) {
                                     $googleQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::GOOGLE->value))
-                                            ->where(function ($matchQ) use ($mccId) {
-                                                $matchQ->where(function ($jsonQ) use ($mccId) {
-                                                    $jsonQ->whereJsonContains('config_account->login_customer_id', $mccId)
-                                                          ->orWhereJsonContains('config_account->customer_manager_id', $mccId)
-                                                          ->orWhereJsonContains('config_account->google_manager_id', $mccId)
-                                                          ->orWhereJsonContains('config_account->bm_id', $mccId);
-                                                })
-                                                ->orWhereHas('googleAccounts', function ($accQ) use ($mccId) {
-                                                    $accQ->where('customer_manager_id', $mccId);
-                                                });
-                                            });
+                                        ->where(function ($jsonQ) use ($mccId) {
+                                            $jsonQ->whereJsonContains('config_account->login_customer_id', $mccId)
+                                                ->orWhereJsonContains('config_account->customer_manager_id', $mccId);
+                                        });
                                 });
                                 $hasFilter = true;
                             }
@@ -365,12 +350,12 @@ class BusinessManagerService
             $bmDirectAccessMap = $this->metaBusinessManagerRepository->query()
                 ->whereNull('hidden_at')
                 ->pluck('is_direct_access', 'bm_id')
-                ->map(fn ($value) => (bool) $value)
+                ->map(fn($value) => (bool) $value)
                 ->toArray();
             $hiddenMetaBmIds = $this->metaBusinessManagerRepository->query()
                 ->whereNotNull('hidden_at')
                 ->pluck('bm_id')
-                ->map(fn ($id) => (string) $id)
+                ->map(fn($id) => (string) $id)
                 ->toArray();
 
             $mccNameMap = $this->googleMccManagerRepository->query()
@@ -441,7 +426,7 @@ class BusinessManagerService
                 // Ưu tiên hiển thị BM con nếu có, nếu không thì hiển thị BM gốc
                 $bmIds = [];
                 $childBmId = $config['child_bm_id'] ?? null;
-                
+
                 if ($childBmId) {
                     // Nếu có BM con, hiển thị BM con
                     $bmIds[] = $childBmId;
@@ -475,7 +460,7 @@ class BusinessManagerService
 
                     $accountIds = $accounts
                         ->pluck('account_id')
-                        ->map(fn ($id) => (string) $id)
+                        ->map(fn($id) => (string) $id)
                         ->filter()
                         ->unique()
                         ->values()
@@ -484,18 +469,19 @@ class BusinessManagerService
                     $scopeBmIdsByAccount = empty($accountIds)
                         ? []
                         : $this->metaAccountBusinessManagerAccessRepository->query()
-                            ->whereIn('account_id', $accountIds)
-                            ->get(['account_id', 'source_bm_id'])
-                            ->groupBy(fn ($access) => (string) $access->account_id)
-                            ->map(fn ($rows) => $rows
+                        ->whereIn('account_id', $accountIds)
+                        ->get(['account_id', 'source_bm_id'])
+                        ->groupBy(fn($access) => (string) $access->account_id)
+                        ->map(
+                            fn($rows) => $rows
                                 ->pluck('source_bm_id')
-                                ->map(fn ($id) => (string) $id)
+                                ->map(fn($id) => (string) $id)
                                 ->filter()
                                 ->unique()
                                 ->values()
                                 ->toArray()
-                            )
-                            ->toArray();
+                        )
+                        ->toArray();
 
                     foreach ($accounts as $account) {
                         // Tính spend cho từng account
@@ -534,7 +520,7 @@ class BusinessManagerService
                             ->where('meta_account_id', $account->id)
                             ->where(function ($q) {
                                 $q->where('status', 'ACTIVE')
-                                  ->orWhere('effective_status', 'ACTIVE');
+                                    ->orWhere('effective_status', 'ACTIVE');
                             })
                             ->count();
                         $disabledCampaigns = $totalCampaigns - $activeCampaigns;
@@ -548,7 +534,7 @@ class BusinessManagerService
                         $bmDisplayName = $accountBmId && isset($bmNameMap[$accountBmId])
                             ? $bmNameMap[$accountBmId]
                             : $this->resolveBmName($bmIdsForRow, $bmNameMap);
-                        
+
                         // Tên nhóm tài sản / tên hiển thị đơn dịch vụ là tên khách hàng, không phải tên BM.
                         $assetGroupNames = $accountToGroupNamesMap[$account->id] ?? [];
                         $customerName = !empty($assetGroupNames)
@@ -585,8 +571,8 @@ class BusinessManagerService
                             && $this->isTodayDateRangeForGoogleAccount($dateStart, $dateEnd, $account->time_zone ?? null)
                             && $account->last_synced_at
                             && Carbon::parse($account->last_synced_at)
-                                ->timezone($account->time_zone ?: config('app.timezone'))
-                                ->isSameDay(Carbon::now($account->time_zone ?: config('app.timezone')))
+                            ->timezone($account->time_zone ?: config('app.timezone'))
+                            ->isSameDay(Carbon::now($account->time_zone ?: config('app.timezone')))
                             && is_numeric($account->amount_spent ?? null)
                         ) {
                             $spendValue = (string) $account->amount_spent;
@@ -606,7 +592,7 @@ class BusinessManagerService
                             ->where('google_account_id', $account->id)
                             ->where(function ($q) {
                                 $q->where('status', 'ENABLED')
-                                  ->orWhere('effective_status', 'ENABLED');
+                                    ->orWhere('effective_status', 'ENABLED');
                             })
                             ->count();
                         $disabledCampaigns = $totalCampaigns - $activeCampaigns;
@@ -670,7 +656,6 @@ class BusinessManagerService
                                 ['currency' => $account->currency ?? 'USD'],
                             ],
                         ];
-
                     }
                 }
             }
@@ -850,7 +835,7 @@ class BusinessManagerService
             if ($customerIdFilter !== null) {
                 $accountsList = array_values(array_filter(
                     $accountsList,
-                    fn ($item) => (string) ($item['owner_id'] ?? '') === $customerIdFilter
+                    fn($item) => (string) ($item['owner_id'] ?? '') === $customerIdFilter
                 ));
             }
 
@@ -861,8 +846,8 @@ class BusinessManagerService
             if ($managerId) {
                 $accountsList = array_values(array_filter(
                     $accountsList,
-                    fn ($item) =>
-                        in_array($managerId, array_map('strval', $item['scope_bm_ids'] ?? []), true)
+                    fn($item) =>
+                    in_array($managerId, array_map('strval', $item['scope_bm_ids'] ?? []), true)
                         ||
                         in_array($managerId, array_map('strval', $item['bm_ids'] ?? []), true)
                         || (string) ($item['parent_bm_id'] ?? '') === $managerId
@@ -872,7 +857,7 @@ class BusinessManagerService
             if (!empty($hiddenMetaBmIds)) {
                 $accountsList = array_values(array_filter(
                     $accountsList,
-                    fn ($item) => !$this->isMetaBusinessManagerHidden($item, $hiddenMetaBmIds, $childManagerId)
+                    fn($item) => !$this->isMetaBusinessManagerHidden($item, $hiddenMetaBmIds, $childManagerId)
                 ));
             }
 
@@ -883,8 +868,8 @@ class BusinessManagerService
                 $needle = mb_strtolower($keyword);
                 $accountsList = array_values(array_filter(
                     $accountsList,
-                    fn ($item) =>
-                        str_contains($this->normalizeSearchValue($item['account_name'] ?? null), $needle)
+                    fn($item) =>
+                    str_contains($this->normalizeSearchValue($item['account_name'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['account_id'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['owner_name'] ?? null), $needle)
                         || str_contains($this->normalizeSearchValue($item['customer_name'] ?? null), $needle)
@@ -921,12 +906,12 @@ class BusinessManagerService
             if ($hasSpend === 'has_spend') {
                 $accountsList = array_values(array_filter(
                     $accountsList,
-                    fn ($item) => (float) ($item['total_spend'] ?? 0) > 0
+                    fn($item) => (float) ($item['total_spend'] ?? 0) > 0
                 ));
             } elseif ($hasSpend === 'no_spend') {
                 $accountsList = array_values(array_filter(
                     $accountsList,
-                    fn ($item) => (float) ($item['total_spend'] ?? 0) <= 0
+                    fn($item) => (float) ($item['total_spend'] ?? 0) <= 0
                 ));
             } elseif ($hasSpend === 'all') {
                 // Giữ lại tất cả tài khoản kể cả tài khoản 0$ chi tiêu
@@ -934,7 +919,7 @@ class BusinessManagerService
                 if ($viewMode === 'account' && $dateStart && $dateEnd) {
                     $accountsList = array_values(array_filter(
                         $accountsList,
-                        fn ($item) => (float) ($item['total_spend'] ?? 0) > 0
+                        fn($item) => (float) ($item['total_spend'] ?? 0) > 0
                     ));
                 }
             }
@@ -1059,7 +1044,7 @@ class BusinessManagerService
             }
 
             if ($viewMode === 'account') {
-                usort($bmArray, fn ($a, $b) => (float) ($b['total_spend'] ?? 0) <=> (float) ($a['total_spend'] ?? 0));
+                usort($bmArray, fn($a, $b) => (float) ($b['total_spend'] ?? 0) <=> (float) ($a['total_spend'] ?? 0));
             }
 
             $totalsByCurrency = $this->calculateTotalsByCurrency($bmArray);
@@ -1069,7 +1054,7 @@ class BusinessManagerService
 
             $totals = [
                 'total_spend' => $primaryTotal['total_spend'] ?? 0,
-                'total_reach' => array_sum(array_map(fn ($item) => (int) ($item['total_reach'] ?? 0), $bmArray)),
+                'total_reach' => array_sum(array_map(fn($item) => (int) ($item['total_reach'] ?? 0), $bmArray)),
                 'currency' => $primaryTotal['currency'] ?? ($bmArray[0]['currency'] ?? $this->currencyExchangeService->targetCurrency()),
                 'totals_by_currency' => $totalsByCurrency,
                 'last_synced_at' => $this->resolveServiceManagementLastSyncedAt(
@@ -1231,8 +1216,23 @@ class BusinessManagerService
         $amount = (float) $value;
         $currency = strtoupper((string) ($currency ?: 'USD'));
         $zeroDecimalCurrencies = [
-            'BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW',
-            'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+            'BIF',
+            'CLP',
+            'DJF',
+            'GNF',
+            'ISK',
+            'JPY',
+            'KMF',
+            'KRW',
+            'MGA',
+            'PYG',
+            'RWF',
+            'UGX',
+            'VND',
+            'VUV',
+            'XAF',
+            'XOF',
+            'XPF',
         ];
 
         return in_array($currency, $zeroDecimalCurrencies, true)
@@ -1378,7 +1378,7 @@ class BusinessManagerService
     {
         if (is_array($value)) {
             return mb_strtolower(implode(', ', array_map(
-                fn ($v) => trim((string) $v),
+                fn($v) => trim((string) $v),
                 $value,
             )));
         }
@@ -1419,8 +1419,8 @@ class BusinessManagerService
 
         $latest = collect($timestamps)
             ->filter()
-            ->map(fn ($value) => Carbon::parse($value))
-            ->sortByDesc(fn (Carbon $value) => $value->getTimestamp())
+            ->map(fn($value) => Carbon::parse($value))
+            ->sortByDesc(fn(Carbon $value) => $value->getTimestamp())
             ->first();
 
         return $latest?->toIso8601String();
@@ -1459,8 +1459,8 @@ class BusinessManagerService
             $accountQuery->max('last_synced_at'),
         ])
             ->filter()
-            ->map(fn ($value) => Carbon::parse($value))
-            ->sortByDesc(fn (Carbon $value) => $value->getTimestamp())
+            ->map(fn($value) => Carbon::parse($value))
+            ->sortByDesc(fn(Carbon $value) => $value->getTimestamp())
             ->first();
 
         return $timestamp?->toIso8601String();
@@ -1494,8 +1494,8 @@ class BusinessManagerService
             $accountQuery->max('last_synced_at'),
         ])
             ->filter()
-            ->map(fn ($value) => Carbon::parse($value))
-            ->sortByDesc(fn (Carbon $value) => $value->getTimestamp())
+            ->map(fn($value) => Carbon::parse($value))
+            ->sortByDesc(fn(Carbon $value) => $value->getTimestamp())
             ->first();
 
         return $timestamp?->toIso8601String();
@@ -1659,7 +1659,7 @@ class BusinessManagerService
                 $accessAccountIds = $this->metaAccountBusinessManagerAccessRepository->query()
                     ->where('source_bm_id', (string) $bmId)
                     ->pluck('account_id')
-                    ->map(fn ($id) => (string) $id)
+                    ->map(fn($id) => (string) $id)
                     ->unique()
                     ->values()
                     ->toArray();
@@ -1740,7 +1740,7 @@ class BusinessManagerService
         // Lấy platform configs active - Chỉ lấy platform nào đang được lọc hoặc lấy cả 2 nếu không lọc gì
         $metaSettingId = session('active_meta_setting_id');
         $googleSettingId = session('active_google_setting_id');
-        
+
         $platforms = [];
         if ($platformFilter) {
             $platforms = [$platformFilter];
@@ -1754,7 +1754,7 @@ class BusinessManagerService
 
         foreach ($platforms as $platform) {
             $platformSetting = $this->resolveActivePlatformSetting((int) $platform);
-            
+
             if (!$platformSetting || !$platformSetting->config) {
                 continue;
             }
@@ -1780,7 +1780,7 @@ class BusinessManagerService
                         ->whereNull('hidden_at')
                         ->where('is_direct_access', true)
                         ->pluck('bm_id')
-                        ->map(fn ($id) => (string) $id)
+                        ->map(fn($id) => (string) $id)
                         ->toArray();
                 }
 
@@ -1799,7 +1799,7 @@ class BusinessManagerService
 
                 $accessAccountIds = $accessRows
                     ->pluck('account_id')
-                    ->map(fn ($id) => (string) $id)
+                    ->map(fn($id) => (string) $id)
                     ->unique()
                     ->values()
                     ->toArray();
@@ -1812,7 +1812,7 @@ class BusinessManagerService
                     ->with(['serviceUser.user'])
                     ->whereIn('account_id', $accessAccountIds)
                     ->get()
-                    ->keyBy(fn ($account) => (string) $account->account_id);
+                    ->keyBy(fn($account) => (string) $account->account_id);
 
                 foreach ($accessRows as $access) {
                     $account = $metaAccounts[(string) $access->account_id] ?? null;
@@ -1863,7 +1863,7 @@ class BusinessManagerService
                     $status = $account->account_status !== null ? (int) $account->account_status : null;
                     $isActive = $this->isAccountActive((int) $platform, $status);
 
-                        $accountsList[] = [
+                    $accountsList[] = [
                         'id' => (string) $account->id,
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
@@ -1950,8 +1950,8 @@ class BusinessManagerService
                         && $this->isTodayDateRangeForGoogleAccount($dateStart, $dateEnd, $account->time_zone ?? null)
                         && $account->last_synced_at
                         && Carbon::parse($account->last_synced_at)
-                            ->timezone($account->time_zone ?: config('app.timezone'))
-                            ->isSameDay(Carbon::now($account->time_zone ?: config('app.timezone')))
+                        ->timezone($account->time_zone ?: config('app.timezone'))
+                        ->isSameDay(Carbon::now($account->time_zone ?: config('app.timezone')))
                         && is_numeric($account->amount_spent ?? null)
                     ) {
                         $spendValue = (string) $account->amount_spent;
@@ -2127,8 +2127,8 @@ class BusinessManagerService
                 ->whereIn('parent_bm_id', $queue)
                 ->whereNull('hidden_at')
                 ->pluck('bm_id')
-                ->map(fn ($id) => (string) $id)
-                ->filter(fn ($id) => !in_array($id, $ids, true))
+                ->map(fn($id) => (string) $id)
+                ->filter(fn($id) => !in_array($id, $ids, true))
                 ->values()
                 ->toArray();
 
@@ -2152,8 +2152,8 @@ class BusinessManagerService
             $children = $this->googleMccManagerRepository->query()
                 ->whereIn('parent_mcc_id', $queue)
                 ->pluck('mcc_id')
-                ->map(fn ($id) => (string) $id)
-                ->filter(fn ($id) => !in_array($id, $ids, true))
+                ->map(fn($id) => (string) $id)
+                ->filter(fn($id) => !in_array($id, $ids, true))
                 ->values()
                 ->toArray();
 
