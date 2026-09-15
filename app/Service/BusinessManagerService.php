@@ -262,24 +262,31 @@ class BusinessManagerService
                             } elseif ($metaSetting && $metaBmId) {
                                 $subQ->orWhere(function ($metaQ) use ($metaBmId, $childManagerId) {
                                     $metaQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::META->value))
-                                          ->where(function ($jsonQ) use ($metaBmId) {
-                                              $jsonQ->whereJsonContains('config_account->business_manager_id', $metaBmId)
-                                                    ->orWhereJsonContains('config_account->bm_id', $metaBmId)
-                                                    ->orWhereJsonContains('config_account->child_bm_id', $metaBmId);
-                                          });
+                                          ->where(function ($matchQ) use ($metaBmId, $childManagerId) {
+                                              $matchQ->where(function ($jsonQ) use ($metaBmId) {
+                                                  $jsonQ->whereJsonContains('config_account->business_manager_id', $metaBmId)
+                                                        ->orWhereJsonContains('config_account->bm_id', $metaBmId)
+                                                        ->orWhereJsonContains('config_account->child_bm_id', $metaBmId);
+                                              })
+                                              ->orWhereHas('metaAccount', function ($accountQ) use ($metaBmId) {
+                                                  $accountQ->where('business_manager_id', $metaBmId)
+                                                      ->orWhereIn('account_id', function ($accessQ) use ($metaBmId) {
+                                                          $accessQ->select('account_id')
+                                                              ->from('meta_account_business_manager_accesses')
+                                                              ->where('source_bm_id', $metaBmId);
+                                                      });
+                                              });
 
-                                    if ($childManagerId) {
-                                        $metaQ->orWhere(function ($scopeQ) use ($childManagerId) {
-                                            $scopeQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::META->value))
-                                                ->whereHas('metaAccount', function ($accountQ) use ($childManagerId) {
-                                                    $accountQ->whereIn('account_id', function ($accessQ) use ($childManagerId) {
-                                                        $accessQ->select('account_id')
-                                                            ->from('meta_account_business_manager_accesses')
-                                                            ->where('source_bm_id', $childManagerId);
-                                                    });
-                                                });
-                                        });
-                                    }
+                                              if ($childManagerId) {
+                                                  $matchQ->orWhereHas('metaAccount', function ($accountQ) use ($childManagerId) {
+                                                      $accountQ->whereIn('account_id', function ($accessQ) use ($childManagerId) {
+                                                          $accessQ->select('account_id')
+                                                              ->from('meta_account_business_manager_accesses')
+                                                              ->where('source_bm_id', $childManagerId);
+                                                      });
+                                                  });
+                                              }
+                                          });
                                 });
                                 $hasFilter = true;
                             }
@@ -291,9 +298,16 @@ class BusinessManagerService
                                 $mccId = (string) $googleSetting->config['login_customer_id'];
                                 $subQ->orWhere(function ($googleQ) use ($mccId) {
                                     $googleQ->whereHas('package', fn($p) => $p->where('platform', PlatformType::GOOGLE->value))
-                                            ->where(function ($jsonQ) use ($mccId) {
-                                                $jsonQ->whereJsonContains('config_account->login_customer_id', $mccId)
-                                                      ->orWhereJsonContains('config_account->customer_manager_id', $mccId);
+                                            ->where(function ($matchQ) use ($mccId) {
+                                                $matchQ->where(function ($jsonQ) use ($mccId) {
+                                                    $jsonQ->whereJsonContains('config_account->login_customer_id', $mccId)
+                                                          ->orWhereJsonContains('config_account->customer_manager_id', $mccId)
+                                                          ->orWhereJsonContains('config_account->google_manager_id', $mccId)
+                                                          ->orWhereJsonContains('config_account->bm_id', $mccId);
+                                                })
+                                                ->orWhereHas('googleAccounts', function ($accQ) use ($mccId) {
+                                                    $accQ->where('customer_manager_id', $mccId);
+                                                });
                                             });
                                 });
                                 $hasFilter = true;
