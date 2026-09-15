@@ -15,7 +15,7 @@ class ServiceOrderApproveRequest extends FormRequest
     {
         return [
             'payment_type' => ['nullable', 'string', 'in:prepay,postpay'],            
-            'meta_email' => ['nullable', 'email', 'max:255'],
+            'meta_email' => ['nullable', 'string', 'max:255'],
             'display_name' => ['nullable', 'string', 'max:255'],
             'bm_id' => ['nullable', 'string', 'max:255'],
             'child_bm_id' => ['nullable', 'string', 'max:255'],
@@ -28,7 +28,7 @@ class ServiceOrderApproveRequest extends FormRequest
             'timezone_bm' => ['nullable', 'string'],
             
             'accounts' => ['nullable', 'array', 'max:50'],
-            'accounts.*.meta_email' => ['nullable', 'string', 'email', 'max:255'],
+            'accounts.*.meta_email' => ['nullable', 'string', 'max:255'],
             'accounts.*.display_name' => ['nullable', 'string', 'max:255'],
             'accounts.*.bm_ids' => ['nullable', 'array'],
             'accounts.*.bm_ids.*' => ['nullable', 'string', 'max:255'],
@@ -37,7 +37,7 @@ class ServiceOrderApproveRequest extends FormRequest
             'accounts.*.websites' => ['nullable', 'array'],
             'accounts.*.websites.*' => ['nullable', 'string', 'max:255'],
             'accounts.*.timezone_bm' => ['nullable', 'string'],
-            'accounts.*.asset_access' => ['nullable', 'string', 'in:full_asset,basic_asset'],
+            'accounts.*.asset_access' => ['nullable', 'string', 'max:50'],
         ];
     }
 
