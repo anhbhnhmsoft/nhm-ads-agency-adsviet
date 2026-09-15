@@ -92,11 +92,14 @@ class PlatformSettingRepository extends BaseRepository
 
     public function findByConfigField(int $platform, string $field, string $value): ?PlatformSetting
     {
+        // Cột config là text (không phải json) nên không dùng được toán tử ->> trên PostgreSQL.
+        // Lỗi SQL sẽ làm hỏng transaction đang mở (25P02) => lọc bằng PHP trên giá trị đã cast array.
         return $this->model()
             ->where('platform', $platform)
             ->where('disabled', false)
-            ->whereRaw("config->>'$field' = ?", [$value])
-            ->first();
+            ->orderBy('id', 'desc')
+            ->get()
+            ->first(fn (PlatformSetting $setting) => (string) (($setting->config ?? [])[$field] ?? '') === $value);
     }
 
     public function findByPlatform(int $platform): ?PlatformSetting

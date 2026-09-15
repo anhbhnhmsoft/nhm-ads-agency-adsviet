@@ -236,6 +236,10 @@ class PlatformSettingService
             $setting = $this->platformSettingRepository->findByConfigField($platform, $field, $value);
             return ServiceReturn::success(data: $setting);
         } catch (\Throwable $e) {
+            Logging::error(
+                message: 'PlatformSettingService@findByConfigField error: '.$e->getMessage(),
+                exception: $e
+            );
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }

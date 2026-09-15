@@ -80,29 +80,33 @@ class ServiceOrderController extends Controller
             // Tính hoa hồng dịch vụ + hoa hồng bán account
             $serviceUser = $result->getData();
             if ($serviceUser && $serviceUser->package) {
-                $openFee = (float) ($serviceUser->package->open_fee ?? 0);
+                try {
+                    $openFee = (float) ($serviceUser->package->open_fee ?? 0);
 
-                // Hoa hồng dịch vụ dựa trên open_fee
-                if ($openFee > 0) {
-                    $this->commissionService->calculateServiceCommission(
-                        (string) $serviceUser->id,
-                        $openFee
-                    );
-                }
+                    // Hoa hồng dịch vụ dựa trên open_fee
+                    if ($openFee > 0) {
+                        $this->commissionService->calculateServiceCommission(
+                            (string) $serviceUser->id,
+                            $openFee
+                        );
+                    }
 
-                // Hoa hồng bán account: open_fee * số tài khoản (nếu có cấu hình accounts)
-                $configAccount = $serviceUser->config_account ?? [];
-                $accounts      = is_array($configAccount['accounts'] ?? null)
-                    ? $configAccount['accounts']
-                    : [];
-                $accountsCount = count($accounts) > 0 ? count($accounts) : 1; // nếu không có cấu trúc mới, coi như 1 tài khoản
+                    // Hoa hồng bán account: open_fee * số tài khoản (nếu có cấu hình accounts)
+                    $configAccount = $serviceUser->config_account ?? [];
+                    $accounts      = is_array($configAccount['accounts'] ?? null)
+                        ? $configAccount['accounts']
+                        : [];
+                    $accountsCount = count($accounts) > 0 ? count($accounts) : 1; // nếu không có cấu trúc mới, coi như 1 tài khoản
 
-                if ($openFee > 0 && $accountsCount > 0) {
-                    $this->commissionService->calculateAccountCommission(
-                        (string) $serviceUser->id,
-                        $accountsCount,
-                        $openFee
-                    );
+                    if ($openFee > 0 && $accountsCount > 0) {
+                        $this->commissionService->calculateAccountCommission(
+                            (string) $serviceUser->id,
+                            $accountsCount,
+                            $openFee
+                        );
+                    }
+                } catch (\Throwable $commEx) {
+                    \App\Core\Logging::error('ServiceOrderController@approve commission error: ' . $commEx->getMessage(), exception: $commEx);
                 }
             }
 
