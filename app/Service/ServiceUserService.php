@@ -295,12 +295,16 @@ class ServiceUserService
                 $serviceUser->save();
 
                 // ── Gán BM / Account: sync accounts từ Meta API ngay lập tức để tài khoản hiển thị ngay ra ngoài ──
-                if ($platform === PlatformType::META->value) {
-                    $this->metaService->syncMetaAccounts($serviceUser);
-                } elseif ($platform === PlatformType::GOOGLE->value) {
-                    if ($assignMode === 'bm' && !empty($bmIdSubmitted)) {
-                        $this->syncGoogleAccountsForBm($serviceUser, $bmIdSubmitted);
+                try {
+                    if ($platform === PlatformType::META->value) {
+                        $this->metaService->syncMetaAccounts($serviceUser);
+                    } elseif ($platform === PlatformType::GOOGLE->value) {
+                        if ($assignMode === 'bm' && !empty($bmIdSubmitted)) {
+                            $this->syncGoogleAccountsForBm($serviceUser, $bmIdSubmitted);
+                        }
                     }
+                } catch (\Throwable $syncEx) {
+                    Logging::error('ServiceUserService@approveServiceUser sync accounts failed: '.$syncEx->getMessage(), exception: $syncEx);
                 }
 
                 // ── Nâng spend_cap Meta ──
@@ -308,28 +312,40 @@ class ServiceUserService
                     $topUpAmount = (float) ($newConfig['top_up_amount'] ?? $currentConfig['top_up_amount'] ?? 0);
                     if ($topUpAmount > 0 && !empty($accountIds)) {
                         foreach ($accountIds as $accId) {
-                            $spendCapResult = $this->metaBusinessService->increaseAdAccountSpendCap(
-                                $accId,
-                                $topUpAmount
-                            );
-                            if ($spendCapResult->isError()) {
-                                Logging::error(
-                                    message: 'ServiceUserService@approveServiceUser increaseAdAccountSpendCap failed: '.$spendCapResult->getMessage(),
-                                    context: ['account_id' => $accId, 'top_up_amount' => $topUpAmount]
+                            try {
+                                $spendCapResult = $this->metaBusinessService->increaseAdAccountSpendCap(
+                                    $accId,
+                                    $topUpAmount
                                 );
+                                if ($spendCapResult->isError()) {
+                                    Logging::error(
+                                        message: 'ServiceUserService@approveServiceUser increaseAdAccountSpendCap failed: '.$spendCapResult->getMessage(),
+                                        context: ['account_id' => $accId, 'top_up_amount' => $topUpAmount]
+                                    );
+                                }
+                            } catch (\Throwable $spendCapEx) {
+                                Logging::error('ServiceUserService@approveServiceUser increaseAdAccountSpendCap error: '.$spendCapEx->getMessage(), exception: $spendCapEx);
                             }
                         }
                     }
                 }
 
                 // ── Dispatch sync jobs (backup) ──
-                if ($platform === PlatformType::META->value) {
-                    SyncMetaJob::dispatch($serviceUser);
-                } elseif ($platform === PlatformType::GOOGLE->value) {
-                    SyncGoogleServiceUserJob::dispatch($serviceUser);
+                try {
+                    if ($platform === PlatformType::META->value) {
+                        SyncMetaJob::dispatch($serviceUser);
+                    } elseif ($platform === PlatformType::GOOGLE->value) {
+                        SyncGoogleServiceUserJob::dispatch($serviceUser);
+                    }
+                } catch (\Throwable $dispatchEx) {
+                    Logging::error('ServiceUserService@approveServiceUser dispatch sync job error: '.$dispatchEx->getMessage(), exception: $dispatchEx);
                 }
 
-                $this->notifyServiceStatus($serviceUser, 'activated');
+                try {
+                    $this->notifyServiceStatus($serviceUser, 'activated');
+                } catch (\Throwable $notifEx) {
+                    Logging::error('ServiceUserService@approveServiceUser notify error: '.$notifEx->getMessage(), exception: $notifEx);
+                }
 
                 return ServiceReturn::success(data: $serviceUser);
             });
