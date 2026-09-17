@@ -24,6 +24,10 @@ class PreventPreviewMutations
 
         $message = __('user.preview.read_only_warning');
 
+        if ($request->header('X-Inertia')) {
+            return redirect()->back()->with('warning', $message);
+        }
+
         if ($request->expectsJson() || $request->ajax()) {
             return new JsonResponse([
                 'message' => $message,

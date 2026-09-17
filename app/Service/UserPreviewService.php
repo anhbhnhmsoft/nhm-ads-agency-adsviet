@@ -132,16 +132,21 @@ class UserPreviewService
             'logout',
             'admin_preview_start',
             'admin_preview_stop',
+            'service_purchase_purchase',
         );
     }
 
     public function shouldApplyPreview(Request $request): bool
     {
-        if (!in_array($request->method(), ['GET', 'HEAD'], true)) {
+        if (!$this->isPreviewActive($request)) {
             return false;
         }
 
-        if (!$this->isPreviewActive($request)) {
+        if ($request->isMethod('POST') && $request->routeIs('service_purchase_purchase')) {
+            return true;
+        }
+
+        if (!in_array($request->method(), ['GET', 'HEAD'], true)) {
             return false;
         }
 

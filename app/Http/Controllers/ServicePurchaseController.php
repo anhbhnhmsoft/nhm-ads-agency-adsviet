@@ -101,8 +101,9 @@ class ServicePurchaseController extends Controller
         ], true);
 
         // Xác định service owner (khách hàng)
-        $actorUserId = (string) $user->id;
-        $serviceOwnerUserId = $actorUserId;
+        $actor = $request->attributes->get(\App\Service\UserPreviewService::ACTOR_ATTRIBUTE) ?? $user;
+        $actorUserId = (string) $actor->id;
+        $serviceOwnerUserId = (string) $user->id;
 
         if ($isStaff) {
             $customerId = $data['customer_id'] ?? null;
