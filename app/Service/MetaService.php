@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Common\Constants\Config\ConfigName;
 use App\Common\Constants\MetaBusinessManager\MetaBusinessManagerSource;
 use App\Common\Constants\Platform\PlatformType;
+use App\Common\Constants\ServicePackage\AccountBillingSource;
 use App\Common\Constants\ServicePackage\Meta\MetaAdsAccountStatus;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Common\Constants\User\UserRole;
@@ -3027,7 +3028,9 @@ class MetaService
     }
 
     /**
-     * Kiểm tra và tự động tạm dừng tài khoản nếu spending > balance + threshold
+     * Kiểm tra và tự động tạm dừng tài khoản nếu số dư nạp trước (prepay balance) thấp hơn ngưỡng an toàn.
+     * Lưu ý: Chỉ áp dụng cho tài khoản trả trước (prepay). Các tài khoản trả sau / customer_card / credit_line
+     * được quản lý độc lập bởi ServicesBillPostpay và EnforceCreditlineLimits.
      *
      * @param  float  $threshold  Ngưỡng cảnh báo (mặc định 100 USD)
      */
@@ -3035,7 +3038,7 @@ class MetaService
     {
         try {
             $accounts = $this->metaAccountRepository->query()
-                ->with(['serviceUser.user'])
+                ->with(['serviceUser.package', 'serviceUser.user'])
                 ->whereNotNull('balance')
                 ->where('balance', '>', 0)
                 ->get();
@@ -3046,6 +3049,26 @@ class MetaService
 
             foreach ($accounts as $account) {
                 try {
+                    $serviceUser = $account->serviceUser;
+                    if (!$serviceUser) {
+                        continue;
+                    }
+
+                    $paymentType = $serviceUser->package?->payment_type ?? $serviceUser->config_account['payment_type'] ?? null;
+                    $billingSource = $serviceUser->package?->billing_source ?? $serviceUser->config_account['billing_source'] ?? null;
+
+                    // Tuyệt đối không auto-pause các tài khoản trả sau / thẻ của khách / credit line
+                    if ($paymentType === 'postpay' 
+                        || $billingSource === AccountBillingSource::CUSTOMER_CARD->value 
+                        || $billingSource === AccountBillingSource::SUPPLIER_CREDIT_LINE->value) {
+                        continue;
+                    }
+
+                    // Chỉ áp dụng cho tài khoản trả trước prepay
+                    if (!$account->is_prepay_account && $paymentType !== 'prepay') {
+                        continue;
+                    }
+
                     $balance = $this->normalizeMetaAccountMoney(
                         $account->balance,
                         $account->currency
@@ -3054,7 +3077,7 @@ class MetaService
                         continue;
                     }
 
-                    // Kiểm tra nếu số dư thấp hơn ngưỡng an toàn (cảnh báo số dư thấp)
+                    // Kiểm tra nếu số dư nạp trước thấp hơn ngưỡng an toàn
                     if ($balance < $threshold) {
                         // Pause tất cả campaigns trong account
                         $campaigns = $this->metaAdsCampaignRepository->query()
@@ -3064,26 +3087,23 @@ class MetaService
                             ->get();
 
                         foreach ($campaigns as $campaign) {
-                            if ($account->serviceUser) {
-                                $pauseResult = $this->updateCampaignStatus(
-                                    (string) $account->serviceUser->id,
-                                    (string) $campaign->id,
-                                    'PAUSED'
-                                );
-                                if ($pauseResult->isError()) {
-                                    Logging::web('MetaService@checkAndAutoPauseAccounts: Failed to pause campaign', [
-                                        'account_id' => $account->id,
-                                        'campaign_id' => $campaign->id,
-                                        'error' => $pauseResult->getMessage(),
-                                    ]);
-                                }
+                            $pauseResult = $this->updateCampaignStatus(
+                                (string) $serviceUser->id,
+                                (string) $campaign->id,
+                                'PAUSED'
+                            );
+                            if ($pauseResult->isError()) {
+                                Logging::web('MetaService@checkAndAutoPauseAccounts: Failed to pause campaign', [
+                                    'account_id' => $account->id,
+                                    'campaign_id' => $campaign->id,
+                                    'error' => $pauseResult->getMessage(),
+                                ]);
                             }
                         }
 
                         $paused++;
 
                         // Gửi thông báo số dư thấp
-                        // Vì đây là trường hợp balance < threshold, chưa chắc đã chi tiêu vượt quá
                         $notificationResult = $this->metaAdsNotificationService->sendLowBalanceAlert(
                             $account,
                             $threshold
@@ -3092,86 +3112,11 @@ class MetaService
                             $notified++;
                         }
 
-                        Logging::web('MetaService@checkAndAutoPauseAccounts: Auto-paused account (low balance)', [
+                        Logging::web('MetaService@checkAndAutoPauseAccounts: Auto-paused prepay account (low balance)', [
                             'account_id' => $account->id,
                             'account_name' => $account->account_name,
                             'balance' => $balance,
                             'threshold' => $threshold,
-                            'campaigns_paused' => $campaigns->count(),
-                            'notification_sent' => $notificationResult->isSuccess(),
-                        ]);
-
-                        continue;
-                    }
-
-                    // Kiểm tra nếu chi tiêu tích lũy (lifetime) > balance + threshold
-                    // Meta Ads API hỗ trợ date_preset: "maximum" để lấy lifetime spending
-                    // amount_spent là chi tiêu tích lũy (lifetime) từ Meta API, ưu tiên dùng
-                    $lifetimeSpending = $this->normalizeMetaAccountMoney(
-                        $account->amount_spent,
-                        $account->currency
-                    ) ?? 0.0;
-
-                    // Nếu không có amount_spent, lấy từ insights database (maximum = tất cả insights đã sync)
-                    if ($lifetimeSpending == 0) {
-                        $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(
-                            [(string) $account->id],
-                            'maximum' // Lấy tất cả insights từ database (không filter date)
-                        );
-                        if ($insightsResult->isError()) {
-                            $errors++;
-
-                            continue;
-                        }
-                        $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
-                    }
-
-                    $thresholdAmount = $balance + $threshold;
-
-                    // Kiểm tra nếu chi tiêu tích lũy vượt quá số dư + ngưỡng an toàn
-                    if ($lifetimeSpending > $thresholdAmount) {
-                        // Pause tất cả campaigns trong account
-                        $campaigns = $this->metaAdsCampaignRepository->query()
-                            ->where('meta_account_id', $account->id)
-                            ->where('status', '!=', 'PAUSED')
-                            ->where('status', '!=', 'DELETED')
-                            ->get();
-
-                        foreach ($campaigns as $campaign) {
-                            if ($account->serviceUser) {
-                                $pauseResult = $this->updateCampaignStatus(
-                                    (string) $account->serviceUser->id,
-                                    (string) $campaign->id,
-                                    'PAUSED'
-                                );
-                                if ($pauseResult->isError()) {
-                                    Logging::web('MetaService@checkAndAutoPauseAccounts: Failed to pause campaign', [
-                                        'account_id' => $account->id,
-                                        'campaign_id' => $campaign->id,
-                                        'error' => $pauseResult->getMessage(),
-                                    ]);
-                                }
-                            }
-                        }
-
-                        $paused++;
-
-                        // Gửi thông báo
-                        $notificationResult = $this->metaAdsNotificationService->sendSpendingExceededAlert(
-                            $account,
-                            $lifetimeSpending,
-                            $threshold
-                        );
-                        if ($notificationResult->isSuccess()) {
-                            $notified++;
-                        }
-
-                        Logging::web('MetaService@checkAndAutoPauseAccounts: Auto-paused account (spending exceeded)', [
-                            'account_id' => $account->id,
-                            'account_name' => $account->account_name,
-                            'balance' => $balance,
-                            'lifetime_spending' => $lifetimeSpending,
-                            'threshold' => $thresholdAmount,
                             'campaigns_paused' => $campaigns->count(),
                             'notification_sent' => $notificationResult->isSuccess(),
                         ]);

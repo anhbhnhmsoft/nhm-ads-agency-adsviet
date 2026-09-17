@@ -36,9 +36,10 @@ use App\Common\Constants\Google\GoogleCustomerStatus;
 use App\Common\Constants\Google\GoogleCampaignStatus;
 use Google\Ads\GoogleAds\V22\Enums\AccountBudgetProposalTypeEnum\AccountBudgetProposalType;
 use Google\Ads\GoogleAds\V22\Resources\CampaignBudget;
+use App\Common\Constants\Config\ConfigName;
+use App\Common\Constants\ServicePackage\AccountBillingSource;
 use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use App\Repositories\GoogleAdsAccountInsightRepository;
-use App\Common\Constants\Config\ConfigName;
 use Google\Ads\GoogleAds\Lib\V22\GoogleAdsClientBuilder;
 use Google\Ads\GoogleAds\V22\Services\CampaignOperation;
 use Google\Ads\GoogleAds\V22\Services\MutateCampaignsRequest;
@@ -3572,7 +3573,10 @@ GAQL;
     }
 
     /**
-     * Kiểm tra và tự động tạm dừng tài khoản nếu spending > balance + threshold
+     * Kiểm tra và tự động tạm dừng tài khoản nếu số dư nạp trước (prepay balance) thấp hơn ngưỡng an toàn.
+     * Lưu ý: Chỉ áp dụng cho tài khoản trả trước (prepay). Các tài khoản trả sau / customer_card / credit_line
+     * được quản lý độc lập bởi ServicesBillPostpay và EnforceCreditlineLimits.
+     *
      * @param float $threshold Ngưỡng cảnh báo (mặc định 100 USD)
      * @return ServiceReturn
      */
@@ -3580,7 +3584,7 @@ GAQL;
     {
         try {
             $accounts = $this->googleAccountRepository->query()
-                ->with(['serviceUser.user'])
+                ->with(['serviceUser.package', 'serviceUser.user'])
                 ->whereNotNull('balance')
                 ->where('balance', '>', 0)
                 ->get();
@@ -3591,12 +3595,32 @@ GAQL;
 
             foreach ($accounts as $account) {
                 try {
+                    $serviceUser = $account->serviceUser;
+                    if (!$serviceUser) {
+                        continue;
+                    }
+
+                    $paymentType = $serviceUser->package?->payment_type ?? $serviceUser->config_account['payment_type'] ?? null;
+                    $billingSource = $serviceUser->package?->billing_source ?? $serviceUser->config_account['billing_source'] ?? null;
+
+                    // Tuyệt đối không auto-pause các tài khoản trả sau / thẻ của khách / credit line
+                    if ($paymentType === 'postpay' 
+                        || $billingSource === AccountBillingSource::CUSTOMER_CARD->value 
+                        || $billingSource === AccountBillingSource::SUPPLIER_CREDIT_LINE->value) {
+                        continue;
+                    }
+
+                    // Chỉ áp dụng cho tài khoản trả trước prepay
+                    if (!$account->is_prepay_account && $paymentType !== 'prepay') {
+                        continue;
+                    }
+
                     $balance = (float) ($account->balance ?? 0);
                     if ($balance <= 0) {
                         continue;
                     }
 
-                    // Kiểm tra nếu số dư thấp hơn ngưỡng an toàn (cảnh báo số dư thấp)
+                    // Kiểm tra nếu số dư nạp trước thấp hơn ngưỡng an toàn
                     if ($balance < $threshold) {
                         // Pause tất cả campaigns trong account
                         $campaigns = $this->googleAdsCampaignRepository->query()
@@ -3606,26 +3630,23 @@ GAQL;
                             ->get();
 
                         foreach ($campaigns as $campaign) {
-                            if ($account->serviceUser) {
-                                $pauseResult = $this->updateCampaignStatus(
-                                    (string) $account->serviceUser->id,
-                                    (string) $campaign->id,
-                                    GoogleCampaignStatus::PAUSED->value
-                                );
-                                if ($pauseResult->isError()) {
-                                    Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Failed to pause campaign', [
-                                        'account_id' => $account->id,
-                                        'campaign_id' => $campaign->id,
-                                        'error' => $pauseResult->getMessage(),
-                                    ]);
-                                }
+                            $pauseResult = $this->updateCampaignStatus(
+                                (string) $serviceUser->id,
+                                (string) $campaign->id,
+                                GoogleCampaignStatus::PAUSED->value
+                            );
+                            if ($pauseResult->isError()) {
+                                Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Failed to pause campaign', [
+                                    'account_id' => $account->id,
+                                    'campaign_id' => $campaign->id,
+                                    'error' => $pauseResult->getMessage(),
+                                ]);
                             }
                         }
 
                         $paused++;
 
                         // Gửi thông báo số dư thấp
-                        // Vì đây là trường hợp balance < threshold, chưa chắc đã chi tiêu vượt quá
                         $notificationResult = $this->googleAdsNotificationService->sendLowBalanceAlert(
                             $account,
                             $threshold
@@ -3634,78 +3655,11 @@ GAQL;
                             $notified++;
                         }
 
-                        Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Auto-paused account (low balance)', [
+                        Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Auto-paused prepay account (low balance)', [
                             'account_id' => $account->id,
                             'account_name' => $account->account_name,
                             'balance' => $balance,
                             'threshold' => $threshold,
-                            'campaigns_paused' => $campaigns->count(),
-                            'notification_sent' => $notificationResult->isSuccess(),
-                        ]);
-                        continue;
-                    }
-
-                    // Kiểm tra nếu chi tiêu tích lũy (lifetime) > balance + threshold
-                    // Lưu ý: Google Ads API không có date preset "maximum" hay "lifetime"
-                    // Nên lấy tổng chi tiêu từ database (tất cả insights đã sync)
-                    // Đây là tổng chi tiêu từ khi bắt đầu sync, không phải lifetime thực từ API
-                    $insightsResult = $this->getAccountsInsightsSummaryFromDatabase(
-                        [(string) $account->id],
-                        'maximum' // 'maximum' = không filter date, lấy tất cả từ database
-                    );
-
-                    if ($insightsResult->isError()) {
-                        $errors++;
-                        continue;
-                    }
-
-                    $lifetimeSpending = (float) ($insightsResult->getData()['spend'] ?? 0);
-                    $thresholdAmount = $balance + $threshold;
-
-                    // Kiểm tra nếu chi tiêu tích lũy vượt quá số dư + ngưỡng an toàn
-                    if ($lifetimeSpending > $thresholdAmount) {
-                        // Pause tất cả campaigns trong account
-                        $campaigns = $this->googleAdsCampaignRepository->query()
-                            ->where('google_account_id', $account->id)
-                            ->where('status', '!=', GoogleCampaignStatus::PAUSED->value)
-                            ->where('status', '!=', GoogleCampaignStatus::REMOVED->value)
-                            ->get();
-
-                        foreach ($campaigns as $campaign) {
-                            if ($account->serviceUser) {
-                                $pauseResult = $this->updateCampaignStatus(
-                                    (string) $account->serviceUser->id,
-                                    (string) $campaign->id,
-                                    GoogleCampaignStatus::PAUSED->value
-                                );
-                                if ($pauseResult->isError()) {
-                                    Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Failed to pause campaign', [
-                                        'account_id' => $account->id,
-                                        'campaign_id' => $campaign->id,
-                                        'error' => $pauseResult->getMessage(),
-                                    ]);
-                                }
-                            }
-                        }
-
-                        $paused++;
-
-                        // Gửi thông báo
-                        $notificationResult = $this->googleAdsNotificationService->sendSpendingExceededAlert(
-                            $account,
-                            $lifetimeSpending,
-                            $threshold
-                        );
-                        if ($notificationResult->isSuccess()) {
-                            $notified++;
-                        }
-
-                        Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Auto-paused account (spending exceeded)', [
-                            'account_id' => $account->id,
-                            'account_name' => $account->account_name,
-                            'balance' => $balance,
-                            'lifetime_spending' => $lifetimeSpending,
-                            'threshold' => $thresholdAmount,
                             'campaigns_paused' => $campaigns->count(),
                             'notification_sent' => $notificationResult->isSuccess(),
                         ]);
