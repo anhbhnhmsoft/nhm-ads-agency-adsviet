@@ -609,6 +609,17 @@ class MetaService
                 }
             }
 
+            if ($metaAccount && ! empty($metaAccount->business_manager_id)) {
+                $settingResult = $this->platformSettingService->findByConfigField(
+                    PlatformType::META->value,
+                    'bm_id',
+                    (string) $metaAccount->business_manager_id
+                );
+                if (! $settingResult->isError() && $settingResult->getData()) {
+                    $this->metaBusinessService->setSettingId((string) $settingResult->getData()->id);
+                }
+            }
+
             $apiResult = $this->metaBusinessService->updateCampaignStatus($campaign->campaign_id, $status);
             if ($apiResult->isError()) {
                 return $apiResult;

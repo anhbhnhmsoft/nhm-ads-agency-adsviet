@@ -203,6 +203,14 @@ class PlatformSettingService
                 }
             }
 
+            // Nếu chạy trong CLI / Console / Cronjob / Queue (không có HTTP session)
+            if (app()->runningInConsole()) {
+                $defaultSetting = $this->platformSettingRepository->findActiveByPlatform($platform);
+                if ($defaultSetting) {
+                    return ServiceReturn::success(data: $defaultSetting);
+                }
+            }
+
             // Nếu không có session ID hoặc session ID không tồn tại/bị disable, KHÔNG fallback (tránh lộ data BM khác)
             return ServiceReturn::error(message: __('common_error.data_not_found'));
         } catch (\Throwable $e) {

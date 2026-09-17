@@ -2927,6 +2927,17 @@ GAQL;
                 }
             }
 
+            if ($googleAccount && ! empty($googleAccount->customer_manager_id)) {
+                $settingResult = $this->platformSettingService->findByConfigField(
+                    PlatformType::GOOGLE->value,
+                    'mcc_id',
+                    (string) $googleAccount->customer_manager_id
+                );
+                if (! $settingResult->isError() && $settingResult->getData()) {
+                    $this->setSettingId((string) $settingResult->getData()->id);
+                }
+            }
+
             $loginCustomerId = $this->resolveLoginCustomerId($serviceUser);
             if (empty($loginCustomerId)) {
                 return ServiceReturn::error(message: __('google_ads.error.no_manager_id_found'));
