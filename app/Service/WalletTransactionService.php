@@ -394,8 +394,8 @@ class WalletTransactionService
                 ]
             );
 
-            // Nếu thất bại: cache 60 phút để nhắc lại nếu chưa xử lý. Nếu thành công: cache đến hết ngày.
-            $expireMinutes = $hasFailed ? 60 : max(60, (int) now()->diffInMinutes(now()->endOfDay()) + 60);
+            // Cache thông báo đến hết ngày (chỉ báo tối đa 1 lần / ngày cho mỗi đơn hàng)
+            $expireMinutes = max(60, (int) now()->diffInMinutes(now()->endOfDay()) + 60);
             Caching::setCache(
                 CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED,
                 now()->toDateTimeString(),
