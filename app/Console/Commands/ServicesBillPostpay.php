@@ -144,7 +144,7 @@ class ServicesBillPostpay extends Command
                                     'charge_amount' => $chargeAmount,
                                 ]);
 
-                                $this->pauseAllCampaignsForServiceUser($locked);
+                                $pauseStats = $this->pauseAllCampaignsForServiceUser($locked);
 
                                 $this->walletTransactionService->notifySupportGroupPostpayInsufficientBalance(
                                     $locked,
@@ -152,6 +152,7 @@ class ServicesBillPostpay extends Command
                                     $minWalletBalance,
                                     $chargeAmount,
                                     $unbilledSpend,
+                                    $pauseStats,
                                 );
 
                                 $user = $wallet->user;
@@ -345,8 +346,15 @@ class ServicesBillPostpay extends Command
     /**
      * Pause tất cả campaigns của service_user khi số dư không đủ
      */
-    private function pauseAllCampaignsForServiceUser($serviceUser): void
+    private function pauseAllCampaignsForServiceUser($serviceUser): array
     {
+        $stats = [
+            'total' => 0,
+            'success' => 0,
+            'failed' => 0,
+            'errors' => [],
+        ];
+
         try {
             $serviceUserId = (string) $serviceUser->id;
 
@@ -356,6 +364,8 @@ class ServicesBillPostpay extends Command
                 ->where('status', '!=', 'DELETED')
                 ->get(['id']);
 
+            $stats['total'] += $metaCampaigns->count();
+
             foreach ($metaCampaigns as $campaign) {
                 $result = $this->metaService->updateCampaignStatus(
                     $serviceUserId,
@@ -363,11 +373,18 @@ class ServicesBillPostpay extends Command
                     'PAUSED'
                 );
                 if ($result->isError()) {
+                    $stats['failed']++;
+                    $errorMsg = $result->getMessage();
+                    if (! in_array($errorMsg, $stats['errors'], true)) {
+                        $stats['errors'][] = $errorMsg;
+                    }
                     Logging::web('ServicesBillPostpay: Failed to pause Meta campaign', [
                         'service_user_id' => $serviceUserId,
                         'campaign_id' => $campaign->id,
-                        'error' => $result->getMessage(),
+                        'error' => $errorMsg,
                     ]);
+                } else {
+                    $stats['success']++;
                 }
             }
 
@@ -377,6 +394,8 @@ class ServicesBillPostpay extends Command
                 ->where('status', '!=', GoogleCampaignStatus::REMOVED->value)
                 ->get(['id']);
 
+            $stats['total'] += $googleCampaigns->count();
+
             foreach ($googleCampaigns as $campaign) {
                 $result = $this->googleAdsService->updateCampaignStatus(
                     $serviceUserId,
@@ -384,11 +403,18 @@ class ServicesBillPostpay extends Command
                     GoogleCampaignStatus::PAUSED->value
                 );
                 if ($result->isError()) {
+                    $stats['failed']++;
+                    $errorMsg = $result->getMessage();
+                    if (! in_array($errorMsg, $stats['errors'], true)) {
+                        $stats['errors'][] = $errorMsg;
+                    }
                     Logging::web('ServicesBillPostpay: Failed to pause Google campaign', [
                         'service_user_id' => $serviceUserId,
                         'campaign_id' => $campaign->id,
-                        'error' => $result->getMessage(),
+                        'error' => $errorMsg,
                     ]);
+                } else {
+                    $stats['success']++;
                 }
             }
 
@@ -402,5 +428,7 @@ class ServicesBillPostpay extends Command
                 exception: $e
             );
         }
+
+        return $stats;
     }
 }

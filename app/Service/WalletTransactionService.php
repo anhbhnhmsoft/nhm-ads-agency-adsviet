@@ -317,6 +317,7 @@ class WalletTransactionService
         float $minWalletBalance,
         float $chargeAmount,
         float $unbilledSpend,
+        array $pauseStats = [],
     ): void {
         try {
             $supportGroupId = config('services.telegram.support_group_id');
@@ -324,7 +325,13 @@ class WalletTransactionService
                 return;
             }
 
-            $cacheKey = 'postpay_insufficient_group_notified_' . $serviceUser->id;
+            $hasFailed = ($pauseStats['failed'] ?? 0) > 0;
+            $failedCount = (int) ($pauseStats['failed'] ?? 0);
+            $successCount = (int) ($pauseStats['success'] ?? 0);
+            $totalCount = (int) ($pauseStats['total'] ?? 0);
+            $errors = $pauseStats['errors'] ?? [];
+
+            $cacheKey = ($hasFailed ? 'postpay_insufficient_group_failed_notified_' : 'postpay_insufficient_group_notified_') . $serviceUser->id;
             if (Caching::getCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, $cacheKey)) {
                 return;
             }
@@ -340,17 +347,41 @@ class WalletTransactionService
             $timezone = (string) config('services.telegram.timezone', 'Asia/Ho_Chi_Minh');
             $now = now($timezone);
 
-            $message = __('wallet.telegram.postpay_insufficient_group_alert', [
-                'name' => htmlspecialchars($customer->name ?? $customer->username ?? ('User ' . $customer->id), ENT_QUOTES, 'UTF-8'),
-                'order_code' => htmlspecialchars((string) $serviceUser->id, ENT_QUOTES, 'UTF-8'),
-                'package' => htmlspecialchars((string) $package->name, ENT_QUOTES, 'UTF-8'),
-                'platform' => htmlspecialchars($platform, ENT_QUOTES, 'UTF-8'),
-                'balance' => htmlspecialchars(number_format($currentBalance, 2), ENT_QUOTES, 'UTF-8'),
-                'min_wallet' => htmlspecialchars(number_format($minWalletBalance, 2), ENT_QUOTES, 'UTF-8'),
-                'charge_amount' => htmlspecialchars(number_format($chargeAmount, 2), ENT_QUOTES, 'UTF-8'),
-                'unbilled_spend' => htmlspecialchars(number_format($unbilledSpend, 2), ENT_QUOTES, 'UTF-8'),
-                'time' => $now->format('d/m/Y H:i:s'),
-            ]);
+            if ($hasFailed) {
+                $errorReason = ! empty($errors) ? implode("\n• ", $errors) : 'Permission / API Error';
+                $message = __('wallet.telegram.postpay_insufficient_group_alert_failed', [
+                    'name' => htmlspecialchars($customer->name ?? $customer->username ?? ('User ' . $customer->id), ENT_QUOTES, 'UTF-8'),
+                    'order_code' => htmlspecialchars((string) $serviceUser->id, ENT_QUOTES, 'UTF-8'),
+                    'package' => htmlspecialchars((string) $package->name, ENT_QUOTES, 'UTF-8'),
+                    'platform' => htmlspecialchars($platform, ENT_QUOTES, 'UTF-8'),
+                    'balance' => htmlspecialchars(number_format($currentBalance, 2), ENT_QUOTES, 'UTF-8'),
+                    'min_wallet' => htmlspecialchars(number_format($minWalletBalance, 2), ENT_QUOTES, 'UTF-8'),
+                    'charge_amount' => htmlspecialchars(number_format($chargeAmount, 2), ENT_QUOTES, 'UTF-8'),
+                    'unbilled_spend' => htmlspecialchars(number_format($unbilledSpend, 2), ENT_QUOTES, 'UTF-8'),
+                    'failed' => htmlspecialchars((string) $failedCount, ENT_QUOTES, 'UTF-8'),
+                    'success' => htmlspecialchars((string) $successCount, ENT_QUOTES, 'UTF-8'),
+                    'total' => htmlspecialchars((string) $totalCount, ENT_QUOTES, 'UTF-8'),
+                    'error_reason' => htmlspecialchars($errorReason, ENT_QUOTES, 'UTF-8'),
+                    'time' => $now->format('d/m/Y H:i:s'),
+                ]);
+            } else {
+                $statusDetail = $totalCount > 0
+                    ? __('wallet.telegram.pause_all_success_detail', ['success' => $successCount, 'total' => $totalCount])
+                    : __('wallet.telegram.pause_no_campaigns_detail');
+
+                $message = __('wallet.telegram.postpay_insufficient_group_alert', [
+                    'name' => htmlspecialchars($customer->name ?? $customer->username ?? ('User ' . $customer->id), ENT_QUOTES, 'UTF-8'),
+                    'order_code' => htmlspecialchars((string) $serviceUser->id, ENT_QUOTES, 'UTF-8'),
+                    'package' => htmlspecialchars((string) $package->name, ENT_QUOTES, 'UTF-8'),
+                    'platform' => htmlspecialchars($platform, ENT_QUOTES, 'UTF-8'),
+                    'balance' => htmlspecialchars(number_format($currentBalance, 2), ENT_QUOTES, 'UTF-8'),
+                    'min_wallet' => htmlspecialchars(number_format($minWalletBalance, 2), ENT_QUOTES, 'UTF-8'),
+                    'charge_amount' => htmlspecialchars(number_format($chargeAmount, 2), ENT_QUOTES, 'UTF-8'),
+                    'unbilled_spend' => htmlspecialchars(number_format($unbilledSpend, 2), ENT_QUOTES, 'UTF-8'),
+                    'status_detail' => $statusDetail,
+                    'time' => $now->format('d/m/Y H:i:s'),
+                ]);
+            }
 
             $this->telegramService->sendNotification(
                 chatId: (string) $supportGroupId,
@@ -363,8 +394,8 @@ class WalletTransactionService
                 ]
             );
 
-            // Cache đến hết ngày (chỉ gửi 1 lần duy nhất trong ngày) để tránh spam group nếu khách chưa nạp ví
-            $expireMinutes = max(60, (int) now()->diffInMinutes(now()->endOfDay()) + 60);
+            // Nếu thất bại: cache 60 phút để nhắc lại nếu chưa xử lý. Nếu thành công: cache đến hết ngày.
+            $expireMinutes = $hasFailed ? 60 : max(60, (int) now()->diffInMinutes(now()->endOfDay()) + 60);
             Caching::setCache(
                 CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED,
                 now()->toDateTimeString(),
