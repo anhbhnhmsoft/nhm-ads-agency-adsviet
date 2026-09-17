@@ -113,8 +113,11 @@ class MetaService
                 return ServiceReturn::error(__('meta.error.service_user_platform_not_meta'));
             }
             // validate phân quyền
-            /** @var User $user */
+            /** @var User|null $user */
             $user = Auth::user();
+            if (! $user) {
+                return ServiceReturn::success(data: $serviceUser);
+            }
             switch ($user->role) {
                 case UserRole::ADMIN->value:
                     // Admin thì không cần kiểm tra gì thêm
@@ -192,7 +195,7 @@ class MetaService
             $query = $this->metaAccountRepository->query();
 
             $user = Auth::user();
-            $isAdminOrStaff = $user && in_array($user->role, [
+            $isAdminOrStaff = ! $user || in_array($user->role, [
                 UserRole::ADMIN->value,
                 UserRole::MANAGER->value,
                 UserRole::EMPLOYEE->value,
@@ -3326,7 +3329,7 @@ class MetaService
             ->where('id', $campaignId)
             ->whereHas('metaAccount', function ($accQ) use ($serviceUser) {
                 $user = Auth::user();
-                $isAdminOrStaff = $user && in_array($user->role, [
+                $isAdminOrStaff = ! $user || in_array($user->role, [
                     UserRole::ADMIN->value,
                     UserRole::MANAGER->value,
                     UserRole::EMPLOYEE->value,

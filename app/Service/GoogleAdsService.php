@@ -2375,8 +2375,11 @@ GAQL;
                 return ServiceReturn::error(__('google_ads.error.service_user_platform_not_google'));
             }
             // validate phân quyền
-            /** @var \App\Models\User $user */
+            /** @var \App\Models\User|null $user */
             $user = Auth::user();
+            if (! $user) {
+                return ServiceReturn::success(data: $serviceUser);
+            }
             switch ($user->role) {
                 case UserRole::ADMIN->value:
                     // Admin thì không cần kiểm tra gì thêm
@@ -3784,7 +3787,7 @@ GAQL;
             ->where('id', $campaignId)
             ->whereHas('googleAccount', function ($accQ) use ($serviceUser) {
                 $user = Auth::user();
-                $isAdminOrStaff = $user && in_array($user->role, [
+                $isAdminOrStaff = ! $user || in_array($user->role, [
                     UserRole::ADMIN->value,
                     UserRole::MANAGER->value,
                     UserRole::EMPLOYEE->value,
