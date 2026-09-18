@@ -1033,9 +1033,11 @@
             "sync_and_bill": "同步并扣费",
             "sync_and_bill_tooltip": "从API同步最新实际消耗并立即扣除支出手续费",
             "sync_and_bill_confirm": "立即从API同步支出并收取该订单的待扣支出费用？",
-            "syncing": "处理中..."
+            "syncing": "处理中...",
+            "cancel_active_tooltip": "取消服务订单 / 停止运行"
         },
         "confirm_cancel": "您真的要取消此订单吗？",
+        "confirm_cancel_active": "您确定要取消此有效服务订单吗？系统将停止跟踪消耗并停止收费。",
         "confirm_delete": "您确定要删除此订单吗？此操作无法撤消。",
         "form": {
             "meta_email_placeholder": "输入元电子邮件",

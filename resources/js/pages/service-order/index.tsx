@@ -888,15 +888,21 @@ const ServiceOrdersIndex = ({
                 cell: ({ row }) => {
                     const order = row.original;
                     const isPending = order.status_label === 'PENDING';
+                    const isActive = order.status === 6;
 
                     const handleApprove = () => {
                         openDialogForOrder(order);
                     };
 
                     const handleCancel = () => {
-                        if (
-                            !window.confirm(t('service_orders.confirm_cancel'))
-                        ) {
+                        const confirmMsg = isActive
+                            ? t('service_orders.confirm_cancel_active', {
+                                  defaultValue:
+                                      'Bạn có chắc chắn muốn hủy đơn dịch vụ đang hoạt động này? Hệ thống sẽ ngừng quét chi tiêu và dừng thu phí.',
+                              })
+                            : t('service_orders.confirm_cancel');
+
+                        if (!window.confirm(confirmMsg)) {
                             return;
                         }
                         router.post(
@@ -942,7 +948,7 @@ const ServiceOrdersIndex = ({
                     const isSyncing = processingSyncId === order.id;
 
                     return (
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             {isPending && (
                                 <>
                                     <Button
@@ -961,7 +967,7 @@ const ServiceOrdersIndex = ({
                                     </Button>
                                 </>
                             )}
-                            {!isPending && order.status === 6 && (
+                            {!isPending && isActive && (
                                 <>
                                     <Button
                                         size="sm"
@@ -996,7 +1002,34 @@ const ServiceOrdersIndex = ({
                                             defaultValue: 'Gán lại',
                                         })}
                                     </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                                        onClick={handleCancel}
+                                        title={t('service_orders.actions.cancel_active_tooltip', {
+                                            defaultValue: 'Hủy đơn dịch vụ / Dừng hoạt động',
+                                        })}
+                                    >
+                                        <X className="mr-1 h-3 w-3" />
+                                        {t('service_orders.actions.cancel', {
+                                            defaultValue: 'Hủy đơn',
+                                        })}
+                                    </Button>
                                 </>
+                            )}
+                            {!isPending && !isActive && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                                    onClick={handleApprove}
+                                >
+                                    <RefreshCw className="mr-1 h-3 w-3" />
+                                    {t('service_orders.actions.reassign', {
+                                        defaultValue: 'Gán lại',
+                                    })}
+                                </Button>
                             )}
                             <Button
                                 size="sm"

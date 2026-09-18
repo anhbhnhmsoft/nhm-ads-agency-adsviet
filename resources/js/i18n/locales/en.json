@@ -1033,9 +1033,11 @@
             "sync_and_bill": "Sync & Bill",
             "sync_and_bill_tooltip": "Sync latest real-time spend from platform API and charge postpay spending fee immediately",
             "sync_and_bill_confirm": "Sync spend from platform API and charge pending spending fee for this order now?",
-            "syncing": "Syncing..."
+            "syncing": "Syncing...",
+            "cancel_active_tooltip": "Cancel service order / Stop activity"
         },
         "confirm_cancel": "Do you really want to cancel this order?",
+        "confirm_cancel_active": "Are you sure you want to cancel this active service order? The system will stop tracking spend and charging fees.",
         "confirm_delete": "Are you sure you want to delete this order? This action cannot be undone.",
         "form": {
             "meta_email_placeholder": "Enter Meta email",

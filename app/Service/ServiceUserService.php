@@ -438,12 +438,10 @@ class ServiceUserService
                     }
                 }
 
-                // TẠM ẨN: Trả lại tài khoản về kho (không dùng kho tự động)
-                // $this->serviceAccountInventoryService->releaseForServiceUser((string) $serviceUser->id);
-                $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::FAILED->value;
+                $serviceUser->status = \App\Common\Constants\ServiceUser\ServiceUserStatus::CANCELLED->value;
                 $serviceUser->save();
 
-                $this->notifyServiceStatus($serviceUser, $isPending ? 'cancelled' : 'failed');
+                $this->notifyServiceStatus($serviceUser, 'cancelled');
 
                 return ServiceReturn::success(data: $serviceUser);
             });
