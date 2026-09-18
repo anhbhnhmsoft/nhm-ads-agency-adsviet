@@ -541,11 +541,18 @@ const ServiceOrdersIndex = ({
             {
                 header: t('service_orders.table.stt'),
                 cell: ({ row }) => row.index + 1,
-                meta: { headerClassName: 'w-[60px]' },
+                meta: {
+                    headerClassName: 'w-[50px] min-w-[50px] text-center whitespace-nowrap',
+                    cellClassName: 'w-[50px] min-w-[50px] text-center whitespace-nowrap',
+                },
             },
             {
                 accessorKey: 'id',
                 header: t('service_orders.table.order_id'),
+                meta: {
+                    headerClassName: 'min-w-[150px] whitespace-nowrap',
+                    cellClassName: 'min-w-[150px] font-mono text-xs whitespace-nowrap',
+                },
                 cell: ({ getValue }) => (
                     <span className="font-mono text-xs">
                         {String(getValue())}
@@ -557,6 +564,10 @@ const ServiceOrdersIndex = ({
                 header: t('service_orders.table.package', {
                     defaultValue: 'Gói dịch vụ',
                 }),
+                meta: {
+                    headerClassName: 'min-w-[180px] whitespace-nowrap',
+                    cellClassName: 'min-w-[180px] text-xs whitespace-nowrap',
+                },
                 cell: ({ row }) => {
                     const packageName = row.original.package?.name;
                     const platformLabel = row.original.package?.platform_label;
@@ -575,6 +586,10 @@ const ServiceOrdersIndex = ({
             {
                 id: 'customer_name',
                 header: t('service_orders.table.customer_name'),
+                meta: {
+                    headerClassName: 'min-w-[140px] whitespace-nowrap',
+                    cellClassName: 'min-w-[140px] text-xs whitespace-nowrap',
+                },
                 cell: ({ row }) => {
                     const name = row.original.user?.name || '';
                     return name ? (
@@ -588,8 +603,8 @@ const ServiceOrdersIndex = ({
                 id: 'referral',
                 header: t('service_orders.table.referral'),
                 meta: {
-                    headerClassName: 'text-center',
-                    cellClassName: 'text-center',
+                    headerClassName: 'min-w-[120px] text-center whitespace-nowrap',
+                    cellClassName: 'min-w-[120px] text-center whitespace-nowrap',
                 },
                 cell: ({ row }) => {
                     const referrerName =
@@ -606,9 +621,9 @@ const ServiceOrdersIndex = ({
                 header: t('service_orders.table.account_info'),
                 meta: {
                     headerClassName:
-                        'w-[475px] min-w-[475px] max-w-[475px] break-words whitespace-normal',
+                        'w-[450px] min-w-[450px] max-w-[450px] break-words whitespace-normal',
                     cellClassName:
-                        'w-[475px] min-w-[475px] max-w-[475px] break-words whitespace-normal',
+                        'w-[450px] min-w-[450px] max-w-[450px] break-words whitespace-normal',
                 },
                 cell: ({ row }) => {
                     return (
@@ -627,14 +642,18 @@ const ServiceOrdersIndex = ({
             {
                 id: 'platform',
                 header: t('service_orders.table.platform'),
+                meta: {
+                    headerClassName: 'min-w-[90px] text-center whitespace-nowrap',
+                    cellClassName: 'min-w-[90px] text-center whitespace-nowrap',
+                },
                 cell: ({ row }) => row.original.package?.platform_label || '-',
             },
             {
                 id: 'topup',
                 header: t('service_orders.table.top_up_amount'),
                 meta: {
-                    headerClassName: 'text-right',
-                    cellClassName: 'text-right',
+                    headerClassName: 'min-w-[110px] text-right whitespace-nowrap',
+                    cellClassName: 'min-w-[110px] text-right whitespace-nowrap',
                 },
                 cell: ({ row }) => {
                     const config = row.original.config_account || {};
@@ -685,8 +704,8 @@ const ServiceOrdersIndex = ({
                 id: 'total_cost',
                 header: t('service_orders.table.total_cost'),
                 meta: {
-                    headerClassName: 'text-right',
-                    cellClassName: 'text-right',
+                    headerClassName: 'min-w-[110px] text-right whitespace-nowrap',
+                    cellClassName: 'min-w-[110px] text-right whitespace-nowrap',
                 },
                 cell: ({ row }) => {
                     const totalCost = row.original.total_cost;
@@ -714,8 +733,8 @@ const ServiceOrdersIndex = ({
                 id: 'budget',
                 header: t('service_orders.table.budget'),
                 meta: {
-                    headerClassName: 'text-right',
-                    cellClassName: 'text-right',
+                    headerClassName: 'min-w-[110px] text-right whitespace-nowrap',
+                    cellClassName: 'min-w-[110px] text-right whitespace-nowrap',
                 },
                 cell: ({ row }) => {
                     const budget = row.original.budget;
@@ -754,8 +773,8 @@ const ServiceOrdersIndex = ({
                           id: 'wallet_balance',
                           header: t('service_orders.table.wallet_balance'),
                           meta: {
-                              headerClassName: 'text-right',
-                              cellClassName: 'text-right',
+                              headerClassName: 'min-w-[120px] text-right whitespace-nowrap',
+                              cellClassName: 'min-w-[120px] text-right whitespace-nowrap',
                           },
                           cell: ({ row }: { row: { original: ServiceOrder } }) => {
                               const balance = row.original.wallet_balance ?? 0;
@@ -778,8 +797,8 @@ const ServiceOrdersIndex = ({
                           id: 'unbilled_spend',
                           header: t('service_orders.table.unbilled_spend'),
                           meta: {
-                              headerClassName: 'text-right',
-                              cellClassName: 'text-right',
+                              headerClassName: 'min-w-[130px] text-right whitespace-nowrap',
+                              cellClassName: 'min-w-[130px] text-right whitespace-nowrap',
                           },
                           cell: ({ row }: { row: { original: ServiceOrder } }) => {
                               const unbilled = row.original.unbilled_spend ?? 0;
@@ -805,8 +824,8 @@ const ServiceOrdersIndex = ({
                           id: 'billing_status',
                           header: t('service_orders.table.billing_status'),
                           meta: {
-                              headerClassName: 'text-center',
-                              cellClassName: 'text-center',
+                              headerClassName: 'min-w-[120px] text-center whitespace-nowrap',
+                              cellClassName: 'min-w-[120px] text-center whitespace-nowrap',
                           },
                           cell: ({ row }: { row: { original: ServiceOrder } }) => {
                               const health = row.original.billing_health;
@@ -860,8 +879,8 @@ const ServiceOrdersIndex = ({
                 id: 'status',
                 header: t('service_orders.table.status'),
                 meta: {
-                    headerClassName: 'text-center',
-                    cellClassName: 'text-center',
+                    headerClassName: 'min-w-[110px] text-center whitespace-nowrap',
+                    cellClassName: 'min-w-[110px] text-center whitespace-nowrap',
                 },
                 cell: ({ row }) => {
                     const info = getStatusInfo(row.original.status_label);
@@ -873,6 +892,10 @@ const ServiceOrdersIndex = ({
             {
                 accessorKey: 'created_at',
                 header: t('service_orders.table.created_at'),
+                meta: {
+                    headerClassName: 'min-w-[140px] text-center whitespace-nowrap',
+                    cellClassName: 'min-w-[140px] text-center whitespace-nowrap',
+                },
                 cell: ({ getValue }) => (
                     <span className="text-xs text-muted-foreground">
                         {formatDateTime(getValue() as string | null)}
@@ -885,6 +908,10 @@ const ServiceOrdersIndex = ({
             baseColumns.push({
                 id: 'actions',
                 header: t('service_orders.table.actions'),
+                meta: {
+                    headerClassName: 'min-w-[280px] text-center whitespace-nowrap',
+                    cellClassName: 'min-w-[280px] whitespace-nowrap',
+                },
                 cell: ({ row }) => {
                     const order = row.original;
                     const isPending = order.status_label === 'PENDING';
@@ -948,7 +975,7 @@ const ServiceOrdersIndex = ({
                     const isSyncing = processingSyncId === order.id;
 
                     return (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
                             {isPending && (
                                 <>
                                     <Button
