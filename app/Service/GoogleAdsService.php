@@ -3620,32 +3620,8 @@ GAQL;
                         continue;
                     }
 
-                    // Kiểm tra nếu số dư nạp trước thấp hơn ngưỡng an toàn
+                    // Kiểm tra nếu số dư nạp trước thấp hơn ngưỡng an toàn -> CHỈ gửi thông báo, TUYỆT ĐỐI KHÔNG tự ý pause campaign của khách
                     if ($balance < $threshold) {
-                        // Pause tất cả campaigns trong account
-                        $campaigns = $this->googleAdsCampaignRepository->query()
-                            ->where('google_account_id', $account->id)
-                            ->where('status', '!=', GoogleCampaignStatus::PAUSED->value)
-                            ->where('status', '!=', GoogleCampaignStatus::REMOVED->value)
-                            ->get();
-
-                        foreach ($campaigns as $campaign) {
-                            $pauseResult = $this->updateCampaignStatus(
-                                (string) $serviceUser->id,
-                                (string) $campaign->id,
-                                GoogleCampaignStatus::PAUSED->value
-                            );
-                            if ($pauseResult->isError()) {
-                                Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Failed to pause campaign', [
-                                    'account_id' => $account->id,
-                                    'campaign_id' => $campaign->id,
-                                    'error' => $pauseResult->getMessage(),
-                                ]);
-                            }
-                        }
-
-                        $paused++;
-
                         // Gửi thông báo số dư thấp
                         $notificationResult = $this->googleAdsNotificationService->sendLowBalanceAlert(
                             $account,
@@ -3655,12 +3631,11 @@ GAQL;
                             $notified++;
                         }
 
-                        Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Auto-paused prepay account (low balance)', [
+                        Logging::web('GoogleAdsService@checkAndAutoPauseAccounts: Prepay account low balance notice (no auto-pause)', [
                             'account_id' => $account->id,
                             'account_name' => $account->account_name,
                             'balance' => $balance,
                             'threshold' => $threshold,
-                            'campaigns_paused' => $campaigns->count(),
                             'notification_sent' => $notificationResult->isSuccess(),
                         ]);
                     }

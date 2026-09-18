@@ -3077,32 +3077,8 @@ class MetaService
                         continue;
                     }
 
-                    // Kiểm tra nếu số dư nạp trước thấp hơn ngưỡng an toàn
+                    // Kiểm tra nếu số dư nạp trước thấp hơn ngưỡng an toàn -> CHỈ gửi thông báo cảnh báo, TUYỆT ĐỐI KHÔNG tự ý pause campaign của khách
                     if ($balance < $threshold) {
-                        // Pause tất cả campaigns trong account
-                        $campaigns = $this->metaAdsCampaignRepository->query()
-                            ->where('meta_account_id', $account->id)
-                            ->where('status', '!=', 'PAUSED')
-                            ->where('status', '!=', 'DELETED')
-                            ->get();
-
-                        foreach ($campaigns as $campaign) {
-                            $pauseResult = $this->updateCampaignStatus(
-                                (string) $serviceUser->id,
-                                (string) $campaign->id,
-                                'PAUSED'
-                            );
-                            if ($pauseResult->isError()) {
-                                Logging::web('MetaService@checkAndAutoPauseAccounts: Failed to pause campaign', [
-                                    'account_id' => $account->id,
-                                    'campaign_id' => $campaign->id,
-                                    'error' => $pauseResult->getMessage(),
-                                ]);
-                            }
-                        }
-
-                        $paused++;
-
                         // Gửi thông báo số dư thấp
                         $notificationResult = $this->metaAdsNotificationService->sendLowBalanceAlert(
                             $account,
@@ -3112,12 +3088,11 @@ class MetaService
                             $notified++;
                         }
 
-                        Logging::web('MetaService@checkAndAutoPauseAccounts: Auto-paused prepay account (low balance)', [
+                        Logging::web('MetaService@checkAndAutoPauseAccounts: Prepay account low balance notice (no auto-pause)', [
                             'account_id' => $account->id,
                             'account_name' => $account->account_name,
                             'balance' => $balance,
                             'threshold' => $threshold,
-                            'campaigns_paused' => $campaigns->count(),
                             'notification_sent' => $notificationResult->isSuccess(),
                         ]);
                     }
