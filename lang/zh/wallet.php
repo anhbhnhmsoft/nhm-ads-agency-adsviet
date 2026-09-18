@@ -72,6 +72,7 @@ return [
         'low_balance' => "⚠️您的钱包仅有:balanceUSDT（阈值:thresholdUSDT）。\n请充值，以免服务中断。",
         'deposit_group_alert' => "⚠️ <b>存款通知</b> ⚠️\n<b>姓名：</b>:name\n<b>网络：</b>:network\n<b>金额：</b>:amount\n<b>交易：</b>:transaction_code\n<b>订单：</b>:order_code\n<b>时间：</b>:time",
         'top_up_group_alert' => "🔔 <b>广告账户充值</b>\n<b>客户：</b>:name\n<b>金额：</b>:amount USDT\n<b>账户：</b>:account\n<b>交易：</b>:transaction_code\n<b>时间：</b>:time",
+        'spending_fee_group_alert' => "💳 <b>后付费广告消费费扣除成功</b>\n<b>客户：</b>:name\n<b>套餐：</b>:package\n<b>消费金额：</b>:spend_amount USD\n<b>已扣费用：</b>:fee_amount USDT\n<b>交易号：</b>:transaction_code\n<b>时间：</b>:time",
         'postpay_insufficient_group_alert' => "⚠️ <b>广告系列已暂停（钱包余额不足）</b> ⚠️\n<b>客户：</b>:name\n<b>订单号：</b>:order_code\n<b>套餐：</b>:package (:platform)\n<b>钱包余额：</b>:balance USDT\n<b>最低要求：</b>:min_wallet USDT\n<b>应缴费用：</b>:charge_amount USDT (消耗: :unbilled_spend USD)\n<b>状态：</b>:status_detail\n<b>时间：</b>:time",
         'postpay_insufficient_group_alert_failed' => "🚨 <b>紧急警报：广告系列暂停失败</b> 🚨\n<b>客户：</b>:name\n<b>订单号：</b>:order_code\n<b>套餐：</b>:package (:platform)\n<b>钱包余额：</b>:balance USDT\n<b>应缴费用：</b>:charge_amount USDT (消耗: :unbilled_spend USD)\n<b>暂停结果：</b>❌ 失败 :failed/:total 个广告系列 (成功 :success)\n<b>错误原因：</b>:error_reason\n👉 <b>必须操作：</b>管理员/技术人员请立即进入广告管理平台手动暂停广告系列，以防产生额外费用！\n<b>时间：</b>:time",
         'pause_all_success_detail' => "由于钱包余额不足，所有广告系列 (:success/:total) 已成功暂停。",
