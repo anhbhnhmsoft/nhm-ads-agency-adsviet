@@ -43,6 +43,19 @@ export type ServiceOrderConfigAccount = {
     open_fee_paid?: boolean;
 };
 
+export type AssignedAccount = {
+    id: string;
+    account_id: string;
+    account_name?: string | null;
+    business_manager_id?: string | null;
+    amount_spent?: number;
+    currency?: string;
+    account_status?: number;
+    is_prepay_account?: boolean;
+    timezone_name?: string | null;
+    payment_card?: string | null;
+};
+
 export type ServiceOrder = {
     id: string;
     status: number;
@@ -79,6 +92,7 @@ export type ServiceOrder = {
         is_low_balance: boolean;
     };
     config_account?: ServiceOrderConfigAccount | null;
+    assigned_accounts?: AssignedAccount[] | null;
     description?: string | null;
     created_at?: string | null;
 };

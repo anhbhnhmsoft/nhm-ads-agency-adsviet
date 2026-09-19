@@ -39,6 +39,7 @@ class ServiceOrderResource extends JsonResource
         $resolvedAccountIds = [];
         $resolvedBmIds = [];
 
+        $assignedAccounts = [];
         if ($platform === PlatformType::META->value && $this->relationLoaded('metaAccount')) {
             /** @var Collection<int, mixed> $metaAccounts */
             $metaAccounts = $this->metaAccount;
@@ -51,6 +52,18 @@ class ServiceOrderResource extends JsonResource
                 ->unique()
                 ->values()
                 ->all();
+            $assignedAccounts = $metaAccounts->map(fn ($a) => [
+                'id' => (string) $a->id,
+                'account_id' => $a->account_id,
+                'account_name' => $a->account_name,
+                'business_manager_id' => $a->business_manager_id,
+                'amount_spent' => (float) ($a->amount_spent ?? 0),
+                'currency' => $a->currency ?? 'USD',
+                'account_status' => $a->account_status,
+                'is_prepay_account' => $a->is_prepay_account,
+                'timezone_name' => $a->timezone_name,
+                'payment_card' => $a->payment_card,
+            ])->values()->all();
         } elseif ($platform === PlatformType::GOOGLE->value && $this->relationLoaded('googleAccounts')) {
             /** @var Collection<int, mixed> $googleAccounts */
             $googleAccounts = $this->googleAccounts;
@@ -63,6 +76,16 @@ class ServiceOrderResource extends JsonResource
                 ->unique()
                 ->values()
                 ->all();
+            $assignedAccounts = $googleAccounts->map(fn ($a) => [
+                'id' => (string) $a->id,
+                'account_id' => $a->account_id,
+                'account_name' => $a->account_name,
+                'business_manager_id' => $a->customer_manager_id,
+                'amount_spent' => (float) ($a->amount_spent ?? 0),
+                'currency' => $a->currency ?? 'USD',
+                'account_status' => $a->account_status,
+                'timezone_name' => $a->time_zone,
+            ])->values()->all();
         }
 
         if (empty($resolvedAccountIds)) {
@@ -199,6 +222,7 @@ class ServiceOrderResource extends JsonResource
             'spending_fee' => $canViewFinancials ? $spendingFeePercent : null,
             'total_cost' => $canViewFinancials ? $totalCost : null,
             'config_account' => $normalizedConfig,
+            'assigned_accounts' => $assignedAccounts,
             'description' => $this->description,
             'created_at' => optional($this->created_at)->toIso8601String(),
             'updated_at' => optional($this->updated_at)->toIso8601String(),

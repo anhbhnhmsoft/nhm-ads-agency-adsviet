@@ -32,6 +32,7 @@ import { _PlatformType, _UserRole } from '@/lib/types/constants';
 import { cn } from '@/lib/utils';
 import { AccountFormEdit } from '@/pages/service-order/components/AccountFormEdit';
 import { AccountInfoCell } from '@/pages/service-order/components/AccountInfoCell';
+import { OrderDetailsDialog } from '@/pages/service-order/components/OrderDetailsDialog';
 import { useServiceOrderAdminDialog } from '@/pages/service-order/hooks/use-admin-approve-dialog';
 import { useServiceOrderEditConfigDialog } from '@/pages/service-order/hooks/use-edit-config-dialog';
 import type {
@@ -54,6 +55,7 @@ import {
 import type { ColumnDef } from '@tanstack/react-table';
 import {
     ChevronDown,
+    Eye,
     Filter,
     Package,
     Pencil,
@@ -298,6 +300,7 @@ const ServiceOrdersIndex = ({
     const orders = paginator?.data ?? [];
 
     const [processingSyncId, setProcessingSyncId] = useState<string | null>(null);
+    const [viewingOrder, setViewingOrder] = useState<ServiceOrder | null>(null);
 
     // Multi-input lists for approve dialog
     const [bmIdList, setBmIdList] = useState<string[]>(['']);
@@ -553,10 +556,17 @@ const ServiceOrdersIndex = ({
                     headerClassName: 'min-w-[150px] whitespace-nowrap',
                     cellClassName: 'min-w-[150px] font-mono text-xs whitespace-nowrap',
                 },
-                cell: ({ getValue }) => (
-                    <span className="font-mono text-xs">
-                        {String(getValue())}
-                    </span>
+                cell: ({ row }) => (
+                    <button
+                        type="button"
+                        onClick={() => setViewingOrder(row.original)}
+                        className="font-mono text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer inline-flex items-center gap-1 text-left"
+                        title={t('service_orders.actions.view_details', {
+                            defaultValue: 'Click để xem chi tiết đơn hàng',
+                        })}
+                    >
+                        <span>{String(row.original.id)}</span>
+                    </button>
                 ),
             },
             {
@@ -909,8 +919,8 @@ const ServiceOrdersIndex = ({
                 id: 'actions',
                 header: t('service_orders.table.actions'),
                 meta: {
-                    headerClassName: 'min-w-[280px] text-center whitespace-nowrap',
-                    cellClassName: 'min-w-[280px] whitespace-nowrap',
+                    headerClassName: 'min-w-[340px] text-center whitespace-nowrap',
+                    cellClassName: 'min-w-[340px] whitespace-nowrap',
                 },
                 cell: ({ row }) => {
                     const order = row.original;
@@ -976,6 +986,20 @@ const ServiceOrdersIndex = ({
 
                     return (
                         <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300"
+                                onClick={() => setViewingOrder(order)}
+                                title={t('service_orders.actions.view_details', {
+                                    defaultValue: 'Xem chi tiết đơn hàng & tài khoản đã gán',
+                                })}
+                            >
+                                <Eye className="mr-1 h-3 w-3 text-blue-500" />
+                                {t('service_orders.actions.view', {
+                                    defaultValue: 'Chi tiết',
+                                })}
+                            </Button>
                             {isPending && (
                                 <>
                                     <Button
@@ -2577,6 +2601,19 @@ const ServiceOrdersIndex = ({
                         </Dialog>
                     </>
                 )}
+
+                {/* Modal xem chi tiết đơn dịch vụ & tài khoản đã gán */}
+                <OrderDetailsDialog
+                    open={!!viewingOrder}
+                    onOpenChange={(open) => {
+                        if (!open) setViewingOrder(null);
+                    }}
+                    order={viewingOrder}
+                    metaTimezones={meta_timezones}
+                    googleTimezones={google_timezones}
+                    getStatusInfo={getStatusInfo}
+                    formatDateTime={formatDateTime}
+                />
             </div>
         </AppLayout>
     );
