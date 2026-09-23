@@ -102,13 +102,15 @@ class ServicesBillPostpay extends Command
                                 return null;
                             }
 
-                            $spending = $this->getSpendingBetween(
-                                (string) $locked->id,
-                                $locked->created_at->toDateString(),
-                                $today->toDateString()
-                            );
-                            $billedSpend = $this->resolveBilledSpend($locked, $config);
-                            $unbilledSpend = max(0.0, $spending - $billedSpend);
+                            $currentConfig = $locked->config_account ?? [];
+                            if (!is_array($currentConfig)) {
+                                $currentConfig = [];
+                            }
+
+                            $spendingData = $this->calculateSpendingAndUnbilled($locked, $currentConfig);
+                            $spending = $spendingData['total_spend'];
+                            $billedSpend = $spendingData['billed_spend'];
+                            $unbilledSpend = $spendingData['unbilled_spend'];
 
                             if ($unbilledSpend < self::SPENDING_FEE_CHARGE_THRESHOLD) {
                                 return 'skip';
@@ -216,6 +218,7 @@ class ServicesBillPostpay extends Command
                                     'billed_spend_before' => $billedSpend,
                                     'billed_spend_after' => $spending,
                                     'threshold' => self::SPENDING_FEE_CHARGE_THRESHOLD,
+                                    'accounts_detail' => $spendingData['accounts_detail'] ?? [],
                                     'last_billed_at' => $locked->last_postpay_billed_at?->toDateTimeString() ?? null,
                                     'charged_at' => now()->toDateTimeString(),
                                 ],
@@ -237,9 +240,10 @@ class ServicesBillPostpay extends Command
                                 $chargeAmount,
                             );
 
-                            $config['spending_fee_billed_spend'] = $spending;
-                            $config['spending_fee_last_charged_at'] = now()->toDateTimeString();
-                            $locked->config_account = $config;
+                            $currentConfig['spending_fee_accounts_billed_spend'] = $spendingData['new_accounts_billed_spend'];
+                            $currentConfig['spending_fee_billed_spend'] = $spending;
+                            $currentConfig['spending_fee_last_charged_at'] = now()->toDateTimeString();
+                            $locked->config_account = $currentConfig;
                             $locked->last_postpay_billed_at = now();
                             $locked->save();
 
@@ -292,45 +296,128 @@ class ServicesBillPostpay extends Command
         return Command::SUCCESS;
     }
 
-    private function getSpendingBetween(string $serviceUserId, string $fromDate, string $toDate): float
+    /**
+     * Tính tổng chi tiêu và chi tiêu chưa thu phí (Unbilled Spend) độc lập theo từng tài khoản
+     *
+     * @return array{
+     *     total_spend: float,
+     *     billed_spend: float,
+     *     unbilled_spend: float,
+     *     new_accounts_billed_spend: array<string, float>,
+     *     accounts_detail: array<string, array{spent: float, billed: float, unbilled: float, name: string}>
+     * }
+     */
+    public function calculateSpendingAndUnbilled($serviceUser, array $config): array
     {
         $currencyService = app(\App\Service\CurrencyExchangeService::class);
+        $zeroDecimal = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
+        $serviceUserId = (string) $serviceUser->id;
 
-        // Meta spend: convert từng account theo currency → USD
+        // Lấy map mốc đã thu theo từng tài khoản từ config
+        $savedAccountsBilled = $config['spending_fee_accounts_billed_spend'] ?? [];
+        if (!is_array($savedAccountsBilled)) {
+            $savedAccountsBilled = [];
+        }
+
+        $fallbackGlobalBilled = isset($config['spending_fee_billed_spend']) && is_numeric($config['spending_fee_billed_spend'])
+            ? max(0.0, (float) $config['spending_fee_billed_spend'])
+            : 0.0;
+
+        $hasPerAccountMap = !empty($savedAccountsBilled);
+
+        $totalSpend = 0.0;
+        $totalBilledSpend = 0.0;
+        $totalUnbilledSpend = 0.0;
+        $newAccountsBilledSpend = $savedAccountsBilled;
+        $accountsDetail = [];
+
+        // 1. Meta Accounts
         $metaAccounts = DB::table('meta_accounts')
             ->where('service_user_id', $serviceUserId)
             ->whereNull('deleted_at')
-            ->select('amount_spent', 'currency')
+            ->select('id', 'account_id', 'account_name', 'amount_spent', 'currency')
             ->get();
 
-        $metaSpend = 0.0;
         foreach ($metaAccounts as $a) {
             $raw = (float) ($a->amount_spent ?? 0);
-            $currency = strtoupper($a->currency ?? 'USD');
-            // Zero-decimal currencies: VND, JPY, KRW, etc. → không chia 100
-            $zeroDecimal = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
-            $amount = in_array($currency, $zeroDecimal) ? $raw : $raw / 100;
-            // Convert về USD
-            $metaSpend += $currencyService->convert($amount, $currency, 'USD');
+            $curr = strtoupper($a->currency ?? 'USD');
+            $amt = in_array($curr, $zeroDecimal) ? $raw : $raw / 100;
+            $spentUSD = $currencyService->convert($amt, $curr, 'USD');
+            $totalSpend += $spentUSD;
+
+            $key = 'meta_' . ($a->account_id ?? $a->id);
+            $altKey = (string) ($a->account_id ?? $a->id);
+
+            if ($hasPerAccountMap) {
+                $billedUSD = (float) ($savedAccountsBilled[$key] ?? $savedAccountsBilled[$altKey] ?? 0.0);
+            } else {
+                // Nếu chưa có per-account map: nếu tổng spend <= global billed, xem như tài khoản đã được bill tới mốc hiện tại
+                $billedUSD = min($spentUSD, $fallbackGlobalBilled);
+            }
+
+            $unbilledUSD = max(0.0, $spentUSD - $billedUSD);
+            $totalBilledSpend += $billedUSD;
+            $totalUnbilledSpend += $unbilledUSD;
+            $newAccountsBilledSpend[$key] = $spentUSD;
+
+            $accountsDetail[$key] = [
+                'name' => $a->account_name ?? $altKey,
+                'spent' => $spentUSD,
+                'billed' => $billedUSD,
+                'unbilled' => $unbilledUSD,
+            ];
         }
 
-        // Google spend
+        // 2. Google Accounts
         $googleAccounts = DB::table('google_accounts')
             ->where('service_user_id', $serviceUserId)
             ->whereNull('deleted_at')
-            ->select('amount_spent', 'currency')
+            ->select('id', 'account_id', 'account_name', 'amount_spent', 'currency')
             ->get();
 
-        $googleSpend = 0.0;
         foreach ($googleAccounts as $a) {
             $raw = (float) ($a->amount_spent ?? 0);
-            $currency = strtoupper($a->currency ?? 'USD');
-            $zeroDecimal = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
-            $amount = in_array($currency, $zeroDecimal) ? $raw : $raw / 100;
-            $googleSpend += $currencyService->convert($amount, $currency, 'USD');
+            $curr = strtoupper($a->currency ?? 'USD');
+            $amt = in_array($curr, $zeroDecimal) ? $raw : $raw / 100;
+            $spentUSD = $currencyService->convert($amt, $curr, 'USD');
+            $totalSpend += $spentUSD;
+
+            $key = 'google_' . ($a->account_id ?? $a->id);
+            $altKey = (string) ($a->account_id ?? $a->id);
+
+            if ($hasPerAccountMap) {
+                $billedUSD = (float) ($savedAccountsBilled[$key] ?? $savedAccountsBilled[$altKey] ?? 0.0);
+            } else {
+                $billedUSD = min($spentUSD, $fallbackGlobalBilled);
+            }
+
+            $unbilledUSD = max(0.0, $spentUSD - $billedUSD);
+            $totalBilledSpend += $billedUSD;
+            $totalUnbilledSpend += $unbilledUSD;
+            $newAccountsBilledSpend[$key] = $spentUSD;
+
+            $accountsDetail[$key] = [
+                'name' => $a->account_name ?? $altKey,
+                'spent' => $spentUSD,
+                'billed' => $billedUSD,
+                'unbilled' => $unbilledUSD,
+            ];
         }
 
-        return $metaSpend + $googleSpend;
+        return [
+            'total_spend' => $totalSpend,
+            'billed_spend' => $totalBilledSpend,
+            'unbilled_spend' => $totalUnbilledSpend,
+            'new_accounts_billed_spend' => $newAccountsBilledSpend,
+            'accounts_detail' => $accountsDetail,
+        ];
+    }
+
+    private function getSpendingBetween(string $serviceUserId, string $fromDate, string $toDate): float
+    {
+        $serviceUser = (object) ['id' => $serviceUserId];
+        $res = $this->calculateSpendingAndUnbilled($serviceUser, []);
+        return $res['total_spend'];
     }
 
     private function shouldBillSpendingFee($serviceUser, array $config): bool
@@ -363,14 +450,13 @@ class ServicesBillPostpay extends Command
             return max(0.0, (float) $config['spending_fee_billed_spend']);
         }
 
-        // Chưa bill lần nào → billed = 0
         return 0.0;
     }
 
     /**
      * Pause tất cả campaigns của service_user khi số dư không đủ
      */
-    private function pauseAllCampaignsForServiceUser($serviceUser): array
+    public function pauseAllCampaignsForServiceUser($serviceUser): array
     {
         $stats = [
             'total' => 0,

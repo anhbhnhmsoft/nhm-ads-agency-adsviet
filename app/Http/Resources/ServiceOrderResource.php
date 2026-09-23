@@ -140,29 +140,14 @@ class ServiceOrderResource extends JsonResource
 
         $walletBalance = (float) ($user?->wallet?->balance ?? 0.0);
 
-        // Tính tổng chi tiêu thực tế từ các tài khoản đã liên kết
-        $totalSpend = 0.0;
-        $currencyService = app(\App\Service\CurrencyExchangeService::class);
-        $zeroDecimal = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
-
-        if ($platform === PlatformType::META->value && $this->relationLoaded('metaAccount')) {
-            foreach ($this->metaAccount as $a) {
-                $raw = (float) ($a->amount_spent ?? 0);
-                $currency = strtoupper($a->currency ?? 'USD');
-                $amount = in_array($currency, $zeroDecimal) ? $raw : $raw / 100;
-                $totalSpend += $currencyService->convert($amount, $currency, 'USD');
-            }
-        } elseif ($platform === PlatformType::GOOGLE->value && $this->relationLoaded('googleAccounts')) {
-            foreach ($this->googleAccounts as $a) {
-                $raw = (float) ($a->amount_spent ?? 0);
-                $currency = strtoupper($a->currency ?? 'USD');
-                $amount = in_array($currency, $zeroDecimal) ? $raw : $raw / 100;
-                $totalSpend += $currencyService->convert($amount, $currency, 'USD');
-            }
-        }
-
-        $billedSpend = max(0.0, (float) ($config['spending_fee_billed_spend'] ?? 0.0));
-        $unbilledSpend = max(0.0, $totalSpend - $billedSpend);
+        // Tính toán chi tiêu thực tế, đã thu và chưa thu theo từng tài khoản
+        $spendingData = app(\App\Console\Commands\ServicesBillPostpay::class)->calculateSpendingAndUnbilled(
+            $this->resource,
+            is_array($config) ? $config : []
+        );
+        $totalSpend = (float) ($spendingData['total_spend'] ?? 0.0);
+        $billedSpend = (float) ($spendingData['billed_spend'] ?? 0.0);
+        $unbilledSpend = (float) ($spendingData['unbilled_spend'] ?? 0.0);
 
         $effectiveFeePercent = $spendingFeePercent;
         if ($effectiveFeePercent <= 0 && ($config['billing_source'] ?? '') === 'customer_card') {

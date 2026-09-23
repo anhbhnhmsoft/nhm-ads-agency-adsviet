@@ -846,7 +846,7 @@ class ServiceUserService
                 $googleSyncJob->handle(app(\App\Service\GoogleAdsService::class));
             }
 
-            // Bước 2: Tính toán chi tiêu thực tế và phí chưa thu
+            // Bước 2: Tính toán chi tiêu thực tế và phí chưa thu theo từng tài khoản
             $config = $serviceUser->config_account ?? [];
             if (!is_array($config)) {
                 $config = [];
@@ -857,42 +857,12 @@ class ServiceUserService
                 $spendingFeePercent = (float) ($serviceUser->package?->top_up_fee ?? 0);
             }
 
-            $currencyService = app(\App\Service\CurrencyExchangeService::class);
-            $zeroDecimal = ['BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF'];
+            $billPostpayCommand = app(\App\Console\Commands\ServicesBillPostpay::class);
+            $spendingData = $billPostpayCommand->calculateSpendingAndUnbilled($serviceUser, $config);
 
-            $totalSpend = 0.0;
-            if ($platform === PlatformType::META->value) {
-                $metaAccounts = DB::table('meta_accounts')
-                    ->where('service_user_id', $serviceUser->id)
-                    ->whereNull('deleted_at')
-                    ->select('amount_spent', 'currency')
-                    ->get();
-                foreach ($metaAccounts as $a) {
-                    $raw = (float) ($a->amount_spent ?? 0);
-                    $curr = strtoupper($a->currency ?? 'USD');
-                    $amt = in_array($curr, $zeroDecimal) ? $raw : $raw / 100;
-                    $totalSpend += $currencyService->convert($amt, $curr, 'USD');
-                }
-            } elseif ($platform === PlatformType::GOOGLE->value) {
-                $googleAccounts = DB::table('google_accounts')
-                    ->where('service_user_id', $serviceUser->id)
-                    ->whereNull('deleted_at')
-                    ->select('amount_spent', 'currency')
-                    ->get();
-                foreach ($googleAccounts as $a) {
-                    $raw = (float) ($a->amount_spent ?? 0);
-                    $curr = strtoupper($a->currency ?? 'USD');
-                    $amt = in_array($curr, $zeroDecimal) ? $raw : $raw / 100;
-                    $totalSpend += $currencyService->convert($amt, $curr, 'USD');
-                }
-            }
-
-            $billedSpend = 0.0;
-            if (isset($config['spending_fee_billed_spend']) && is_numeric($config['spending_fee_billed_spend'])) {
-                $billedSpend = max(0.0, (float) $config['spending_fee_billed_spend']);
-            }
-
-            $unbilledSpend = max(0.0, $totalSpend - $billedSpend);
+            $totalSpend = $spendingData['total_spend'];
+            $billedSpend = $spendingData['billed_spend'];
+            $unbilledSpend = $spendingData['unbilled_spend'];
 
             if ($unbilledSpend <= 0) {
                 return ServiceReturn::success(
@@ -901,6 +871,7 @@ class ServiceUserService
                         'billed_spend' => $billedSpend,
                         'unbilled_spend' => 0.0,
                         'charge_amount' => 0.0,
+                        'accounts_detail' => $spendingData['accounts_detail'] ?? [],
                     ],
                     message: __('services.flash.sync_and_bill_no_unbilled', [
                         'total_spend' => number_format($totalSpend, 2),
@@ -916,6 +887,7 @@ class ServiceUserService
                         'billed_spend' => $billedSpend,
                         'unbilled_spend' => $unbilledSpend,
                         'charge_amount' => 0.0,
+                        'accounts_detail' => $spendingData['accounts_detail'] ?? [],
                     ],
                     message: __('services.flash.sync_and_bill_fee_zero')
                 );
@@ -937,7 +909,7 @@ class ServiceUserService
             }
 
             // Thực hiện trừ tiền ví và ghi log với lock row chống duplicate/spam charge
-            return DB::transaction(function () use ($serviceUser, $spendingFeePercent, $totalSpend) {
+            return DB::transaction(function () use ($serviceUser, $spendingFeePercent, $billPostpayCommand) {
                 $lockedServiceUser = $this->serviceUserRepository->query()
                     ->with(['package'])
                     ->where('id', $serviceUser->id)
@@ -953,8 +925,10 @@ class ServiceUserService
                     $currentConfig = [];
                 }
 
-                $currentBilledSpend = max(0.0, (float) ($currentConfig['spending_fee_billed_spend'] ?? 0.0));
-                $recalculatedUnbilledSpend = max(0.0, $totalSpend - $currentBilledSpend);
+                $recalculatedSpendingData = $billPostpayCommand->calculateSpendingAndUnbilled($lockedServiceUser, $currentConfig);
+                $totalSpend = $recalculatedSpendingData['total_spend'];
+                $currentBilledSpend = $recalculatedSpendingData['billed_spend'];
+                $recalculatedUnbilledSpend = $recalculatedSpendingData['unbilled_spend'];
 
                 if ($recalculatedUnbilledSpend <= 0) {
                     return ServiceReturn::success(
@@ -963,6 +937,7 @@ class ServiceUserService
                             'billed_spend' => $currentBilledSpend,
                             'unbilled_spend' => 0.0,
                             'charge_amount' => 0.0,
+                            'accounts_detail' => $recalculatedSpendingData['accounts_detail'] ?? [],
                         ],
                         message: __('services.flash.sync_and_bill_no_unbilled', [
                             'total_spend' => number_format($totalSpend, 2),
@@ -978,6 +953,7 @@ class ServiceUserService
                             'billed_spend' => $currentBilledSpend,
                             'unbilled_spend' => $recalculatedUnbilledSpend,
                             'charge_amount' => 0.0,
+                            'accounts_detail' => $recalculatedSpendingData['accounts_detail'] ?? [],
                         ],
                         message: __('services.flash.sync_and_bill_fee_zero')
                     );
@@ -1019,6 +995,7 @@ class ServiceUserService
                         'spending_fee_amount' => $recalculatedChargeAmount,
                         'billed_spend_before' => $currentBilledSpend,
                         'billed_spend_after' => $totalSpend,
+                        'accounts_detail' => $recalculatedSpendingData['accounts_detail'] ?? [],
                         'charged_at' => now()->toDateTimeString(),
                     ],
                 ]);
@@ -1032,6 +1009,7 @@ class ServiceUserService
                     'description' => "Manual sync & bill postpay spending fee ({$spendingFeePercent}% on {$recalculatedUnbilledSpend} USD spend from {$currentBilledSpend} to {$totalSpend}): {$packageName}",
                 ]);
 
+                $currentConfig['spending_fee_accounts_billed_spend'] = $recalculatedSpendingData['new_accounts_billed_spend'];
                 $currentConfig['spending_fee_billed_spend'] = $totalSpend;
                 $currentConfig['spending_fee_last_charged_at'] = now()->toDateTimeString();
                 $lockedServiceUser->config_account = $currentConfig;
@@ -1045,6 +1023,18 @@ class ServiceUserService
                     $recalculatedChargeAmount,
                 );
 
+                // Sau khi trừ phí, kiểm tra số dư ví dưới 100 USD thì tự động pause campaigns
+                $minBalance = 100.0;
+                if ((float) $wallet->balance < $minBalance) {
+                    $pauseStats = $billPostpayCommand->pauseAllCampaignsForServiceUser($lockedServiceUser);
+                    app(WalletTransactionService::class)->notifySupportGroupPostpayLowBalance(
+                        $lockedServiceUser,
+                        (float) $wallet->balance,
+                        $minBalance,
+                        $pauseStats
+                    );
+                }
+
                 return ServiceReturn::success(
                     data: [
                         'total_spend' => $totalSpend,
@@ -1052,6 +1042,7 @@ class ServiceUserService
                         'unbilled_spend' => 0.0,
                         'charge_amount' => $recalculatedChargeAmount,
                         'new_balance' => (float) $wallet->balance,
+                        'accounts_detail' => $recalculatedSpendingData['accounts_detail'] ?? [],
                     ],
                     message: __('services.flash.sync_and_bill_success', [
                         'charge_amount' => number_format($recalculatedChargeAmount, 2),

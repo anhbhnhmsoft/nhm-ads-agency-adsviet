@@ -1749,12 +1749,16 @@ class MetaService
                     ->where('account_id', $adsAccountData['id'])
                     ->first();
 
+                $incomingAmountSpent = (float) ($adsAccountData['amount_spent'] ?? 0);
+                $currentAmountSpent = (float) ($existingAccount?->amount_spent ?? 0);
+                $finalAmountSpent = max($incomingAmountSpent, $currentAmountSpent);
+
                 $updateData = [
                     'account_name' => $adsAccountData['name'],
                     'account_status' => $adsAccountData['account_status'],
                     'disable_reason' => $adsAccountData['disable_reason'] ?? null,
                     'spend_cap' => $adsAccountData['spend_cap'] ?? 0,
-                    'amount_spent' => $adsAccountData['amount_spent'] ?? 0,
+                    'amount_spent' => $finalAmountSpent,
                     'balance' => $adsAccountData['balance'] ?? 0,
                     'currency' => $adsAccountData['currency'] ?? 'USD',
                     'created_time' => ($adsAccountData['created_time'] ?? null) ? Carbon::parse($adsAccountData['created_time']) : null,
@@ -1969,13 +1973,21 @@ class MetaService
                     $shouldAssign = in_array((string) $detail['id'], $accountIds, true);
                 }
 
+                $existingAccount = $this->metaAccountRepository->query()
+                    ->where('account_id', (string) $detail['id'])
+                    ->first();
+
+                $incomingAmountSpent = (float) ($detail['amount_spent'] ?? 0);
+                $currentAmountSpent = (float) ($existingAccount?->amount_spent ?? 0);
+                $finalAmountSpent = max($incomingAmountSpent, $currentAmountSpent);
+
                 $updateData = [
                     'business_manager_id' => $ownerBmId,
                     'account_name' => $detail['name'],
                     'account_status' => $detail['account_status'],
                     'disable_reason' => $detail['disable_reason'] ?? null,
                     'spend_cap' => $detail['spend_cap'] ?? 0,
-                    'amount_spent' => $detail['amount_spent'] ?? 0,
+                    'amount_spent' => $finalAmountSpent,
                     'balance' => $detail['balance'] ?? 0,
                     'currency' => $detail['currency'] ?? 'USD',
                     'created_time' => ($detail['created_time'] ?? null) ? Carbon::parse($detail['created_time']) : null,
@@ -2068,13 +2080,21 @@ class MetaService
                         }
                     }
 
+                    $existingAccount = $this->metaAccountRepository->query()
+                        ->where('account_id', (string) $body['id'])
+                        ->first();
+
+                    $incomingAmountSpent = (float) ($body['amount_spent'] ?? 0);
+                    $currentAmountSpent = (float) ($existingAccount?->amount_spent ?? 0);
+                    $finalAmountSpent = max($incomingAmountSpent, $currentAmountSpent);
+
                     $updateData = [
                         'business_manager_id' => $ownerBmId,
                         'account_name' => $body['name'] ?? ('act_'.($body['account_id'] ?? $body['id'])),
                         'account_status' => $body['account_status'] ?? null,
                         'disable_reason' => $body['disable_reason'] ?? null,
                         'spend_cap' => $body['spend_cap'] ?? 0,
-                        'amount_spent' => $body['amount_spent'] ?? 0,
+                        'amount_spent' => $finalAmountSpent,
                         'balance' => $body['balance'] ?? 0,
                         'currency' => $body['currency'] ?? 'USD',
                         'created_time' => ($body['created_time'] ?? null) ? Carbon::parse($body['created_time']) : null,
