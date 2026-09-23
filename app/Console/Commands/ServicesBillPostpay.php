@@ -132,9 +132,10 @@ class ServicesBillPostpay extends Command
                             }
 
                             $minWalletBalance = $this->minWalletBalance();
-                            $requiredWalletBalance = max($chargeAmount, $minWalletBalance);
-                            if ((float) $wallet->balance < $requiredWalletBalance) {
-                                Logging::web('services:bill-postpay insufficient balance, pause campaigns', [
+                            
+                            // Nếu số dư ví không đủ để thanh toán khoản phí cần thu
+                            if ((float) $wallet->balance < $chargeAmount) {
+                                Logging::web('services:bill-postpay insufficient balance to charge fee, pause campaigns', [
                                     'service_user_id' => $locked->id,
                                     'user_id' => $locked->user_id,
                                     'balance' => $wallet->balance,
@@ -197,6 +198,7 @@ class ServicesBillPostpay extends Command
                                 return 'skip';
                             }
 
+                            // Trừ tiền phí dịch vụ vào ví của khách
                             $wallet->update(['balance' => (float) $wallet->balance - $chargeAmount]);
 
                             $walletTransaction = $this->walletTransactionRepository->create([
@@ -244,6 +246,28 @@ class ServicesBillPostpay extends Command
                             // Xóa cache cảnh báo thiếu tiền vì đã thu phí thành công
                             Caching::clearCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, 'postpay_insufficient_group_notified_' . $locked->id);
                             Caching::clearCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, 'postpay_insufficient_user_notified_' . $locked->id);
+
+                            // Nếu sau khi trừ phí mà số dư ví còn lại < ngưỡng tối thiểu (100 USD) -> Tự động Pause campaigns và cảnh báo nạp duy trì
+                            $remainingBalance = (float) $wallet->balance;
+                            if ($remainingBalance < $minWalletBalance) {
+                                Logging::web('services:bill-postpay fee charged but balance below minimum, pause campaigns', [
+                                    'service_user_id' => $locked->id,
+                                    'user_id' => $locked->user_id,
+                                    'remaining_balance' => $remainingBalance,
+                                    'minimum_wallet_balance' => $minWalletBalance,
+                                ]);
+
+                                $pauseStats = $this->pauseAllCampaignsForServiceUser($locked);
+
+                                $this->walletTransactionService->notifySupportGroupPostpayInsufficientBalance(
+                                    $locked,
+                                    $remainingBalance,
+                                    $minWalletBalance,
+                                    0, // Đã trừ phí xong nên nợ phí hiện tại = 0
+                                    $unbilledSpend,
+                                    $pauseStats,
+                                );
+                            }
 
                             return $locked;
                         });
@@ -385,6 +409,63 @@ class ServicesBillPostpay extends Command
                     ]);
                 } else {
                     $stats['success']++;
+                }
+            }
+
+            // Fallback nếu trong DB chưa có campaign nào của service_user này: gọi trực tiếp Meta API
+            if ($metaCampaigns->count() === 0) {
+                $metaAccounts = DB::table('meta_accounts')
+                    ->where('service_user_id', $serviceUserId)
+                    ->whereNull('deleted_at')
+                    ->get();
+
+                $platformSettingService = app(\App\Service\PlatformSettingService::class);
+                $metaBusinessService = app(\App\Service\MetaBusinessService::class);
+
+                foreach ($metaAccounts as $account) {
+                    try {
+                        if (!empty($account->business_manager_id)) {
+                            $settingResult = $platformSettingService->findByConfigField(
+                                \App\Common\Constants\Platform\PlatformType::META->value,
+                                'bm_id',
+                                (string) $account->business_manager_id
+                            );
+                            if (! $settingResult->isError() && $settingResult->getData()) {
+                                $metaBusinessService->setSettingId((string) $settingResult->getData()->id);
+                            }
+                        }
+
+                        $apiCampaignsResult = $metaBusinessService->getCampaignsPaginated(
+                            $account->account_id,
+                            50
+                        );
+
+                        if ($apiCampaignsResult->isSuccess()) {
+                            $apiCampaigns = $apiCampaignsResult->getData()['data'] ?? [];
+                            foreach ($apiCampaigns as $campData) {
+                                $cId = $campData['id'] ?? null;
+                                $cStatus = strtoupper($campData['status'] ?? '');
+                                if ($cId && $cStatus !== 'PAUSED' && $cStatus !== 'DELETED') {
+                                    $stats['total']++;
+                                    $pauseRes = $metaBusinessService->updateCampaignStatus($cId, 'PAUSED');
+                                    if ($pauseRes->isError()) {
+                                        $stats['failed']++;
+                                        $err = $pauseRes->getMessage();
+                                        if (!in_array($err, $stats['errors'], true)) {
+                                            $stats['errors'][] = $err;
+                                        }
+                                    } else {
+                                        $stats['success']++;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        Logging::error('ServicesBillPostpay: fallback pause direct from Meta API error', [
+                            'account_id' => $account->account_id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
             }
 

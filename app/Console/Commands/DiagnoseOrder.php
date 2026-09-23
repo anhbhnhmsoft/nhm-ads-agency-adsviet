@@ -123,6 +123,48 @@ class DiagnoseOrder extends Command
             $this->info('   [C] Số dư ví dưới ngưỡng an toàn (100 USD)? -> ✅ TRÊN 100$ (' . number_format($walletBalance, 2) . ' USD -> Trạng thái Healthy)');
         }
 
+        // 6. Lịch sử thu phí và biến động Billed Spend
+        $this->line('');
+        $this->comment('6. LỊCH SỬ THU PHÍ (WALLET TRANSACTIONS) CỦA ĐƠN HÀNG:');
+        $txs = \App\Models\UserWalletTransaction::where('reference_id', (string) $serviceUser->id)
+            ->where('type', \App\Common\Constants\Wallet\WalletTransactionType::SPENDING_FEE->value)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        if ($txs->isEmpty()) {
+            $this->line('   - Không tìm thấy giao dịch SPENDING_FEE nào có reference_id = ' . $serviceUser->id);
+        } else {
+            foreach ($txs as $idx => $tx) {
+                $info = $tx->withdraw_info ?? [];
+                $this->line('   [' . ($idx + 1) . '] TX #' . $tx->id . ' lúc ' . $tx->created_at);
+                $this->line('       • Phí trừ ví: ' . $tx->amount . ' USD');
+                $this->line('       • Spend tính phí: ' . ($info['spend_amount'] ?? 'N/A') . ' USD');
+                $this->line('       • Billed Spend Trước: ' . ($info['billed_spend_before'] ?? 'N/A') . ' USD -> Sau: ' . ($info['billed_spend_after'] ?? 'N/A') . ' USD');
+                $this->line('       • Nội dung: ' . $tx->description);
+            }
+        }
+
+        // 7. Toàn bộ tài khoản của User trong hệ thống (cả gán và không gán)
+        $this->line('');
+        $this->comment('7. TOÀN BỘ TÀI KHOẢN CỦA USER / BM TRONG DATABASE:');
+        $userId = $serviceUser->user_id;
+        $allUserAccounts = \App\Models\MetaAccount::where('user_id', $userId)
+            ->orWhere('service_user_id', (string) $serviceUser->id)
+            ->get();
+
+        $this->line('   - Tổng tài khoản tìm thấy: ' . $allUserAccounts->count());
+        $sumAllUser = 0.0;
+        foreach ($allUserAccounts as $acc) {
+            $raw = (float) ($acc->amount_spent ?? 0);
+            $curr = strtoupper($acc->currency ?? 'USD');
+            $amt = in_array($curr, $zeroDecimal) ? $raw : $raw / 100;
+            $converted = $currencyService->convert($amt, $curr, 'USD');
+            $sumAllUser += $converted;
+            $isCurrent = ((string) $acc->service_user_id === (string) $serviceUser->id) ? '✅ [ĐANG GẮN ĐƠN NÀY]' : '⚠️ [GẮN ĐƠN KHÁC HOẶC NULL: ' . ($acc->service_user_id ?? 'NULL') . ']';
+            $this->line('     + ' . $acc->account_id . ' (' . $acc->name . '): ' . number_format($converted, 2) . ' USD ' . $isCurrent);
+        }
+        $this->line('   👉 TỔNG SPEND TOÀN BỘ TÀI KHOẢN CỦA USER: ' . number_format($sumAllUser, 2) . ' USD');
+
         $this->line('=====================================================');
         return Command::SUCCESS;
     }
