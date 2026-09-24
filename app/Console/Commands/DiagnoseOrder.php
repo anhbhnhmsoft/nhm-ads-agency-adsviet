@@ -78,7 +78,12 @@ class DiagnoseOrder extends Command
 
         foreach ($accountsDetail as $key => $detail) {
             $dbAcc = $metaAccountsDb->get($key);
-            $bmInfo = $dbAcc?->business_manager_id ? ' | BM ID: ' . $dbAcc->business_manager_id : ' | BM ID: N/A';
+            $bmId = $dbAcc?->business_manager_id;
+            $parentBm = $bmId ? \App\Models\MetaBusinessManager::where('bm_id', (string) $bmId)->first() : null;
+            $primaryBmId = $parentBm?->parent_bm_id ?: $bmId;
+            $resolvedSettingId = $billPostpayCommand->resolveMetaSettingIdForAccount($serviceUser, $dbAcc, $key);
+            
+            $bmInfo = $bmId ? " | BM: {$bmId}" . ($primaryBmId !== $bmId ? " (Parent: {$primaryBmId})" : '') . ($resolvedSettingId ? " [Setting #{$resolvedSettingId}]" : ' [No Setting]') : ' | BM: N/A';
             $this->line('   [' . ($idx++) . '] ' . $key . ' | ' . $detail['name'] . $bmInfo);
             $this->line('       -> Spend: ' . number_format($detail['spent'], 2) . ' USD | Billed: ' . number_format($detail['billed'], 2) . ' USD | Unbilled: ' . number_format($detail['unbilled'], 2) . ' USD');
         }

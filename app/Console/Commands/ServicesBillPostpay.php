@@ -573,18 +573,10 @@ class ServicesBillPostpay extends Command
             foreach ($metaCampaigns as $campaign) {
                 $cId = (string) ($campaign->campaign_id ?: $campaign->id);
                 
-                // Cấu hình BM setting phù hợp với tài khoản
-                $metaAccount = $campaign->metaAccount;
-                $bmId = $metaAccount->business_manager_id ?? null;
-                if (!empty($bmId)) {
-                    $settingResult = $platformSettingService->findByConfigField(
-                        \App\Common\Constants\Platform\PlatformType::META->value,
-                        'business_manager_id',
-                        (string) $bmId
-                    );
-                    if (!$settingResult->isError() && $settingResult->getData()) {
-                        $metaBusinessService->setSettingId((string) $settingResult->getData()->id);
-                    }
+                // Xác định chính xác PlatformSetting của BM Gốc sở hữu tài khoản này
+                $settingId = $this->resolveMetaSettingIdForAccount($serviceUser, $campaign->metaAccount, $campaign->metaAccount?->account_id);
+                if ($settingId) {
+                    $metaBusinessService->setSettingId($settingId);
                 }
 
                 $result = $metaBusinessService->updateCampaignStatus($cId, 'PAUSED');
@@ -597,6 +589,7 @@ class ServicesBillPostpay extends Command
                     Logging::web('ServicesBillPostpay: Failed to pause Meta campaign', [
                         'service_user_id' => $serviceUserId,
                         'campaign_id' => $cId,
+                        'setting_id' => $settingId,
                         'error' => $errorMsg,
                     ]);
                 } else {
@@ -618,23 +611,16 @@ class ServicesBillPostpay extends Command
 
             foreach ($metaAccounts as $account) {
                 try {
-                    $bmId = $account->business_manager_id ?? null;
-                    if (!empty($bmId)) {
-                        $settingResult = $platformSettingService->findByConfigField(
-                            \App\Common\Constants\Platform\PlatformType::META->value,
-                            'business_manager_id',
-                            (string) $bmId
-                        );
-                        if (! $settingResult->isError() && $settingResult->getData()) {
-                            $metaBusinessService->setSettingId((string) $settingResult->getData()->id);
-                        }
-                    }
-
                     $rawAccId = (string) ($account->account_id ?? '');
                     if (!$rawAccId) {
                         continue;
                     }
                     $normalizedAccId = str_starts_with($rawAccId, 'act_') ? $rawAccId : 'act_' . $rawAccId;
+
+                    $settingId = $this->resolveMetaSettingIdForAccount($serviceUser, $account, $rawAccId);
+                    if ($settingId) {
+                        $metaBusinessService->setSettingId($settingId);
+                    }
 
                     $apiCampaignsResult = $metaBusinessService->getCampaignsPaginated(
                         $normalizedAccId,
@@ -727,5 +713,89 @@ class ServicesBillPostpay extends Command
         }
 
         return $stats;
+    }
+
+    /**
+     * Tìm chính xác PlatformSetting ID của BM Gốc sở hữu tài khoản Ads
+     */
+    public function resolveMetaSettingIdForAccount($serviceUser, $metaAccount = null, ?string $accountId = null): ?string
+    {
+        $platformSettingService = app(\App\Service\PlatformSettingService::class);
+        $candidateBmIds = [];
+
+        // 1. Lấy từ metaAccount nếu có
+        if ($metaAccount && !empty($metaAccount->business_manager_id)) {
+            $candidateBmIds[] = (string) $metaAccount->business_manager_id;
+        }
+
+        // 2. Lấy từ config của service_user
+        if ($serviceUser) {
+            $config = $serviceUser->config_account ?? [];
+            if (!empty($config['child_bm_id'])) {
+                $candidateBmIds[] = (string) $config['child_bm_id'];
+            }
+            if (!empty($config['business_manager_id'])) {
+                $candidateBmIds[] = (string) $config['business_manager_id'];
+            }
+            if (!empty($config['bm_id'])) {
+                $candidateBmIds[] = (string) $config['bm_id'];
+            }
+        }
+
+        // 3. Tra từ bảng meta_account_business_manager_accesses theo account_id
+        $targetAccId = $accountId ?: $metaAccount?->account_id;
+        if ($targetAccId) {
+            $rawId = preg_replace('/^act_/', '', (string) $targetAccId);
+            $normalizedId = 'act_' . $rawId;
+            $accesses = \App\Models\MetaAccountBusinessManagerAccess::where('account_id', $rawId)
+                ->orWhere('account_id', $normalizedId)
+                ->get();
+            foreach ($accesses as $acc) {
+                if (!empty($acc->source_bm_id)) {
+                    $candidateBmIds[] = (string) $acc->source_bm_id;
+                }
+                if (!empty($acc->owner_bm_id)) {
+                    $candidateBmIds[] = (string) $acc->owner_bm_id;
+                }
+            }
+        }
+
+        // Duyệt qua các BM ID và quy đổi BM con -> BM Gốc (parent_bm_id)
+        $checkedBmIds = [];
+        foreach ($candidateBmIds as $bmId) {
+            if (!$bmId || in_array($bmId, $checkedBmIds, true)) {
+                continue;
+            }
+            $checkedBmIds[] = $bmId;
+
+            // Kiểm tra xem có BM cha không (BM con -> BM gốc)
+            $bmRecord = \App\Models\MetaBusinessManager::where('bm_id', $bmId)->first();
+            $primaryBmId = $bmRecord?->parent_bm_id ?: $bmId;
+
+            // Tìm PlatformSetting theo BM Gốc
+            $settingResult = $platformSettingService->findByConfigField(
+                \App\Common\Constants\Platform\PlatformType::META->value,
+                'business_manager_id',
+                (string) $primaryBmId
+            );
+
+            if (!$settingResult->isError() && $settingResult->getData()) {
+                return (string) $settingResult->getData()->id;
+            }
+
+            // Thử tiếp với chính bmId nếu parent_bm_id khác bmId
+            if ($primaryBmId !== $bmId) {
+                $settingDirect = $platformSettingService->findByConfigField(
+                    \App\Common\Constants\Platform\PlatformType::META->value,
+                    'business_manager_id',
+                    (string) $bmId
+                );
+                if (!$settingDirect->isError() && $settingDirect->getData()) {
+                    return (string) $settingDirect->getData()->id;
+                }
+            }
+        }
+
+        return null;
     }
 }

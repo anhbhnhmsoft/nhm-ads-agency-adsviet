@@ -509,7 +509,7 @@ class MetaBusinessService
      * @param string|null $before Con trỏ trang trước
      * @return ServiceReturn
      */
-    public function getCampaignsPaginated(string $accountId, int $limit = 25, ?string $after = null, ?string $before = null, bool $tryAllSettingsIfFailed = true): ServiceReturn
+    public function getCampaignsPaginated(string $accountId, int $limit = 25, ?string $after = null, ?string $before = null): ServiceReturn
     {
         try {
             $this->initApi();
@@ -550,43 +550,7 @@ class MetaBusinessService
             return ServiceReturn::success(data: $response);
 
         } catch (Exception $exception) {
-            $message = $exception->getMessage();
-
-            // Nếu gặp lỗi Permission / BM access / Token / Timeout và cho phép thử các setting khác
-            if ($tryAllSettingsIfFailed && (
-                str_contains($message, 'Permissions error') ||
-                str_contains($message, 'permission') ||
-                str_contains($message, 'OAuth') ||
-                str_contains($message, 'access token') ||
-                str_contains($message, 'Unsupported get request') ||
-                str_contains($message, 'timed out')
-            )) {
-                $allSettingsRes = $this->platformSettingService->getAllActiveByPlatform(PlatformType::META->value);
-                if ($allSettingsRes->isSuccess()) {
-                    $allSettings = $allSettingsRes->getData() ?? [];
-                    $initialSettingId = $this->currentSettingId;
-                    foreach ($allSettings as $setting) {
-                        if ((string) $setting->id === (string) $initialSettingId) {
-                            continue;
-                        }
-                        try {
-                            $this->setSettingId((string) $setting->id);
-                            $this->initApi(force: true);
-                            $res = $this->api->call(
-                                "/{$normalizedAccountId}/campaigns",
-                                'GET',
-                                $params
-                            )->getContent();
-                            return ServiceReturn::success(data: $res);
-                        } catch (\Throwable) {
-                            continue;
-                        }
-                    }
-                    $this->setSettingId($initialSettingId);
-                }
-            }
-
-            return ServiceReturn::error(message: $message);
+            return ServiceReturn::error(message: $exception->getMessage());
         }
     }
 
@@ -894,7 +858,7 @@ class MetaBusinessService
      * @param string $status
      * @return ServiceReturn
      */
-    public function updateCampaignStatus(string $campaignId, string $status, bool $tryAllSettingsIfFailed = true): ServiceReturn
+    public function updateCampaignStatus(string $campaignId, string $status): ServiceReturn
     {
         try {
             $this->initApi();
@@ -916,42 +880,6 @@ class MetaBusinessService
             return ServiceReturn::success(data: $response);
         } catch (Exception $exception) {
             $message = $exception->getMessage();
-
-            // Nếu gặp lỗi Permission / BM access / Token / Timeout và cho phép thử các setting khác
-            if ($tryAllSettingsIfFailed && (
-                str_contains($message, 'Permissions error') ||
-                str_contains($message, 'permission') ||
-                str_contains($message, 'OAuth') ||
-                str_contains($message, 'access token') ||
-                str_contains($message, 'Unsupported post request') ||
-                str_contains($message, 'timed out')
-            )) {
-                $allSettingsRes = $this->platformSettingService->getAllActiveByPlatform(PlatformType::META->value);
-                if ($allSettingsRes->isSuccess()) {
-                    $allSettings = $allSettingsRes->getData() ?? [];
-                    $initialSettingId = $this->currentSettingId;
-                    foreach ($allSettings as $setting) {
-                        if ((string) $setting->id === (string) $initialSettingId) {
-                            continue;
-                        }
-                        try {
-                            $this->setSettingId((string) $setting->id);
-                            $this->initApi(force: true);
-                            $res = $this->api->call(
-                                "/{$campaignId}",
-                                'POST',
-                                ['status' => $normalizedStatus]
-                            )->getContent();
-                            return ServiceReturn::success(data: $res);
-                        } catch (\Throwable) {
-                            continue;
-                        }
-                    }
-                    // Khôi phục lại setting ban đầu nếu tất cả đều fail
-                    $this->setSettingId($initialSettingId);
-                }
-            }
-
             if (str_contains($message, 'Permissions error')) {
                 return ServiceReturn::error(message: __('meta.error.permissions_error'));
             }
