@@ -72,8 +72,14 @@ class DiagnoseOrder extends Command
 
         $this->line('   - Số lượng tài khoản gán: ' . count($accountsDetail));
         $idx = 1;
+        $metaAccountsDb = \App\Models\MetaAccount::where('service_user_id', (string) $serviceUser->id)->get()->keyBy(function($item) {
+            return 'meta_' . ($item->account_id ?? $item->id);
+        });
+
         foreach ($accountsDetail as $key => $detail) {
-            $this->line('   [' . ($idx++) . '] ' . $key . ' | ' . $detail['name']);
+            $dbAcc = $metaAccountsDb->get($key);
+            $bmInfo = $dbAcc?->business_manager_id ? ' | BM ID: ' . $dbAcc->business_manager_id : ' | BM ID: N/A';
+            $this->line('   [' . ($idx++) . '] ' . $key . ' | ' . $detail['name'] . $bmInfo);
             $this->line('       -> Spend: ' . number_format($detail['spent'], 2) . ' USD | Billed: ' . number_format($detail['billed'], 2) . ' USD | Unbilled: ' . number_format($detail['unbilled'], 2) . ' USD');
         }
 

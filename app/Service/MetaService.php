@@ -613,7 +613,7 @@ class MetaService
             if ($metaAccount && ! empty($metaAccount->business_manager_id)) {
                 $settingResult = $this->platformSettingService->findByConfigField(
                     PlatformType::META->value,
-                    'bm_id',
+                    'business_manager_id',
                     (string) $metaAccount->business_manager_id
                 );
                 if (! $settingResult->isError() && $settingResult->getData()) {

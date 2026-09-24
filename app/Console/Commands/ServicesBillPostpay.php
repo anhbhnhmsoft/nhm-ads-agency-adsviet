@@ -575,11 +575,12 @@ class ServicesBillPostpay extends Command
                 
                 // Cấu hình BM setting phù hợp với tài khoản
                 $metaAccount = $campaign->metaAccount;
-                if ($metaAccount && !empty($metaAccount->business_manager_id)) {
+                $bmId = $metaAccount->business_manager_id ?? null;
+                if (!empty($bmId)) {
                     $settingResult = $platformSettingService->findByConfigField(
                         \App\Common\Constants\Platform\PlatformType::META->value,
-                        'bm_id',
-                        (string) $metaAccount->business_manager_id
+                        'business_manager_id',
+                        (string) $bmId
                     );
                     if (!$settingResult->isError() && $settingResult->getData()) {
                         $metaBusinessService->setSettingId((string) $settingResult->getData()->id);
@@ -617,11 +618,12 @@ class ServicesBillPostpay extends Command
 
             foreach ($metaAccounts as $account) {
                 try {
-                    if (!empty($account->business_manager_id)) {
+                    $bmId = $account->business_manager_id ?? null;
+                    if (!empty($bmId)) {
                         $settingResult = $platformSettingService->findByConfigField(
                             \App\Common\Constants\Platform\PlatformType::META->value,
-                            'bm_id',
-                            (string) $account->business_manager_id
+                            'business_manager_id',
+                            (string) $bmId
                         );
                         if (! $settingResult->isError() && $settingResult->getData()) {
                             $metaBusinessService->setSettingId((string) $settingResult->getData()->id);

@@ -92,6 +92,13 @@ class PlatformSettingRepository extends BaseRepository
 
     public function findByConfigField(int $platform, string $field, string $value): ?PlatformSetting
     {
+        $aliasFields = [$field];
+        if (in_array($field, ['bm_id', 'business_manager_id', 'business_id'], true)) {
+            $aliasFields = ['business_manager_id', 'bm_id', 'business_id'];
+        } elseif (in_array($field, ['login_customer_id', 'customer_manager_id', 'mcc_id'], true)) {
+            $aliasFields = ['login_customer_id', 'customer_manager_id', 'mcc_id'];
+        }
+
         // Cột config là text (không phải json) nên không dùng được toán tử ->> trên PostgreSQL.
         // Lỗi SQL sẽ làm hỏng transaction đang mở (25P02) => lọc bằng PHP trên giá trị đã cast array.
         return $this->model()
@@ -99,7 +106,18 @@ class PlatformSettingRepository extends BaseRepository
             ->where('disabled', false)
             ->orderBy('id', 'desc')
             ->get()
-            ->first(fn (PlatformSetting $setting) => (string) (($setting->config ?? [])[$field] ?? '') === $value);
+            ->first(function (PlatformSetting $setting) use ($aliasFields, $value) {
+                $cfg = $setting->config ?? [];
+                if (!is_array($cfg)) {
+                    return false;
+                }
+                foreach ($aliasFields as $f) {
+                    if (isset($cfg[$f]) && (string) $cfg[$f] === (string) $value) {
+                        return true;
+                    }
+                }
+                return false;
+            });
     }
 
     public function findByPlatform(int $platform): ?PlatformSetting
