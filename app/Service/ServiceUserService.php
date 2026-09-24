@@ -1023,8 +1023,8 @@ class ServiceUserService
                     $recalculatedChargeAmount,
                 );
 
-                // Sau khi trừ phí, kiểm tra số dư ví dưới 100 USD thì tự động pause campaigns
-                $minBalance = 100.0;
+                // Sau khi trừ phí, kiểm tra số dư ví dưới 20 USD thì tự động pause campaigns
+                $minBalance = (float) app(\App\Service\ConfigService::class)->getValue(\App\Common\Constants\Config\ConfigName::POSTPAY_MIN_BALANCE, 20.0);
                 if ((float) $wallet->balance < $minBalance) {
                     $pauseStats = $billPostpayCommand->pauseAllCampaignsForServiceUser($lockedServiceUser);
                     app(WalletTransactionService::class)->notifySupportGroupPostpayLowBalance(

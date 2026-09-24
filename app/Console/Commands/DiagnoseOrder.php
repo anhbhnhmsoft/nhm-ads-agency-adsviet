@@ -102,11 +102,11 @@ class DiagnoseOrder extends Command
 
         // 5. Kiểm tra điều kiện Cron job
         $this->line('');
-        $this->comment('5. KIỂM TRA ĐIỀU KIỆN CHẠY CỦA CRON JOB BILL & PAUSE:');
-        if ($unbilledSpend >= 100) {
-            $this->info('   [A] Unbilled spend >= 100 USD? -> ✅ ĐẠT (' . number_format($unbilledSpend, 2) . ' USD -> Sẽ kích hoạt bill)');
+        $this->comment('5. KIỂM TRA ĐIỀU KIỆN CHẠY CỦA CRON JOB BILL & PAUSE (NGƯỠNG 20 USD):');
+        if ($unbilledSpend >= 20) {
+            $this->info('   [A] Unbilled spend >= 20 USD? -> ✅ ĐẠT (' . number_format($unbilledSpend, 2) . ' USD -> Sẽ kích hoạt bill)');
         } else {
-            $this->error('   [A] Unbilled spend >= 100 USD? -> ❌ CHƯA ĐẠT (' . number_format($unbilledSpend, 2) . ' USD < 100 USD -> Cron job tự động SKIP BỎ QUA)');
+            $this->error('   [A] Unbilled spend >= 20 USD? -> ❌ CHƯA ĐẠT (' . number_format($unbilledSpend, 2) . ' USD < 20 USD -> Chỉ thu khi đạt mốc)');
         }
 
         if ($walletBalance >= $pendingFee) {
@@ -115,10 +115,10 @@ class DiagnoseOrder extends Command
             $this->error('   [B] Số dư ví đủ trả phí (' . number_format($pendingFee, 2) . ' USD)? -> ❌ THIẾU TIỀN TRỪ PHÍ');
         }
 
-        if ($walletBalance < 100) {
-            $this->warn('   [C] Số dư ví dưới ngưỡng an toàn (100 USD)? -> ⚠️ DƯỚI 100$ (' . number_format($walletBalance, 2) . ' USD -> Trạng thái Low Balance)');
+        if ($walletBalance < 20) {
+            $this->warn('   [C] Số dư ví dưới ngưỡng an toàn (20 USD)? -> ⚠️ DƯỚI 20$ (' . number_format($walletBalance, 2) . ' USD -> CƯỠNG CHẾ TỰ ĐỘNG PAUSE TẤT CẢ CAMPAIGN)');
         } else {
-            $this->info('   [C] Số dư ví dưới ngưỡng an toàn (100 USD)? -> ✅ TRÊN 100$ (' . number_format($walletBalance, 2) . ' USD -> Trạng thái Healthy)');
+            $this->info('   [C] Số dư ví dưới ngưỡng an toàn (20 USD)? -> ✅ TRÊN 20$ (' . number_format($walletBalance, 2) . ' USD -> Trạng thái Healthy)');
         }
 
         // 6. Lịch sử thu phí và biến động Billed Spend

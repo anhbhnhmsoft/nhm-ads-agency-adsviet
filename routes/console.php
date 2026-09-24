@@ -19,8 +19,8 @@ Schedule::command('platform-settings:check-tokens')->dailyAt('00:10');
 // Fallback: Kiểm tra auto-pause accounts mỗi 30 phút (chính là webhook Meta push realtime)
 Schedule::command('accounts:check-and-auto-pause')->everyThirtyMinutes();
 
-// Billing spending fee theo ngưỡng chi tiêu, chạy sau mỗi nhịp sync insight
-Schedule::command('services:bill-postpay')->everyThirtyMinutes()->withoutOverlapping();
+// Billing spending fee theo ngưỡng chi tiêu & tự động pause campaign khi ví dưới 20 USD (chạy mỗi 5 phút)
+Schedule::command('services:bill-postpay')->everyFiveMinutes()->withoutOverlapping();
 
 // Khóa hạn mức gói creditline khi còn khoảng 20 USD
 Schedule::command('services:enforce-creditline-limits')

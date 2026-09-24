@@ -155,14 +155,14 @@ class ServiceOrderResource extends JsonResource
         }
 
         $pendingFee = round($unbilledSpend * ($effectiveFeePercent / 100), 2);
-        $minWalletRequired = 100.0;
+        $minWalletRequired = (float) app(\App\Service\ConfigService::class)->getValue(\App\Common\Constants\Config\ConfigName::POSTPAY_MIN_BALANCE, 20.0);
         $isLowBalance = $walletBalance < $minWalletRequired || ($pendingFee > 0 && $walletBalance < $pendingFee);
 
         $billingStatus = 'healthy';
         if ($isPostpay || ($config['billing_source'] ?? '') === 'customer_card') {
             if ($isLowBalance) {
                 $billingStatus = 'low_balance';
-            } elseif ($unbilledSpend >= 100.0) {
+            } elseif ($unbilledSpend >= 20.0) {
                 $billingStatus = 'ready_to_charge';
             } else {
                 $billingStatus = 'healthy';
