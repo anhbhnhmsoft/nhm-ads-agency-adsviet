@@ -557,49 +557,63 @@ class ServicesBillPostpay extends Command
 
         try {
             $serviceUserId = (string) $serviceUser->id;
+            $platformSettingService = app(\App\Service\PlatformSettingService::class);
+            $metaBusinessService = app(\App\Service\MetaBusinessService::class);
 
+            // 1. Quét toàn bộ campaign trong Database chưa Pause
             $metaCampaigns = $this->metaAdsCampaignRepository->query()
                 ->where('service_user_id', $serviceUserId)
                 ->where('status', '!=', 'PAUSED')
                 ->where('status', '!=', 'DELETED')
-                ->get(['id']);
+                ->get();
 
             $stats['total'] += $metaCampaigns->count();
-
             $pausedCampaignIds = [];
 
             foreach ($metaCampaigns as $campaign) {
-                $cId = (string) $campaign->campaign_id ?: (string) $campaign->id;
-                $result = $this->metaService->updateCampaignStatus(
-                    $serviceUserId,
-                    (string) $campaign->id,
-                    'PAUSED'
-                );
+                $cId = (string) ($campaign->campaign_id ?: $campaign->id);
+                
+                // Cấu hình BM setting phù hợp với tài khoản
+                $metaAccount = $campaign->metaAccount;
+                if ($metaAccount && !empty($metaAccount->business_manager_id)) {
+                    $settingResult = $platformSettingService->findByConfigField(
+                        \App\Common\Constants\Platform\PlatformType::META->value,
+                        'bm_id',
+                        (string) $metaAccount->business_manager_id
+                    );
+                    if (!$settingResult->isError() && $settingResult->getData()) {
+                        $metaBusinessService->setSettingId((string) $settingResult->getData()->id);
+                    }
+                }
+
+                $result = $metaBusinessService->updateCampaignStatus($cId, 'PAUSED');
                 if ($result->isError()) {
                     $stats['failed']++;
                     $errorMsg = $result->getMessage();
-                    if (! in_array($errorMsg, $stats['errors'], true)) {
+                    if (!in_array($errorMsg, $stats['errors'], true)) {
                         $stats['errors'][] = $errorMsg;
                     }
                     Logging::web('ServicesBillPostpay: Failed to pause Meta campaign', [
                         'service_user_id' => $serviceUserId,
-                        'campaign_id' => $campaign->id,
+                        'campaign_id' => $cId,
                         'error' => $errorMsg,
                     ]);
                 } else {
                     $stats['success']++;
                     $pausedCampaignIds[] = $cId;
                 }
+
+                // Cập nhật trạng thái trong database
+                $campaign->status = 'PAUSED';
+                $campaign->effective_status = 'PAUSED';
+                $campaign->save();
             }
 
-            // Luôn quét trực tiếp Meta API trên tất cả tài khoản để bắt sạch 100% campaign khách mới tạo trên Ads Manager
+            // 2. Quét trực tiếp Meta API trên tất cả tài khoản để bắt sạch 100% campaign khách mới tạo trên Ads Manager
             $metaAccounts = DB::table('meta_accounts')
                 ->where('service_user_id', $serviceUserId)
                 ->whereNull('deleted_at')
                 ->get();
-
-            $platformSettingService = app(\App\Service\PlatformSettingService::class);
-            $metaBusinessService = app(\App\Service\MetaBusinessService::class);
 
             foreach ($metaAccounts as $account) {
                 try {
@@ -614,9 +628,15 @@ class ServicesBillPostpay extends Command
                         }
                     }
 
+                    $rawAccId = (string) ($account->account_id ?? '');
+                    if (!$rawAccId) {
+                        continue;
+                    }
+                    $normalizedAccId = str_starts_with($rawAccId, 'act_') ? $rawAccId : 'act_' . $rawAccId;
+
                     $apiCampaignsResult = $metaBusinessService->getCampaignsPaginated(
-                        $account->account_id,
-                        50
+                        $normalizedAccId,
+                        100
                     );
 
                     if ($apiCampaignsResult->isSuccess()) {
@@ -636,12 +656,22 @@ class ServicesBillPostpay extends Command
                                 } else {
                                     $stats['success']++;
                                     $pausedCampaignIds[] = $cId;
-
-                                    // Cập nhật hoặc lưu lại vào DB
-                                    $this->metaAdsCampaignRepository->query()
-                                        ->where('campaign_id', $cId)
-                                        ->update(['status' => 'PAUSED', 'effective_status' => 'PAUSED']);
                                 }
+
+                                // Cập nhật hoặc lưu lại vào DB
+                                $this->metaAdsCampaignRepository->query()->updateOrCreate(
+                                    [
+                                        'campaign_id' => $cId,
+                                        'service_user_id' => $serviceUserId,
+                                    ],
+                                    [
+                                        'meta_account_id' => $account->id,
+                                        'name' => $campData['name'] ?? ('Campaign ' . $cId),
+                                        'status' => 'PAUSED',
+                                        'effective_status' => 'PAUSED',
+                                        'last_synced_at' => now(),
+                                    ]
+                                );
                             }
                         }
                     }

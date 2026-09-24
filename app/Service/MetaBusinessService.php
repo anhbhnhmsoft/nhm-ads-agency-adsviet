@@ -448,7 +448,7 @@ class MetaBusinessService
     }
 
     /**
-     * Lấy chi tiết ads account theo id (Lưu ý: id acount phải có act_ ở đầu)
+     * Lấy chi tiết ads account theo id (Tự động chuẩn hóa tiền tố 'act_')
      * @param string $accountId
      * @return ServiceReturn
      */
@@ -456,6 +456,7 @@ class MetaBusinessService
     {
         try {
             $this->initApi();
+            $normalizedAccountId = str_starts_with($accountId, 'act_') ? $accountId : 'act_' . preg_replace('/[^0-9]/', '', $accountId);
             // Danh sách các trường (fields) cần lấy
             $fields = [
                 'id',
@@ -475,7 +476,7 @@ class MetaBusinessService
             ];
 
             $response = $this->api->call(
-                "/{$accountId}",
+                "/{$normalizedAccountId}",
                 'GET',
                 ['fields' => implode(',', $fields)]
             )->getContent();
@@ -488,8 +489,8 @@ class MetaBusinessService
     }
 
     /**
-     * Lấy MỘT TRANG danh sách chiến dịch (campaigns) của một ads account
-     * @param string $accountId ID tài khoản (phải có 'act_')
+     * Lấy MỘT TRANG danh sách chiến dịch (campaigns) của một ads account (Tự động chuẩn hóa tiền tố 'act_')
+     * @param string $accountId ID tài khoản
      * @param int $limit Số lượng muốn lấy
      * @param string|null $after Con trỏ trang kế tiếp
      * @param string|null $before Con trỏ trang trước
@@ -499,6 +500,7 @@ class MetaBusinessService
     {
         try {
             $this->initApi();
+            $normalizedAccountId = str_starts_with($accountId, 'act_') ? $accountId : 'act_' . preg_replace('/[^0-9]/', '', $accountId);
             // Các trường (fields) cơ bản của một chiến dịch
             $fields = [
                 'id',
@@ -526,7 +528,7 @@ class MetaBusinessService
                 $params['before'] = $before;
             }
             $response = $this->api->call(
-                "/{$accountId}/campaigns", // Endpoint
+                "/{$normalizedAccountId}/campaigns", // Endpoint
                 'GET',
                 $params
             )->getContent();

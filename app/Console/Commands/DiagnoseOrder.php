@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 
 class DiagnoseOrder extends Command
 {
-    protected $signature = 'app:diagnose-order {query? : Order ID hoặc tên khách hàng}';
+    protected $signature = 'app:diagnose-order {query? : Order ID hoặc tên khách hàng} {--pause : Thực thi cưỡng chế Pause toàn bộ campaign active ngay lập tức}';
 
     protected $description = 'Kiểm tra toàn diện chi tiêu, ví, tài khoản ads và điều kiện thu phí/pause của đơn hàng';
 
@@ -119,6 +119,21 @@ class DiagnoseOrder extends Command
             $this->warn('   [C] Số dư ví dưới ngưỡng an toàn (20 USD)? -> ⚠️ DƯỚI 20$ (' . number_format($walletBalance, 2) . ' USD -> CƯỠNG CHẾ TỰ ĐỘNG PAUSE TẤT CẢ CAMPAIGN)');
         } else {
             $this->info('   [C] Số dư ví dưới ngưỡng an toàn (20 USD)? -> ✅ TRÊN 20$ (' . number_format($walletBalance, 2) . ' USD -> Trạng thái Healthy)');
+        }
+
+        // Nếu có cờ --pause, thực hiện Pause ngay và in kết quả chi tiết
+        if ($this->option('pause')) {
+            $this->line('');
+            $this->warn('🚨 ĐANG THỰC HIỆN CƯỠNG CHẾ PAUSE TOÀN BỘ CHIẾN DỊCH THEO LỆNH CỦA ADMIN...');
+            $pauseStats = $billPostpayCommand->pauseAllCampaignsForServiceUser($serviceUser);
+            $this->info('   👉 Tổng chiến dịch phát hiện: ' . $pauseStats['total']);
+            $this->info('   👉 Đã Pause thành công: ' . $pauseStats['success']);
+            if ($pauseStats['failed'] > 0) {
+                $this->error('   👉 Thất bại: ' . $pauseStats['failed']);
+                foreach ($pauseStats['errors'] as $err) {
+                    $this->error('      • Lỗi: ' . $err);
+                }
+            }
         }
 
         // 6. Lịch sử thu phí và biến động Billed Spend
