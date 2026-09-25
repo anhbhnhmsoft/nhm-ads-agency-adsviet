@@ -8,5 +8,6 @@ return [
     'login_success' => '登录成功，欢迎回来！',
     'register_success' => '注册成功，欢迎光临！',
     'toggle_disable_success' => '状态更新成功。',
+    'duplicate_success' => '复制服务包成功！请检查并保存。',
 ];
 

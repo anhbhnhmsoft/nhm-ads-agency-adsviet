@@ -194,6 +194,49 @@ class ServicePackageService
         }
     }
 
+    /**
+     * Sao chép gói dịch vụ
+     * @param string $id
+     * @return ServiceReturn
+     */
+    public function duplicateServicePackage(string $id): ServiceReturn
+    {
+        try {
+            $sourcePackage = $this->servicePackageRepository->find($id);
+            if (!$sourcePackage) {
+                return ServiceReturn::error(__('common_error.not_found'));
+            }
+
+            // Nhân bản dữ liệu gói dịch vụ
+            $newPackage = $sourcePackage->replicate([
+                'id',
+                'created_at',
+                'updated_at',
+                'deleted_at',
+            ]);
+
+            $newPackage->id = null;
+            $newPackage->name = $sourcePackage->name . ' (Copy)';
+            // Tạm thời vô hiệu hóa để admin chỉnh sửa thông số và lưu trước khi kích hoạt
+            $newPackage->disabled = true;
+            $newPackage->save();
+
+            // Sao chép danh sách khách hàng được phép truy cập gói (nếu có)
+            $allowedUserIds = $this->servicePackageAllowedUserRepository->getAllowedUserIdsByPackageId($sourcePackage->id);
+            if (!empty($allowedUserIds)) {
+                $this->servicePackageAllowedUserRepository->syncAllowedUsers($newPackage->id, $allowedUserIds);
+            }
+
+            return ServiceReturn::success(data: $newPackage);
+        } catch (\Exception $exception) {
+            Logging::error(
+                message: 'Lỗi sao chép gói dịch vụ ServicePackageService@duplicateServicePackage: ' . $exception->getMessage(),
+                exception: $exception
+            );
+            return ServiceReturn::error(__('common_error.server_error'));
+        }
+    }
+
     public function getAllowedUserIds(string $id): ServiceReturn
     {
         try {

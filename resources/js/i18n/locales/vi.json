@@ -598,6 +598,8 @@
         "empty_title": "Chưa có gói dịch vụ nào",
         "empty_description": "Bạn chưa tạo gói dịch vụ nào. Bắt đầu bằng cách tạo gói dịch vụ mới.",
         "create_btn": "Tạo gói dịch vụ mới",
+        "duplicate": "Sao chép",
+        "duplicate_btn": "Sao chép gói này",
         "title_create": "Tạo gói dịch vụ mới",
         "title_edit": "Chỉnh sửa gói dịch vụ",
         "name": "Tên gói dịch vụ",

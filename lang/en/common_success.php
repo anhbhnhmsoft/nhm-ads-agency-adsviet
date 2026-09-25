@@ -8,5 +8,6 @@ return [
     'login_success' => 'Login successful, welcome back!',
     'register_success' => 'Registration successful, welcome!',
     'toggle_disable_success' => 'Status updated successfully.',
+    'duplicate_success' => 'Service package duplicated successfully! Please check and save.',
 ];
 

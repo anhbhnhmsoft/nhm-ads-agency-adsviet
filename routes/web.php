@@ -229,6 +229,7 @@ Route::middleware([
         Route::put('/{id}', [ServicePackageController::class, 'update'])->name('service_packages_update');
         Route::delete('/{id}', [ServicePackageController::class, 'destroy'])->name('service_packages_destroy');
         Route::post('/{id}/toggle-disable', [ServicePackageController::class, 'toggleDisable'])->name('service_packages_toggle_disable');
+        Route::post('/{id}/duplicate', [ServicePackageController::class, 'duplicate'])->name('service_packages_duplicate');
     });
 
     Route::prefix('/suppliers')->group(function () {

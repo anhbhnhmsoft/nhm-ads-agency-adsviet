@@ -8,4 +8,5 @@ return [
     'login_success' => 'Đăng nhập thành công, chào mừng bạn trở lại!',
     'register_success' => 'Đăng ký thành công, chào mừng bạn!',
     'toggle_disable_success' => 'Cập nhật trạng thái thành công',
+    'duplicate_success' => 'Đã sao chép gói dịch vụ thành công! Vui lòng kiểm tra và lưu lại.',
 ];

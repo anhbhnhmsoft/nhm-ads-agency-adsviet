@@ -424,6 +424,24 @@ class ServicePackageController extends Controller
     }
 
     /**
+     * Xử lý sao chép gói dịch vụ
+     * @param string $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function duplicate(string $id): \Illuminate\Http\RedirectResponse
+    {
+        $result = $this->servicePackageService->duplicateServicePackage($id);
+        if ($result->isSuccess()) {
+            $newPackage = $result->getData();
+            FlashMessage::success(__('common_success.duplicate_success', ['default' => 'Đã sao chép gói dịch vụ thành công! Vui lòng kiểm tra và lưu lại.']));
+            return redirect()->route('service_packages_edit_view', $newPackage->id);
+        }
+
+        FlashMessage::error($result->getMessage());
+        return redirect()->route('service_packages_index');
+    }
+
+    /**
      * Chuẩn hóa dữ liệu cashback theo bậc chi tiêu tháng.
      * Key fee_percent được giữ để tương thích cấu trúc JSON hiện có.
      */

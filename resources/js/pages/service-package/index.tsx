@@ -16,11 +16,13 @@ import {
 import {
     service_packages_create_view,
     service_packages_destroy,
+    service_packages_duplicate,
     service_packages_edit_view,
     service_packages_toggle_disable,
 } from '@/routes';
 import { router } from '@inertiajs/react';
 import {
+    Copy,
     Edit,
     MoreHorizontal,
     PackageOpen,
@@ -231,6 +233,20 @@ const Index = ({ paginator }: Props) => {
                                     >
                                         <Edit className="mr-2 h-4 w-4" />
                                         <span>{t('common.edit')}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            router.post(
+                                                service_packages_duplicate(
+                                                    item.id,
+                                                ).url,
+                                            )
+                                        }
+                                    >
+                                        <Copy className="mr-2 h-4 w-4" />
+                                        <span>
+                                            {t('service_packages.duplicate')}
+                                        </span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() =>

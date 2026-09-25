@@ -717,6 +717,8 @@
         "empty_title": "No service packages yet",
         "empty_description": "You haven’t created any service packages. Start by creating a new one.",
         "create_btn": "Create new package",
+        "duplicate": "Duplicate",
+        "duplicate_btn": "Duplicate this package",
         "title_create": "Create service package",
         "title_edit": "Edit service package",
         "name": "Package name",

@@ -24,12 +24,16 @@ import {
     SupplierOption,
     UserOption,
 } from '@/pages/service-package/types/type';
-import { service_packages_index } from '@/routes';
+import {
+    service_packages_duplicate,
+    service_packages_index,
+} from '@/routes';
 import { router } from '@inertiajs/react';
 import axios from 'axios';
 import {
     AlertCircle,
     ArrowLeft,
+    Copy,
     Database,
     Info,
     Layers,
@@ -312,9 +316,28 @@ const Edit = ({
 
     return (
         <form className="space-y-4" onSubmit={submit}>
-            <h1 className="text-xl font-semibold">
-                {t('service_packages.title_edit')}
-            </h1>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h1 className="text-xl font-semibold">
+                    {t('service_packages.title_edit')}
+                </h1>
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() =>
+                        router.post(
+                            service_packages_duplicate(
+                                service_package.id,
+                            ).url,
+                        )
+                    }
+                    className="cursor-pointer"
+                >
+                    <Copy className="mr-2 h-4 w-4" />
+                    {t('service_packages.duplicate_btn', {
+                        defaultValue: 'Sao chép gói này',
+                    })}
+                </Button>
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* Name */}
                 <div className="flex flex-col gap-2">
@@ -1388,6 +1411,23 @@ const Edit = ({
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     {t('common.back')}
+                </Button>
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() =>
+                        router.post(
+                            service_packages_duplicate(
+                                service_package.id,
+                            ).url,
+                        )
+                    }
+                    className="cursor-pointer"
+                >
+                    <Copy className="mr-2 h-4 w-4" />
+                    {t('service_packages.duplicate_btn', {
+                        defaultValue: 'Sao chép gói này',
+                    })}
                 </Button>
                 <Button type="submit" disabled={processing}>
                     {t('common.save')}
