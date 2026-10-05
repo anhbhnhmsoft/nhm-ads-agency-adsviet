@@ -633,29 +633,52 @@ class ServiceUserService
             }
             $serviceUser->save();
 
-            // Gán tài khoản nếu assign_mode = account (hỗ trợ multi-account qua account_ids)
-            $assignMode = $config['assign_mode'] ?? null;
+            // Đồng bộ gán / gỡ gán tài khoản trong DB
+            $assignMode = $config['assign_mode'] ?? ($currentConfig['assign_mode'] ?? null);
             $platform   = $serviceUser->package?->platform;
-            if ($assignMode === 'account') {
-                // Ưu tiên account_ids array, fallback về account_id
-                $accountIds = !empty($config['account_ids'])
-                    ? array_values(array_filter($config['account_ids']))
-                    : (!empty($config['account_id']) ? [$config['account_id']] : []);
 
-                // Gỡ gán các tài khoản cũ thuộc về service_user này để tránh rác/trùng lặp khi update danh sách mới
+            $targetAccountIds = [];
+            $isExplicitAccountMode = false;
+
+            if (isset($config['accounts']) && is_array($config['accounts']) && !empty($config['accounts'])) {
+                $isExplicitAccountMode = true;
+                foreach ($config['accounts'] as $acc) {
+                    if (!empty($acc['account_id'])) {
+                        $targetAccountIds[] = (string) $acc['account_id'];
+                    } elseif (!empty($acc['id'])) {
+                        $targetAccountIds[] = (string) $acc['id'];
+                    }
+                }
+            } elseif (!empty($config['account_ids']) && is_array($config['account_ids'])) {
+                $isExplicitAccountMode = true;
+                $targetAccountIds = array_values(array_filter($config['account_ids']));
+            } elseif (!empty($config['account_id'])) {
+                $isExplicitAccountMode = true;
+                $targetAccountIds = [(string) $config['account_id']];
+            } elseif ($assignMode === 'account') {
+                $isExplicitAccountMode = true;
+            }
+
+            if ($isExplicitAccountMode) {
                 if ($platform === PlatformType::META->value) {
+                    $allTargetMatches = [];
+                    foreach ($targetAccountIds as $accId) {
+                        $normId = preg_replace('/^act_/', '', trim($accId));
+                        $allTargetMatches[] = $accId;
+                        $allTargetMatches[] = $normId;
+                        $allTargetMatches[] = 'act_' . $normId;
+                    }
+                    $allTargetMatches = array_values(array_unique(array_filter($allTargetMatches)));
+
+                    // Gỡ gán TẤT CẢ accounts cũ thuộc về đơn này nhưng KHÔNG nằm trong danh sách mới
                     $this->metaAccountRepository->query()
                         ->where('service_user_id', $serviceUser->id)
+                        ->when(!empty($allTargetMatches), fn($q) => $q->whereNotIn('account_id', $allTargetMatches))
                         ->update(['service_user_id' => null]);
-                } elseif ($platform === PlatformType::GOOGLE->value) {
-                    $this->googleAccountRepository->query()
-                        ->where('service_user_id', $serviceUser->id)
-                        ->update(['service_user_id' => null]);
-                }
 
-                foreach ($accountIds as $selectedAccountId) {
-                    if (!$selectedAccountId) continue;
-                    if ($platform === PlatformType::META->value) {
+                    // Gán các account trong danh sách mới cho service_user này
+                    foreach ($targetAccountIds as $selectedAccountId) {
+                        if (!$selectedAccountId) continue;
                         $normId = preg_replace('/^act_/', '', trim($selectedAccountId));
                         $idsToMatch = array_values(array_unique([$selectedAccountId, $normId, 'act_' . $normId]));
                         // Defensive check
@@ -678,7 +701,25 @@ class ServiceUserService
                         $this->metaAccountRepository->query()
                             ->whereIn('account_id', $idsToMatch)
                             ->update(['service_user_id' => $serviceUser->id]);
-                    } elseif ($platform === PlatformType::GOOGLE->value) {
+                    }
+                } elseif ($platform === PlatformType::GOOGLE->value) {
+                    $allTargetMatches = [];
+                    foreach ($targetAccountIds as $accId) {
+                        $cleanId = preg_replace('/[^0-9]/', '', (string) $accId);
+                        $allTargetMatches[] = $accId;
+                        if ($cleanId) $allTargetMatches[] = $cleanId;
+                    }
+                    $allTargetMatches = array_values(array_unique(array_filter($allTargetMatches)));
+
+                    // Gỡ gán TẤT CẢ accounts cũ thuộc về đơn này nhưng KHÔNG nằm trong danh sách mới
+                    $this->googleAccountRepository->query()
+                        ->where('service_user_id', $serviceUser->id)
+                        ->when(!empty($allTargetMatches), fn($q) => $q->whereNotIn('account_id', $allTargetMatches))
+                        ->update(['service_user_id' => null]);
+
+                    // Gán các account mới
+                    foreach ($targetAccountIds as $selectedAccountId) {
+                        if (!$selectedAccountId) continue;
                         $cleanId = preg_replace('/[^0-9]/', '', (string) $selectedAccountId);
                         $idsToMatch = array_values(array_filter(array_unique([$selectedAccountId, $cleanId])));
                         $conflict = $this->googleAccountRepository->query()
@@ -690,6 +731,7 @@ class ServiceUserService
                                 ->where('user_id', '!=', $serviceUser->user_id))
                             ->first();
                         if ($conflict) continue;
+
                         $this->googleAccountRepository->query()
                             ->whereIn('account_id', $idsToMatch)
                             ->update(['service_user_id' => $serviceUser->id]);

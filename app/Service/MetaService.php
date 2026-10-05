@@ -1020,18 +1020,40 @@ class MetaService
             }
         }
 
-        // Lấy thêm các account_id hiện đang gán cho service_user này trong DB
-        $dbAccountIds = $this->metaAccountRepository->query()
-            ->where('service_user_id', $serviceUser->id)
-            ->pluck('account_id')
-            ->toArray();
-        $accountIds = array_values(array_unique(array_filter(array_merge($accountIds, $dbAccountIds))));
-
         // Nếu đơn hàng gán theo Account và có danh sách account_id cụ thể -> Dùng Batch API đồng bộ nhanh gọn trong 1 request
         if ($assignMode !== 'bm' && ! empty($accountIds)) {
+            $allTargetMatches = [];
+            foreach ($accountIds as $accId) {
+                $normId = preg_replace('/^act_/', '', trim((string) $accId));
+                $allTargetMatches[] = (string) $accId;
+                $allTargetMatches[] = $normId;
+                $allTargetMatches[] = 'act_' . $normId;
+            }
+            $allTargetMatches = array_values(array_unique(array_filter($allTargetMatches)));
+
+            // Gỡ gán các account cũ không còn nằm trong danh sách config của đơn hàng
+            $this->metaAccountRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->whereNotIn('account_id', $allTargetMatches)
+                ->update(['service_user_id' => null]);
+
             $this->syncMetaAccountsByIdsBatched($serviceUser, $accountIds, $bmId ? (string) $bmId : null);
 
             return ServiceReturn::success();
+        }
+
+        // Nếu không có danh sách accounts trong config nhưng trong DB đang có tài khoản gán (chế độ account)
+        if ($assignMode !== 'bm') {
+            $dbAccountIds = $this->metaAccountRepository->query()
+                ->where('service_user_id', $serviceUser->id)
+                ->pluck('account_id')
+                ->toArray();
+
+            if (! empty($dbAccountIds)) {
+                $this->syncMetaAccountsByIdsBatched($serviceUser, $dbAccountIds, $bmId ? (string) $bmId : null);
+
+                return ServiceReturn::success();
+            }
         }
 
         if (! $bmId) {

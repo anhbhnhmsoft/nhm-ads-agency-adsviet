@@ -10,25 +10,28 @@ use Illuminate\Console\Command;
 
 class DiagnoseOrder extends Command
 {
-    protected $signature = 'app:diagnose-order {query? : Order ID hoặc tên khách hàng} {--pause : Thực thi cưỡng chế Pause toàn bộ campaign active ngay lập tức}';
+    protected $signature = 'app:diagnose-order {query? : Order ID, tên khách hàng, tên gói hoặc account ID} {--pause : Thực thi cưỡng chế Pause toàn bộ campaign active ngay lập tức} {--fix : Tự động gỡ gán các tài khoản rác trong DB không nằm trong config của đơn hàng}';
 
     protected $description = 'Kiểm tra toàn diện chi tiêu, ví, tài khoản ads và điều kiện thu phí/pause của đơn hàng';
 
     public function handle(CurrencyExchangeService $currencyService): int
     {
-        $query = $this->argument('query') ?? '92448813401245160';
+        $query = $this->argument('query');
 
-        $this->line('Đang tìm kiếm đơn hàng với từ khóa: ' . $query . ' ...');
+        $this->line('Đang tìm kiếm đơn hàng với từ khóa: ' . ($query ?? '[Đơn mới nhất]') . ' ...');
 
-        // Tìm theo ID đơn hàng nếu là số
-        $serviceUser = is_numeric($query)
-            ? ServiceUser::with(['package', 'user.wallet', 'metaAccount'])->find($query)
-            : null;
+        $serviceUser = null;
 
-        // Nếu không thấy, tìm theo tên hoặc username của user
-        if (!$serviceUser) {
+        // 1. Tìm theo ID đơn hàng nếu là số
+        if ($query && is_numeric($query)) {
+            $serviceUser = ServiceUser::with(['package', 'user.wallet', 'metaAccount'])->find($query);
+        }
+
+        // 2. Nếu không thấy, tìm theo tên hoặc username/email của user
+        if (!$serviceUser && $query) {
             $user = User::where('name', 'like', '%' . $query . '%')
                 ->orWhere('username', 'like', '%' . $query . '%')
+                ->orWhere('email', 'like', '%' . $query . '%')
                 ->first();
 
             if ($user) {
@@ -39,9 +42,99 @@ class DiagnoseOrder extends Command
             }
         }
 
+        // 3. Tìm theo tên gói dịch vụ
+        if (!$serviceUser && $query) {
+            $package = \App\Models\ServicePackage::where('name', 'like', '%' . $query . '%')->first();
+            if ($package) {
+                $serviceUser = ServiceUser::where('package_id', $package->id)
+                    ->with(['package', 'user.wallet', 'metaAccount'])
+                    ->orderByDesc('id')
+                    ->first();
+            }
+        }
+
+        // 4. Tìm theo account ID trong config_account hoặc meta_accounts
+        if (!$serviceUser && $query) {
+            $metaAcc = \App\Models\MetaAccount::where('account_id', 'like', '%' . $query . '%')
+                ->orWhere('account_name', 'like', '%' . $query . '%')
+                ->whereNotNull('service_user_id')
+                ->first();
+
+            if ($metaAcc && $metaAcc->service_user_id) {
+                $serviceUser = ServiceUser::with(['package', 'user.wallet', 'metaAccount'])->find($metaAcc->service_user_id);
+            }
+        }
+
+        // 5. Tìm theo JSON trong config_account
+        if (!$serviceUser && $query) {
+            $serviceUser = ServiceUser::where('config_account', 'like', '%' . $query . '%')
+                ->with(['package', 'user.wallet', 'metaAccount'])
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        // 6. Fallback nếu không truyền query: lấy đơn hàng active mới nhất
+        if (!$serviceUser && !$query) {
+            $serviceUser = ServiceUser::where('status', \App\Common\Constants\ServiceUser\ServiceUserStatus::ACTIVE->value)
+                ->with(['package', 'user.wallet', 'metaAccount'])
+                ->orderByDesc('id')
+                ->first();
+        }
+
         if (!$serviceUser) {
-            $this->error('❌ Không tìm thấy đơn hàng hoặc khách hàng phù hợp với: ' . $query);
+            $this->error('❌ Không tìm thấy đơn hàng hoặc khách hàng phù hợp với: ' . ($query ?? 'N/A'));
             return Command::FAILURE;
+        }
+
+        // Nếu có cờ --fix: Dọn dẹp các account rác trong DB không nằm trong config
+        if ($this->option('fix')) {
+            $this->warn('🔧 ĐANG THỰC HIỆN DỌN DẸP & ĐỒNG BỘ TÀI KHOẢN THEO CONFIG ĐƠN HÀNG...');
+            $cfg = $serviceUser->config_account ?? [];
+            $targetIds = [];
+            if (!empty($cfg['accounts']) && is_array($cfg['accounts'])) {
+                foreach ($cfg['accounts'] as $acc) {
+                    $id = $acc['account_id'] ?? $acc['id'] ?? null;
+                    if ($id) {
+                        $clean = preg_replace('/^act_/', '', trim((string) $id));
+                        $targetIds[] = (string) $id;
+                        $targetIds[] = $clean;
+                        $targetIds[] = 'act_' . $clean;
+                    }
+                }
+            } elseif (!empty($cfg['account_ids']) && is_array($cfg['account_ids'])) {
+                foreach ($cfg['account_ids'] as $id) {
+                    $clean = preg_replace('/^act_/', '', trim((string) $id));
+                    $targetIds[] = (string) $id;
+                    $targetIds[] = $clean;
+                    $targetIds[] = 'act_' . $clean;
+                }
+            } elseif (!empty($cfg['account_id'])) {
+                $clean = preg_replace('/^act_/', '', trim((string) $cfg['account_id']));
+                $targetIds[] = (string) $cfg['account_id'];
+                $targetIds[] = $clean;
+                $targetIds[] = 'act_' . $clean;
+            }
+
+            if (!empty($targetIds)) {
+                $targetIds = array_values(array_unique(array_filter($targetIds)));
+                $staleAccounts = \App\Models\MetaAccount::where('service_user_id', $serviceUser->id)
+                    ->whereNotIn('account_id', $targetIds)
+                    ->get();
+
+                if ($staleAccounts->isNotEmpty()) {
+                    $this->warn('   👉 Phát hiện ' . $staleAccounts->count() . ' tài khoản rác/tháo gán nhầm:');
+                    foreach ($staleAccounts as $stale) {
+                        $this->line('      - Gỡ gán: ' . $stale->account_id . ' (' . ($stale->account_name ?? 'N/A') . ') | Spend: ' . number_format((float) ($stale->amount_spent ?? 0) / 100, 2) . ' USD');
+                    }
+                    \App\Models\MetaAccount::where('service_user_id', $serviceUser->id)
+                        ->whereNotIn('account_id', $targetIds)
+                        ->update(['service_user_id' => null]);
+                    $this->info('   ✅ Đã gỡ gán thành công toàn bộ tài khoản thừa khỏi đơn hàng!');
+                } else {
+                    $this->info('   ✅ Không có tài khoản rác nào cần gỡ gán.');
+                }
+            }
+            $serviceUser->load(['package', 'user.wallet', 'metaAccount']);
         }
 
         $this->line('=====================================================');

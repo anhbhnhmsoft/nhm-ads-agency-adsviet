@@ -263,11 +263,52 @@ class WalletTransactionService
         }
     }
 
+    private function formatAccountsDetailBreakdown(array $accountsDetail): string
+    {
+        if (empty($accountsDetail)) {
+            return '';
+        }
+
+        $lines = [];
+        foreach ($accountsDetail as $key => $detail) {
+            $unbilled = (float) ($detail['unbilled'] ?? 0);
+            $spent = (float) ($detail['spent'] ?? 0);
+            $displaySpend = $unbilled > 0 ? $unbilled : $spent;
+            if ($displaySpend <= 0 && count($accountsDetail) > 1) {
+                continue;
+            }
+
+            $accId = (string) ($detail['account_id'] ?? preg_replace('/^(meta_|google_)/', '', (string) $key));
+            $accName = (string) ($detail['name'] ?? $accId);
+            $fee = isset($detail['fee']) ? (float) $detail['fee'] : 0.0;
+
+            $accDisplay = ($accName !== '' && $accName !== $accId)
+                ? "<code>{$accId}</code> (" . htmlspecialchars($accName, ENT_QUOTES, 'UTF-8') . ")"
+                : "<code>{$accId}</code>";
+
+            $feeText = $fee > 0 ? ' | Fee: ' . number_format($fee, 2) . ' USDT' : '';
+            $lines[] = "• {$accDisplay}: Spend " . number_format($displaySpend, 2) . " USD{$feeText}";
+        }
+
+        if (empty($lines)) {
+            return '';
+        }
+
+        $totalLines = count($lines);
+        if ($totalLines > 10) {
+            $lines = array_slice($lines, 0, 10);
+            $lines[] = '• <i>... and ' . ($totalLines - 10) . ' other accounts</i>';
+        }
+
+        return "\n<b>Accounts Breakdown:</b>\n" . implode("\n", $lines);
+    }
+
     public function notifySupportGroupSpendingFee(
         UserWalletTransaction $transaction,
         string $packageName,
         float $spendAmount,
         float $feeAmount,
+        array $accountsDetail = [],
     ): void {
         try {
             $supportGroupId = config('services.telegram.support_group_id');
@@ -281,6 +322,12 @@ class WalletTransactionService
                 return;
             }
 
+            if (empty($accountsDetail) && is_array($transaction->withdraw_info['accounts_detail'] ?? null)) {
+                $accountsDetail = $transaction->withdraw_info['accounts_detail'];
+            }
+
+            $accountDetailsStr = $this->formatAccountsDetailBreakdown($accountsDetail);
+
             $transactionCode = 'TX'.$transaction->id;
             $timezone = (string) config('services.telegram.timezone', 'Asia/Ho_Chi_Minh');
             $createdAt = $transaction->created_at
@@ -292,6 +339,7 @@ class WalletTransactionService
                 'package' => htmlspecialchars($packageName, ENT_QUOTES, 'UTF-8'),
                 'spend_amount' => htmlspecialchars(number_format($spendAmount, 2), ENT_QUOTES, 'UTF-8'),
                 'fee_amount' => htmlspecialchars(number_format($feeAmount, 2), ENT_QUOTES, 'UTF-8'),
+                'account_details' => $accountDetailsStr,
                 'transaction_code' => htmlspecialchars($transactionCode, ENT_QUOTES, 'UTF-8'),
                 'time' => $createdAt->format('d/m/Y H:i:s'),
             ]);
@@ -318,6 +366,7 @@ class WalletTransactionService
         float $chargeAmount,
         float $unbilledSpend,
         array $pauseStats = [],
+        array $accountsDetail = [],
     ): void {
         try {
             $supportGroupId = config('services.telegram.support_group_id');
@@ -343,6 +392,8 @@ class WalletTransactionService
                 return;
             }
 
+            $accountDetailsStr = $this->formatAccountsDetailBreakdown($accountsDetail);
+
             $platform = PlatformType::tryFrom((int) $package->platform)?->label() ?? (string) $package->platform;
             $timezone = (string) config('services.telegram.timezone', 'Asia/Ho_Chi_Minh');
             $now = now($timezone);
@@ -358,6 +409,7 @@ class WalletTransactionService
                     'min_wallet' => htmlspecialchars(number_format($minWalletBalance, 2), ENT_QUOTES, 'UTF-8'),
                     'charge_amount' => htmlspecialchars(number_format($chargeAmount, 2), ENT_QUOTES, 'UTF-8'),
                     'unbilled_spend' => htmlspecialchars(number_format($unbilledSpend, 2), ENT_QUOTES, 'UTF-8'),
+                    'account_details' => $accountDetailsStr,
                     'failed' => htmlspecialchars((string) $failedCount, ENT_QUOTES, 'UTF-8'),
                     'success' => htmlspecialchars((string) $successCount, ENT_QUOTES, 'UTF-8'),
                     'total' => htmlspecialchars((string) $totalCount, ENT_QUOTES, 'UTF-8'),
@@ -378,6 +430,7 @@ class WalletTransactionService
                     'min_wallet' => htmlspecialchars(number_format($minWalletBalance, 2), ENT_QUOTES, 'UTF-8'),
                     'charge_amount' => htmlspecialchars(number_format($chargeAmount, 2), ENT_QUOTES, 'UTF-8'),
                     'unbilled_spend' => htmlspecialchars(number_format($unbilledSpend, 2), ENT_QUOTES, 'UTF-8'),
+                    'account_details' => $accountDetailsStr,
                     'status_detail' => $statusDetail,
                     'time' => $now->format('d/m/Y H:i:s'),
                 ]);

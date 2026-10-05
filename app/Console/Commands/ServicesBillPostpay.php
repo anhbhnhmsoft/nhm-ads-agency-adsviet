@@ -148,12 +148,21 @@ class ServicesBillPostpay extends Command
                                     if ($chargeAmount > 0 && $currentBalance >= $chargeAmount) {
                                         $wallet->update(['balance' => $currentBalance - $chargeAmount]);
 
+                                        $description = $this->buildSpendingFeeDescription(
+                                            feePercent: $feePercent,
+                                            unbilledSpend: $unbilledSpend,
+                                            billedSpend: $billedSpend,
+                                            spending: $spending,
+                                            packageName: $package->name,
+                                            accountsDetail: $spendingData['accounts_detail'] ?? [],
+                                        );
+
                                         $walletTransaction = $this->walletTransactionRepository->create([
                                             'wallet_id' => $wallet->id,
                                             'amount' => -$chargeAmount,
                                             'type' => WalletTransactionType::SPENDING_FEE->value,
                                             'status' => WalletTransactionStatus::COMPLETED->value,
-                                            'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$spending}): {$package->name}",
+                                            'description' => $description,
                                             'reference_id' => (string) $locked->id,
                                             'withdraw_info' => [
                                                 'purpose' => 'spending_fee',
@@ -175,7 +184,7 @@ class ServicesBillPostpay extends Command
                                             'type' => ServiceUserTransactionType::FEE->value,
                                             'status' => ServiceUserTransactionStatus::COMPLETED->value,
                                             'reference_id' => (string) $walletTransaction->id,
-                                            'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$spending}): {$package->name}",
+                                            'description' => $description,
                                         ]);
 
                                         $this->walletTransactionService->notifySupportGroupSpendingFee(
@@ -183,6 +192,7 @@ class ServicesBillPostpay extends Command
                                             $package->name,
                                             $unbilledSpend,
                                             $chargeAmount,
+                                            $spendingData['accounts_detail'] ?? [],
                                         );
 
                                         $currentConfig['spending_fee_accounts_billed_spend'] = $spendingData['new_accounts_billed_spend'];
@@ -200,6 +210,7 @@ class ServicesBillPostpay extends Command
                                             $chargeAmount,
                                             $unbilledSpend,
                                             $pauseStats,
+                                            $spendingData['accounts_detail'] ?? [],
                                         );
                                     }
                                 } else {
@@ -248,6 +259,7 @@ class ServicesBillPostpay extends Command
                                     $chargeAmount,
                                     $unbilledSpend,
                                     $pauseStats,
+                                    $spendingData['accounts_detail'] ?? [],
                                 );
 
                                 $user = $wallet->user;
@@ -295,12 +307,21 @@ class ServicesBillPostpay extends Command
                             // Trừ tiền phí dịch vụ vào ví của khách
                             $wallet->update(['balance' => $currentBalance - $chargeAmount]);
 
+                            $description = $this->buildSpendingFeeDescription(
+                                feePercent: $feePercent,
+                                unbilledSpend: $unbilledSpend,
+                                billedSpend: $billedSpend,
+                                spending: $spending,
+                                packageName: $package->name,
+                                accountsDetail: $spendingData['accounts_detail'] ?? [],
+                            );
+
                             $walletTransaction = $this->walletTransactionRepository->create([
                                 'wallet_id' => $wallet->id,
                                 'amount' => -$chargeAmount,
                                 'type' => WalletTransactionType::SPENDING_FEE->value,
                                 'status' => WalletTransactionStatus::COMPLETED->value,
-                                'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$spending}): {$package->name}",
+                                'description' => $description,
                                 'reference_id' => (string) $locked->id,
                                 'withdraw_info' => [
                                     'purpose' => 'spending_fee',
@@ -322,7 +343,7 @@ class ServicesBillPostpay extends Command
                                 'type' => ServiceUserTransactionType::FEE->value,
                                 'status' => ServiceUserTransactionStatus::COMPLETED->value,
                                 'reference_id' => (string) $walletTransaction->id,
-                                'description' => "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$spending}): {$package->name}",
+                                'description' => $description,
                             ]);
 
                             $this->walletTransactionService->notifySupportGroupSpendingFee(
@@ -330,6 +351,7 @@ class ServicesBillPostpay extends Command
                                 $package->name,
                                 $unbilledSpend,
                                 $chargeAmount,
+                                $spendingData['accounts_detail'] ?? [],
                             );
 
                             $currentConfig['spending_fee_accounts_billed_spend'] = $spendingData['new_accounts_billed_spend'];
@@ -386,6 +408,36 @@ class ServicesBillPostpay extends Command
         return Command::SUCCESS;
     }
 
+    public function buildSpendingFeeDescription(
+        float $feePercent,
+        float $unbilledSpend,
+        float $billedSpend,
+        float $spending,
+        string $packageName,
+        array $accountsDetail = [],
+    ): string {
+        $accountsWithUnbilled = array_filter(
+            $accountsDetail,
+            fn ($d) => (float) ($d['unbilled'] ?? 0) > 0 || (float) ($d['spent'] ?? 0) > 0
+        );
+
+        $accountSummary = '';
+        if (count($accountsWithUnbilled) === 1) {
+            $single = reset($accountsWithUnbilled);
+            $accId = (string) ($single['account_id'] ?? array_key_first($accountsWithUnbilled));
+            $accountSummary = " on {$accId}";
+        } elseif (count($accountsWithUnbilled) > 1) {
+            $ids = [];
+            foreach ($accountsWithUnbilled as $key => $item) {
+                $ids[] = (string) ($item['account_id'] ?? preg_replace('/^(meta_|google_)/', '', (string) $key));
+            }
+            $displayIds = array_slice($ids, 0, 3);
+            $accountSummary = ' on ' . count($ids) . ' accounts [' . implode(', ', $displayIds) . (count($ids) > 3 ? '...' : '') . ']';
+        }
+
+        return "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend{$accountSummary}): {$packageName}";
+    }
+
     /**
      * Tính tổng chi tiêu và chi tiêu chưa thu phí (Unbilled Spend) độc lập theo từng tài khoản
      *
@@ -394,7 +446,7 @@ class ServicesBillPostpay extends Command
      *     billed_spend: float,
      *     unbilled_spend: float,
      *     new_accounts_billed_spend: array<string, float>,
-     *     accounts_detail: array<string, array{spent: float, billed: float, unbilled: float, name: string}>
+     *     accounts_detail: array<string, array{account_id: string, name: string, spent: float, billed: float, unbilled: float, fee: float}>
      * }
      */
     public function calculateSpendingAndUnbilled($serviceUser, array $config): array
@@ -421,6 +473,41 @@ class ServicesBillPostpay extends Command
         $newAccountsBilledSpend = $savedAccountsBilled;
         $accountsDetail = [];
 
+        $feePercent = 0.0;
+        if (isset($serviceUser->package)) {
+            $feePercent = $this->resolveSpendingFeePercent($serviceUser->package, $config);
+        }
+
+        // Trích xuất danh sách account IDs được gán chính thức trong config (nếu có)
+        $configuredMetaIds = [];
+        $hasExplicitMetaConfig = false;
+
+        if (!empty($config['accounts']) && is_array($config['accounts'])) {
+            $hasExplicitMetaConfig = true;
+            foreach ($config['accounts'] as $acc) {
+                $id = $acc['account_id'] ?? $acc['id'] ?? null;
+                if ($id) {
+                    $clean = preg_replace('/^act_/', '', trim((string) $id));
+                    $configuredMetaIds[$clean] = true;
+                    $configuredMetaIds['act_' . $clean] = true;
+                }
+            }
+        } elseif (!empty($config['account_ids']) && is_array($config['account_ids'])) {
+            $hasExplicitMetaConfig = true;
+            foreach ($config['account_ids'] as $id) {
+                if ($id) {
+                    $clean = preg_replace('/^act_/', '', trim((string) $id));
+                    $configuredMetaIds[$clean] = true;
+                    $configuredMetaIds['act_' . $clean] = true;
+                }
+            }
+        } elseif (!empty($config['account_id'])) {
+            $hasExplicitMetaConfig = true;
+            $clean = preg_replace('/^act_/', '', trim((string) $config['account_id']));
+            $configuredMetaIds[$clean] = true;
+            $configuredMetaIds['act_' . $clean] = true;
+        }
+
         // 1. Meta Accounts
         $metaAccounts = DB::table('meta_accounts')
             ->where('service_user_id', $serviceUserId)
@@ -428,34 +515,84 @@ class ServicesBillPostpay extends Command
             ->select('id', 'account_id', 'account_name', 'amount_spent', 'currency')
             ->get();
 
+        // Nếu đơn hàng có cấu hình danh sách tài khoản cụ thể, tự động loại bỏ & gỡ gán các tài khoản rác không nằm trong config
+        if ($hasExplicitMetaConfig && !empty($configuredMetaIds)) {
+            $staleIds = [];
+            $validMetaAccounts = [];
+            foreach ($metaAccounts as $a) {
+                $accId = (string) ($a->account_id ?? $a->id);
+                $cleanId = preg_replace('/^act_/', '', $accId);
+                if (isset($configuredMetaIds[$cleanId]) || isset($configuredMetaIds[$accId])) {
+                    $validMetaAccounts[] = $a;
+                } else {
+                    $staleIds[] = (string) $a->id;
+                }
+            }
+            if (!empty($staleIds)) {
+                DB::table('meta_accounts')->whereIn('id', $staleIds)->update(['service_user_id' => null]);
+            }
+            $metaAccounts = collect($validMetaAccounts);
+        }
+
         foreach ($metaAccounts as $a) {
             $raw = (float) ($a->amount_spent ?? 0);
             $curr = strtoupper($a->currency ?? 'USD');
             $amt = in_array($curr, $zeroDecimal) ? $raw : $raw / 100;
             $spentUSD = $currencyService->convert($amt, $curr, 'USD');
-            $totalSpend += $spentUSD;
 
-            $key = 'meta_' . ($a->account_id ?? $a->id);
-            $altKey = (string) ($a->account_id ?? $a->id);
+            $accId = (string) ($a->account_id ?? $a->id);
+            $cleanId = preg_replace('/^act_/', '', $accId);
+            $actId = 'act_' . $cleanId;
 
+            $billedUSD = 0.0;
             if ($hasPerAccountMap) {
-                $billedUSD = (float) ($savedAccountsBilled[$key] ?? $savedAccountsBilled[$altKey] ?? 0.0);
+                if (isset($savedAccountsBilled['meta_' . $actId])) {
+                    $billedUSD = (float) $savedAccountsBilled['meta_' . $actId];
+                } elseif (isset($savedAccountsBilled['meta_' . $cleanId])) {
+                    $billedUSD = (float) $savedAccountsBilled['meta_' . $cleanId];
+                } elseif (isset($savedAccountsBilled[$actId])) {
+                    $billedUSD = (float) $savedAccountsBilled[$actId];
+                } elseif (isset($savedAccountsBilled[$cleanId])) {
+                    $billedUSD = (float) $savedAccountsBilled[$cleanId];
+                }
             } else {
-                // Nếu chưa có per-account map: nếu tổng spend <= global billed, xem như tài khoản đã được bill tới mốc hiện tại
                 $billedUSD = min($spentUSD, $fallbackGlobalBilled);
             }
 
             $unbilledUSD = max(0.0, $spentUSD - $billedUSD);
+            $totalSpend += $spentUSD;
             $totalBilledSpend += $billedUSD;
             $totalUnbilledSpend += $unbilledUSD;
-            $newAccountsBilledSpend[$key] = $spentUSD;
 
-            $accountsDetail[$key] = [
-                'name' => $a->account_name ?? $altKey,
+            $canonicalKey = 'meta_' . $actId;
+            $newAccountsBilledSpend[$canonicalKey] = $spentUSD;
+            $newAccountsBilledSpend['meta_' . $cleanId] = $spentUSD;
+
+            $accountFee = round($unbilledUSD * ($feePercent / 100), 2);
+
+            $accountsDetail[$canonicalKey] = [
+                'account_id' => $actId,
+                'name' => $a->account_name ?? $actId,
                 'spent' => $spentUSD,
                 'billed' => $billedUSD,
                 'unbilled' => $unbilledUSD,
+                'fee' => $accountFee,
             ];
+        }
+
+        // Trích xuất danh sách account IDs Google được gán chính thức trong config (nếu có)
+        $configuredGoogleIds = [];
+        $hasExplicitGoogleConfig = false;
+        if (!empty($config['account_ids']) && is_array($config['account_ids'])) {
+            $hasExplicitGoogleConfig = true;
+            foreach ($config['account_ids'] as $id) {
+                $clean = preg_replace('/[^0-9]/', '', (string) $id);
+                if ($clean) $configuredGoogleIds[$clean] = true;
+            }
+        } elseif (!empty($config['account_id'])) {
+            $hasExplicitGoogleConfig = true;
+            $clean = preg_replace('/[^0-9]/', '', (string) $config['account_id']);
+            if ($clean) $configuredGoogleIds[$clean] = true;
         }
 
         // 2. Google Accounts
@@ -465,32 +602,65 @@ class ServicesBillPostpay extends Command
             ->select('id', 'account_id', 'account_name', 'amount_spent', 'currency')
             ->get();
 
+        if ($hasExplicitGoogleConfig && !empty($configuredGoogleIds)) {
+            $staleIds = [];
+            $validGoogleAccounts = [];
+            foreach ($googleAccounts as $a) {
+                $accId = (string) ($a->account_id ?? $a->id);
+                $cleanId = preg_replace('/[^0-9]/', '', $accId);
+                if (isset($configuredGoogleIds[$cleanId]) || isset($configuredGoogleIds[$accId])) {
+                    $validGoogleAccounts[] = $a;
+                } else {
+                    $staleIds[] = (string) $a->id;
+                }
+            }
+            if (!empty($staleIds)) {
+                DB::table('google_accounts')->whereIn('id', $staleIds)->update(['service_user_id' => null]);
+            }
+            $googleAccounts = collect($validGoogleAccounts);
+        }
+
         foreach ($googleAccounts as $a) {
             $raw = (float) ($a->amount_spent ?? 0);
             $curr = strtoupper($a->currency ?? 'USD');
             $amt = in_array($curr, $zeroDecimal) ? $raw : $raw / 100;
             $spentUSD = $currencyService->convert($amt, $curr, 'USD');
-            $totalSpend += $spentUSD;
 
-            $key = 'google_' . ($a->account_id ?? $a->id);
-            $altKey = (string) ($a->account_id ?? $a->id);
+            $accId = (string) ($a->account_id ?? $a->id);
+            $cleanId = preg_replace('/[^0-9]/', '', $accId);
 
+            $billedUSD = 0.0;
             if ($hasPerAccountMap) {
-                $billedUSD = (float) ($savedAccountsBilled[$key] ?? $savedAccountsBilled[$altKey] ?? 0.0);
+                if (isset($savedAccountsBilled['google_' . $cleanId])) {
+                    $billedUSD = (float) $savedAccountsBilled['google_' . $cleanId];
+                } elseif (isset($savedAccountsBilled['google_' . $accId])) {
+                    $billedUSD = (float) $savedAccountsBilled['google_' . $accId];
+                } elseif (isset($savedAccountsBilled[$cleanId])) {
+                    $billedUSD = (float) $savedAccountsBilled[$cleanId];
+                } elseif (isset($savedAccountsBilled[$accId])) {
+                    $billedUSD = (float) $savedAccountsBilled[$accId];
+                }
             } else {
                 $billedUSD = min($spentUSD, $fallbackGlobalBilled);
             }
 
             $unbilledUSD = max(0.0, $spentUSD - $billedUSD);
+            $totalSpend += $spentUSD;
             $totalBilledSpend += $billedUSD;
             $totalUnbilledSpend += $unbilledUSD;
-            $newAccountsBilledSpend[$key] = $spentUSD;
 
-            $accountsDetail[$key] = [
-                'name' => $a->account_name ?? $altKey,
+            $canonicalKey = 'google_' . ($cleanId ?: $accId);
+            $newAccountsBilledSpend[$canonicalKey] = $spentUSD;
+
+            $accountFee = round($unbilledUSD * ($feePercent / 100), 2);
+
+            $accountsDetail[$canonicalKey] = [
+                'account_id' => $cleanId ?: $accId,
+                'name' => $a->account_name ?? ($cleanId ?: $accId),
                 'spent' => $spentUSD,
                 'billed' => $billedUSD,
                 'unbilled' => $unbilledUSD,
+                'fee' => $accountFee,
             ];
         }
 
