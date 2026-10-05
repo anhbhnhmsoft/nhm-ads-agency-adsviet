@@ -465,6 +465,47 @@ class ServicesBillPostpay extends Command
             ? max(0.0, (float) $config['spending_fee_billed_spend'])
             : 0.0;
 
+        // MỐC BẢO VỆ TỐI THƯỢNG: Kiểm tra lịch sử giao dịch SPENDING_FEE đã thành công trong DB (ngăn ngừa tuyệt đối việc bill lặp lại)
+        try {
+            $lastTxs = DB::table('user_wallet_transactions')
+                ->where('reference_id', $serviceUserId)
+                ->where('type', WalletTransactionType::SPENDING_FEE->value)
+                ->where('status', WalletTransactionStatus::COMPLETED->value)
+                ->orderByDesc('id')
+                ->limit(10)
+                ->get();
+
+            foreach ($lastTxs as $tx) {
+                $wInfo = !empty($tx->withdraw_info)
+                    ? (is_string($tx->withdraw_info) ? json_decode($tx->withdraw_info, true) : (array) $tx->withdraw_info)
+                    : [];
+
+                if (is_array($wInfo)) {
+                    $txBilledAfter = (float) ($wInfo['billed_spend_after'] ?? 0);
+                    if ($txBilledAfter > $fallbackGlobalBilled) {
+                        $fallbackGlobalBilled = $txBilledAfter;
+                    }
+
+                    if (!empty($wInfo['accounts_detail']) && is_array($wInfo['accounts_detail'])) {
+                        foreach ($wInfo['accounts_detail'] as $k => $detail) {
+                            $accSpent = (float) ($detail['spent'] ?? 0);
+                            $cleanK = preg_replace('/^act_/', '', (string) $k);
+                            if ($accSpent > 0) {
+                                if (!isset($savedAccountsBilled[$k]) || (float) $savedAccountsBilled[$k] < $accSpent) {
+                                    $savedAccountsBilled[$k] = $accSpent;
+                                }
+                                if (!isset($savedAccountsBilled[$cleanK]) || (float) $savedAccountsBilled[$cleanK] < $accSpent) {
+                                    $savedAccountsBilled[$cleanK] = $accSpent;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Không để lỗi query ảnh hưởng tính toán
+        }
+
         $hasPerAccountMap = !empty($savedAccountsBilled);
 
         $totalSpend = 0.0;
@@ -651,6 +692,10 @@ class ServicesBillPostpay extends Command
 
             $canonicalKey = 'google_' . ($cleanId ?: $accId);
             $newAccountsBilledSpend[$canonicalKey] = $spentUSD;
+            $newAccountsBilledSpend['google_' . $accId] = $spentUSD;
+            if ($cleanId) {
+                $newAccountsBilledSpend[$cleanId] = $spentUSD;
+            }
 
             $accountFee = round($unbilledUSD * ($feePercent / 100), 2);
 
