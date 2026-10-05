@@ -259,12 +259,19 @@ class ServicePurchaseService
                 : now($timezone);
             $platform = PlatformType::tryFrom((int) $package->platform)?->label() ?? (string) $package->platform;
             $config = is_array($serviceUser->config_account) ? $serviceUser->config_account : [];
+            $accountsCount = 1;
+            if (isset($config['accounts']) && is_array($config['accounts']) && count($config['accounts']) > 0) {
+                $accountsCount = count($config['accounts']);
+            } elseif (isset($config['account_ids']) && is_array($config['account_ids']) && count($config['account_ids']) > 0) {
+                $accountsCount = count($config['account_ids']);
+            }
 
             $message = __('service_user.telegram.new_order_group_alert', [
                 'order_code' => htmlspecialchars((string) $serviceUser->id, ENT_QUOTES, 'UTF-8'),
                 'customer' => htmlspecialchars($customer->name ?? $customer->username ?? ('User '.$customer->id), ENT_QUOTES, 'UTF-8'),
                 'package' => htmlspecialchars((string) $package->name, ENT_QUOTES, 'UTF-8'),
                 'platform' => htmlspecialchars($platform, ENT_QUOTES, 'UTF-8'),
+                'quantity' => htmlspecialchars((string) $accountsCount, ENT_QUOTES, 'UTF-8'),
                 'payment_type' => htmlspecialchars(__('service_user.payment_type.'.$paymentType), ENT_QUOTES, 'UTF-8'),
                 'top_up_amount' => htmlspecialchars(number_format((float) ($config['top_up_amount'] ?? 0), 2), ENT_QUOTES, 'UTF-8'),
                 'total_cost' => htmlspecialchars(number_format($totalCost, 2), ENT_QUOTES, 'UTF-8'),

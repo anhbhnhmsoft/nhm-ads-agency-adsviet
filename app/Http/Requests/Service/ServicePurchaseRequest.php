@@ -32,7 +32,7 @@ class ServicePurchaseRequest extends FormRequest
             'info_website' => ['nullable', 'string', 'max:255'],
             'asset_access' => ['nullable', 'string', 'in:full_asset,basic_asset'],
             'timezone_bm' => ['nullable', 'string'],
-            'accounts' => ['nullable', 'array', 'max:20'],
+            'accounts' => ['nullable', 'array', 'max:100'],
             'accounts.*.meta_email' => ['nullable', 'string', 'email', 'max:255'],
             'accounts.*.display_name' => ['nullable', 'string', 'max:255'],
             'accounts.*.bm_ids' => ['nullable', 'array'],

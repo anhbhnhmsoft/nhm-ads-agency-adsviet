@@ -25,7 +25,7 @@ class ServicePurchaseApiRequest extends FormRequest
             'info_fanpage' => ['nullable', 'string', 'max:255'],
             'info_website' => ['nullable', 'string', 'max:255'],
             
-            'accounts' => ['nullable', 'array', 'max:20'],
+            'accounts' => ['nullable', 'array', 'max:100'],
             'accounts.*.meta_email' => ['nullable', 'string', 'email', 'max:255'],
             'accounts.*.display_name' => ['nullable', 'string', 'max:255'],
             'accounts.*.bm_ids' => ['nullable', 'array'],

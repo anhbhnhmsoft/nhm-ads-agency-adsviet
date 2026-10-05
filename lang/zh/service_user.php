@@ -12,7 +12,7 @@ return [
         'postpay' => '后付',
     ],
     'telegram' => [
-        'new_order_group_alert' => "🛎 <b>新服务订单</b>\n<b>订单：</b>:order_code\n<b>客户：</b>:customer\n<b>套餐：</b>:package\n<b>平台：</b>:platform\n<b>付款：</b>:payment_type\n<b>充值：</b>:top_up_amount USD\n<b>总计：</b>:total_cost USDT\n<b>时间：</b>:time",
+        'new_order_group_alert' => "🛎 <b>新服务订单</b>\n<b>订单：</b>:order_code\n<b>客户：</b>:customer\n<b>套餐：</b>:package\n<b>平台：</b>:platform\n<b>数量：</b>:quantity 个账户\n<b>付款：</b>:payment_type\n<b>充值：</b>:top_up_amount USD\n<b>总计：</b>:total_cost USDT\n<b>时间：</b>:time",
     ],
     'mail' => [
         'subject' => 'Service status notification',
