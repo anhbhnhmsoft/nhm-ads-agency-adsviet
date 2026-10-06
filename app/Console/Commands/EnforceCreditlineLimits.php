@@ -27,7 +27,7 @@ class EnforceCreditlineLimits extends Command
 
     protected $description = 'Tự động pause campaign khi hạn mức creditline còn dưới ngưỡng an toàn';
 
-    private const PAUSE_REMAINING_CREDIT = 20.0;
+    private const PAUSE_REMAINING_CREDIT = 0.0;
 
     public function __construct(
         protected MetaAdsCampaignRepository $metaAdsCampaignRepository,
