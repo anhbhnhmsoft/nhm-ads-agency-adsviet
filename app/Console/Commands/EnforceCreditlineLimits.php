@@ -150,7 +150,13 @@ class EnforceCreditlineLimits extends Command
                     : 0.0;
             });
 
-        return round($initialTopUp + (float) $additionalTopUp, 2);
+        $walletBalance = 0.0;
+        $wallet = \App\Models\UserWallet::where('user_id', $serviceUser->user_id)->first();
+        if ($wallet) {
+            $walletBalance = max(0.0, (float) $wallet->balance);
+        }
+
+        return round($initialTopUp + (float) $additionalTopUp + $walletBalance, 2);
     }
 
     private function calculateTotalSpend(string $serviceUserId): float
