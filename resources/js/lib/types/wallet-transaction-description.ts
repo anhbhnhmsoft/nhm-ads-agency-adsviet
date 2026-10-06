@@ -36,5 +36,6 @@ export function getTransactionDescription(
         return t(description, { defaultValue: description });
     }
 
-    return description;
+    // Clean up old descriptions that contain array of account IDs
+    return description.replace(/\s*\[act_[^\]]+\]/g, '');
 }

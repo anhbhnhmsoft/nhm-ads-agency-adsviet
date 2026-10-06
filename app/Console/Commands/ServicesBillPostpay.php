@@ -422,20 +422,11 @@ class ServicesBillPostpay extends Command
         );
 
         $accountSummary = '';
-        if (count($accountsWithUnbilled) === 1) {
-            $single = reset($accountsWithUnbilled);
-            $accId = (string) ($single['account_id'] ?? array_key_first($accountsWithUnbilled));
-            $accountSummary = " on {$accId}";
-        } elseif (count($accountsWithUnbilled) > 1) {
-            $ids = [];
-            foreach ($accountsWithUnbilled as $key => $item) {
-                $ids[] = (string) ($item['account_id'] ?? preg_replace('/^(meta_|google_)/', '', (string) $key));
-            }
-            $displayIds = array_slice($ids, 0, 3);
-            $accountSummary = ' on ' . count($ids) . ' accounts [' . implode(', ', $displayIds) . (count($ids) > 3 ? '...' : '') . ']';
+        if (count($accountsWithUnbilled) > 1) {
+            $accountSummary = ' on ' . count($accountsWithUnbilled) . ' accounts';
         }
 
-        return "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend{$accountSummary}): {$packageName}";
+        return "Postpay spending fee ({$feePercent}% on {$unbilledSpend} USD spend from {$billedSpend} to {$spending}{$accountSummary}): {$packageName}";
     }
 
     /**

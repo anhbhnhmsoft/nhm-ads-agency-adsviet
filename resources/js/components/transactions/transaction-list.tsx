@@ -168,9 +168,9 @@ export function TransactionList({
                         className="rounded-lg border transition-colors hover:bg-gray-50"
                     >
                         <CardContent className="items-center justify-between p-4 sm:flex">
-                            <div className="flex flex-1 items-center gap-3">
+                            <div className="flex flex-1 items-center gap-3 min-w-0">
                                 {getTransactionIcon(tx.type)}
-                                <div className="flex-1">
+                                <div className="flex-1 min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-medium">
                                             {t(
