@@ -274,9 +274,13 @@ export function TransactionList({
                                               ? Object.values(rawDetails)
                                               : [];
                                         const validDetails = detailsList.filter(
-                                            (item) => item && (Number(item.spent ?? 0) > 0 || Number(item.fee ?? 0) > 0 || item.account_id)
+                                            (item) => item && (Number(item.spent ?? 0) > 0 || Number(item.fee ?? 0) > 0)
                                         );
                                         if (validDetails.length === 0) return null;
+
+                                        const totalSpent = validDetails.reduce((sum, item) => sum + Number(item.spent ?? 0), 0);
+                                        const totalFee = validDetails.reduce((sum, item) => sum + Number(item.fee ?? 0), 0);
+                                        const summaryCurrency = validDetails.find(i => i.currency)?.currency || 'USD';
 
                                         return (
                                             <div className="mt-2.5 rounded-lg border border-amber-200/90 bg-amber-50/70 p-3 text-xs dark:border-amber-900/50 dark:bg-amber-950/20">
@@ -332,6 +336,18 @@ export function TransactionList({
                                                             </div>
                                                         );
                                                     })}
+                                                </div>
+                                                <div className="mt-2 flex items-center justify-between border-t border-amber-200/60 pt-2 font-semibold text-amber-900 dark:border-amber-900/40 dark:text-amber-200">
+                                                    <span>Tổng cộng:</span>
+                                                    <div className="flex items-center gap-2 text-xs sm:text-sm">
+                                                        <span>
+                                                            Spend: <strong className="text-blue-600 dark:text-blue-400">{totalSpent.toFixed(2)} {summaryCurrency}</strong>
+                                                        </span>
+                                                        <span className="text-muted-foreground">|</span>
+                                                        <span>
+                                                            Phí: <strong className="text-red-600 dark:text-red-400">{totalFee.toFixed(2)} USDT</strong>
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
