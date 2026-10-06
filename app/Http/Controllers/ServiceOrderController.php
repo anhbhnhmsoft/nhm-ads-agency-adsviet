@@ -170,5 +170,20 @@ class ServiceOrderController extends Controller
 
         return redirect()->back();
     }
+
+    /**
+     * Admin/Manager/Employee dọn dẹp các tài khoản thừa không thuộc cấu hình đơn hàng
+     */
+    public function cleanStaleAccounts(string $id): RedirectResponse
+    {
+        $result = $this->serviceUserService->cleanStaleAccounts($id);
+        if ($result->isError()) {
+            FlashMessage::error($result->getMessage());
+        } else {
+            FlashMessage::success($result->getMessage());
+        }
+
+        return redirect()->back();
+    }
 }
 

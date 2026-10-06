@@ -749,19 +749,23 @@ const ServiceManagementIndex = ({
                     </div>
                 ),
             },
-            {
-                accessorKey: 'customer_name',
-                header: t('service_management.customer', {
-                    defaultValue: 'Khách hàng',
-                }),
-                cell: ({ row }) => (
-                    <div className="min-w-0 truncate">
-                        {row.original.customer_name ||
-                            row.original.owner_name ||
-                            '-'}
-                    </div>
-                ),
-            },
+            ...(!isAgencyOrCustomer
+                ? [
+                      {
+                          accessorKey: 'customer_name',
+                          header: t('service_management.customer', {
+                              defaultValue: 'Khách hàng',
+                          }),
+                          cell: ({ row }: any) => (
+                              <div className="min-w-0 truncate">
+                                  {row.original.customer_name ||
+                                      row.original.owner_name ||
+                                      '-'}
+                              </div>
+                          ),
+                      },
+                  ]
+                : []),
             {
                 accessorKey: 'bm_name',
                 header: t('service_management.bm_mcc', {

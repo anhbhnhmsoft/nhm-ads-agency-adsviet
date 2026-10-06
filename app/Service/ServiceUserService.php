@@ -496,26 +496,156 @@ class ServiceUserService
                     return ServiceReturn::error(message: __('services.validation.account_not_linked'));
                 }
 
-                // Chuyển đơn về admin (Adviet Agency FB) — giữ ACTIVE
-                $adminBmId = '1537217683931546';
                 $config = $serviceUser->config_account ?? [];
                 if (!is_array($config)) {
                     $config = [];
                 }
-                unset($config['account_id'], $config['accounts']);
-                $config['bm_id'] = $adminBmId;
-                $config['assign_mode'] = 'bm';
+
+                // Gỡ account này khỏi mảng accounts nếu có
+                if (!empty($config['accounts']) && is_array($config['accounts'])) {
+                    $config['accounts'] = array_values(array_filter($config['accounts'], function ($acc) use ($accountId, $normalizedAccountId) {
+                        $accId = (string) ($acc['account_id'] ?? $acc['id'] ?? '');
+                        $clean = preg_replace('/^act_/', '', $accId);
+                        return $clean !== $normalizedAccountId && $accId !== $accountId;
+                    }));
+                }
+
+                // Gỡ account này khỏi mảng account_ids nếu có
+                if (!empty($config['account_ids']) && is_array($config['account_ids'])) {
+                    $config['account_ids'] = array_values(array_filter($config['account_ids'], function ($id) use ($accountId, $normalizedAccountId) {
+                        $clean = preg_replace('/^act_/', '', (string) $id);
+                        return $clean !== $normalizedAccountId && (string) $id !== $accountId;
+                    }));
+                }
+
+                // Nếu là single account_id
+                if (!empty($config['account_id'])) {
+                    $cleanSingle = preg_replace('/^act_/', '', (string) $config['account_id']);
+                    if ($cleanSingle === $normalizedAccountId || (string) $config['account_id'] === $accountId) {
+                        unset($config['account_id']);
+                    }
+                }
+
+                // Xóa mốc billed spend của account này khỏi config để xóa sạch dữ liệu cũ
+                if (!empty($config['spending_fee_accounts_billed_spend']) && is_array($config['spending_fee_accounts_billed_spend'])) {
+                    unset(
+                        $config['spending_fee_accounts_billed_spend']['meta_' . $accountId],
+                        $config['spending_fee_accounts_billed_spend']['meta_' . $normalizedAccountId],
+                        $config['spending_fee_accounts_billed_spend']['meta_act_' . $normalizedAccountId],
+                        $config['spending_fee_accounts_billed_spend']['google_' . $accountId],
+                        $config['spending_fee_accounts_billed_spend'][$accountId],
+                        $config['spending_fee_accounts_billed_spend'][$normalizedAccountId]
+                    );
+                }
+
+                // Nếu sau khi gỡ mà không còn account nào thì mới chuyển assign_mode về bm
+                $hasRemainingAccounts = !empty($config['accounts']) || !empty($config['account_ids']) || !empty($config['account_id']);
+                if (!$hasRemainingAccounts) {
+                    $adminBmId = '1537217683931546';
+                    $config['bm_id'] = $adminBmId;
+                    $config['assign_mode'] = 'bm';
+                }
+
                 $serviceUser->config_account = $config;
-                // Giữ nguyên status (không đổi về PENDING)
                 $serviceUser->save();
 
-                return ServiceReturn::success();
+                return ServiceReturn::success(message: __('services.flash.account_unassigned'));
             });
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'ServiceUserService@unassignAccount error: '.$e->getMessage(),
                 exception: $e
             );
+            return ServiceReturn::error(message: __('common_error.server_error'));
+        }
+    }
+
+    /**
+     * Dọn dẹp tất cả tài khoản rác/tháo gán nhầm trong DB không thuộc config của đơn hàng
+     */
+    public function cleanStaleAccounts(string $serviceUserId): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($serviceUserId) {
+                $serviceUser = $this->serviceUserRepository->query()->find($serviceUserId);
+                if (!$serviceUser) {
+                    return ServiceReturn::error(message: __('common_error.not_found'));
+                }
+
+                $config = $serviceUser->config_account ?? [];
+                if (!is_array($config)) {
+                    $config = [];
+                }
+
+                $targetIds = [];
+                if (!empty($config['accounts']) && is_array($config['accounts'])) {
+                    foreach ($config['accounts'] as $acc) {
+                        $id = $acc['account_id'] ?? $acc['id'] ?? null;
+                        if ($id) {
+                            $clean = preg_replace('/^act_/', '', trim((string) $id));
+                            $targetIds[] = (string) $id;
+                            $targetIds[] = $clean;
+                            $targetIds[] = 'act_' . $clean;
+                        }
+                    }
+                } elseif (!empty($config['account_ids']) && is_array($config['account_ids'])) {
+                    foreach ($config['account_ids'] as $id) {
+                        $clean = preg_replace('/^act_/', '', trim((string) $id));
+                        $targetIds[] = (string) $id;
+                        $targetIds[] = $clean;
+                        $targetIds[] = 'act_' . $clean;
+                    }
+                } elseif (!empty($config['account_id'])) {
+                    $clean = preg_replace('/^act_/', '', trim((string) $config['account_id']));
+                    $targetIds[] = (string) $config['account_id'];
+                    $targetIds[] = $clean;
+                    $targetIds[] = 'act_' . $clean;
+                }
+
+                $platform = $serviceUser->package?->platform ?? null;
+                $staleCount = 0;
+
+                if (!empty($targetIds)) {
+                    $targetIds = array_values(array_unique(array_filter($targetIds)));
+
+                    if ((int) $platform === PlatformType::META->value) {
+                        $staleAccounts = $this->metaAccountRepository->query()
+                            ->where('service_user_id', $serviceUser->id)
+                            ->whereNotIn('account_id', $targetIds)
+                            ->get();
+
+                        $staleCount = $staleAccounts->count();
+                        if ($staleCount > 0) {
+                            $this->metaAccountRepository->query()
+                                ->where('service_user_id', $serviceUser->id)
+                                ->whereNotIn('account_id', $targetIds)
+                                ->update(['service_user_id' => null]);
+                        }
+                    } elseif ((int) $platform === PlatformType::GOOGLE->value) {
+                        $staleAccounts = $this->googleAccountRepository->query()
+                            ->where('service_user_id', $serviceUser->id)
+                            ->whereNotIn('account_id', $targetIds)
+                            ->get();
+
+                        $staleCount = $staleAccounts->count();
+                        if ($staleCount > 0) {
+                            $this->googleAccountRepository->query()
+                                ->where('service_user_id', $serviceUser->id)
+                                ->whereNotIn('account_id', $targetIds)
+                                ->update(['service_user_id' => null]);
+                        }
+                    }
+                }
+
+                return ServiceReturn::success(
+                    data: ['stale_count' => $staleCount],
+                    message: $staleCount > 0
+                        ? "Đã dọn dẹp và gỡ gán thành công {$staleCount} tài khoản thừa khỏi đơn hàng!"
+                        : "Đơn hàng đã chuẩn khớp cấu hình, không có tài khoản thừa nào."
+                );
+            });
+        } catch (\Throwable $e) {
+            Logging::error('ServiceUserService@cleanStaleAccounts error: ' . $e->getMessage(), exception: $e);
             return ServiceReturn::error(message: __('common_error.server_error'));
         }
     }

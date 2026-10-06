@@ -16,6 +16,8 @@ import type {
     AssignedAccount,
     ServiceOrder,
 } from '@/pages/service-order/types/type';
+import { router } from '@inertiajs/react';
+import axios from 'axios';
 import {
     AlertCircle,
     CheckCircle2,
@@ -23,6 +25,7 @@ import {
     Clock,
     Copy,
     CreditCard,
+    Eraser,
     ExternalLink,
     Globe,
     Layers,
@@ -30,11 +33,13 @@ import {
     Package,
     Share2,
     Shield,
+    Trash2,
     User,
     Wallet,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
 interface OrderDetailsDialogProps {
     open: boolean;
@@ -60,6 +65,8 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
 }) => {
     const { t } = useTranslation();
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
+    const [unassigningId, setUnassigningId] = useState<string | null>(null);
+    const [cleaningStale, setCleaningStale] = useState<boolean>(false);
 
     if (!order) return null;
 
@@ -67,6 +74,61 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
         navigator.clipboard.writeText(text);
         setCopiedKey(key);
         setTimeout(() => setCopiedKey(null), 2000);
+    };
+
+    const handleUnassignAccount = async (accountId?: string) => {
+        if (!accountId || !order) return;
+        if (
+            !window.confirm(
+                `Bạn có chắc chắn muốn gỡ tài khoản ${accountId} khỏi đơn hàng này và xóa sạch dữ liệu spend cũ?`,
+            )
+        ) {
+            return;
+        }
+        setUnassigningId(accountId);
+        try {
+            const response = await axios.post('/service-management/unassign-account', {
+                service_user_id: order.id,
+                account_id: accountId,
+            });
+            if (response.data?.status || response.data?.success) {
+                toast.success(response.data?.message || 'Đã gỡ tài khoản và làm sạch dữ liệu cũ thành công!');
+                onOpenChange(false);
+                router.reload({ preserveScroll: true });
+            } else {
+                toast.error(response.data?.message || 'Không thể gỡ tài khoản.');
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi gỡ tài khoản.');
+        } finally {
+            setUnassigningId(null);
+        }
+    };
+
+    const handleCleanAllStale = async () => {
+        if (!order) return;
+        if (
+            !window.confirm(
+                'Bạn có chắc chắn muốn dọn dẹp các tài khoản thừa/rác và xóa dữ liệu spend cũ không thuộc cấu hình đơn hàng này?',
+            )
+        ) {
+            return;
+        }
+        setCleaningStale(true);
+        try {
+            const response = await axios.post(`/service-orders/${order.id}/clean-stale-accounts`);
+            if (response.data?.status || response.data?.success) {
+                toast.success(response.data?.message || 'Đã dọn dẹp tài khoản thừa thành công!');
+                onOpenChange(false);
+                router.reload({ preserveScroll: true });
+            } else {
+                toast.error(response.data?.message || 'Không thể dọn tài khoản.');
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi dọn tài khoản.');
+        } finally {
+            setCleaningStale(false);
+        }
     };
 
     const isMeta = order.package?.platform === _PlatformType.META;
@@ -278,6 +340,28 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
                                     <CreditCard className="h-4 w-4 text-purple-500" />
                                     <span>Tài khoản quảng cáo đã gán ({assignedAccounts.length})</span>
                                 </div>
+                                {assignedAccounts.length > 0 && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={cleaningStale}
+                                        onClick={handleCleanAllStale}
+                                        className="h-7 border-purple-300 text-xs text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400"
+                                        title="Dọn dẹp các tài khoản thừa và xóa dữ liệu spend cũ bị dính nhầm"
+                                    >
+                                        <Eraser
+                                            className={cn(
+                                                'mr-1 h-3 w-3',
+                                                cleaningStale && 'animate-spin',
+                                            )}
+                                        />
+                                        <span>
+                                            {cleaningStale
+                                                ? 'Đang dọn...'
+                                                : 'Dọn tài khoản cũ'}
+                                        </span>
+                                    </Button>
+                                )}
                             </div>
 
                             {assignedAccounts.length === 0 ? (
@@ -313,6 +397,22 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
                                                                 <span>Ads Manager</span>
                                                                 <ExternalLink className="h-3 w-3" />
                                                             </a>
+                                                        )}
+                                                        {acc.account_id && (
+                                                            <button
+                                                                type="button"
+                                                                disabled={unassigningId === acc.account_id}
+                                                                onClick={() => handleUnassignAccount(acc.account_id)}
+                                                                className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-100 disabled:opacity-50 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
+                                                                title="Gỡ tài khoản này khỏi đơn hàng và xóa dữ liệu spend cũ"
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                                <span>
+                                                                    {unassigningId === acc.account_id
+                                                                        ? 'Đang gỡ...'
+                                                                        : 'Gỡ tài khoản'}
+                                                                </span>
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </div>

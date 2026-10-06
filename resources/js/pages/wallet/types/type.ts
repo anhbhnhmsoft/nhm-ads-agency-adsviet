@@ -1,3 +1,13 @@
+export interface AccountBreakdownDetail {
+    account_id?: string;
+    name?: string;
+    currency?: string;
+    spent?: number;
+    billed?: number;
+    unbilled?: number;
+    fee?: number;
+}
+
 export interface WalletTransaction {
     id: string;
     amount: number;
@@ -15,6 +25,12 @@ export interface WalletTransaction {
         crypto_address?: string;
         network?: 'TRC20' | 'BEP20';
         withdraw_type?: 'bank' | 'usdt';
+        customer_name?: string;
+        package_name?: string;
+        total_spend?: number;
+        fee_amount?: number;
+        accounts_detail?: Record<string, AccountBreakdownDetail> | AccountBreakdownDetail[];
+        [key: string]: any;
     } | null;
     createdAt?: string | null;
     user?: {

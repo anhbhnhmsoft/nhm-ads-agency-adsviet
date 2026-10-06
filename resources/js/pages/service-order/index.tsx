@@ -41,6 +41,7 @@ import type {
 } from '@/pages/service-order/types/type';
 import {
     service_orders_cancel,
+    service_orders_clean_stale_accounts,
     service_orders_destroy,
     service_orders_sync_and_bill,
     service_purchase_index,
@@ -55,6 +56,7 @@ import {
 import type { ColumnDef } from '@tanstack/react-table';
 import {
     ChevronDown,
+    Eraser,
     Eye,
     Filter,
     Package,
@@ -300,6 +302,7 @@ const ServiceOrdersIndex = ({
     const orders = paginator?.data ?? [];
 
     const [processingSyncId, setProcessingSyncId] = useState<string | null>(null);
+    const [processingCleanId, setProcessingCleanId] = useState<string | null>(null);
     const [viewingOrder, setViewingOrder] = useState<ServiceOrder | null>(null);
 
     // Multi-input lists for approve dialog
@@ -970,6 +973,27 @@ const ServiceOrdersIndex = ({
                         );
                     };
 
+                    const handleCleanStaleAccounts = () => {
+                        if (
+                            !window.confirm(
+                                'Bạn có chắc chắn muốn dọn dẹp các tài khoản thừa/rác và xóa dữ liệu spend cũ không thuộc cấu hình đơn hàng này?',
+                            )
+                        ) {
+                            return;
+                        }
+                        setProcessingCleanId(order.id);
+                        router.post(
+                            service_orders_clean_stale_accounts({ id: order.id }).url,
+                            {},
+                            {
+                                preserveScroll: true,
+                                onFinish: () => {
+                                    setProcessingCleanId(null);
+                                },
+                            },
+                        );
+                    };
+
                     const handleDelete = () => {
                         if (
                             !window.confirm(t('service_orders.confirm_delete'))
@@ -983,6 +1007,7 @@ const ServiceOrdersIndex = ({
                     };
 
                     const isSyncing = processingSyncId === order.id;
+                    const isCleaning = processingCleanId === order.id;
 
                     return (
                         <div className="flex items-center gap-1.5 whitespace-nowrap">
@@ -999,6 +1024,22 @@ const ServiceOrdersIndex = ({
                                 {t('service_orders.actions.view', {
                                     defaultValue: 'Chi tiết',
                                 })}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-purple-300 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                                disabled={isCleaning}
+                                onClick={handleCleanStaleAccounts}
+                                title="Dọn dẹp tài khoản thừa & xóa mốc dữ liệu spend cũ của tài khoản không thuộc đơn hàng"
+                            >
+                                <Eraser
+                                    className={cn(
+                                        'mr-1 h-3 w-3',
+                                        isCleaning && 'animate-spin',
+                                    )}
+                                />
+                                {isCleaning ? 'Đang dọn...' : 'Dọn tài khoản cũ'}
                             </Button>
                             {isPending && (
                                 <>

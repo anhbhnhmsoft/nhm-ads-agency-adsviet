@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import type { InertiaPageProps } from '@/lib/types';
 import type { _PlatformType as PlatformTypeEnum } from '@/lib/types/constants';
-import { _PlatformType } from '@/lib/types/constants';
+import { _PlatformType, _UserRole } from '@/lib/types/constants';
 import { formatDateForQuery } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { Download, Loader2, RotateCcw, Search } from 'lucide-react';
@@ -80,6 +80,16 @@ const BusinessManagerSearchForm = ({
 
     const childManagers = props.childManagers;
     const customers = props.customers ?? [];
+
+    const currentUserRole = Number(
+        (props as any)?.auth?.role ??
+            (props as any)?.auth?.user?.role ??
+            (props as any)?.auth?.role_id ??
+            (props as any)?.auth?.user?.role_id,
+    );
+    const isCustomerOrAgency =
+        currentUserRole === _UserRole.CUSTOMER ||
+        currentUserRole === _UserRole.AGENCY;
 
     const platformValue = query.platform
         ? query.platform.toString()
@@ -178,38 +188,40 @@ const BusinessManagerSearchForm = ({
                             }}
                         />
                     </Field>
-                    <Field>
-                        <FieldLabel htmlFor="customer">
-                            {t('service_management.customer', { defaultValue: 'Khách hàng' })}
-                        </FieldLabel>
-                        <Select
-                            value={query.customer_id || 'all'}
-                            onValueChange={(value) => {
-                                setQuery({
-                                    customer_id:
-                                        value === 'all' ? undefined : value,
-                                });
-                            }}
-                        >
-                            <SelectTrigger id="customer">
-                                <SelectValue
-                                    placeholder={t('common.all', {
-                                        defaultValue: 'Tất cả',
-                                    })}
-                                />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">
-                                    {t('common.all', { defaultValue: 'Tất cả' })}
-                                </SelectItem>
-                                {customers.map((c) => (
-                                    <SelectItem key={c.id} value={c.id}>
-                                        {c.name}
+                    {!isCustomerOrAgency && customers.length > 0 && (
+                        <Field>
+                            <FieldLabel htmlFor="customer">
+                                {t('service_management.customer', { defaultValue: 'Khách hàng' })}
+                            </FieldLabel>
+                            <Select
+                                value={query.customer_id || 'all'}
+                                onValueChange={(value) => {
+                                    setQuery({
+                                        customer_id:
+                                            value === 'all' ? undefined : value,
+                                    });
+                                }}
+                            >
+                                <SelectTrigger id="customer">
+                                    <SelectValue
+                                        placeholder={t('common.all', {
+                                            defaultValue: 'Tất cả',
+                                        })}
+                                    />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        {t('common.all', { defaultValue: 'Tất cả' })}
                                     </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </Field>
+                                    {customers.map((c) => (
+                                        <SelectItem key={c.id} value={c.id}>
+                                            {c.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                    )}
                     <Field>
                         <FieldLabel htmlFor="platform">
                             {t('common.platform', { defaultValue: 'Nền tảng' })}
@@ -254,64 +266,66 @@ const BusinessManagerSearchForm = ({
                             </SelectContent>
                         </Select>
                     </Field>
-                    <Field>
-                        <FieldLabel htmlFor="child-manager">
-                            {t('business_manager.filter.child_manager', {
-                                defaultValue: 'BM/MCC con',
-                            })}
-                        </FieldLabel>
-                        <Select
-                            value={query.child_manager_id || 'all'}
-                            onValueChange={(value) => {
-                                if (value === 'all') {
-                                    setQuery({ child_manager_id: undefined });
-                                    return;
-                                }
-                                const selectedChild = platformChildOptions.find(
-                                    (item) => item.id === value,
-                                );
-                                setQuery({
-                                    child_manager_id: value || undefined,
-                                    platform:
-                                        query.platform ??
-                                        selectedChild?.platform,
-                                });
-                            }}
-                            disabled={platformChildOptions.length === 0}
-                        >
-                            <SelectTrigger id="child-manager">
-                                <SelectValue
-                                    placeholder={
-                                        platformChildOptions.length > 0
-                                            ? t(
-                                                  'business_manager.filter.child_manager_placeholder',
-                                                  {
-                                                      defaultValue:
-                                                          'Chọn BM/MCC con',
-                                                  },
-                                              )
-                                            : t(
-                                                  'business_manager.filter.child_manager_disabled',
-                                                  {
-                                                      defaultValue:
-                                                          'Chưa có BM/MCC con',
-                                                  },
-                                              )
+                    {!isCustomerOrAgency && (
+                        <Field>
+                            <FieldLabel htmlFor="child-manager">
+                                {t('business_manager.filter.child_manager', {
+                                    defaultValue: 'BM/MCC con',
+                                })}
+                            </FieldLabel>
+                            <Select
+                                value={query.child_manager_id || 'all'}
+                                onValueChange={(value) => {
+                                    if (value === 'all') {
+                                        setQuery({ child_manager_id: undefined });
+                                        return;
                                     }
-                                />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">
-                                    {t('common.all', { defaultValue: 'Tất cả' })}
-                                </SelectItem>
-                                {platformChildOptions.map((item) => (
-                                    <SelectItem key={item.id} value={item.id}>
-                                        {item.name} ({item.id})
+                                    const selectedChild = platformChildOptions.find(
+                                        (item) => item.id === value,
+                                    );
+                                    setQuery({
+                                        child_manager_id: value || undefined,
+                                        platform:
+                                            query.platform ??
+                                            selectedChild?.platform,
+                                    });
+                                }}
+                                disabled={platformChildOptions.length === 0}
+                            >
+                                <SelectTrigger id="child-manager">
+                                    <SelectValue
+                                        placeholder={
+                                            platformChildOptions.length > 0
+                                                ? t(
+                                                      'business_manager.filter.child_manager_placeholder',
+                                                      {
+                                                          defaultValue:
+                                                              'Chọn BM/MCC con',
+                                                      },
+                                                  )
+                                                : t(
+                                                      'business_manager.filter.child_manager_disabled',
+                                                      {
+                                                          defaultValue:
+                                                              'Chưa có BM/MCC con',
+                                                      },
+                                                  )
+                                        }
+                                    />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        {t('common.all', { defaultValue: 'Tất cả' })}
                                     </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </Field>
+                                    {platformChildOptions.map((item) => (
+                                        <SelectItem key={item.id} value={item.id}>
+                                            {item.name} ({item.id})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                    )}
                     <Field>
                         <FieldLabel>
                             {t('business_manager.filter.period', {

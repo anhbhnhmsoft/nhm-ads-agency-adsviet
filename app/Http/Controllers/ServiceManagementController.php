@@ -137,13 +137,15 @@ class ServiceManagementController extends Controller
                 'stats' => fn () => $stats,
                 'totals' => fn () => $totals,
                 'childManagers' => fn () => $this->businessManagerService->getChildManagersForFilter(),
-                'customers' => fn () => User::query()
-                    ->whereHas('serviceUsers')
-                    ->select('id', 'name', 'username', 'email')
-                    ->orderBy('name')
-                    ->get()
-                    ->map(fn ($u) => ['id' => (string) $u->id, 'name' => $u->name ?: ($u->username ?: $u->email)])
-                    ->toArray(),
+                'customers' => fn () => auth()->user()?->role === \App\Common\Constants\User\UserRole::CUSTOMER->value
+                    ? []
+                    : User::query()
+                        ->whereHas('serviceUsers')
+                        ->select('id', 'name', 'username', 'email')
+                        ->orderBy('name')
+                        ->get()
+                        ->map(fn ($u) => ['id' => (string) $u->id, 'name' => $u->name ?: ($u->username ?: $u->email)])
+                        ->toArray(),
             ]
         );
     }
@@ -434,6 +436,42 @@ class ServiceManagementController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('services.flash.account_unassigned'),
+        ]);
+    }
+
+    /**
+     * Gỡ gán hàng loạt tài khoản khỏi service_user
+     */
+    public function bulkUnassignAccounts(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->ensureInternalAccess();
+
+        $request->validate([
+            'accounts' => ['required', 'array', 'min:1'],
+            'accounts.*.service_user_id' => ['required', 'string'],
+            'accounts.*.account_id' => ['required', 'string'],
+        ]);
+
+        $successCount = 0;
+        $failedCount = 0;
+
+        foreach ($request->input('accounts') as $item) {
+            $result = $this->serviceUserService->unassignAccount(
+                serviceUserId: $item['service_user_id'],
+                accountId: $item['account_id'],
+            );
+            if ($result->isSuccess()) {
+                $successCount++;
+            } else {
+                $failedCount++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã gỡ gán thành công {$successCount} tài khoản." . ($failedCount > 0 ? " ({$failedCount} thất bại)" : ''),
+            'success_count' => $successCount,
+            'failed_count' => $failedCount,
         ]);
     }
 }
