@@ -57,7 +57,7 @@ class ServiceOrderResource extends JsonResource
                 'account_id' => $a->account_id,
                 'account_name' => $a->account_name,
                 'business_manager_id' => $a->business_manager_id,
-                'amount_spent' => (float) ($a->amount_spent ?? 0),
+                'amount_spent' => $this->normalizeMetaAccountMoney($a->amount_spent, $a->currency) ?? 0.0,
                 'currency' => $a->currency ?? 'USD',
                 'account_status' => $a->account_status,
                 'is_prepay_account' => $a->is_prepay_account,
@@ -81,7 +81,7 @@ class ServiceOrderResource extends JsonResource
                 'account_id' => $a->account_id,
                 'account_name' => $a->account_name,
                 'business_manager_id' => $a->customer_manager_id,
-                'amount_spent' => (float) ($a->amount_spent ?? 0),
+                'amount_spent' => $this->normalizeMetaAccountMoney($a->amount_spent, $a->currency) ?? 0.0,
                 'currency' => $a->currency ?? 'USD',
                 'account_status' => $a->account_status,
                 'timezone_name' => $a->time_zone,
@@ -212,5 +212,23 @@ class ServiceOrderResource extends JsonResource
             'created_at' => optional($this->created_at)->toIso8601String(),
             'updated_at' => optional($this->updated_at)->toIso8601String(),
         ];
+    }
+
+    private function normalizeMetaAccountMoney(mixed $value, ?string $currency): ?float
+    {
+        if ($value === null || $value === '' || !is_numeric($value)) {
+            return null;
+        }
+
+        $amount = (float) $value;
+        $currency = strtoupper((string) ($currency ?: 'USD'));
+        $zeroDecimalCurrencies = [
+            'BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW',
+            'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+        ];
+
+        return in_array($currency, $zeroDecimalCurrencies, true)
+            ? $amount
+            : $amount / 100;
     }
 }

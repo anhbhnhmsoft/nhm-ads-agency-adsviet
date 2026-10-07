@@ -1,0 +1,54 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  NODE_OPTIONS: "--max-old-space-size=2048"
+
+# ------------------------------------------------------------------------------
+# STAGE 1: BUILD FRONTEND TRÊN GITLAB RUNNER (Zero Load on VPS)
+# ------------------------------------------------------------------------------
+build_frontend:
+  stage: build
+  image: node:20-alpine
+  only:
+    - master
+    - main
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+  script:
+    - npm ci --prefer-offline --no-audit
+    - npm run build
+  artifacts:
+    name: "dist-${CI_COMMIT_SHORT_SHA}"
+    expire_in: 1 hour
+    paths:
+      - public/build/
+
+# ------------------------------------------------------------------------------
+# STAGE 2: DEPLOY LÊN VPS QUA SSH / RSYNC
+# ------------------------------------------------------------------------------
+deploy_to_vps:
+  stage: deploy
+  image: alpine:latest
+  only:
+    - master
+    - main
+  dependencies:
+    - build_frontend
+  before_script:
+    - apk add --no-cache openssh-client rsync bash
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  script:
+    # 1. Kéo code Laravel trên VPS
+    - ssh $SSH_USER@$SSH_HOST "cd $PROJECT_DIR && git pull origin $CI_COMMIT_REF_NAME && php artisan migrate --force"
+    # 2. Rsync bản build từ GitLab Runner đè vào public/build trên VPS
+    - rsync -avz --delete public/build/ $SSH_USER@$SSH_HOST:$PROJECT_DIR/public/build/
+    # 3. Làm mới cache Laravel & khởi động lại queue
+    - ssh $SSH_USER@$SSH_HOST "cd $PROJECT_DIR && php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan queue:restart"

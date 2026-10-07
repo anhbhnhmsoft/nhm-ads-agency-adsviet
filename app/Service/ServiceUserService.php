@@ -1199,20 +1199,10 @@ class ServiceUserService
                     Logging::error('ServiceUserService@syncAndBillPostpay notify spending fee error: ' . $notifEx->getMessage(), exception: $notifEx);
                 }
 
-                // Sau khi trừ phí, kiểm tra số dư ví dưới 20 USD thì tự động pause campaigns
-                $minBalance = (float) app(\App\Service\ConfigService::class)->getValue(\App\Common\Constants\Config\ConfigName::POSTPAY_MIN_BALANCE, 20.0);
-                if ((float) $wallet->balance < $minBalance) {
-                    $pauseStats = $billPostpayCommand->pauseAllCampaignsForServiceUser($lockedServiceUser);
-                    try {
-                        app(WalletTransactionService::class)->notifySupportGroupPostpayLowBalance(
-                            $lockedServiceUser,
-                            (float) $wallet->balance,
-                            $minBalance,
-                            $pauseStats
-                        );
-                    } catch (\Throwable $notifEx) {
-                        Logging::error('ServiceUserService@syncAndBillPostpay notify low balance error: ' . $notifEx->getMessage(), exception: $notifEx);
-                    }
+                // Sau khi trừ phí, chỉ pause campaigns nếu ví thực sự <= 0 (hết sạch tiền).
+                // Nếu khách vẫn còn tiền (> 0), KHÔNG ĐƯỢC PAUSE để khách chạy hết số dư ví!
+                if ((float) $wallet->balance <= 0) {
+                    $billPostpayCommand->pauseAllCampaignsForServiceUser($lockedServiceUser);
                 }
 
                 return ServiceReturn::success(

@@ -123,123 +123,21 @@ class ServicesBillPostpay extends Command
                                 return 'skip';
                             }
 
-                            $minWalletBalance = $this->minWalletBalance();
                             $currentBalance = (float) $wallet->balance;
 
-                            // ── TRƯỜNG HỢP 1: Số dư ví < Ngưỡng duy trì tối thiểu (20 USD) ──
-                            // Khách hàng đang vi phạm số dư -> CƯỠNG CHẾ PAUSE TẤT CẢ CAMPAIGN ACTIVE NGAY LẬP TỨC!
-                            if ($currentBalance < $minWalletBalance) {
-                                $pauseStats = $this->pauseAllCampaignsForServiceUser($locked);
-                                if ($pauseStats['total'] > 0) {
-                                    Logging::web('services:bill-postpay low balance auto-paused active campaigns', [
-                                        'service_user_id' => $locked->id,
-                                        'user_id' => $locked->user_id,
-                                        'balance' => $currentBalance,
-                                        'minimum_wallet_balance' => $minWalletBalance,
-                                        'pause_stats' => $pauseStats,
-                                    ]);
-                                }
-
-                                if ($unbilledSpend > 0) {
-                                    $spendingFee = $unbilledSpend * ($feePercent / 100);
-                                    $chargeAmount = round($spendingFee, 2);
-
-                                    // Nếu ví còn đủ tiền để trừ khoản phí nợ này thì trừ phí và cập nhật mốc đã thu
-                                    if ($chargeAmount > 0 && $currentBalance >= $chargeAmount) {
-                                        $wallet->update(['balance' => $currentBalance - $chargeAmount]);
-
-                                        $description = $this->buildSpendingFeeDescription(
-                                            feePercent: $feePercent,
-                                            unbilledSpend: $unbilledSpend,
-                                            billedSpend: $billedSpend,
-                                            spending: $spending,
-                                            packageName: $package->name,
-                                            accountsDetail: $spendingData['accounts_detail'] ?? [],
-                                        );
-
-                                        $walletTransaction = $this->walletTransactionRepository->create([
-                                            'wallet_id' => $wallet->id,
-                                            'amount' => -$chargeAmount,
-                                            'type' => WalletTransactionType::SPENDING_FEE->value,
-                                            'status' => WalletTransactionStatus::COMPLETED->value,
-                                            'description' => $description,
-                                            'reference_id' => (string) $locked->id,
-                                            'withdraw_info' => [
-                                                'purpose' => 'spending_fee',
-                                                'spend_amount' => $unbilledSpend,
-                                                'spending_fee_percent' => $feePercent,
-                                                'spending_fee_amount' => $chargeAmount,
-                                                'billed_spend_before' => $billedSpend,
-                                                'billed_spend_after' => $spending,
-                                                'threshold' => self::SPENDING_FEE_CHARGE_THRESHOLD,
-                                                'accounts_detail' => $spendingData['accounts_detail'] ?? [],
-                                                'last_billed_at' => $locked->last_postpay_billed_at?->toDateTimeString() ?? null,
-                                                'charged_at' => now()->toDateTimeString(),
-                                            ],
-                                        ]);
-
-                                        ServiceUserTransactionLog::create([
-                                            'service_user_id' => $locked->id,
-                                            'amount' => $chargeAmount,
-                                            'type' => ServiceUserTransactionType::FEE->value,
-                                            'status' => ServiceUserTransactionStatus::COMPLETED->value,
-                                            'reference_id' => (string) $walletTransaction->id,
-                                            'description' => $description,
-                                        ]);
-
-                                        $currentConfig['spending_fee_accounts_billed_spend'] = $spendingData['new_accounts_billed_spend'];
-                                        $currentConfig['spending_fee_billed_spend'] = $spending;
-                                        $currentConfig['spending_fee_last_charged_at'] = now()->toDateTimeString();
-                                        $locked->config_account = $currentConfig;
-                                        $locked->last_postpay_billed_at = now();
-                                        $locked->save();
-
-                                        try {
-                                            $this->walletTransactionService->notifySupportGroupSpendingFee(
-                                                $walletTransaction,
-                                                $package->name,
-                                                $unbilledSpend,
-                                                $chargeAmount,
-                                                $spendingData['accounts_detail'] ?? [],
-                                            );
-                                        } catch (\Throwable $notifEx) {
-                                            Logging::error('ServicesBillPostpay spending fee notify error: ' . $notifEx->getMessage(), exception: $notifEx);
-                                        }
-                                    } else {
-                                        // Thiếu tiền trả phí
-                                        try {
-                                            $this->walletTransactionService->notifySupportGroupPostpayInsufficientBalance(
-                                                $locked,
-                                                $currentBalance,
-                                                $minWalletBalance,
-                                                $chargeAmount,
-                                                $unbilledSpend,
-                                                $pauseStats,
-                                                $spendingData['accounts_detail'] ?? [],
-                                            );
-                                        } catch (\Throwable $notifEx) {
-                                            Logging::error('ServicesBillPostpay insufficient balance notify error: ' . $notifEx->getMessage(), exception: $notifEx);
-                                        }
-                                    }
-                                } else {
-                                    // unbilled = 0 nhưng ví < 20$, gửi thông báo duy trì số dư
-                                    try {
-                                        $this->walletTransactionService->notifySupportGroupPostpayLowBalance(
-                                            $locked,
-                                            $currentBalance,
-                                            $minWalletBalance,
-                                            $pauseStats,
-                                        );
-                                    } catch (\Throwable $notifEx) {
-                                        Logging::error('ServicesBillPostpay low balance notify error: ' . $notifEx->getMessage(), exception: $notifEx);
-                                    }
-                                }
-
+                            // 1. Nếu số dư ví <= 0 (hết sạch tiền) -> Tự động pause campaigns và dừng
+                            if ($currentBalance <= 0) {
+                                Logging::web('services:bill-postpay wallet balance depleted (<= 0), pause campaigns', [
+                                    'service_user_id' => $locked->id,
+                                    'user_id' => $locked->user_id,
+                                    'balance' => $currentBalance,
+                                ]);
+                                $this->pauseAllCampaignsForServiceUser($locked);
                                 return 'skip';
                             }
 
-                            // ── TRƯỜNG HỢP 2: Số dư ví >= 20 USD ──
-                            // Chỉ thu phí khi chi tiêu chưa thu >= 20 USD
+                            // 2. Kiểm tra chi tiêu chưa thu phí
+                            // Chỉ thu phí khi chi tiêu chưa thu >= 20 USD (ngưỡng tối thiểu để tính phí)
                             if ($unbilledSpend < self::SPENDING_FEE_CHARGE_THRESHOLD) {
                                 return 'skip';
                             }
@@ -250,7 +148,7 @@ class ServicesBillPostpay extends Command
                                 return 'skip';
                             }
 
-                            // Nếu số dư ví không đủ để thanh toán khoản phí cần thu
+                            // 3. Nếu số dư ví không đủ để thanh toán khoản phí cần thu ($currentBalance < $chargeAmount)
                             if ($currentBalance < $chargeAmount) {
                                 Logging::web('services:bill-postpay insufficient balance to charge fee, pause campaigns', [
                                     'service_user_id' => $locked->id,
@@ -258,7 +156,6 @@ class ServicesBillPostpay extends Command
                                     'balance' => $wallet->balance,
                                     'unbilled_spend' => $unbilledSpend,
                                     'spending_fee' => $chargeAmount,
-                                    'minimum_wallet_balance' => $minWalletBalance,
                                     'charge_amount' => $chargeAmount,
                                 ]);
 
@@ -267,7 +164,7 @@ class ServicesBillPostpay extends Command
                                 $this->walletTransactionService->notifySupportGroupPostpayInsufficientBalance(
                                     $locked,
                                     $currentBalance,
-                                    $minWalletBalance,
+                                    $chargeAmount,
                                     $chargeAmount,
                                     $unbilledSpend,
                                     $pauseStats,
@@ -277,7 +174,7 @@ class ServicesBillPostpay extends Command
                                 $user = $wallet->user;
                                 $userNotifyCacheKey = 'postpay_insufficient_user_notified_' . $locked->id;
                                 if ($user && !Caching::getCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, $userNotifyCacheKey)) {
-                                    \App\Core\UserLocale::run($user, function () use ($user, $wallet, $chargeAmount, $minWalletBalance) {
+                                    \App\Core\UserLocale::run($user, function () use ($user, $wallet, $chargeAmount) {
                                         $shortName = $user->name ?? $user->username ?? 'Customer';
                                         $balanceFormatted = number_format((float) $wallet->balance, 2);
                                         $chargeFormatted = number_format($chargeAmount, 2);
@@ -288,7 +185,7 @@ class ServicesBillPostpay extends Command
                                             'charge' => $chargeFormatted,
                                             'monthly_fee' => $spendingFeeFormatted,
                                             'open_fee' => number_format(0, 2),
-                                            'min_wallet' => number_format($minWalletBalance, 2),
+                                            'min_wallet' => number_format($chargeAmount, 2),
                                         ]);
 
                                         if (!empty($user->telegram_id)) {
@@ -316,7 +213,7 @@ class ServicesBillPostpay extends Command
                                 return 'skip';
                             }
 
-                            // Trừ tiền phí dịch vụ vào ví của khách
+                            // 4. Số dư ví ĐỦ để trừ phí ($currentBalance >= $chargeAmount): Trừ phí và cho khách chạy tiếp!
                             $wallet->update(['balance' => $currentBalance - $chargeAmount]);
 
                             $description = $this->buildSpendingFeeDescription(
@@ -381,28 +278,16 @@ class ServicesBillPostpay extends Command
                             Caching::clearCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, 'postpay_insufficient_group_notified_' . $locked->id);
                             Caching::clearCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, 'postpay_insufficient_user_notified_' . $locked->id);
 
-                            // Nếu sau khi trừ phí mà số dư ví còn lại < ngưỡng tối thiểu (20 USD) -> Tự động Pause campaigns và cảnh báo nạp duy trì
+                            // Sau khi trừ phí: CHỈ pause nếu số dư còn lại thực sự <= 0 (hết sạch tiền).
+                            // Tuyệt đối KHÔNG pause nếu khách vẫn còn tiền (> 0) để khách chạy hết số dư!
                             $remainingBalance = (float) $wallet->balance;
-                            if ($remainingBalance < $minWalletBalance) {
-                                Logging::web('services:bill-postpay fee charged but balance below minimum, pause campaigns', [
+                            if ($remainingBalance <= 0) {
+                                Logging::web('services:bill-postpay fee charged and balance depleted (<= 0), pause campaigns', [
                                     'service_user_id' => $locked->id,
                                     'user_id' => $locked->user_id,
                                     'remaining_balance' => $remainingBalance,
-                                    'minimum_wallet_balance' => $minWalletBalance,
                                 ]);
-
-                                $pauseStats = $this->pauseAllCampaignsForServiceUser($locked);
-
-                                try {
-                                    $this->walletTransactionService->notifySupportGroupPostpayLowBalance(
-                                        $locked,
-                                        $remainingBalance,
-                                        $minWalletBalance,
-                                        $pauseStats,
-                                    );
-                                } catch (\Throwable $notifEx) {
-                                    Logging::error('ServicesBillPostpay low balance notify error: ' . $notifEx->getMessage(), exception: $notifEx);
-                                }
+                                $this->pauseAllCampaignsForServiceUser($locked);
                             }
 
                             return $locked;

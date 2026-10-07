@@ -177,7 +177,7 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[90vh] max-w-4xl p-0">
+            <DialogContent className="max-h-[92vh] w-[95vw] sm:max-w-5xl lg:max-w-6xl p-0">
                 <DialogHeader className="border-b px-6 py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3 pr-6">
                         <div>
@@ -239,7 +239,7 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
                     </div>
                 </DialogHeader>
 
-                <ScrollArea className="max-h-[calc(90vh-140px)] px-6 py-4">
+                <ScrollArea className="max-h-[calc(92vh-130px)] px-6 py-4">
                     <div className="space-y-6">
                         {/* 1. Thông tin chung & Khách hàng */}
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -417,7 +417,7 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
                                                     </div>
                                                 </div>
 
-                                                <div className="mt-2.5 grid grid-cols-1 gap-2.5 text-xs sm:grid-cols-2 md:grid-cols-3">
+                                                <div className="mt-2.5 grid grid-cols-1 gap-2.5 text-xs sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                                                     <div>
                                                         <span className="text-muted-foreground">Account ID:</span>
                                                         <div className="mt-0.5 flex items-center gap-1 font-mono font-semibold text-foreground">
@@ -479,7 +479,16 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
                                                     <div>
                                                         <span className="text-muted-foreground">Chi tiêu (Spend):</span>
                                                         <div className="mt-0.5 font-semibold text-foreground">
-                                                            {Number(acc.amount_spent ?? 0).toFixed(2)}{' '}
+                                                            {(() => {
+                                                                let spent = Number(acc.amount_spent ?? 0);
+                                                                if (order.total_spend && spent > 100 && Math.abs(order.total_spend - (spent / 100)) < 0.05) {
+                                                                    spent = spent / 100;
+                                                                }
+                                                                return spent.toLocaleString('en-US', {
+                                                                    minimumFractionDigits: 2,
+                                                                    maximumFractionDigits: 2,
+                                                                });
+                                                            })()}{' '}
                                                             {acc.currency || 'USD'}
                                                         </div>
                                                     </div>
