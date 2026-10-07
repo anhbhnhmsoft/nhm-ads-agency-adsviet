@@ -463,6 +463,79 @@ class WalletTransactionService
         }
     }
 
+    public function notifySupportGroupPostpayLowBalance(
+        ServiceUser $serviceUser,
+        float $currentBalance,
+        float $minWalletBalance,
+        array $pauseStats = [],
+    ): void {
+        try {
+            $supportGroupId = config('services.telegram.support_group_id');
+            if (empty($supportGroupId)) {
+                return;
+            }
+
+            $cacheKey = 'postpay_low_balance_group_notified_' . $serviceUser->id;
+            if (Caching::getCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, $cacheKey)) {
+                return;
+            }
+
+            $serviceUser->loadMissing(['user', 'package']);
+            $customer = $serviceUser->user;
+            $package = $serviceUser->package;
+            if (!$customer || !$package) {
+                return;
+            }
+
+            $totalCount = (int) ($pauseStats['total'] ?? 0);
+            $successCount = (int) ($pauseStats['success'] ?? 0);
+
+            $platform = PlatformType::tryFrom((int) $package->platform)?->label() ?? (string) $package->platform;
+            $timezone = (string) config('services.telegram.timezone', 'Asia/Ho_Chi_Minh');
+            $now = now($timezone);
+
+            $statusDetail = $totalCount > 0
+                ? __('wallet.telegram.pause_all_success_detail', ['success' => $successCount, 'total' => $totalCount])
+                : __('wallet.telegram.pause_no_campaigns_detail');
+
+            $message = __('wallet.telegram.postpay_low_balance_group_alert', [
+                'name' => htmlspecialchars($customer->name ?? $customer->username ?? ('User ' . $customer->id), ENT_QUOTES, 'UTF-8'),
+                'order_code' => htmlspecialchars((string) $serviceUser->id, ENT_QUOTES, 'UTF-8'),
+                'package' => htmlspecialchars((string) $package->name, ENT_QUOTES, 'UTF-8'),
+                'platform' => htmlspecialchars($platform, ENT_QUOTES, 'UTF-8'),
+                'balance' => htmlspecialchars(number_format($currentBalance, 2), ENT_QUOTES, 'UTF-8'),
+                'min_wallet' => htmlspecialchars(number_format($minWalletBalance, 2), ENT_QUOTES, 'UTF-8'),
+                'status_detail' => $statusDetail,
+                'time' => $now->format('d/m/Y H:i:s'),
+            ]);
+
+            $this->telegramService->sendNotification(
+                chatId: (string) $supportGroupId,
+                message: $message,
+                userId: null,
+                type: NotificationType::WALLET,
+                data: [
+                    'service_user_id' => (string) $serviceUser->id,
+                    'user_id' => (string) $customer->id,
+                ]
+            );
+
+            // Cache thông báo đến hết ngày
+            $expireMinutes = max(60, (int) now()->diffInMinutes(now()->endOfDay()) + 60);
+            Caching::setCache(
+                CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED,
+                now()->toDateTimeString(),
+                $cacheKey,
+                $expireMinutes
+            );
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'WalletTransactionService@notifySupportGroupPostpayLowBalance error: ' . $e->getMessage(),
+                exception: $e
+            );
+        }
+    }
+
     private function supportGroupDepositOrderCode(UserWalletTransaction $transaction): ?string
     {
         $referenceId = (string) ($transaction->reference_id ?? '');

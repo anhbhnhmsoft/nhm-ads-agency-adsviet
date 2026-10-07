@@ -17,6 +17,7 @@ use App\Core\QueryListDTO;
 use App\Core\ServiceReturn;
 use App\Models\MetaAccount;
 use App\Models\MetaAdsCampaign;
+use App\Models\ServiceAccountInventory;
 use App\Models\ServiceUser;
 use App\Models\User;
 use App\Repositories\MetaAccountBusinessManagerAccessRepository;
@@ -1705,16 +1706,44 @@ class MetaService
             }
 
             $responses = $batchResponse->getData();
-            foreach ($responses as $index => $res) {
-                if (($res['code'] ?? 0) === 200) {
-                    $reqName = $batchRequests[$index]['name'] ?? '';
-                    $parts = explode('_', $reqName);
-                    $bmId = $parts[1] ?? '';
+            $bmActiveAccountIds = [];
+            $bmEdgesSuccess = [];
 
+            foreach ($responses as $index => $res) {
+                $reqName = $batchRequests[$index]['name'] ?? '';
+                $parts = explode('_', $reqName);
+                $edgeType = $parts[0] ?? '';
+                $bmId = $parts[1] ?? '';
+
+                if (($res['code'] ?? 0) === 200) {
                     $body = json_decode($res['body'] ?? '{}', true);
-                    $this->processAccountListData($body['data'] ?? [], $bmId);
+                    $accounts = $body['data'] ?? [];
+                    $syncedIds = $this->processAccountListData($accounts, $bmId);
+
+                    if (! isset($bmActiveAccountIds[$bmId])) {
+                        $bmActiveAccountIds[$bmId] = [];
+                    }
+                    $bmActiveAccountIds[$bmId] = array_merge($bmActiveAccountIds[$bmId], $syncedIds);
+                    $bmEdgesSuccess[$bmId][$edgeType] = true;
+                } else {
+                    Logging::error("Batch Account Sync edge {$edgeType} failed for BM {$bmId}: ".($res['body'] ?? ''));
                 }
             }
+
+            foreach ($bmChunk as $bmId) {
+                $bmIdStr = (string) $bmId;
+                $ownedOk = $bmEdgesSuccess[$bmIdStr]['owned'] ?? false;
+                $clientOk = $bmEdgesSuccess[$bmIdStr]['client'] ?? false;
+
+                // Chỉ detach khi cả 2 edges đều gọi thành công, tránh trường hợp API bị lỗi tạm thời dẫn tới xóa nhầm
+                if ($ownedOk && $clientOk) {
+                    $this->detachStaleMetaAccountsForManager(
+                        $bmIdStr,
+                        array_values(array_unique($bmActiveAccountIds[$bmIdStr] ?? []))
+                    );
+                }
+            }
+
             usleep(500000); // Nghỉ 0.5s giữa các mẻ
         }
     }
@@ -1767,9 +1796,13 @@ class MetaService
             }
 
             try {
-                $existingAccount = $this->metaAccountRepository->query()
+                $existingAccount = MetaAccount::withTrashed()
                     ->where('account_id', $adsAccountData['id'])
                     ->first();
+
+                if ($existingAccount && $existingAccount->trashed()) {
+                    $existingAccount->restore();
+                }
 
                 $incomingAmountSpent = (float) ($adsAccountData['amount_spent'] ?? 0);
                 $currentAmountSpent = (float) ($existingAccount?->amount_spent ?? 0);
@@ -1796,10 +1829,14 @@ class MetaService
                     $updateData['service_user_id'] = null;
                 }
 
-                $this->metaAccountRepository->query()->updateOrCreate(
-                    ['account_id' => $adsAccountData['id']],
-                    $updateData
-                );
+                if ($existingAccount) {
+                    $existingAccount->update($updateData);
+                } else {
+                    $this->metaAccountRepository->query()->create(array_merge(
+                        ['account_id' => $adsAccountData['id']],
+                        $updateData
+                    ));
+                }
 
                 if ($bmIdFromRequest && $accountId) {
                     $this->metaAccountBusinessManagerAccessRepository->query()->updateOrCreate(
@@ -1869,30 +1906,129 @@ class MetaService
 
     /**
      * Đồng bộ tài khoản quảng cáo từ một edge cụ thể (owned hoặc client)
+     * và gỡ bỏ các tài khoản không còn nằm trong BM trên Meta API.
      */
-    private function detachStaleMetaAccountsForManager(string $bmId, array $currentAccountIds): void
+    public function detachStaleMetaAccountsForManager(string $bmId, array $currentAccountIds): void
     {
-        $query = $this->metaAccountBusinessManagerAccessRepository->query()
+        $normalizedCurrentAccountIds = [];
+        foreach ($currentAccountIds as $accId) {
+            $clean = preg_replace('/^act_/', '', trim((string) $accId));
+            $normalizedCurrentAccountIds[] = (string) $accId;
+            $normalizedCurrentAccountIds[] = $clean;
+            $normalizedCurrentAccountIds[] = 'act_'.$clean;
+        }
+        $normalizedCurrentAccountIds = array_values(array_unique(array_filter($normalizedCurrentAccountIds)));
+
+        // 1. Tìm các account ID trong meta_account_business_manager_accesses thuộc source_bm_id này nhưng không còn trong Meta API
+        $accessQuery = $this->metaAccountBusinessManagerAccessRepository->query()
             ->where('source_bm_id', (string) $bmId);
 
-        if (! empty($currentAccountIds)) {
-            $query->whereNotIn('account_id', $currentAccountIds);
+        if (! empty($normalizedCurrentAccountIds)) {
+            $accessQuery->whereNotIn('account_id', $normalizedCurrentAccountIds);
         }
 
-        $staleAccountIds = $query->pluck('account_id')->toArray();
-        if (empty($staleAccountIds)) {
+        $staleAccessAccountIds = $accessQuery->pluck('account_id')->toArray();
+
+        // 2. Tìm các account trong meta_accounts có business_manager_id là BM này nhưng không còn trong Meta API
+        $accountQuery = $this->metaAccountRepository->query()
+            ->where('business_manager_id', (string) $bmId);
+
+        if (! empty($normalizedCurrentAccountIds)) {
+            $accountQuery->whereNotIn('account_id', $normalizedCurrentAccountIds);
+        }
+
+        $staleOwnerAccountIds = $accountQuery->pluck('account_id')->toArray();
+
+        $allStaleAccountIds = array_values(array_unique(array_merge($staleAccessAccountIds, $staleOwnerAccountIds)));
+
+        if (empty($allStaleAccountIds)) {
             return;
         }
 
+        // Xóa access khỏi BM này
         $this->metaAccountBusinessManagerAccessRepository->query()
             ->where('source_bm_id', (string) $bmId)
-            ->whereIn('account_id', $staleAccountIds)
+            ->whereIn('account_id', $allStaleAccountIds)
             ->delete();
+
+        // Với mỗi account bị gỡ khỏi BM này, kiểm tra xem nó còn thuộc BM nào khác không
+        foreach ($allStaleAccountIds as $staleId) {
+            $cleanId = preg_replace('/^act_/', '', trim((string) $staleId));
+            $targetMatches = array_values(array_unique([$staleId, $cleanId, 'act_'.$cleanId]));
+
+            // Kiểm tra xem account có còn bất kỳ BM nào truy cập được không
+            $hasOtherBmAccess = $this->metaAccountBusinessManagerAccessRepository->query()
+                ->whereIn('account_id', $targetMatches)
+                ->exists();
+
+            if (! $hasOtherBmAccess) {
+                // Tài khoản không còn thuộc bất kỳ BM nào -> Tool xem như bỏ luôn tài khoản đó
+                $this->discardMetaAccount($targetMatches, (string) $bmId);
+            }
+        }
 
         Logging::web('MetaService: detached stale account access from BM scope', [
             'bm_id' => $bmId,
-            'detached_account_ids' => $staleAccountIds,
+            'detached_account_ids' => $allStaleAccountIds,
         ]);
+    }
+
+    /**
+     * Xử lý bỏ luôn tài khoản khi tài khoản bị remove khỏi BM
+     */
+    public function discardMetaAccount(array $accountMatches, ?string $fromBmId = null): void
+    {
+        $metaAccount = $this->metaAccountRepository->query()
+            ->whereIn('account_id', $accountMatches)
+            ->first();
+
+        if (! $metaAccount) {
+            return;
+        }
+
+        $accountId = (string) $metaAccount->account_id;
+
+        // 1. Nếu tài khoản còn đang gán với đơn hàng, gỡ gán khỏi đơn hàng
+        if ($metaAccount->service_user_id) {
+            try {
+                $serviceUserService = app(\App\Service\ServiceUserService::class);
+                $serviceUserService->unassignAccount(
+                    (string) $metaAccount->service_user_id,
+                    $accountId
+                );
+            } catch (\Throwable $e) {
+                Logging::error("Error unassigning account {$accountId} on discard: ".$e->getMessage());
+                $metaAccount->update(['service_user_id' => null]);
+            }
+        }
+
+        // 2. Detach khỏi nhóm tài sản (asset groups)
+        try {
+            $metaAccount->assetGroups()->detach();
+        } catch (\Throwable $e) {
+        }
+
+        // 3. Xóa / Soft delete khỏi kho ServiceAccountInventory nếu có
+        try {
+            ServiceAccountInventory::query()
+                ->where('platform', PlatformType::META->value)
+                ->whereIn('account_id', $accountMatches)
+                ->delete();
+        } catch (\Throwable $e) {
+        }
+
+        // 4. Xóa access còn sót lại nếu có
+        try {
+            $this->metaAccountBusinessManagerAccessRepository->query()
+                ->whereIn('account_id', $accountMatches)
+                ->delete();
+        } catch (\Throwable $e) {
+        }
+
+        // 5. Soft delete bản ghi MetaAccount
+        $metaAccount->delete();
+
+        Logging::web("MetaService: Đã tự động loại bỏ (discard) tài khoản {$accountId}".($fromBmId ? " do đã bị xóa khỏi BM {$fromBmId}" : ''));
     }
 
     private function getBusinessManagerScopeIds(string $bmId): array
@@ -2102,9 +2238,13 @@ class MetaService
                         }
                     }
 
-                    $existingAccount = $this->metaAccountRepository->query()
+                    $existingAccount = MetaAccount::withTrashed()
                         ->where('account_id', (string) $body['id'])
                         ->first();
+
+                    if ($existingAccount && $existingAccount->trashed()) {
+                        $existingAccount->restore();
+                    }
 
                     $incomingAmountSpent = (float) ($body['amount_spent'] ?? 0);
                     $currentAmountSpent = (float) ($existingAccount?->amount_spent ?? 0);
@@ -2129,21 +2269,45 @@ class MetaService
                     ];
 
                     try {
-                        $this->metaAccountRepository->query()->updateOrCreate(
-                            ['account_id' => (string) $body['id']],
-                            $updateData
-                        );
+                        if ($existingAccount) {
+                            $existingAccount->update($updateData);
+                        } else {
+                            $this->metaAccountRepository->query()->create(array_merge(
+                                ['account_id' => (string) $body['id']],
+                                $updateData
+                            ));
+                        }
                     } catch (\Throwable $e) {
-                        Logging::error('syncMetaAccountsByIdsBatched: cannot updateOrCreate account: '.$e->getMessage(), [
+                        Logging::error('syncMetaAccountsByIdsBatched: cannot update/create account: '.$e->getMessage(), [
                             'account_id' => $body['id'] ?? null,
                             'service_user_id' => $serviceUser->id,
                         ]);
                     }
                 } else {
-                    Logging::error('syncMetaAccountsByIdsBatched: account failed in batch: '.($body['error']['message'] ?? 'Status '.$status), [
-                        'account_id' => $chunk[$index] ?? null,
+                    $failedAccId = $chunk[$index] ?? null;
+                    $errorMsg = $body['error']['message'] ?? ('Status '.$status);
+                    $errorCode = (int) ($body['error']['code'] ?? 0);
+                    $errorSubcode = (int) ($body['error']['error_subcode'] ?? 0);
+
+                    Logging::error('syncMetaAccountsByIdsBatched: account failed in batch: '.$errorMsg, [
+                        'account_id' => $failedAccId,
                         'service_user_id' => $serviceUser->id,
+                        'code' => $errorCode,
+                        'subcode' => $errorSubcode,
                     ]);
+
+                    // Nếu mã lỗi là tài khoản không tồn tại hoặc bị mất quyền truy cập (đã remove khỏi BM):
+                    $isRemovedOrInaccessible = ($errorCode === 100 && $errorSubcode === 33)
+                        || ($errorCode === 200)
+                        || str_contains(strtolower($errorMsg), 'does not exist')
+                        || str_contains(strtolower($errorMsg), 'missing permissions')
+                        || str_contains(strtolower($errorMsg), 'unsupported get request');
+
+                    if ($failedAccId && $isRemovedOrInaccessible) {
+                        $clean = preg_replace('/^act_/', '', trim((string) $failedAccId));
+                        $matches = array_values(array_unique([$failedAccId, $clean, 'act_'.$clean]));
+                        $this->discardMetaAccount($matches, $fallbackBmId);
+                    }
                 }
             }
         }

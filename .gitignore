@@ -32,4 +32,7 @@ yarn.lock
 *.log
 .agents/
 .cursor/
-/bin/ngrok
+/bin/
+/storage/backups/
+/public/build_tmp/
+/public/build_old/

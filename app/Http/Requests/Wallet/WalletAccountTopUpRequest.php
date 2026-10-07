@@ -16,7 +16,7 @@ class WalletAccountTopUpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => ['required', 'numeric', 'min:1'],
+            'amount' => ['required', 'numeric', 'min:' . config('wallet.min_ads_account_topup', 100)],
             'wallet_password' => ['nullable', 'string', 'min:6'],
             'platform_type' => ['required', 'integer', Rule::in(PlatformType::getValues())],
             'service_user_id' => ['nullable', 'string', 'exists:service_users,id'],

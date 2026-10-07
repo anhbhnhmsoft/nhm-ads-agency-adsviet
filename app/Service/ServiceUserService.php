@@ -1188,23 +1188,31 @@ class ServiceUserService
                 $lockedServiceUser->last_postpay_billed_at = now();
                 $lockedServiceUser->save();
 
-                app(WalletTransactionService::class)->notifySupportGroupSpendingFee(
-                    $walletTransaction,
-                    $packageName,
-                    $recalculatedUnbilledSpend,
-                    $recalculatedChargeAmount,
-                );
+                try {
+                    app(WalletTransactionService::class)->notifySupportGroupSpendingFee(
+                        $walletTransaction,
+                        $packageName,
+                        $recalculatedUnbilledSpend,
+                        $recalculatedChargeAmount,
+                    );
+                } catch (\Throwable $notifEx) {
+                    Logging::error('ServiceUserService@syncAndBillPostpay notify spending fee error: ' . $notifEx->getMessage(), exception: $notifEx);
+                }
 
                 // Sau khi trừ phí, kiểm tra số dư ví dưới 20 USD thì tự động pause campaigns
                 $minBalance = (float) app(\App\Service\ConfigService::class)->getValue(\App\Common\Constants\Config\ConfigName::POSTPAY_MIN_BALANCE, 20.0);
                 if ((float) $wallet->balance < $minBalance) {
                     $pauseStats = $billPostpayCommand->pauseAllCampaignsForServiceUser($lockedServiceUser);
-                    app(WalletTransactionService::class)->notifySupportGroupPostpayLowBalance(
-                        $lockedServiceUser,
-                        (float) $wallet->balance,
-                        $minBalance,
-                        $pauseStats
-                    );
+                    try {
+                        app(WalletTransactionService::class)->notifySupportGroupPostpayLowBalance(
+                            $lockedServiceUser,
+                            (float) $wallet->balance,
+                            $minBalance,
+                            $pauseStats
+                        );
+                    } catch (\Throwable $notifEx) {
+                        Logging::error('ServiceUserService@syncAndBillPostpay notify low balance error: ' . $notifEx->getMessage(), exception: $notifEx);
+                    }
                 }
 
                 return ServiceReturn::success(

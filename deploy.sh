@@ -32,25 +32,35 @@ fi
 echo "🗃️ Running migrations..."
 php artisan migrate --force
 
-# 6. Clear & rebuild caches
-echo "🧹 Clearing caches..."
+# 6. Build frontend assets (Zero-downtime: Atomic Build & Swap)
+echo "🏗️ Building frontend assets (Atomic Build)..."
+if [ -f "package-lock.json" ]; then
+    # Cài package nếu có thay đổi (dùng npm install hoặc npm ci nếu có lockfile chuẩn)
+    npm install --no-audit --no-fund
+    
+    # Build ra thư mục tạm để không làm gián đoạn public/build hiện tại
+    rm -rf public/build_tmp
+    npx vite build --outDir public/build_tmp
+    
+    # Hoán đổi thư mục nguyên tử (Atomic Swap trong 0.01 giây)
+    rm -rf public/build_old
+    mv public/build public/build_old 2>/dev/null || true
+    mv public/build_tmp public/build
+    rm -rf public/build_old
+    echo "✨ Frontend build & swapped successfully!"
+fi
+
+# 7. Clear & rebuild caches (chỉ cache sau khi build frontend đã hoàn tất)
+echo "🧹 Rebuilding caches..."
 php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# 7. Build frontend assets
-echo "🏗️ Building frontend assets..."
-if [ -f "yarn.lock" ]; then
-    yarn install --frozen-lockfile && yarn build
-elif [ -f "package-lock.json" ]; then
-    npm ci && npm run build
-fi
-
 # 8. Fix permissions again (after build creates new files)
 echo "🔧 Final permission fix..."
-chown -R www-data:www-data storage bootstrap/cache
-chmod -R 775 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache public/build
+chmod -R 775 storage bootstrap/cache public/build
 
 # 9. Restart queue worker if running
 echo "🔄 Restarting queue workers..."

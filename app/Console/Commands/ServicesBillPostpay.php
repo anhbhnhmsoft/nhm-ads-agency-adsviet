@@ -187,40 +187,52 @@ class ServicesBillPostpay extends Command
                                             'description' => $description,
                                         ]);
 
-                                        $this->walletTransactionService->notifySupportGroupSpendingFee(
-                                            $walletTransaction,
-                                            $package->name,
-                                            $unbilledSpend,
-                                            $chargeAmount,
-                                            $spendingData['accounts_detail'] ?? [],
-                                        );
-
                                         $currentConfig['spending_fee_accounts_billed_spend'] = $spendingData['new_accounts_billed_spend'];
                                         $currentConfig['spending_fee_billed_spend'] = $spending;
                                         $currentConfig['spending_fee_last_charged_at'] = now()->toDateTimeString();
                                         $locked->config_account = $currentConfig;
                                         $locked->last_postpay_billed_at = now();
                                         $locked->save();
+
+                                        try {
+                                            $this->walletTransactionService->notifySupportGroupSpendingFee(
+                                                $walletTransaction,
+                                                $package->name,
+                                                $unbilledSpend,
+                                                $chargeAmount,
+                                                $spendingData['accounts_detail'] ?? [],
+                                            );
+                                        } catch (\Throwable $notifEx) {
+                                            Logging::error('ServicesBillPostpay spending fee notify error: ' . $notifEx->getMessage(), exception: $notifEx);
+                                        }
                                     } else {
                                         // Thiếu tiền trả phí
-                                        $this->walletTransactionService->notifySupportGroupPostpayInsufficientBalance(
-                                            $locked,
-                                            $currentBalance,
-                                            $minWalletBalance,
-                                            $chargeAmount,
-                                            $unbilledSpend,
-                                            $pauseStats,
-                                            $spendingData['accounts_detail'] ?? [],
-                                        );
+                                        try {
+                                            $this->walletTransactionService->notifySupportGroupPostpayInsufficientBalance(
+                                                $locked,
+                                                $currentBalance,
+                                                $minWalletBalance,
+                                                $chargeAmount,
+                                                $unbilledSpend,
+                                                $pauseStats,
+                                                $spendingData['accounts_detail'] ?? [],
+                                            );
+                                        } catch (\Throwable $notifEx) {
+                                            Logging::error('ServicesBillPostpay insufficient balance notify error: ' . $notifEx->getMessage(), exception: $notifEx);
+                                        }
                                     }
                                 } else {
                                     // unbilled = 0 nhưng ví < 20$, gửi thông báo duy trì số dư
-                                    $this->walletTransactionService->notifySupportGroupPostpayLowBalance(
-                                        $locked,
-                                        $currentBalance,
-                                        $minWalletBalance,
-                                        $pauseStats,
-                                    );
+                                    try {
+                                        $this->walletTransactionService->notifySupportGroupPostpayLowBalance(
+                                            $locked,
+                                            $currentBalance,
+                                            $minWalletBalance,
+                                            $pauseStats,
+                                        );
+                                    } catch (\Throwable $notifEx) {
+                                        Logging::error('ServicesBillPostpay low balance notify error: ' . $notifEx->getMessage(), exception: $notifEx);
+                                    }
                                 }
 
                                 return 'skip';
@@ -346,20 +358,24 @@ class ServicesBillPostpay extends Command
                                 'description' => $description,
                             ]);
 
-                            $this->walletTransactionService->notifySupportGroupSpendingFee(
-                                $walletTransaction,
-                                $package->name,
-                                $unbilledSpend,
-                                $chargeAmount,
-                                $spendingData['accounts_detail'] ?? [],
-                            );
-
                             $currentConfig['spending_fee_accounts_billed_spend'] = $spendingData['new_accounts_billed_spend'];
                             $currentConfig['spending_fee_billed_spend'] = $spending;
                             $currentConfig['spending_fee_last_charged_at'] = now()->toDateTimeString();
                             $locked->config_account = $currentConfig;
                             $locked->last_postpay_billed_at = now();
                             $locked->save();
+
+                            try {
+                                $this->walletTransactionService->notifySupportGroupSpendingFee(
+                                    $walletTransaction,
+                                    $package->name,
+                                    $unbilledSpend,
+                                    $chargeAmount,
+                                    $spendingData['accounts_detail'] ?? [],
+                                );
+                            } catch (\Throwable $notifEx) {
+                                Logging::error('ServicesBillPostpay spending fee notify error: ' . $notifEx->getMessage(), exception: $notifEx);
+                            }
 
                             // Xóa cache cảnh báo thiếu tiền vì đã thu phí thành công
                             Caching::clearCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, 'postpay_insufficient_group_notified_' . $locked->id);
@@ -377,12 +393,16 @@ class ServicesBillPostpay extends Command
 
                                 $pauseStats = $this->pauseAllCampaignsForServiceUser($locked);
 
-                                $this->walletTransactionService->notifySupportGroupPostpayLowBalance(
-                                    $locked,
-                                    $remainingBalance,
-                                    $minWalletBalance,
-                                    $pauseStats,
-                                );
+                                try {
+                                    $this->walletTransactionService->notifySupportGroupPostpayLowBalance(
+                                        $locked,
+                                        $remainingBalance,
+                                        $minWalletBalance,
+                                        $pauseStats,
+                                    );
+                                } catch (\Throwable $notifEx) {
+                                    Logging::error('ServicesBillPostpay low balance notify error: ' . $notifEx->getMessage(), exception: $notifEx);
+                                }
                             }
 
                             return $locked;

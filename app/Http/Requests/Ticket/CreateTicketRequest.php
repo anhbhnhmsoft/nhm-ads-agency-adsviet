@@ -22,7 +22,13 @@ class CreateTicketRequest extends FormRequest
             'priority' => ['nullable', 'integer', 'in:' . implode(',', array_column(TicketPriority::cases(), 'value'))],
             'metadata' => ['nullable', 'array'],
             'metadata.type' => ['required_with:metadata', 'string', Rule::in(TicketMetadataType::values())],
-            'metadata.amount' => ['required_if:metadata.type,wallet_withdraw_app,metadata.type,wallet_deposit_app', 'numeric', 'gt:0'],
+            'metadata.amount' => [
+                'required_if:metadata.type,wallet_withdraw_app,metadata.type,wallet_deposit_app', 
+                'numeric',
+                $this->input('metadata.type') === TicketMetadataType::WALLET_DEPOSIT_APP->value 
+                    ? 'min:' . config('wallet.min_ads_account_topup', 100) 
+                    : 'gt:0'
+            ],
             'metadata.withdraw_type' => ['required_if:metadata.type,wallet_withdraw_app', Rule::in(['bank', 'usdt'])],
             'metadata.withdraw_info' => ['nullable', 'array'],
             'metadata.withdraw_info.bank_name' => ['required_if:metadata.withdraw_type,bank', 'string', 'max:255'],
