@@ -70,3 +70,19 @@
 ## 📌 [07/10/2026] SỰ CỐ BOT TELEGRAM SPAM TIN NHẮN PHÍ 5 PHÚT/LẦN
 - **Nguyên nhân**: Thiếu hàm `notifySupportGroupPostpayLowBalance` trong `WalletTransactionService` dẫn đến Database Rollback sau khi gửi Telegram thành công.
 - **Đã xử lý**: Bổ sung method, lưu DB thành công 100% trước khi gửi Telegram, bọc `try-catch` an toàn.
+
+---
+
+## 📌 [07/10/2026] TIẾP TỤC: XÁC NHẬN MỞ LẠI TOÀN BỘ CÁC TÀI KHOẢN / CAMPAIGN ĐANG BỊ PAUSE
+### 1. Nội dung trao đổi:
+> [07/10/2026 10:27:45] Kevinho: tool nó tự pause khi khach con tien ne e  
+> [07/10/2026 10:42:32] Mai Dương: e bỏ rồi nha a  
+> [07/10/2026 10:42:48] Kevinho: ok thank you e  
+> [07/10/2026 10:43:17] Mai Dương: cần mở lại các tài khoản bị đóng mà tài khoản đang còn tầm 90 97$ như tk này ko hả a  
+> [07/10/2026 10:44:33] Kevinho: mở lai het nha e  
+
+### 2. Hành động thực hiện:
+- Quét toàn bộ tài khoản quảng cáo của các khách hàng có số dư ví còn tiền (balance > 0).
+- Lọc ra các chiến dịch (campaigns) đang ở trạng thái PAUSED do tool tự động ngắt sai trước đó.
+- Kích hoạt lại (ACTIVE) toàn bộ chiến dịch trên Meta Graph API và cập nhật trạng thái trong cơ sở dữ liệu.
+
