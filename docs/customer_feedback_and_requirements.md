@@ -113,5 +113,17 @@
    - Khách NGoc VT: Thiếu 1 account (`28492884047018135` ngocvt18-3).
    - Khách Charlie: Thiếu 7 account (`2369175773908330`, `1777348093516566`, `1090287016690704`, `4604616469815923`, `1839484680800581`, `1610378393892150`, `2974884006198747`).
    - Điều tra cơ chế sync tài khoản từ BM vào tool: tại sao tài khoản đã có trong BM Phoenix mà tool không nhận diện được?
+   - Khách Alita: Thiếu 5 account (`1733717025421383`, `2169484307287159`, `2154378888448470`, `1134714542215089`, `4612088575695153`).
+
+### 3. Kết quả xử lý & Trạng thái:
+- **Đã fix nguyên nhân gốc**: Lệnh `CleanupRemovedMetaAccounts` cũ thiếu Pagination và fetch rỗng BM đã tự ý soft delete và unassign tài khoản. Đã thêm Pagination và chặn tuyệt đối `discardMetaAccount` không xóa các tài khoản đang có `service_user_id`.
+- **Đã khôi phục 100% tài khoản trên VPS**:
+  + Bula: 20/20 tài khoản đủ.
+  + Ngoc VT: Đã gán `28492884047018135` (`ngocvt18-3`).
+  + Charlie: 29/29 tài khoản đủ.
+  + Alita: 20/20 tài khoản đủ (đã khôi phục 4 tài khoản cũ và tạo mới `2154378888448470`).
+- **Đã cập nhật ngưỡng an toàn 20$** trong DB và Code.
+- **Đã thêm Banner đỏ chữ trắng** trên Dashboard khách hàng khi balance < 20$.
+- **Đã deploy lên VPS 103.180.134.192** thành công 100%.
 
 
