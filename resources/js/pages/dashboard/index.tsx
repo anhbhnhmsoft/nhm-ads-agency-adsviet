@@ -962,10 +962,47 @@ export default function Index({
         ? formatCurrency(dashboardData.wallet.balance)
         : '••••••';
 
+    const isLowBalance = Number(dashboardData.wallet.balance ?? 0) < 20;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('dashboard.title')} />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4 md:p-6">
+                {/* Banner màu đỏ chữ trắng thông báo nạp balance khi < 20$ theo yêu cầu khách */}
+                {isLowBalance && (
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 rounded-xl bg-red-600 p-4 sm:p-5 text-white shadow-lg border border-red-700">
+                        <div className="flex items-start sm:items-center gap-3.5">
+                            <div className="rounded-full bg-white/20 p-2.5 shrink-0 flex items-center justify-center">
+                                <AlertTriangle className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-base sm:text-lg tracking-tight text-white">
+                                    {t('dashboard.low_balance_banner_title', {
+                                        defaultValue: 'Cảnh báo: Số dư ví dưới 20 USDT',
+                                    })}
+                                </h3>
+                                <p className="text-sm text-red-100 mt-1 leading-relaxed">
+                                    {t('dashboard.low_balance_banner_desc', {
+                                        defaultValue:
+                                            'Số dư ví hiện tại không đủ ngưỡng duy trì an toàn (tối thiểu 20.00 USDT). Vui lòng nạp thêm tiền vào ví ngay để các chiến dịch quảng cáo tiếp tục hoạt động liên tục và không bị hệ thống tự động tạm dừng.',
+                                    })}
+                                </p>
+                            </div>
+                        </div>
+                        <Button
+                            asChild
+                            size="default"
+                            className="bg-white text-red-600 hover:bg-red-50 hover:text-red-700 font-bold shrink-0 shadow-md transition-all self-stretch sm:self-auto"
+                        >
+                            <Link href={wallet_index().url}>
+                                {t('dashboard.top_up_now', {
+                                    defaultValue: 'Nạp tiền ngay',
+                                })}
+                            </Link>
+                        </Button>
+                    </div>
+                )}
+
                 {/* Top Header - Wallet Balance */}
                 <Card>
                     <CardHeader>

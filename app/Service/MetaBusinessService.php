@@ -1106,4 +1106,63 @@ class MetaBusinessService
             return ServiceReturn::error(message: $exception->getMessage());
         }
     }
+
+    /**
+     * Lấy TOÀN BỘ danh sách client_ad_accounts của một BM có phân trang đầy đủ (duyệt hết tất cả các trang)
+     */
+    public function getAllClientAdsAccountsForBm(string $bmId, int $maxPages = 20): ServiceReturn
+    {
+        $allAccounts = [];
+        $after = null;
+        $page = 0;
+
+        do {
+            $page++;
+            $res = $this->getClientAdsAccountPaginated($bmId, 100, $after);
+            if ($res->isError()) {
+                if ($page === 1) {
+                    return $res;
+                }
+                break;
+            }
+            $data = $res->getData()['data'] ?? [];
+            foreach ($data as $acc) {
+                $allAccounts[] = $acc;
+            }
+            $after = $res->getData()['paging']['cursors']['after'] ?? null;
+            $hasNext = isset($res->getData()['paging']['next']) && !empty($after);
+        } while ($hasNext && $page < $maxPages);
+
+        return ServiceReturn::success(data: $allAccounts);
+    }
+
+    /**
+     * Lấy TOÀN BỘ danh sách owned_ad_accounts của một BM có phân trang đầy đủ (duyệt hết tất cả các trang)
+     */
+    public function getAllOwnerAdsAccountsForBm(string $bmId, int $maxPages = 20): ServiceReturn
+    {
+        $allAccounts = [];
+        $after = null;
+        $page = 0;
+
+        do {
+            $page++;
+            $res = $this->getOwnerAdsAccountPaginated($bmId, 100, $after);
+            if ($res->isError()) {
+                if ($page === 1) {
+                    return $res;
+                }
+                break;
+            }
+            $data = $res->getData()['data'] ?? [];
+            foreach ($data as $acc) {
+                $allAccounts[] = $acc;
+            }
+            $after = $res->getData()['paging']['cursors']['after'] ?? null;
+            $hasNext = isset($res->getData()['paging']['next']) && !empty($after);
+        } while ($hasNext && $page < $maxPages);
+
+        return ServiceReturn::success(data: $allAccounts);
+    }
 }
+

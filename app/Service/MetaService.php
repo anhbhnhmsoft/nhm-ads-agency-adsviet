@@ -1988,18 +1988,11 @@ class MetaService
 
         $accountId = (string) $metaAccount->account_id;
 
-        // 1. Nếu tài khoản còn đang gán với đơn hàng, gỡ gán khỏi đơn hàng
-        if ($metaAccount->service_user_id) {
-            try {
-                $serviceUserService = app(\App\Service\ServiceUserService::class);
-                $serviceUserService->unassignAccount(
-                    (string) $metaAccount->service_user_id,
-                    $accountId
-                );
-            } catch (\Throwable $e) {
-                Logging::error("Error unassigning account {$accountId} on discard: ".$e->getMessage());
-                $metaAccount->update(['service_user_id' => null]);
-            }
+        // 1. Tuyệt đối KHÔNG tự ý gỡ hoặc soft-delete các tài khoản ĐANG ĐƯỢC GÁN VỚI ĐƠN HÀNG của khách hàng!
+        // Tránh sự cố phân trang API hoặc lỗi kết nối tạm thời làm mất tài khoản của khách và làm tool không charge được phí.
+        if (!empty($metaAccount->service_user_id)) {
+            Logging::web("MetaService@discardMetaAccount: Bỏ qua không discard tài khoản {$accountId} vì đang được gán với đơn hàng {$metaAccount->service_user_id}");
+            return;
         }
 
         // 2. Detach khỏi nhóm tài sản (asset groups)

@@ -123,14 +123,15 @@ class ServicesBillPostpay extends Command
                                 return 'skip';
                             }
 
-                            $currentBalance = (float) $wallet->balance;
+                            $minWalletBalance = $this->minWalletBalance();
 
-                            // 1. Nếu số dư ví <= 0 (hết sạch tiền) -> Tự động pause campaigns và dừng
-                            if ($currentBalance <= 0) {
-                                Logging::web('services:bill-postpay wallet balance depleted (<= 0), pause campaigns', [
+                            // 1. Nếu số dư ví < ngưỡng an toàn (mặc định 20 USD) -> Tự động pause campaigns và dừng
+                            if ($currentBalance < $minWalletBalance) {
+                                Logging::web('services:bill-postpay wallet balance below threshold, pause campaigns', [
                                     'service_user_id' => $locked->id,
                                     'user_id' => $locked->user_id,
                                     'balance' => $currentBalance,
+                                    'threshold' => $minWalletBalance,
                                 ]);
                                 $this->pauseAllCampaignsForServiceUser($locked);
                                 return 'skip';
@@ -278,14 +279,14 @@ class ServicesBillPostpay extends Command
                             Caching::clearCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, 'postpay_insufficient_group_notified_' . $locked->id);
                             Caching::clearCache(CacheKey::CACHE_WALLET_LOW_BALANCE_NOTIFIED, 'postpay_insufficient_user_notified_' . $locked->id);
 
-                            // Sau khi trừ phí: CHỈ pause nếu số dư còn lại thực sự <= 0 (hết sạch tiền).
-                            // Tuyệt đối KHÔNG pause nếu khách vẫn còn tiền (> 0) để khách chạy hết số dư!
+                            // Sau khi trừ phí: Pause campaigns nếu số dư còn lại < ngưỡng an toàn (mặc định 20 USD)
                             $remainingBalance = (float) $wallet->balance;
-                            if ($remainingBalance <= 0) {
-                                Logging::web('services:bill-postpay fee charged and balance depleted (<= 0), pause campaigns', [
+                            if ($remainingBalance < $minWalletBalance) {
+                                Logging::web('services:bill-postpay fee charged and balance below safety threshold, pause campaigns', [
                                     'service_user_id' => $locked->id,
                                     'user_id' => $locked->user_id,
                                     'remaining_balance' => $remainingBalance,
+                                    'threshold' => $minWalletBalance,
                                 ]);
                                 $this->pauseAllCampaignsForServiceUser($locked);
                             }

@@ -65,8 +65,8 @@ class ServicePurchaseController extends Controller
             $packages = $this->loadPackagesForUser((string) $user->id);
             $walletBalance = $this->getWalletBalanceForUser((string) $user->id);
         }
-        $postpayMinBalanceRaw = $this->configService->getValue(ConfigName::POSTPAY_MIN_BALANCE, 100);
-        $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 100;
+        $postpayMinBalanceRaw = $this->configService->getValue(ConfigName::POSTPAY_MIN_BALANCE, 20);
+        $postpayMinBalance = is_numeric($postpayMinBalanceRaw) ? (float) $postpayMinBalanceRaw : 20;
 
         return $this->rendering(
             view: 'service-purchase/index',

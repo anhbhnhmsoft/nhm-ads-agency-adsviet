@@ -57,29 +57,29 @@ class CleanupRemovedMetaAccounts extends Command
             $this->line("\n🔍 Đang kiểm tra BM: {$bmName} ({$bmId})...");
             $totalCheckedBms++;
 
-            // 1. Lấy danh sách account trên Meta API của BM này
+            // 1. Lấy danh sách account trên Meta API của BM này (duyệt hết tất cả các trang)
             $activeAccountIds = [];
 
-            // Owner ads accounts
-            $ownerRes = $this->metaBusinessService->getOwnerAdsAccountPaginated($bmId, 100);
+            // Owner ads accounts (full pagination)
+            $ownerRes = $this->metaBusinessService->getAllOwnerAdsAccountsForBm($bmId);
             if ($ownerRes->isError()) {
                 $this->error("  ❌ Lỗi khi lấy owned accounts của BM {$bmId}: " . $ownerRes->getMessage());
                 continue;
             }
-            $ownerData = $ownerRes->getData()['data'] ?? [];
+            $ownerData = $ownerRes->getData() ?? [];
             foreach ($ownerData as $acc) {
                 if (!empty($acc['id'])) {
                     $activeAccountIds[] = (string) $acc['id'];
                 }
             }
 
-            // Client ads accounts
-            $clientRes = $this->metaBusinessService->getClientAdsAccountPaginated($bmId, 100);
+            // Client ads accounts (full pagination)
+            $clientRes = $this->metaBusinessService->getAllClientAdsAccountsForBm($bmId);
             if ($clientRes->isError()) {
                 $this->error("  ❌ Lỗi khi lấy client accounts của BM {$bmId}: " . $clientRes->getMessage());
                 continue;
             }
-            $clientData = $clientRes->getData()['data'] ?? [];
+            $clientData = $clientRes->getData() ?? [];
             foreach ($clientData as $acc) {
                 if (!empty($acc['id'])) {
                     $activeAccountIds[] = (string) $acc['id'];

@@ -86,3 +86,32 @@
 - Lọc ra các chiến dịch (campaigns) đang ở trạng thái PAUSED do tool tự động ngắt sai trước đó.
 - Kích hoạt lại (ACTIVE) toàn bộ chiến dịch trên Meta Graph API và cập nhật trạng thái trong cơ sở dữ liệu.
 
+---
+
+## 📌 [07/10/2026 - 08/10/2026] CÁC YÊU CẦU & VẤN ĐỀ MỚI TỪ KEVINHO
+
+### 1. Nội dung tin nhắn:
+> [07/10/2026 12:06:40] Kevinho: e để balance còn 20$ thì pause camp cung dc em  
+> [07/10/2026 12:08:44] Kevinho: e làm cho a 1 cái thông báo màu đỏ chử trắng trong cái dashboard của khách de thong báo nap balance de tiep tuc camp chạy nhé  
+> [07/10/2026 15:56:35] Kevinho: de mac dinh 20$ di e, cài từng tk mất công lam  
+> [07/10/2026 22:10:00] Kevinho: ua ma sao a check spending khach chay ca 1000$ ma ko thay tool ben minh charge phi vay e  
+> [07/10/2026 23:11:16] Kevinho: Khách hang tên Bula :  
+> - Bm phonix nhận đủ 20 ac nhưng tool chỉ nhận 16 ac  
+> Thiếu 4 ac này: 1062954236580435, 1097602449672942, 1817203749471338, 2318653165539734  
+> [07/10/2026 23:12:36] Kevinho: Khách hang tên  NGoc VT :  
+> - Bm phonix nhận Ac (28492884047018135 )ngocvt18-3 nhưng tool lại ko thấy:  
+> [07/10/2026 23:30:20] Kevinho: Khách hang : Chalie: Tool 23 ac  Bm : 29 ac  
+> - 7 ac BM phonix có nhưng tool chưa có: 2369175773908330, 1777348093516566, 1090287016690704, 4604616469815923, 1839484680800581, 1610378393892150, 2974884006198747  
+> [08/10/2026 00:25:31] Kevinho: hiên nay dang bi van de trong BM có tk nhưng trong tool ko hiện đủ ac nha e  
+
+### 2. Các hạng mục cần giải quyết:
+1. **Ngưỡng ví tự động pause camp**: Đặt cố định mặc định **20$** (balance < 20 USDT thì tự động pause campaigns).
+2. **Dashboard thông báo số dư thấp**: Hiển thị banner màu đỏ chữ trắng trên dashboard của khách khi số dư ví < 20 USDT, nhắc khách nạp thêm tiền để tiếp tục chạy chiến dịch.
+3. **Kiểm tra tại sao khách chạy cả 1000$ mà không bị trừ phí (charge phí)**: Rà soát logic `services:bill-postpay` và cron job trên VPS.
+4. **Sự cố thiếu tài khoản quảng cáo giữa BM Phoenix và Tool**:
+   - Khách Bula: Thiếu 4 account (`1062954236580435`, `1097602449672942`, `1817203749471338`, `2318653165539734`).
+   - Khách NGoc VT: Thiếu 1 account (`28492884047018135` ngocvt18-3).
+   - Khách Charlie: Thiếu 7 account (`2369175773908330`, `1777348093516566`, `1090287016690704`, `4604616469815923`, `1839484680800581`, `1610378393892150`, `2974884006198747`).
+   - Điều tra cơ chế sync tài khoản từ BM vào tool: tại sao tài khoản đã có trong BM Phoenix mà tool không nhận diện được?
+
+
