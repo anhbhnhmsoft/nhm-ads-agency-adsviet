@@ -1592,7 +1592,17 @@ class BusinessManagerService
             });
 
             $accounts = [];
-            $metaBmIdsForAccounts = $this->getMetaBmAndDescendantIds($bmId);
+
+            $metaAccessAccountIds = [];
+            if (!$platform || $platform === PlatformType::META->value) {
+                $metaAccessAccountIds = $this->metaAccountBusinessManagerAccessRepository->query()
+                    ->where('source_bm_id', (string) $bmId)
+                    ->pluck('account_id')
+                    ->map(fn($id) => (string) $id)
+                    ->unique()
+                    ->values()
+                    ->toArray();
+            }
 
             foreach ($serviceUsers as $serviceUser) {
                 $servicePlatform = $serviceUser->package->platform ?? null;
@@ -1604,11 +1614,14 @@ class BusinessManagerService
                 if ($servicePlatform === PlatformType::META->value) {
                     $metaAccounts = $this->metaAccountRepository->query()
                         ->where('service_user_id', $serviceUser->id)
-                        ->where(function ($q) use ($metaBmIdsForAccounts) {
-                            $q->whereIn('business_manager_id', $metaBmIdsForAccounts)
-                                ->orWhereNull('business_manager_id');
+                        ->where(function ($q) use ($metaAccessAccountIds, $bmId) {
+                            if (!empty($metaAccessAccountIds)) {
+                                $q->whereIn('account_id', $metaAccessAccountIds);
+                            }
+                            $q->orWhere('business_manager_id', (string) $bmId);
                         })
                         ->withCount('metaAdsCampaigns')
+                        ->orderBy('account_name', 'asc')
                         ->get();
 
                     foreach ($metaAccounts as $account) {
@@ -1629,10 +1642,8 @@ class BusinessManagerService
                 } elseif ($servicePlatform === PlatformType::GOOGLE->value) {
                     $googleAccounts = $this->googleAccountRepository->query()
                         ->where('service_user_id', $serviceUser->id)
-                        ->where(function ($q) use ($bmId) {
-                            $q->where('customer_manager_id', $bmId)
-                                ->orWhereNull('customer_manager_id');
-                        })
+                        ->where('customer_manager_id', (string) $bmId)
+                        ->orderBy('account_name', 'asc')
                         ->get();
 
                     foreach ($googleAccounts as $account) {
@@ -1656,25 +1667,15 @@ class BusinessManagerService
             $existingAccountIds = array_map('strval', array_column($accounts, 'account_id'));
 
             if (!$platform || $platform === PlatformType::META->value) {
-                $accessAccountIds = $this->metaAccountBusinessManagerAccessRepository->query()
-                    ->where('source_bm_id', (string) $bmId)
-                    ->pluck('account_id')
-                    ->map(fn($id) => (string) $id)
-                    ->unique()
-                    ->values()
-                    ->toArray();
-
                 $metaAccounts = $this->metaAccountRepository->query()
-                    ->where(function ($q) use ($accessAccountIds, $bmId, $metaBmIdsForAccounts) {
-                        if (!empty($accessAccountIds)) {
-                            $q->whereIn('account_id', $accessAccountIds);
+                    ->where(function ($q) use ($metaAccessAccountIds, $bmId) {
+                        if (!empty($metaAccessAccountIds)) {
+                            $q->whereIn('account_id', $metaAccessAccountIds);
                         }
                         $q->orWhere('business_manager_id', (string) $bmId);
-                        if (!empty($metaBmIdsForAccounts)) {
-                            $q->orWhereIn('business_manager_id', $metaBmIdsForAccounts);
-                        }
                     })
                     ->withCount('metaAdsCampaigns')
+                    ->orderBy('account_name', 'asc')
                     ->get();
 
                 foreach ($metaAccounts as $account) {
