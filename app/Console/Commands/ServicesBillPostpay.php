@@ -123,6 +123,7 @@ class ServicesBillPostpay extends Command
                                 return 'skip';
                             }
 
+                            $currentBalance = (float) $wallet->balance;
                             $minWalletBalance = $this->minWalletBalance();
 
                             // 1. Nếu số dư ví < ngưỡng an toàn (mặc định 20 USD) -> Tự động pause campaigns và dừng
