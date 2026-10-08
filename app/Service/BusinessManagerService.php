@@ -1665,7 +1665,15 @@ class BusinessManagerService
                     ->toArray();
 
                 $metaAccounts = $this->metaAccountRepository->query()
-                    ->whereIn('account_id', $accessAccountIds)
+                    ->where(function ($q) use ($accessAccountIds, $bmId, $metaBmIdsForAccounts) {
+                        if (!empty($accessAccountIds)) {
+                            $q->whereIn('account_id', $accessAccountIds);
+                        }
+                        $q->orWhere('business_manager_id', (string) $bmId);
+                        if (!empty($metaBmIdsForAccounts)) {
+                            $q->orWhereIn('business_manager_id', $metaBmIdsForAccounts);
+                        }
+                    })
                     ->withCount('metaAdsCampaigns')
                     ->get();
 

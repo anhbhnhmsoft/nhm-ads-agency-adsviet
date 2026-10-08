@@ -1164,5 +1164,42 @@ class MetaBusinessService
 
         return ServiceReturn::success(data: $allAccounts);
     }
+
+    /**
+     * Lấy chi tiết thông tin một tài khoản quảng cáo trực tiếp từ Meta API
+     */
+    public function getAdAccountById(string $accountId): ServiceReturn
+    {
+        try {
+            $this->initApi();
+            $normalizedId = str_starts_with($accountId, 'act_') ? $accountId : ('act_' . $accountId);
+            $fields = [
+                'id',
+                'name',
+                'account_status',
+                'disable_reason',
+                'spend_cap',
+                'amount_spent',
+                'balance',
+                'currency',
+                'created_time',
+                'is_prepay_account',
+                'timezone_id',
+                'timezone_name',
+                'business',
+            ];
+
+            $response = $this->api->call(
+                '/' . $normalizedId,
+                'GET',
+                ['fields' => implode(',', $fields)]
+            );
+
+            return ServiceReturn::success(data: $response->getContent() ?? []);
+        } catch (\Throwable $e) {
+            Logging::error("MetaBusinessService@getAdAccountById error for {$accountId}: " . $e->getMessage());
+            return ServiceReturn::error(message: $e->getMessage());
+        }
+    }
 }
 

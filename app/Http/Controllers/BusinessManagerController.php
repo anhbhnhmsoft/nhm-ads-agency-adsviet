@@ -253,6 +253,27 @@ class BusinessManagerController extends Controller
         return back()->with('success', __('business_manager.restore_success'));
     }
 
+    public function syncAccounts(Request $request)
+    {
+        $this->ensureInternalAccess();
+
+        $bmId = $request->input('bm_id');
+
+        try {
+            \Illuminate\Support\Facades\Artisan::call('meta:sync-accounts', array_filter(['bm_id' => $bmId]));
+            $msg = 'Đã đồng bộ tài khoản Meta thành công!';
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return back()->with('success', $msg);
+        } catch (\Throwable $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            return back()->withErrors(['error' => 'Đồng bộ thất bại: ' . $e->getMessage()]);
+        }
+    }
+
     private function ensureInternalAccess(): void
     {
         if (!in_array((int) auth()->user()?->role, [

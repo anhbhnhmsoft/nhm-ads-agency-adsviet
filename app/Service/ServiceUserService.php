@@ -248,9 +248,47 @@ class ServiceUserService
                                     message: __('services.validation.account_already_used_by_customer', ['name' => $conflictName])
                                 );
                             }
-                            $this->metaAccountRepository->query()
+                            $existingMetaAccount = $this->metaAccountRepository->query()
+                                ->withTrashed()
                                 ->whereIn('account_id', $idsToMatch)
-                                ->update(['service_user_id' => $serviceUser->id]);
+                                ->first();
+
+                            if ($existingMetaAccount) {
+                                $existingMetaAccount->deleted_at = null;
+                                $existingMetaAccount->service_user_id = $serviceUser->id;
+                                if ($bmIdSubmitted && empty($existingMetaAccount->business_manager_id)) {
+                                    $existingMetaAccount->business_manager_id = (string) $bmIdSubmitted;
+                                }
+                                $existingMetaAccount->save();
+                            } else {
+                                $formattedActId = 'act_' . $normId;
+                                try {
+                                    $metaAccountData = app(\App\Service\MetaBusinessService::class)->getAdAccountById($formattedActId);
+                                    if ($metaAccountData->isSuccess()) {
+                                        $d = $metaAccountData->getData();
+                                        $this->metaAccountRepository->query()->create([
+                                            'account_id' => $formattedActId,
+                                            'account_name' => $d['name'] ?? ('Account ' . $normId),
+                                            'account_status' => $d['account_status'] ?? 1,
+                                            'currency' => $d['currency'] ?? 'USD',
+                                            'timezone_name' => $d['timezone_name'] ?? null,
+                                            'business_manager_id' => $d['business']['id'] ?? ($bmIdSubmitted ?: null),
+                                            'service_user_id' => $serviceUser->id,
+                                        ]);
+                                    } else {
+                                        $this->metaAccountRepository->query()->create([
+                                            'account_id' => $formattedActId,
+                                            'account_name' => 'Account ' . $normId,
+                                            'account_status' => 1,
+                                            'currency' => 'USD',
+                                            'business_manager_id' => $bmIdSubmitted ?: null,
+                                            'service_user_id' => $serviceUser->id,
+                                        ]);
+                                    }
+                                } catch (\Throwable $fetchEx) {
+                                    Logging::error('Cannot fetch new Meta account on assign: ' . $fetchEx->getMessage());
+                                }
+                            }
                         }
                     } elseif ($platform === PlatformType::GOOGLE->value) {
                         foreach ($accountIds as $selectedAccountId) {
@@ -828,9 +866,49 @@ class ServiceUserService
                             ]);
                             continue; // Bỏ qua account đang bị khách khác dùng
                         }
-                        $this->metaAccountRepository->query()
+                        $existingMetaAccount = $this->metaAccountRepository->query()
+                            ->withTrashed()
                             ->whereIn('account_id', $idsToMatch)
-                            ->update(['service_user_id' => $serviceUser->id]);
+                            ->first();
+
+                        if ($existingMetaAccount) {
+                            $existingMetaAccount->deleted_at = null;
+                            $existingMetaAccount->service_user_id = $serviceUser->id;
+                            $bmIdSubmitted = $config['business_manager_id'] ?? null;
+                            if ($bmIdSubmitted && empty($existingMetaAccount->business_manager_id)) {
+                                $existingMetaAccount->business_manager_id = (string) $bmIdSubmitted;
+                            }
+                            $existingMetaAccount->save();
+                        } else {
+                            $formattedActId = 'act_' . $normId;
+                            $bmIdSubmitted = $config['business_manager_id'] ?? null;
+                            try {
+                                $metaAccountData = app(\App\Service\MetaBusinessService::class)->getAdAccountById($formattedActId);
+                                if ($metaAccountData->isSuccess()) {
+                                    $d = $metaAccountData->getData();
+                                    $this->metaAccountRepository->query()->create([
+                                        'account_id' => $formattedActId,
+                                        'account_name' => $d['name'] ?? ('Account ' . $normId),
+                                        'account_status' => $d['account_status'] ?? 1,
+                                        'currency' => $d['currency'] ?? 'USD',
+                                        'timezone_name' => $d['timezone_name'] ?? null,
+                                        'business_manager_id' => $d['business']['id'] ?? ($bmIdSubmitted ?: null),
+                                        'service_user_id' => $serviceUser->id,
+                                    ]);
+                                } else {
+                                    $this->metaAccountRepository->query()->create([
+                                        'account_id' => $formattedActId,
+                                        'account_name' => 'Account ' . $normId,
+                                        'account_status' => 1,
+                                        'currency' => 'USD',
+                                        'business_manager_id' => $bmIdSubmitted ?: null,
+                                        'service_user_id' => $serviceUser->id,
+                                    ]);
+                                }
+                            } catch (\Throwable $fetchEx) {
+                                Logging::error('Cannot fetch new Meta account on updateConfig: ' . $fetchEx->getMessage());
+                            }
+                        }
                     }
                 } elseif ($platform === PlatformType::GOOGLE->value) {
                     $allTargetMatches = [];

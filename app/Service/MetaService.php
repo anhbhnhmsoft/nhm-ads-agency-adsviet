@@ -1720,6 +1720,22 @@ class MetaService
                     $accounts = $body['data'] ?? [];
                     $syncedIds = $this->processAccountListData($accounts, $bmId);
 
+                    // Nếu BM có nhiều hơn 100 tài khoản, tự động phân trang fetch tiếp các trang sau để không bao giờ bị sót
+                    $afterCursor = $body['paging']['cursors']['after'] ?? null;
+                    $hasNext = !empty($body['paging']['next']) || !empty($afterCursor);
+                    if ($hasNext && $afterCursor) {
+                        $pagedType = ($edgeType === 'client') ? 'client' : 'owner';
+                        $moreAccountIds = $this->syncMetaAccountsFromManagerEdge(
+                            (string) $bmId,
+                            $pagedType,
+                            maxAccounts: null,
+                            startAfter: (string) $afterCursor
+                        );
+                        if (!empty($moreAccountIds)) {
+                            $syncedIds = array_merge($syncedIds, $moreAccountIds);
+                        }
+                    }
+
                     if (! isset($bmActiveAccountIds[$bmId])) {
                         $bmActiveAccountIds[$bmId] = [];
                     }
@@ -1864,13 +1880,13 @@ class MetaService
      * @param  string  $type  'owner' hoặc 'client'
      * @param  int|null  $maxAccounts  Giới hạn số lượng accounts sync (null = không giới hạn, dùng trong queue)
      */
-    private function syncMetaAccountsFromManagerEdge(string $bmId, string $type = 'owner', ?int $maxAccounts = null): ?array
+    private function syncMetaAccountsFromManagerEdge(string $bmId, string $type = 'owner', ?int $maxAccounts = null, ?string $startAfter = null): ?array
     {
         if ($this->isMetaBusinessManagerHidden($bmId)) {
             return [];
         }
 
-        $after = null;
+        $after = $startAfter;
         $syncedCount = 0;
         $syncedAccountIds = [];
 
