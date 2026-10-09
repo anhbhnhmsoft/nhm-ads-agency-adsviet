@@ -1343,6 +1343,9 @@
     "business_manager": {
         "title": "Quản lý Business Manager / MCC",
         "table_title": "Danh sách Business Manager / MCC",
+        "sync_accounts": "Đồng bộ tài khoản Meta",
+        "sync_accounts_success": "Đã gửi yêu cầu đồng bộ tài khoản Meta thành công!",
+        "sync_accounts_failed": "Đồng bộ tài khoản thất bại",
         "table": {
             "account_name": "Tên tài khoản",
             "bm_name": "Tên BM/ MCC",

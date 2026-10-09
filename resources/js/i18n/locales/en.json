@@ -530,6 +530,9 @@
     "business_manager": {
         "title": "Business Manager / MCC Management",
         "table_title": "Business Manager / MCC List",
+        "sync_accounts": "Sync Meta Accounts",
+        "sync_accounts_success": "Sync Meta accounts request sent successfully!",
+        "sync_accounts_failed": "Failed to sync accounts",
         "table": {
             "account_name": "Account Name",
             "bm_name": "BM Name",

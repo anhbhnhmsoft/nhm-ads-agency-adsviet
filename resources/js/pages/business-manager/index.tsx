@@ -20,7 +20,8 @@ import type {
 import { business_managers_index } from '@/routes';
 import { router, usePage } from '@inertiajs/react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Eye, EyeOff, RotateCcw } from 'lucide-react';
+import axios from 'axios';
+import { Eye, EyeOff, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -520,6 +521,31 @@ const BusinessManagerIndex = ({
     const { query, setQuery, handleSearch, handleReset } =
         useSearchBusinessManager();
 
+    const [syncingAccounts, setSyncingAccounts] = useState(false);
+
+    const handleSyncAccounts = async () => {
+        setSyncingAccounts(true);
+        try {
+            const res = await axios.post('/business-managers/sync-accounts');
+            toast.success(
+                res?.data?.message ||
+                    t('business_manager.sync_accounts_success', {
+                        defaultValue: 'Đã gửi yêu cầu đồng bộ tài khoản Meta thành công!',
+                    }),
+            );
+            router.reload({ only: ['paginator', 'stats'] });
+        } catch (err: any) {
+            toast.error(
+                err?.response?.data?.message ||
+                    t('business_manager.sync_accounts_failed', {
+                        defaultValue: 'Đồng bộ tài khoản thất bại',
+                    }),
+            );
+        } finally {
+            setSyncingAccounts(false);
+        }
+    };
+
     return (
         <div>
             <h1 className="mb-4 text-xl font-semibold">
@@ -553,7 +579,7 @@ const BusinessManagerIndex = ({
             )}
 
             <Card className="mt-4">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                     <CardTitle>
                         {selectedPlatform === 'hidden'
                             ? t('business_manager.hidden_table_title', {
@@ -564,6 +590,24 @@ const BusinessManagerIndex = ({
                                       'Danh sách Business Manager / MCC',
                               })}
                     </CardTitle>
+                    {selectedPlatform !== 'hidden' && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSyncAccounts}
+                            disabled={syncingAccounts}
+                            className="gap-2"
+                        >
+                            {syncingAccounts ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <RefreshCw className="h-4 w-4" />
+                            )}
+                            {t('business_manager.sync_accounts', {
+                                defaultValue: 'Đồng bộ tài khoản Meta',
+                            })}
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent>
                     {selectedPlatform === 'hidden' ? (
