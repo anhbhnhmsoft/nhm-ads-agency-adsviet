@@ -1346,6 +1346,8 @@
         "sync_accounts": "Đồng bộ tài khoản Meta",
         "sync_accounts_success": "Đã gửi yêu cầu đồng bộ tài khoản Meta thành công!",
         "sync_accounts_failed": "Đồng bộ tài khoản thất bại",
+        "sync_google_accounts": "Đồng bộ tài khoản Google",
+        "sync_google_success": "Đã gửi yêu cầu đồng bộ tài khoản Google thành công!",
         "table": {
             "account_name": "Tên tài khoản",
             "bm_name": "Tên BM/ MCC",

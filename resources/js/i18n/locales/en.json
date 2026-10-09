@@ -533,6 +533,8 @@
         "sync_accounts": "Sync Meta Accounts",
         "sync_accounts_success": "Sync Meta accounts request sent successfully!",
         "sync_accounts_failed": "Failed to sync accounts",
+        "sync_google_accounts": "Sync Google Accounts",
+        "sync_google_success": "Sync Google accounts request sent successfully!",
         "table": {
             "account_name": "Account Name",
             "bm_name": "BM Name",

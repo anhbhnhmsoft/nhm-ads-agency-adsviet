@@ -258,10 +258,33 @@ class BusinessManagerController extends Controller
         $this->ensureInternalAccess();
 
         $bmId = $request->input('bm_id');
+        $platform = $request->input('platform');
 
         try {
-            \Illuminate\Support\Facades\Artisan::call('meta:sync-accounts', array_filter(['bm_id' => $bmId]));
-            $msg = 'Đã đồng bộ tài khoản Meta thành công!';
+            if ($platform === 'google' || (int) $platform === \App\Common\Constants\Platform\PlatformType::GOOGLE->value) {
+                $mccId = $request->input('mcc_id') ?: $bmId;
+                if (!$mccId) {
+                    $settingResult = app(\App\Service\PlatformSettingService::class)->findPlatformActive(\App\Common\Constants\Platform\PlatformType::GOOGLE->value);
+                    $setting = $settingResult->isSuccess() ? $settingResult->getData() : null;
+                    $config = $setting?->config ?? [];
+                    $mccId = preg_replace('/[^0-9]/', '', (string) ($config['login_customer_id'] ?? ''));
+                }
+
+                if ($mccId) {
+                    \App\Jobs\GoogleAds\SyncGooglePlatformJob::dispatch($mccId);
+                    $msg = 'Đã đưa yêu cầu đồng bộ tài khoản Google vào hàng đợi!';
+                } else {
+                    $msg = 'Vui lòng chọn hoặc cấu hình Google MCC cần đồng bộ.';
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+                    return back()->withErrors(['error' => $msg]);
+                }
+            } else {
+                \Illuminate\Support\Facades\Artisan::call('meta:sync-accounts', array_filter(['bm_id' => $bmId]));
+                $msg = 'Đã đồng bộ tài khoản Meta thành công!';
+            }
+
             if ($request->wantsJson()) {
                 return response()->json(['success' => true, 'message' => $msg]);
             }

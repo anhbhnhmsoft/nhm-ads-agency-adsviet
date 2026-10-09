@@ -521,17 +521,27 @@ const BusinessManagerIndex = ({
     const { query, setQuery, handleSearch, handleReset } =
         useSearchBusinessManager();
 
-    const [syncingAccounts, setSyncingAccounts] = useState(false);
+    const [syncingPlatform, setSyncingPlatform] = useState<number | null>(
+        null,
+    );
 
-    const handleSyncAccounts = async () => {
-        setSyncingAccounts(true);
+    const handleSyncAccounts = async (platform: _PlatformType) => {
+        setSyncingPlatform(platform);
         try {
-            const res = await axios.post('/business-managers/sync-accounts');
+            const res = await axios.post('/business-managers/sync-accounts', {
+                platform,
+            });
             toast.success(
                 res?.data?.message ||
-                    t('business_manager.sync_accounts_success', {
-                        defaultValue: 'Đã gửi yêu cầu đồng bộ tài khoản Meta thành công!',
-                    }),
+                    (platform === _PlatformType.GOOGLE
+                        ? t('business_manager.sync_google_success', {
+                              defaultValue:
+                                  'Đã gửi yêu cầu đồng bộ tài khoản Google thành công!',
+                          })
+                        : t('business_manager.sync_accounts_success', {
+                              defaultValue:
+                                  'Đã gửi yêu cầu đồng bộ tài khoản Meta thành công!',
+                          })),
             );
             router.reload({ only: ['paginator', 'stats'] });
         } catch (err: any) {
@@ -542,7 +552,7 @@ const BusinessManagerIndex = ({
                     }),
             );
         } finally {
-            setSyncingAccounts(false);
+            setSyncingPlatform(null);
         }
     };
 
@@ -591,22 +601,52 @@ const BusinessManagerIndex = ({
                               })}
                     </CardTitle>
                     {selectedPlatform !== 'hidden' && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleSyncAccounts}
-                            disabled={syncingAccounts}
-                            className="gap-2"
-                        >
-                            {syncingAccounts ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <RefreshCw className="h-4 w-4" />
+                        <div className="flex items-center gap-2">
+                            {(selectedPlatform === 'all' ||
+                                selectedPlatform === _PlatformType.META) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        handleSyncAccounts(_PlatformType.META)
+                                    }
+                                    disabled={syncingPlatform !== null}
+                                    className="gap-2"
+                                >
+                                    {syncingPlatform === _PlatformType.META ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <RefreshCw className="h-4 w-4" />
+                                    )}
+                                    {t('business_manager.sync_accounts', {
+                                        defaultValue: 'Sync Meta Accounts',
+                                    })}
+                                </Button>
                             )}
-                            {t('business_manager.sync_accounts', {
-                                defaultValue: 'Đồng bộ tài khoản Meta',
-                            })}
-                        </Button>
+
+                            {(selectedPlatform === 'all' ||
+                                selectedPlatform === _PlatformType.GOOGLE) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        handleSyncAccounts(_PlatformType.GOOGLE)
+                                    }
+                                    disabled={syncingPlatform !== null}
+                                    className="gap-2"
+                                >
+                                    {syncingPlatform ===
+                                    _PlatformType.GOOGLE ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <RefreshCw className="h-4 w-4" />
+                                    )}
+                                    {t('business_manager.sync_google_accounts', {
+                                        defaultValue: 'Sync Google Accounts',
+                                    })}
+                                </Button>
+                            )}
+                        </div>
                     )}
                 </CardHeader>
                 <CardContent>
