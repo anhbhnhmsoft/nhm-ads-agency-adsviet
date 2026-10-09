@@ -21,7 +21,7 @@ class SyncAllPlatformsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct()
+    public function __construct(public bool $syncInsights = true)
     {
         $this->onQueue(QueueKey::META_API);
     }
@@ -32,7 +32,8 @@ class SyncAllPlatformsJob implements ShouldQueue
     public function handle(PlatformSettingService $platformSettingService): void
     {
         try {
-            Logging::web('SyncAllPlatformsJob: Starting global synchronization');
+            $typeStr = $this->syncInsights ? 'Full (Accounts + Insights)' : 'Accounts Only (Fast)';
+            Logging::web("SyncAllPlatformsJob: Starting global synchronization [{$typeStr}]");
 
             // 1. Đồng bộ Meta
             if (\Illuminate\Support\Facades\Cache::has('meta_api_rate_limited_cooldown')) {
@@ -43,8 +44,8 @@ class SyncAllPlatformsJob implements ShouldQueue
                     foreach ($metaSettings->getData() as $setting) {
                         $config = $setting->config ?? [];
                         $bmId = $platformSettingService->getMetaScopedBusinessManagerId($config);
-                        SyncMetaPlatformJob::dispatch($bmId ? (string)$bmId : null, (string)$setting->id);
-                        Logging::web("SyncAllPlatformsJob: Dispatched Meta sync for setting ID {$setting->id}");
+                        SyncMetaPlatformJob::dispatch($bmId ? (string)$bmId : null, (string)$setting->id, $this->syncInsights);
+                        Logging::web("SyncAllPlatformsJob: Dispatched Meta sync ({$typeStr}) for setting ID {$setting->id}");
                     }
                 }
             }
@@ -62,7 +63,7 @@ class SyncAllPlatformsJob implements ShouldQueue
                 }
             }
 
-            Logging::web('SyncAllPlatformsJob: Global synchronization dispatched successfully');
+            Logging::web("SyncAllPlatformsJob: Global synchronization dispatched successfully [{$typeStr}]");
         } catch (\Throwable $e) {
             Logging::error('SyncAllPlatformsJob error: ' . $e->getMessage(), exception: $e);
         }

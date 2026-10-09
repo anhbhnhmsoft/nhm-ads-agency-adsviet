@@ -1135,9 +1135,9 @@ class MetaService
     }
 
     /**
-     * Đồng bộ đầy đủ: BM con + Accounts của BM con + Insights + Campaigns
+     * Đồng bộ đầy đủ: BM con + Accounts của BM con (+ Insights + Campaigns nếu syncInsights = true)
      */
-    public function syncFromAccessibleBusinessManagers(?string $settingId = null): ServiceReturn
+    public function syncFromAccessibleBusinessManagers(?string $settingId = null, bool $syncInsights = true): ServiceReturn
     {
         try {
             if ($settingId) {
@@ -1148,7 +1148,10 @@ class MetaService
 
             $bmIdsToSync = $this->syncSelfBusinessManagers();
             $this->syncMetaAccountsForManagers($bmIdsToSync);
-            $this->syncInsightsAndCampaignsForBusinessManagers($bmIdsToSync);
+
+            if ($syncInsights) {
+                $this->syncInsightsAndCampaignsForBusinessManagers($bmIdsToSync);
+            }
 
             return ServiceReturn::success();
         } catch (\Throwable $e) {
@@ -1205,9 +1208,9 @@ class MetaService
     }
 
     /**
-     * Đồng bộ đầy đủ: BM + Accounts + Insights + Campaigns
+     * Đồng bộ đầy đủ: BM + Accounts (+ Insights + Campaigns nếu syncInsights = true)
      */
-    public function syncFromBusinessManagerId(string $bmId, ?string $settingId = null): ServiceReturn
+    public function syncFromBusinessManagerId(string $bmId, ?string $settingId = null, bool $syncInsights = true): ServiceReturn
     {
         try {
             $basicSync = $this->syncFromBusinessManagerIdBasic($bmId, $settingId);
@@ -1217,8 +1220,12 @@ class MetaService
 
             $this->syncBusinessAssetGroups($bmId);
 
-            // Sync insights/campaigns
-            return $this->syncInsightsAndCampaignsForBusinessManager($bmId);
+            // Sync insights/campaigns nếu được bật
+            if ($syncInsights) {
+                return $this->syncInsightsAndCampaignsForBusinessManager($bmId);
+            }
+
+            return ServiceReturn::success();
         } catch (\Throwable $e) {
             Logging::error(
                 message: 'MetaService@syncFromBusinessManagerId error: '.$e->getMessage(),

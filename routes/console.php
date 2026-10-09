@@ -27,8 +27,11 @@ Schedule::command('services:enforce-creditline-limits')
     ->everyFiveMinutes()
     ->withoutOverlapping();
 
-// Đồng bộ Platform + insights/campaigns mỗi 1 tiếng (campaign status realtime qua webhook)
-Schedule::job(SyncAllPlatformsJob::class)->hourly();
+// 1. Quét toàn bộ 332 BM & cập nhật tài khoản mới share toàn hệ thống (mỗi 15 phút, siêu nhẹ ~15s)
+Schedule::job(new SyncAllPlatformsJob(syncInsights: false))->everyFifteenMinutes();
+
+// 2. Cào số liệu Insights 30 ngày (Reach, Click, ROAS) & Campaigns phục vụ báo cáo BM (mỗi 1 tiếng)
+Schedule::job(new SyncAllPlatformsJob(syncInsights: true))->hourly();
 
 // routes/console.php
 Schedule::command('app:calculate-spending-commission')->monthlyOn(1, '01:00');
