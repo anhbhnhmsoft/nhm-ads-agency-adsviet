@@ -11,6 +11,11 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -20,10 +25,10 @@ import {
 import type { InertiaPageProps } from '@/lib/types';
 import type { _PlatformType as PlatformTypeEnum } from '@/lib/types/constants';
 import { _PlatformType, _UserRole } from '@/lib/types/constants';
-import { formatDateForQuery } from '@/lib/utils';
+import { cn, formatDateForQuery } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
-import { Download, Loader2, RotateCcw, Search } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { ChevronDown, Download, Loader2, RotateCcw, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { DateRange } from 'react-day-picker';
 import { useTranslation } from 'react-i18next';
 
@@ -142,6 +147,34 @@ const BusinessManagerSearchForm = ({
         platformChildOptions,
         setQuery,
     ]);
+
+    const [childManagerOpen, setChildManagerOpen] = useState(false);
+    const [childManagerSearch, setChildManagerSearch] = useState('');
+
+    useEffect(() => {
+        if (!childManagerOpen) {
+            setChildManagerSearch('');
+        }
+    }, [childManagerOpen]);
+
+    const selectedChild = useMemo(() => {
+        if (!query.child_manager_id) return null;
+        return platformChildOptions.find(
+            (item) => item.id === query.child_manager_id,
+        );
+    }, [platformChildOptions, query.child_manager_id]);
+
+    const filteredChildOptions = useMemo(() => {
+        if (!childManagerSearch.trim()) {
+            return platformChildOptions;
+        }
+        const term = childManagerSearch.toLowerCase().trim();
+        return platformChildOptions.filter(
+            (item) =>
+                item.name.toLowerCase().includes(term) ||
+                item.id.toLowerCase().includes(term),
+        );
+    }, [platformChildOptions, childManagerSearch]);
 
     const dateRange: DateRange | undefined = useMemo(() => {
         if (query.start_date && query.end_date) {
@@ -273,57 +306,108 @@ const BusinessManagerSearchForm = ({
                                     defaultValue: 'BM/MCC con',
                                 })}
                             </FieldLabel>
-                            <Select
-                                value={query.child_manager_id || 'all'}
-                                onValueChange={(value) => {
-                                    if (value === 'all') {
-                                        setQuery({ child_manager_id: undefined });
-                                        return;
-                                    }
-                                    const selectedChild = platformChildOptions.find(
-                                        (item) => item.id === value,
-                                    );
-                                    setQuery({
-                                        child_manager_id: value || undefined,
-                                        platform:
-                                            query.platform ??
-                                            selectedChild?.platform,
-                                    });
-                                }}
-                                disabled={platformChildOptions.length === 0}
+                            <Popover
+                                open={childManagerOpen}
+                                onOpenChange={setChildManagerOpen}
                             >
-                                <SelectTrigger id="child-manager">
-                                    <SelectValue
-                                        placeholder={
-                                            platformChildOptions.length > 0
-                                                ? t(
-                                                      'business_manager.filter.child_manager_placeholder',
-                                                      {
-                                                          defaultValue:
-                                                              'Chọn BM/MCC con',
-                                                      },
-                                                  )
-                                                : t(
-                                                      'business_manager.filter.child_manager_disabled',
-                                                      {
-                                                          defaultValue:
-                                                              'Chưa có BM/MCC con',
-                                                      },
-                                                  )
-                                        }
-                                    />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">
-                                        {t('common.all', { defaultValue: 'Tất cả' })}
-                                    </SelectItem>
-                                    {platformChildOptions.map((item) => (
-                                        <SelectItem key={item.id} value={item.id}>
-                                            {item.name} ({item.id})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                <PopoverTrigger asChild>
+                                    <button
+                                        type="button"
+                                        id="child-manager"
+                                        role="combobox"
+                                        aria-expanded={childManagerOpen}
+                                        disabled={platformChildOptions.length === 0}
+                                        className={cn(
+                                            'border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*="text-"])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex h-9 w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer',
+                                            !selectedChild && 'text-muted-foreground',
+                                        )}
+                                    >
+                                        <span className="truncate text-left">
+                                            {selectedChild
+                                                ? `${selectedChild.name} (${selectedChild.id})`
+                                                : platformChildOptions.length > 0
+                                                  ? t('common.all', { defaultValue: 'Tất cả' })
+                                                  : t(
+                                                        'business_manager.filter.child_manager_disabled',
+                                                        { defaultValue: 'Chưa có BM/MCC con' },
+                                                    )}
+                                        </span>
+                                        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    className="w-[var(--radix-popover-trigger-width)] min-w-[320px] p-0"
+                                    align="start"
+                                >
+                                    <div className="flex items-center border-b px-3">
+                                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                                        <Input
+                                            value={childManagerSearch}
+                                            onChange={(e) => setChildManagerSearch(e.target.value)}
+                                            placeholder={t('common.search', {
+                                                defaultValue: 'Tìm kiếm BM/MCC...',
+                                            })}
+                                            className="flex h-9 w-full rounded-md border-none bg-transparent px-0 py-2 text-sm outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="max-h-[260px] overflow-y-auto p-1">
+                                        {(!childManagerSearch.trim() ||
+                                            'tất cả'.includes(childManagerSearch.toLowerCase()) ||
+                                            'all'.includes(childManagerSearch.toLowerCase())) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setQuery({ child_manager_id: undefined });
+                                                    setChildManagerOpen(false);
+                                                }}
+                                                className={cn(
+                                                    'relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-left text-sm transition-colors outline-none hover:bg-accent hover:text-accent-foreground',
+                                                    !query.child_manager_id &&
+                                                        'bg-accent font-medium text-accent-foreground',
+                                                )}
+                                            >
+                                                <span className="truncate">
+                                                    {t('common.all', { defaultValue: 'Tất cả' })}
+                                                </span>
+                                            </button>
+                                        )}
+                                        {filteredChildOptions.length === 0 && childManagerSearch.trim() ? (
+                                            <div className="py-4 text-center text-sm text-muted-foreground">
+                                                {t('common.no_results', {
+                                                    defaultValue: 'Không tìm thấy kết quả',
+                                                })}
+                                            </div>
+                                        ) : (
+                                            filteredChildOptions.map((item) => {
+                                                const isSelected = query.child_manager_id === item.id;
+                                                return (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setQuery({
+                                                                child_manager_id: item.id,
+                                                                platform: query.platform ?? item.platform,
+                                                            });
+                                                            setChildManagerOpen(false);
+                                                        }}
+                                                        className={cn(
+                                                            'relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-left text-sm transition-colors outline-none hover:bg-accent hover:text-accent-foreground',
+                                                            isSelected &&
+                                                                'bg-accent font-medium text-accent-foreground',
+                                                        )}
+                                                    >
+                                                        <span className="truncate">
+                                                            {item.name} ({item.id})
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </Field>
                     )}
                     <Field>
