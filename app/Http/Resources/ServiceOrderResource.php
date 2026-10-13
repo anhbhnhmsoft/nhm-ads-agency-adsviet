@@ -155,7 +155,7 @@ class ServiceOrderResource extends JsonResource
         }
 
         $pendingFee = round($unbilledSpend * ($effectiveFeePercent / 100), 2);
-        $minWalletRequired = (float) app(\App\Service\ConfigService::class)->getValue(\App\Common\Constants\Config\ConfigName::POSTPAY_MIN_BALANCE, 20.0);
+        $minWalletRequired = (float) app(\App\Service\ConfigService::class)->getValue(\App\Common\Constants\Config\ConfigName::THRESHOLD_PAUSE, 20.0);
         $isLowBalance = $walletBalance < $minWalletRequired || ($pendingFee > 0 && $walletBalance < $pendingFee);
 
         $billingStatus = 'healthy';

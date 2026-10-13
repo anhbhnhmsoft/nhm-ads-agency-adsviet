@@ -115,8 +115,11 @@ export const AccountForm = ({
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor={`metaEmail_${accountIndex}`}>
-                    {t('service_purchase.meta_email') + ':'}
+                <Label htmlFor={`metaEmail_${accountIndex}`} className="flex flex-wrap items-center gap-1.5">
+                    <span>{t('service_purchase.meta_email')}:</span>
+                    <span className="text-[11px] font-normal text-muted-foreground">
+                        ({t('common.optional', { defaultValue: 'Không bắt buộc' })} - {isMeta ? t('service_purchase.email_note_meta', { defaultValue: 'Nếu không có BM' }) : t('service_purchase.email_note_google', { defaultValue: 'Nếu không có MCC' })})
+                    </span>
                 </Label>
                 <Input
                     id={`metaEmail_${accountIndex}`}
@@ -131,20 +134,14 @@ export const AccountForm = ({
                         <span>{metaEmailError}</span>
                     </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                    {isMeta
-                        ? t('service_purchase.email_note_meta', {
-                              defaultValue: 'Nếu không có BM',
-                          })
-                        : t('service_purchase.email_note_google', {
-                              defaultValue: 'Nếu không có MCC',
-                          })}
-                </p>
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor={`displayName_${accountIndex}`}>
-                    {t('service_purchase.display_name') + ':'}
+                <Label htmlFor={`displayName_${accountIndex}`} className="flex flex-wrap items-center gap-1.5">
+                    <span>{t('service_purchase.display_name')}:</span>
+                    <span className="text-[11px] font-normal text-muted-foreground">
+                        ({t('common.optional', { defaultValue: 'Không bắt buộc' })})
+                    </span>
                 </Label>
                 <Input
                     id={`displayName_${accountIndex}`}
@@ -164,14 +161,19 @@ export const AccountForm = ({
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                    <Label>
-                        {isMeta
-                            ? t('service_purchase.id_bm', {
-                                  defaultValue: 'ID BM',
-                              })
-                            : t('service_purchase.id_mcc', {
-                                  defaultValue: 'ID MCC',
-                              }) + ':'}
+                    <Label className="flex flex-wrap items-center gap-1.5">
+                        <span>
+                            {isMeta
+                                ? t('service_purchase.id_bm', {
+                                      defaultValue: 'ID BM',
+                                  })
+                                : t('service_purchase.id_mcc', {
+                                      defaultValue: 'ID MCC',
+                                  }) + ':'}
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            ({t('common.recommended', { defaultValue: 'Khuyên dùng' })})
+                        </span>
                     </Label>
                     <Button
                         type="button"
@@ -236,10 +238,15 @@ export const AccountForm = ({
                 {isMeta && (
                     <>
                         <div className="flex items-center justify-between">
-                            <Label>
-                                {t('service_purchase.info_fanpage', {
-                                    defaultValue: 'Thông tin fanpage',
-                                }) + ':'}
+                            <Label className="flex flex-wrap items-center gap-1.5">
+                                <span>
+                                    {t('service_purchase.info_fanpage', {
+                                        defaultValue: 'Thông tin fanpage',
+                                    }) + ':'}
+                                </span>
+                                <span className="text-[11px] font-normal text-muted-foreground">
+                                    ({t('common.optional', { defaultValue: 'Không bắt buộc' })})
+                                </span>
                             </Label>
                             <Button
                                 type="button"
@@ -315,10 +322,15 @@ export const AccountForm = ({
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                    <Label>
-                        {t('service_purchase.info_website', {
-                            defaultValue: 'Thông tin website',
-                        }) + ':'}
+                    <Label className="flex flex-wrap items-center gap-1.5">
+                        <span>
+                            {t('service_purchase.info_website', {
+                                defaultValue: 'Thông tin website',
+                            }) + ':'}
+                        </span>
+                        <span className="text-[11px] font-normal text-muted-foreground">
+                            ({t('common.optional', { defaultValue: 'Không bắt buộc' })})
+                        </span>
                     </Label>
                     <Button
                         type="button"

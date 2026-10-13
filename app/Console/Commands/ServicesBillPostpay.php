@@ -54,11 +54,11 @@ class ServicesBillPostpay extends Command
     }
 
     /**
-     * Ngưỡng ví tối thiểu cho trả sau, lấy từ cấu hình (fallback 20 USD).
+     * Ngưỡng ví tối thiểu cho trả sau để pause camp, lấy từ cấu hình THRESHOLD_PAUSE (fallback 20 USD).
      */
     private function minWalletBalance(): float
     {
-        $value = $this->configService->getValue(ConfigName::POSTPAY_MIN_BALANCE);
+        $value = $this->configService->getValue(ConfigName::THRESHOLD_PAUSE);
 
         return is_numeric($value) ? (float) $value : self::MIN_WALLET_BALANCE;
     }

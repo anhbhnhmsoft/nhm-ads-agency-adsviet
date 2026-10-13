@@ -31,6 +31,7 @@ import {
     Layers,
     Mail,
     Package,
+    Plus,
     Share2,
     Shield,
     Trash2,
@@ -40,6 +41,7 @@ import {
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { AssignAccountsDialog } from './AssignAccountsDialog';
 
 interface OrderDetailsDialogProps {
     open: boolean;
@@ -67,6 +69,7 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
     const [unassigningId, setUnassigningId] = useState<string | null>(null);
     const [cleaningStale, setCleaningStale] = useState<boolean>(false);
+    const [assignDialogOpen, setAssignDialogOpen] = useState<boolean>(false);
 
     if (!order) return null;
 
@@ -340,33 +343,53 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
                                     <CreditCard className="h-4 w-4 text-purple-500" />
                                     <span>Tài khoản quảng cáo đã gán ({assignedAccounts.length})</span>
                                 </div>
-                                {assignedAccounts.length > 0 && (
+                                <div className="flex items-center gap-2">
                                     <Button
                                         size="sm"
-                                        variant="outline"
-                                        disabled={cleaningStale}
-                                        onClick={handleCleanAllStale}
-                                        className="h-7 border-purple-300 text-xs text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400"
-                                        title="Dọn dẹp các tài khoản thừa và xóa dữ liệu spend cũ bị dính nhầm"
+                                        onClick={() => setAssignDialogOpen(true)}
+                                        className="h-7 bg-purple-600 text-xs text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800"
+                                        title="Gán thêm tài khoản quảng cáo vào đơn hàng này"
                                     >
-                                        <Eraser
-                                            className={cn(
-                                                'mr-1 h-3 w-3',
-                                                cleaningStale && 'animate-spin',
-                                            )}
-                                        />
-                                        <span>
-                                            {cleaningStale
-                                                ? 'Đang dọn...'
-                                                : 'Dọn tài khoản cũ'}
-                                        </span>
+                                        <Plus className="mr-1 h-3 w-3" />
+                                        <span>Gán thêm tài khoản</span>
                                     </Button>
-                                )}
+                                    {assignedAccounts.length > 0 && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={cleaningStale}
+                                            onClick={handleCleanAllStale}
+                                            className="h-7 border-purple-300 text-xs text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400"
+                                            title="Dọn dẹp các tài khoản thừa và xóa dữ liệu spend cũ bị dính nhầm"
+                                        >
+                                            <Eraser
+                                                className={cn(
+                                                    'mr-1 h-3 w-3',
+                                                    cleaningStale && 'animate-spin',
+                                                )}
+                                            />
+                                            <span>
+                                                {cleaningStale
+                                                    ? 'Đang dọn...'
+                                                    : 'Dọn tài khoản cũ'}
+                                            </span>
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
 
                             {assignedAccounts.length === 0 ? (
-                                <div className="rounded-md bg-muted/40 p-4 text-center text-xs text-muted-foreground">
-                                    Đơn hàng này chưa được gán tài khoản quảng cáo thực tế.
+                                <div className="flex flex-col items-center justify-center gap-2 rounded-md bg-muted/40 p-5 text-center text-xs text-muted-foreground">
+                                    <span>Đơn hàng này chưa được gán tài khoản quảng cáo thực tế.</span>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setAssignDialogOpen(true)}
+                                        className="h-7 border-purple-300 text-xs text-purple-600 hover:bg-purple-50"
+                                    >
+                                        <Plus className="mr-1 h-3 w-3" />
+                                        <span>Gán tài khoản ngay</span>
+                                    </Button>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -618,6 +641,16 @@ export const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
                     </Button>
                 </DialogFooter>
             </DialogContent>
+
+            <AssignAccountsDialog
+                open={assignDialogOpen}
+                onOpenChange={setAssignDialogOpen}
+                order={order}
+                onSuccess={() => {
+                    onOpenChange(false);
+                    router.reload({ preserveScroll: true });
+                }}
+            />
         </Dialog>
     );
 };

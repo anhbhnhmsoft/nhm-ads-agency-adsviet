@@ -599,6 +599,212 @@ class ServiceUserService
     }
 
     /**
+     * Gán thêm tài khoản vào đơn hàng (service_user)
+     *
+     * @param string $serviceUserId
+     * @param array<string> $accountIds
+     * @param string|null $bmId
+     * @return ServiceReturn
+     */
+    public function assignAccounts(string $serviceUserId, array $accountIds, ?string $bmId = null): ServiceReturn
+    {
+        try {
+            return DB::transaction(function () use ($serviceUserId, $accountIds, $bmId) {
+                $serviceUser = $this->serviceUserRepository->query()->find($serviceUserId);
+                if (!$serviceUser) {
+                    return ServiceReturn::error(message: __('common_error.not_found'));
+                }
+
+                $platform = $serviceUser->package?->platform ?? null;
+                $config = $serviceUser->config_account ?? [];
+                if (!is_array($config)) {
+                    $config = [];
+                }
+
+                $assignedCount = 0;
+                $newAccountIds = [];
+
+                if ((int) $platform === PlatformType::META->value) {
+                    foreach ($accountIds as $rawId) {
+                        $selectedAccountId = trim((string) $rawId);
+                        if (!$selectedAccountId) continue;
+
+                        $normId = preg_replace('/^act_/', '', $selectedAccountId);
+                        $formattedActId = 'act_' . $normId;
+                        $idsToMatch = array_values(array_unique([$selectedAccountId, $normId, $formattedActId]));
+
+                        // Kiểm tra xung đột với khách hàng khác đang hoạt động
+                        $conflictAccount = $this->metaAccountRepository->query()
+                            ->whereIn('account_id', $idsToMatch)
+                            ->whereNotNull('service_user_id')
+                            ->where('service_user_id', '!=', $serviceUser->id)
+                            ->whereHas('serviceUser', fn ($q) => $q
+                                ->where('status', ServiceUserStatus::ACTIVE->value)
+                                ->where('user_id', '!=', $serviceUser->user_id))
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($conflictAccount) {
+                            $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khách khác';
+                            return ServiceReturn::error(
+                                message: "Tài khoản {$formattedActId} đã được gán cho đơn hàng của {$conflictName}."
+                            );
+                        }
+
+                        $existingMetaAccount = $this->metaAccountRepository->query()
+                            ->withTrashed()
+                            ->whereIn('account_id', $idsToMatch)
+                            ->first();
+
+                        $targetBmId = $bmId ?: ($config['bm_id'] ?? null);
+
+                        if ($existingMetaAccount) {
+                            $existingMetaAccount->deleted_at = null;
+                            $existingMetaAccount->service_user_id = $serviceUser->id;
+                            if ($targetBmId && empty($existingMetaAccount->business_manager_id)) {
+                                $existingMetaAccount->business_manager_id = (string) $targetBmId;
+                            }
+                            $existingMetaAccount->save();
+                            $assignedCount++;
+                        } else {
+                            try {
+                                $metaAccountData = app(\App\Service\MetaBusinessService::class)->getAdAccountById($formattedActId);
+                                if ($metaAccountData->isSuccess()) {
+                                    $d = $metaAccountData->getData();
+                                    $this->metaAccountRepository->query()->create([
+                                        'account_id' => $formattedActId,
+                                        'account_name' => $d['name'] ?? ('Account ' . $normId),
+                                        'account_status' => $d['account_status'] ?? 1,
+                                        'currency' => $d['currency'] ?? 'USD',
+                                        'timezone_name' => $d['timezone_name'] ?? null,
+                                        'business_manager_id' => $d['business']['id'] ?? ($targetBmId ?: null),
+                                        'service_user_id' => $serviceUser->id,
+                                    ]);
+                                } else {
+                                    $this->metaAccountRepository->query()->create([
+                                        'account_id' => $formattedActId,
+                                        'account_name' => 'Account ' . $normId,
+                                        'account_status' => 1,
+                                        'currency' => 'USD',
+                                        'business_manager_id' => $targetBmId ?: null,
+                                        'service_user_id' => $serviceUser->id,
+                                    ]);
+                                }
+                            } catch (\Throwable $fetchEx) {
+                                $this->metaAccountRepository->query()->create([
+                                    'account_id' => $formattedActId,
+                                    'account_name' => 'Account ' . $normId,
+                                    'account_status' => 1,
+                                    'currency' => 'USD',
+                                    'business_manager_id' => $targetBmId ?: null,
+                                    'service_user_id' => $serviceUser->id,
+                                ]);
+                            }
+                            $assignedCount++;
+                        }
+                        $newAccountIds[] = $formattedActId;
+                    }
+                } elseif ((int) $platform === PlatformType::GOOGLE->value) {
+                    foreach ($accountIds as $rawId) {
+                        $selectedAccountId = trim((string) $rawId);
+                        if (!$selectedAccountId) continue;
+
+                        $cleanId = preg_replace('/[^0-9]/', '', $selectedAccountId);
+                        $idsToMatch = array_values(array_filter(array_unique([$selectedAccountId, $cleanId])));
+
+                        $conflictAccount = $this->googleAccountRepository->query()
+                            ->whereIn('account_id', $idsToMatch)
+                            ->whereNotNull('service_user_id')
+                            ->where('service_user_id', '!=', $serviceUser->id)
+                            ->whereHas('serviceUser', fn ($q) => $q
+                                ->where('status', ServiceUserStatus::ACTIVE->value)
+                                ->where('user_id', '!=', $serviceUser->user_id))
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($conflictAccount) {
+                            $conflictName = $conflictAccount->serviceUser?->user?->name ?? 'khách khác';
+                            return ServiceReturn::error(
+                                message: "Tài khoản {$selectedAccountId} đã được gán cho đơn hàng của {$conflictName}."
+                            );
+                        }
+
+                        $existing = $this->googleAccountRepository->query()
+                            ->whereIn('account_id', $idsToMatch)
+                            ->first();
+
+                        if ($existing) {
+                            $existing->update(['service_user_id' => $serviceUser->id]);
+                            $assignedCount++;
+                        } else {
+                            $this->googleAccountRepository->query()->create([
+                                'account_id' => $cleanId,
+                                'account_name' => 'Google Account ' . $cleanId,
+                                'currency' => 'USD',
+                                'service_user_id' => $serviceUser->id,
+                            ]);
+                            $assignedCount++;
+                        }
+                        $newAccountIds[] = $cleanId;
+                    }
+                }
+
+                if ($assignedCount === 0) {
+                    return ServiceReturn::error(message: 'Không có tài khoản hợp lệ nào để gán.');
+                }
+
+                // Cập nhật cấu hình đơn hàng
+                $existingAccountIds = $config['account_ids'] ?? [];
+                if (!is_array($existingAccountIds)) {
+                    $existingAccountIds = [];
+                }
+                $mergedIds = array_values(array_unique(array_merge($existingAccountIds, $newAccountIds)));
+
+                $config['account_ids'] = $mergedIds;
+                if (empty($config['account_id']) && !empty($mergedIds)) {
+                    $config['account_id'] = $mergedIds[0];
+                }
+                $config['assign_mode'] = 'account';
+
+                // Nếu có mảng accounts
+                if (!empty($config['accounts']) && is_array($config['accounts'])) {
+                    $existingIdsInAccounts = [];
+                    foreach ($config['accounts'] as $acc) {
+                        $aid = $acc['account_id'] ?? $acc['id'] ?? null;
+                        if ($aid) {
+                            $existingIdsInAccounts[preg_replace('/^act_/', '', (string) $aid)] = true;
+                        }
+                    }
+                    foreach ($newAccountIds as $nid) {
+                        $cleanNid = preg_replace('/^act_/', '', $nid);
+                        if (!isset($existingIdsInAccounts[$cleanNid])) {
+                            $config['accounts'][] = [
+                                'account_id' => $nid,
+                                'bm_ids' => $bmId ? [$bmId] : ($config['bm_ids'] ?? []),
+                            ];
+                            $existingIdsInAccounts[$cleanNid] = true;
+                        }
+                    }
+                }
+
+                $serviceUser->config_account = $config;
+                $serviceUser->save();
+
+                return ServiceReturn::success(
+                    data: ['assigned_count' => $assignedCount, 'account_ids' => $newAccountIds],
+                    message: "Đã gán thành công {$assignedCount} tài khoản vào đơn hàng."
+                );
+            });
+        } catch (\Throwable $e) {
+            Logging::error(
+                message: 'ServiceUserService@assignAccounts error: ' . $e->getMessage(),
+                exception: $e
+            );
+            return ServiceReturn::error(message: $e->getMessage() ?: __('common_error.server_error'));
+        }
+    }
+
+    /**
      * Dọn dẹp tất cả tài khoản rác/tháo gán nhầm trong DB không thuộc config của đơn hàng
      */
     public function cleanStaleAccounts(string $serviceUserId): ServiceReturn
@@ -1277,8 +1483,8 @@ class ServiceUserService
                     Logging::error('ServiceUserService@syncAndBillPostpay notify spending fee error: ' . $notifEx->getMessage(), exception: $notifEx);
                 }
 
-                // Sau khi trừ phí, pause campaigns nếu ví dưới ngưỡng an toàn (mặc định 20 USD theo yêu cầu khách)
-                $minBalance = (float) app(\App\Service\ConfigService::class)->getValue(\App\Common\Constants\Config\ConfigName::POSTPAY_MIN_BALANCE, 20.0);
+                // Sau khi trừ phí, pause campaigns nếu ví dưới ngưỡng an toàn (lấy từ cấu hình THRESHOLD_PAUSE, fallback 20 USD)
+                $minBalance = (float) app(\App\Service\ConfigService::class)->getValue(\App\Common\Constants\Config\ConfigName::THRESHOLD_PAUSE, 20.0);
                 if ((float) $wallet->balance < $minBalance) {
                     $billPostpayCommand->pauseAllCampaignsForServiceUser($lockedServiceUser);
                 }

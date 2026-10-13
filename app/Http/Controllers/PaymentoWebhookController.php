@@ -23,15 +23,18 @@ class PaymentoWebhookController
     {
         $payload = $request->all();
         $rawPayload = $request->getContent();
-        $signature = $request->header('X-HMAC-SHA256-SIGNATURE')
+        $signature = $request->header('x-paymento-signature')
+            ?? $request->header('X-Paymento-Signature')
+            ?? $request->header('X-HMAC-SHA256-SIGNATURE')
             ?? $request->header('X-Hmac-Sha256-Signature')
             ?? $request->header('HMAC_SHA256_SIGNATURE');
 
-        if (!$this->paymentoService->verifySignature($rawPayload, $signature)) {
+        $hasSecret = $this->paymentoService->hasWebhookSecret();
+        if ($hasSecret && !$this->paymentoService->verifySignature($rawPayload, $signature)) {
             Logging::api('PaymentoWebhookController@handle: Invalid signature', [
                 'payload' => $payload,
                 'has_signature' => !empty($signature),
-                'has_secret' => $this->paymentoService->hasWebhookSecret(),
+                'has_secret' => true,
             ]);
 
             return response()->json(['error' => 'Invalid signature'], 401);

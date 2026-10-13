@@ -51,9 +51,10 @@ class PaymentoService
         }
 
         $payload = [
-            'fiatAmount' => $this->formatAmount($amount),
+            'fiatAmount' => (float) $amount,
             'fiatCurrency' => 'USD',
             'orderId' => $orderId,
+            'riskSpeed' => 'normal',
             'Speed' => (int) config('services.paymento.speed', 1),
             'additionalData' => [
                 ['key' => 'provider', 'value' => 'paymento'],
@@ -62,10 +63,12 @@ class PaymentoService
         ];
 
         if ($returnUrl) {
+            $payload['returnUrl'] = $returnUrl;
             $payload['ReturnUrl'] = $returnUrl;
         }
 
         if ($email) {
+            $payload['email'] = $email;
             $payload['EmailAddress'] = $email;
         }
 
@@ -94,7 +97,13 @@ class PaymentoService
         $value = Arr::get($payload, 'Token')
             ?? Arr::get($payload, 'token')
             ?? Arr::get($payload, 'body')
-            ?? Arr::get($payload, 'body.token');
+            ?? Arr::get($payload, 'body.token')
+            ?? Arr::get($payload, 'data.token')
+            ?? Arr::get($payload, 'data');
+
+        if (is_array($value)) {
+            $value = $value['token'] ?? $value['Token'] ?? null;
+        }
 
         $value = is_string($value) ? trim($value) : $value;
 
@@ -185,10 +194,11 @@ class PaymentoService
             ]);
 
             $response = Http::asJson()
-                ->accept('text/plain')
+                ->acceptJson()
                 ->timeout(30)
                 ->withHeaders([
-                    'Api-key' => $this->apiKey(),
+                    'Api-Key' => $this->apiKey(),
+                    'api-key' => $this->apiKey(),
                 ])
                 ->post($url, $payload);
 

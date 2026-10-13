@@ -267,6 +267,7 @@ Route::middleware([
         Route::post('/{id}/cancel', [ServiceOrderController::class, 'cancel'])->name('service_orders_cancel');
         Route::post('/{id}/sync-and-bill', [ServiceOrderController::class, 'syncAndBill'])->name('service_orders_sync_and_bill');
         Route::post('/{id}/clean-stale-accounts', [ServiceOrderController::class, 'cleanStaleAccounts'])->name('service_orders_clean_stale_accounts');
+        Route::post('/{id}/assign-accounts', [ServiceOrderController::class, 'assignAccounts'])->name('service_orders_assign_accounts');
         Route::put('/{id}/config', [ServiceOrderController::class, 'updateConfig'])->name('service_orders_update_config');
         Route::delete('/{id}', [ServiceOrderController::class, 'destroy'])->name('service_orders_destroy');
     });
@@ -277,6 +278,7 @@ Route::middleware([
         Route::get('/active-services', [ServiceManagementController::class, 'getActiveServices'])->name('service_management_active_services');
         Route::post('/sync-meta-insights', [ServiceManagementController::class, 'syncMetaInsights'])->name('service_management_sync_meta_insights');
         Route::post('/sync-google-insights', [ServiceManagementController::class, 'syncGoogleInsights'])->name('service_management_sync_google_insights');
+        Route::post('/assign-account', [ServiceManagementController::class, 'assignAccount'])->name('service_management_assign_account');
         Route::post('/unassign-account', [ServiceManagementController::class, 'unassignAccount'])->name('service_management_unassign_account');
         Route::post('/bulk-unassign-accounts', [ServiceManagementController::class, 'bulkUnassignAccounts'])->name('service_management_bulk_unassign_accounts');
     });

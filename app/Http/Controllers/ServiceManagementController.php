@@ -410,6 +410,51 @@ class ServiceManagementController extends Controller
     }
 
     /**
+     * Gán thêm tài khoản vào service_user
+     */
+    public function assignAccount(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->ensureInternalAccess();
+
+        $request->validate([
+            'service_user_id' => ['required', 'string'],
+            'account_ids' => ['required'],
+            'bm_id' => ['nullable', 'string'],
+        ]);
+
+        $accountIds = $request->input('account_ids');
+        if (is_string($accountIds)) {
+            $accountIds = array_filter(array_map('trim', preg_split('/[\s,]+/', $accountIds)));
+        }
+
+        if (empty($accountIds) || !is_array($accountIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vui lòng cung cấp ít nhất 1 tài khoản hợp lệ.',
+            ], 422);
+        }
+
+        $result = $this->serviceUserService->assignAccounts(
+            serviceUserId: (string) $request->input('service_user_id'),
+            accountIds: (array) $accountIds,
+            bmId: $request->input('bm_id'),
+        );
+
+        if ($result->isError()) {
+            return response()->json([
+                'success' => false,
+                'message' => $result->getMessage(),
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result->getMessage(),
+            'data' => $result->getData(),
+        ]);
+    }
+
+    /**
      * Gỡ gán tài khoản khỏi service_user
      */
     public function unassignAccount(Request $request): \Illuminate\Http\JsonResponse

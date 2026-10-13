@@ -185,5 +185,55 @@ class ServiceOrderController extends Controller
 
         return redirect()->back();
     }
+
+    /**
+     * Gán thêm tài khoản vào đơn hàng (hỗ trợ cả JSON và Redirect)
+     */
+    public function assignAccounts(Request $request, string $id)
+    {
+        $accountIds = $request->input('account_ids');
+        if (is_string($accountIds)) {
+            $accountIds = array_filter(array_map('trim', preg_split('/[\s,]+/', $accountIds)));
+        }
+
+        if (empty($accountIds) || !is_array($accountIds)) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vui lòng cung cấp ít nhất 1 tài khoản hợp lệ.',
+                ], 422);
+            }
+            FlashMessage::error('Vui lòng cung cấp ít nhất 1 tài khoản hợp lệ.');
+            return redirect()->back();
+        }
+
+        $result = $this->serviceUserService->assignAccounts(
+            serviceUserId: $id,
+            accountIds: (array) $accountIds,
+            bmId: $request->input('bm_id'),
+        );
+
+        if ($request->wantsJson() || $request->ajax()) {
+            if ($result->isError()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result->getMessage(),
+                ], 400);
+            }
+            return response()->json([
+                'success' => true,
+                'message' => $result->getMessage(),
+                'data' => $result->getData(),
+            ]);
+        }
+
+        if ($result->isError()) {
+            FlashMessage::error($result->getMessage());
+        } else {
+            FlashMessage::success($result->getMessage());
+        }
+
+        return redirect()->back();
+    }
 }
 
