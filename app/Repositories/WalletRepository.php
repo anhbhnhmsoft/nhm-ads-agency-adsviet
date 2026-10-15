@@ -6,6 +6,7 @@ use App\Core\BaseRepository;
 use App\Models\UserWallet;
 use App\Common\Constants\Wallet\WalletStatus;
 use App\Common\Constants\User\UserRole;
+use App\Common\Constants\ServiceUser\ServiceUserStatus;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -52,6 +53,9 @@ class WalletRepository extends BaseRepository
                                 $emailQuery->whereNotNull('email')
                                     ->whereNotNull('email_verified_at');
                             });
+                    })
+                    ->whereHas('serviceUsers', function ($serviceQuery) {
+                        $serviceQuery->where('status', ServiceUserStatus::ACTIVE->value);
                     });
             })
             ->get();

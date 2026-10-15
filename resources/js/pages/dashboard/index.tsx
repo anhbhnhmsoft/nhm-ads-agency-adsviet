@@ -962,7 +962,12 @@ export default function Index({
         ? formatCurrency(dashboardData.wallet.balance)
         : '••••••';
 
-    const isLowBalance = Number(dashboardData.wallet.balance ?? 0) < 20;
+    const hasActiveServices =
+        (dashboardData.overview?.total_services ?? 0) > 0 ||
+        (dashboardData.overview?.total_accounts ?? 0) > 0;
+
+    const isLowBalance =
+        hasActiveServices && Number(dashboardData.wallet.balance ?? 0) < 20;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

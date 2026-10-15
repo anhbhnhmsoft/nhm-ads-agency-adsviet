@@ -50,12 +50,13 @@ class PaymentoService
             return ServiceReturn::error(message: __('wallet.network_not_configured'));
         }
 
+        $speed = (int) config('services.paymento.speed', 1);
+
         $payload = [
             'fiatAmount' => (float) $amount,
             'fiatCurrency' => 'USD',
             'orderId' => $orderId,
-            'riskSpeed' => 'normal',
-            'Speed' => (int) config('services.paymento.speed', 1),
+            'riskSpeed' => $speed,
             'additionalData' => [
                 ['key' => 'provider', 'value' => 'paymento'],
                 ['key' => 'order_id', 'value' => $orderId],
@@ -64,12 +65,10 @@ class PaymentoService
 
         if ($returnUrl) {
             $payload['returnUrl'] = $returnUrl;
-            $payload['ReturnUrl'] = $returnUrl;
         }
 
         if ($email) {
-            $payload['email'] = $email;
-            $payload['EmailAddress'] = $email;
+            $payload['emailAddress'] = $email;
         }
 
         return $this->post('payment/request', $payload);
@@ -198,7 +197,6 @@ class PaymentoService
                 ->timeout(30)
                 ->withHeaders([
                     'Api-Key' => $this->apiKey(),
-                    'api-key' => $this->apiKey(),
                 ])
                 ->post($url, $payload);
 
@@ -209,7 +207,27 @@ class PaymentoService
                     'body' => $response->body(),
                 ]);
 
-                return ServiceReturn::error(message: $response->body() ?: __('common_error.server_error'));
+                $errorBody = $response->json();
+                $errorMessage = null;
+                if (is_array($errorBody)) {
+                    if (!empty($errorBody['message'])) {
+                        $errorMessage = (string) $errorBody['message'];
+                    } elseif (!empty($errorBody['errors']) && is_array($errorBody['errors'])) {
+                        $messages = [];
+                        foreach ($errorBody['errors'] as $field => $fieldErrors) {
+                            if (is_array($fieldErrors)) {
+                                $messages[] = implode(', ', $fieldErrors);
+                            } elseif (is_string($fieldErrors)) {
+                                $messages[] = $fieldErrors;
+                            }
+                        }
+                        $errorMessage = implode(' | ', $messages);
+                    } elseif (!empty($errorBody['title'])) {
+                        $errorMessage = (string) $errorBody['title'];
+                    }
+                }
+
+                return ServiceReturn::error(message: $errorMessage ?: ($response->body() ?: __('common_error.server_error')));
             }
 
             $body = $response->json();
