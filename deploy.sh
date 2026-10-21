@@ -34,7 +34,7 @@ php artisan migrate --force
 
 # 6. Build frontend assets (Zero-downtime: Atomic Build & Swap)
 echo "🏗️ Building frontend assets (Atomic Build)..."
-if [ -f "package-lock.json" ]; then
+if [ -f "package.json" ]; then
     # Cài package nếu có thay đổi (dùng npm install hoặc npm ci nếu có lockfile chuẩn)
     npm install --no-audit --no-fund
     
