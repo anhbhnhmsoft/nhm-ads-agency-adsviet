@@ -28,12 +28,14 @@ type Props = {
     configs: Record<string, ConfigItem>;
     coinRemitterNetworks: string[];
     paymentoWebhookUrl: string;
+    cryptomusWebhookUrl?: string;
 };
 
 const ConfigIndex = ({
     configs,
     coinRemitterNetworks,
     paymentoWebhookUrl,
+    cryptomusWebhookUrl = 'https://advietagency.biz/webhooks/cryptomus',
 }: Props) => {
     const { t } = useTranslation();
     const { data, setData, put, processing, errors } = useForm({
@@ -77,9 +79,12 @@ const ConfigIndex = ({
 
     const hasCoinRemitterNetwork = (network: string) =>
         coinRemitterNetworks.includes(network);
-    const depositMethod = ['manual', 'coinremitter', 'paymento'].includes(
-        data.configs[_ConfigName.CRYPTO_DEPOSIT_METHOD],
-    )
+    const depositMethod = [
+        'manual',
+        'coinremitter',
+        'paymento',
+        'cryptomus',
+    ].includes(data.configs[_ConfigName.CRYPTO_DEPOSIT_METHOD])
         ? data.configs[_ConfigName.CRYPTO_DEPOSIT_METHOD]
         : 'manual';
 
@@ -155,6 +160,14 @@ const ConfigIndex = ({
                                                 'config.deposit_method_paymento',
                                                 {
                                                     defaultValue: 'Paymento',
+                                                },
+                                            )}
+                                        </SelectItem>
+                                        <SelectItem value="cryptomus">
+                                            {t(
+                                                'config.deposit_method_cryptomus',
+                                                {
+                                                    defaultValue: 'Cryptomus',
                                                 },
                                             )}
                                         </SelectItem>
@@ -348,12 +361,76 @@ const ConfigIndex = ({
                                     <div className="rounded-md border bg-muted/40 p-3 text-sm">
                                         <div className="font-medium">
                                             {t('config.paymento_ipn_url', {
+                                                 defaultValue:
+                                                     'Paymento IPN URL',
+                                             })}
+                                         </div>
+                                         <div className="mt-1 font-mono break-all">
+                                             {paymentoWebhookUrl}
+                                         </div>
+                                     </div>
+                                 </div>
+                             )}
+
+                            {depositMethod === 'cryptomus' && (
+                                <div className="space-y-4 border-t pt-5">
+                                    <div className="space-y-1">
+                                        <h2 className="text-base font-medium">
+                                            {t('config.cryptomus_section', {
+                                                defaultValue: 'Cryptomus',
+                                            })}
+                                        </h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            {t(
+                                                'config.cryptomus_section_description',
+                                                {
+                                                    defaultValue:
+                                                        'Cấu hình thông tin API Cryptomus để tạo hóa đơn thanh toán quét mã QR đa mạng (USDT TRC20, BEP20, TON...) và tự động nhận IPN.',
+                                                },
+                                            )}
+                                        </p>
+                                    </div>
+
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        {renderInput(
+                                            _ConfigName.CRYPTOMUS_MERCHANT_UUID,
+                                            'Cryptomus Merchant UUID',
+                                            t(
+                                                'config.cryptomus_merchant_uuid_placeholder',
+                                                {
+                                                    defaultValue:
+                                                        'Ví dụ: 4739d0f7-799b-487d-acd9-9573bd2d823c',
+                                                },
+                                            ),
+                                        )}
+                                        {renderInput(
+                                            _ConfigName.CRYPTOMUS_PAYMENT_API_KEY,
+                                            'Cryptomus Payment API key',
+                                            t(
+                                                'config.cryptomus_payment_api_key_placeholder',
+                                                {
+                                                    defaultValue:
+                                                        'Nhập Payment API key từ Cryptomus',
+                                                },
+                                            ),
+                                            'password',
+                                        )}
+                                    </div>
+
+                                    <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                                        <div className="font-medium">
+                                            {t('config.cryptomus_ipn_url', {
                                                 defaultValue:
-                                                    'Paymento IPN URL',
+                                                    'Cryptomus IPN / Webhook URL',
                                             })}
                                         </div>
-                                        <div className="mt-1 font-mono break-all">
-                                            {paymentoWebhookUrl}
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            {t('config.cryptomus_ipn_url_desc', {
+                                                defaultValue: 'Dán URL này vào mục Webhook (URL callback) trong cài đặt của Cryptomus:',
+                                            })}
+                                        </p>
+                                        <div className="mt-1 font-mono text-xs break-all bg-background p-2 rounded border">
+                                            {cryptomusWebhookUrl}
                                         </div>
                                     </div>
                                 </div>

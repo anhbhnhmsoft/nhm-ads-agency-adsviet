@@ -46,6 +46,8 @@ export enum _ConfigName {
     COINREMITTER_BEP20_PASSWORD = 'COINREMITTER_BEP20_PASSWORD',
     PAYMENTO_API_KEY = 'PAYMENTO_API_KEY',
     PAYMENTO_SECRET_KEY = 'PAYMENTO_SECRET_KEY',
+    CRYPTOMUS_MERCHANT_UUID = 'CRYPTOMUS_MERCHANT_UUID',
+    CRYPTOMUS_PAYMENT_API_KEY = 'CRYPTOMUS_PAYMENT_API_KEY',
     DASHBOARD_GUIDE_CONTENT = 'DASHBOARD_GUIDE_CONTENT',
 }
 
@@ -65,6 +67,8 @@ export const configNameLabel: Record<_ConfigName, string> = {
         'config.coinremitter_bep20_password',
     [_ConfigName.PAYMENTO_API_KEY]: 'config.paymento_api_key',
     [_ConfigName.PAYMENTO_SECRET_KEY]: 'config.paymento_secret_key',
+    [_ConfigName.CRYPTOMUS_MERCHANT_UUID]: 'config.cryptomus_merchant_uuid',
+    [_ConfigName.CRYPTOMUS_PAYMENT_API_KEY]: 'config.cryptomus_payment_api_key',
     [_ConfigName.DASHBOARD_GUIDE_CONTENT]: 'config.dashboard_guide_content',
 };
 

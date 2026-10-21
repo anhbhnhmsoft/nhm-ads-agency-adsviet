@@ -53,6 +53,7 @@ class ConfigController extends Controller
                 'configs' => $allConfigs,
                 'coinRemitterNetworks' => $this->coinRemitterNetworks(),
                 'paymentoWebhookUrl' => route('paymento_webhook'),
+                'cryptomusWebhookUrl' => url('/webhooks/cryptomus'),
             ]
         );
     }
@@ -74,7 +75,7 @@ class ConfigController extends Controller
         $methodKey = ConfigName::CRYPTO_DEPOSIT_METHOD->value;
         if (
             isset($validated['configs'][$methodKey])
-            && ! in_array($validated['configs'][$methodKey], ['manual', 'coinremitter', 'paymento'], true)
+            && ! in_array($validated['configs'][$methodKey], ['manual', 'coinremitter', 'paymento', 'cryptomus'], true)
         ) {
             $validated['configs'][$methodKey] = 'manual';
         }
