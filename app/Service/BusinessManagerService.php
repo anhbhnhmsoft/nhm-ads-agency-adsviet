@@ -1200,11 +1200,15 @@ class BusinessManagerService
 
     private function isTodayDateRangeForGoogleAccount(Carbon $dateStart, Carbon $dateEnd, ?string $timezone): bool
     {
-        $timezone = $timezone ?: config('app.timezone');
-        $today = Carbon::now($timezone)->toDateString();
+        try {
+            $timezone = $timezone ?: config('app.timezone');
+            $today = Carbon::now($timezone)->toDateString();
 
-        return $dateStart->toDateString() === $today
-            && $dateEnd->toDateString() === $today;
+            return $dateStart->toDateString() === $today
+                && $dateEnd->toDateString() === $today;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function normalizeMetaAccountMoney(mixed $value, ?string $currency): ?float
