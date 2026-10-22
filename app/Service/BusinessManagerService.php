@@ -1620,16 +1620,20 @@ class BusinessManagerService
                             }
                             $q->orWhere('business_manager_id', (string) $bmId);
                         })
+                        ->with(['serviceUser.user:id,name,username'])
                         ->withCount('metaAdsCampaigns')
                         ->orderBy('account_name', 'asc')
                         ->get();
 
                     foreach ($metaAccounts as $account) {
+                        $ownerName = $account->serviceUser?->user?->name ?? $account->serviceUser?->user?->username ?? ($serviceUser->user?->name ?? $serviceUser->user?->username ?? null);
                         $accounts[] = [
                             'id' => (string) $account->id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
+                            'is_assigned' => true,
+                            'owner_name' => $ownerName,
                             'spend_cap' => $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD'),
                             'amount_spent' => $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD'),
                             'balance' => $this->normalizeMetaAccountMoney($account->balance ?? null, $account->currency ?? 'USD'),
@@ -1643,15 +1647,19 @@ class BusinessManagerService
                     $googleAccounts = $this->googleAccountRepository->query()
                         ->where('service_user_id', $serviceUser->id)
                         ->where('customer_manager_id', (string) $bmId)
+                        ->with(['serviceUser.user:id,name,username'])
                         ->orderBy('account_name', 'asc')
                         ->get();
 
                     foreach ($googleAccounts as $account) {
+                        $ownerName = $account->serviceUser?->user?->name ?? $account->serviceUser?->user?->username ?? ($serviceUser->user?->name ?? $serviceUser->user?->username ?? null);
                         $accounts[] = [
                             'id' => (string) $account->id,
                             'account_id' => $account->account_id,
                             'account_name' => $account->account_name,
                             'service_user_id' => (string) $serviceUser->id,
+                            'is_assigned' => true,
+                            'owner_name' => $ownerName,
                             'spend_cap' => null, // Google không có spend_cap
                             'amount_spent' => '0',
                             'balance' => $account->balance ?? '0',
@@ -1674,6 +1682,7 @@ class BusinessManagerService
                         }
                         $q->orWhere('business_manager_id', (string) $bmId);
                     })
+                    ->with(['serviceUser.user:id,name,username'])
                     ->withCount('metaAdsCampaigns')
                     ->orderBy('account_name', 'asc')
                     ->get();
@@ -1683,11 +1692,16 @@ class BusinessManagerService
                         continue;
                     }
 
+                    $isAssigned = !empty($account->service_user_id);
+                    $ownerName = $isAssigned ? ($account->serviceUser?->user?->name ?? $account->serviceUser?->user?->username ?? null) : null;
+
                     $accounts[] = [
                         'id' => (string) $account->id,
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
                         'service_user_id' => $account->service_user_id ? (string) $account->service_user_id : null,
+                        'is_assigned' => $isAssigned,
+                        'owner_name' => $ownerName,
                         'spend_cap' => $this->normalizeMetaAccountMoney($account->spend_cap ?? null, $account->currency ?? 'USD'),
                         'amount_spent' => $this->normalizeMetaAccountMoney($account->amount_spent ?? null, $account->currency ?? 'USD'),
                         'balance' => $this->normalizeMetaAccountMoney($account->balance ?? null, $account->currency ?? 'USD'),
@@ -1704,6 +1718,7 @@ class BusinessManagerService
             if (!$platform || $platform === PlatformType::GOOGLE->value) {
                 $googleAccounts = $this->googleAccountRepository->query()
                     ->where('customer_manager_id', $bmId)
+                    ->with(['serviceUser.user:id,name,username'])
                     ->get();
 
                 foreach ($googleAccounts as $account) {
@@ -1711,11 +1726,16 @@ class BusinessManagerService
                         continue;
                     }
 
+                    $isAssigned = !empty($account->service_user_id);
+                    $ownerName = $isAssigned ? ($account->serviceUser?->user?->name ?? $account->serviceUser?->user?->username ?? null) : null;
+
                     $accounts[] = [
                         'id' => (string) $account->id,
                         'account_id' => $account->account_id,
                         'account_name' => $account->account_name,
                         'service_user_id' => $account->service_user_id ? (string) $account->service_user_id : null,
+                        'is_assigned' => $isAssigned,
+                        'owner_name' => $ownerName,
                         'spend_cap' => null,
                         'amount_spent' => '0',
                         'balance' => $account->balance ?? '0',

@@ -602,14 +602,26 @@ class ServiceUserService
      * Gán thêm tài khoản vào đơn hàng (service_user)
      *
      * @param string $serviceUserId
+    /**
+     * Gán thêm tài khoản hoặc đổi tài khoản bảo hành vào đơn hàng
+     *
+     * @param string $serviceUserId
      * @param array<string> $accountIds
      * @param string|null $bmId
+     * @param bool $isWarranty
+     * @param string|null $replaceAccountId
      * @return ServiceReturn
      */
-    public function assignAccounts(string $serviceUserId, array $accountIds, ?string $bmId = null): ServiceReturn
+    public function assignAccounts(
+        string $serviceUserId,
+        array $accountIds,
+        ?string $bmId = null,
+        bool $isWarranty = false,
+        ?string $replaceAccountId = null,
+    ): ServiceReturn
     {
         try {
-            return DB::transaction(function () use ($serviceUserId, $accountIds, $bmId) {
+            return DB::transaction(function () use ($serviceUserId, $accountIds, $bmId, $isWarranty, $replaceAccountId) {
                 $serviceUser = $this->serviceUserRepository->query()->find($serviceUserId);
                 if (!$serviceUser) {
                     return ServiceReturn::error(message: __('common_error.not_found'));
@@ -787,12 +799,75 @@ class ServiceUserService
                     }
                 }
 
+                // Nếu là chế độ gán bảo hành (Warranty replacement)
+                if ($isWarranty && !empty($replaceAccountId)) {
+                    $cleanReplaceId = preg_replace('/^act_/', '', trim((string) $replaceAccountId));
+                    
+                    // Bảo vệ mốc chi tiêu của tài khoản cũ trong spending_fee_accounts_billed_spend
+                    $savedBilled = $config['spending_fee_accounts_billed_spend'] ?? [];
+                    if (!is_array($savedBilled)) {
+                        $savedBilled = [];
+                    }
+
+                    // Tìm số tiền đã tiêu của tài khoản cũ để bảo lưu mốc đã thu
+                    $oldMeta = $this->metaAccountRepository->query()
+                        ->where('service_user_id', $serviceUser->id)
+                        ->where(function ($q) use ($cleanReplaceId) {
+                            $q->where('account_id', $cleanReplaceId)
+                              ->orWhere('account_id', 'act_' . $cleanReplaceId);
+                        })
+                        ->first();
+
+                    if ($oldMeta) {
+                        $rawSpent = (float) ($oldMeta->amount_spent ?? 0);
+                        $spentUsd = $rawSpent > 0 ? $rawSpent / 100 : 0.0;
+                        if ($spentUsd > 0) {
+                            $savedBilled[$oldMeta->account_id] = max($spentUsd, (float) ($savedBilled[$oldMeta->account_id] ?? 0));
+                            $savedBilled[$cleanReplaceId] = max($spentUsd, (float) ($savedBilled[$cleanReplaceId] ?? 0));
+                        }
+                    }
+
+                    // Đối với tài khoản mới: nếu đã có amount_spent từ trước thì đặt mốc khởi điểm để chỉ tính chi tiêu phát sinh mới
+                    foreach ($newAccountIds as $nid) {
+                        $newMeta = $this->metaAccountRepository->query()
+                            ->where('service_user_id', $serviceUser->id)
+                            ->where('account_id', $nid)
+                            ->first();
+                        if ($newMeta && (float) ($newMeta->amount_spent ?? 0) > 0) {
+                            $initSpentUsd = ((float) $newMeta->amount_spent) / 100;
+                            $savedBilled[$nid] = $initSpentUsd;
+                            $savedBilled[preg_replace('/^act_/', '', $nid)] = $initSpentUsd;
+                        }
+                    }
+
+                    $config['spending_fee_accounts_billed_spend'] = $savedBilled;
+
+                    // Đánh dấu tài khoản cũ là đã bảo hành thay thế trong config['accounts']
+                    if (!empty($config['accounts']) && is_array($config['accounts'])) {
+                        foreach ($config['accounts'] as &$accItem) {
+                            $aid = (string) ($accItem['account_id'] ?? $accItem['id'] ?? '');
+                            $cId = preg_replace('/^act_/', '', $aid);
+                            if ($cId === $cleanReplaceId || $aid === $replaceAccountId) {
+                                $accItem['is_warranty_replaced'] = true;
+                                $accItem['warranty_status'] = 'replaced';
+                                $accItem['replaced_by'] = $newAccountIds[0] ?? null;
+                                $accItem['replaced_at'] = now()->toDateTimeString();
+                            }
+                        }
+                        unset($accItem);
+                    }
+                }
+
                 $serviceUser->config_account = $config;
                 $serviceUser->save();
 
+                $successMsg = $isWarranty
+                    ? "Đã gán bảo hành thành công {$assignedCount} tài khoản thay thế cho tài khoản {$replaceAccountId} (Miễn phí mở tài khoản 0$). Không ảnh hưởng đến luồng tính tiền."
+                    : "Đã gán thành công {$assignedCount} tài khoản vào đơn hàng.";
+
                 return ServiceReturn::success(
                     data: ['assigned_count' => $assignedCount, 'account_ids' => $newAccountIds],
-                    message: "Đã gán thành công {$assignedCount} tài khoản vào đơn hàng."
+                    message: $successMsg
                 );
             });
         } catch (\Throwable $e) {

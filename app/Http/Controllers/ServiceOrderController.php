@@ -211,6 +211,8 @@ class ServiceOrderController extends Controller
             serviceUserId: $id,
             accountIds: (array) $accountIds,
             bmId: $request->input('bm_id'),
+            isWarranty: (bool) $request->input('is_warranty', false),
+            replaceAccountId: $request->input('replace_account_id'),
         );
 
         if ($request->wantsJson() || $request->ajax()) {

@@ -37,6 +37,7 @@ interface BmAccountItem {
     account_status: number | null;
     currency: string;
     service_user_id: string | null;
+    is_assigned?: boolean;
     owner_name: string | null;
 }
 
@@ -80,6 +81,28 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
     const [selectedBmAccountIds, setSelectedBmAccountIds] = useState<string[]>([]);
     const [submitting, setSubmitting] = useState<boolean>(false);
 
+    // Chế độ Gán bảo hành (Đổi tài khoản die)
+    const [isWarranty, setIsWarranty] = useState<boolean>(false);
+    const [replaceAccountId, setReplaceAccountId] = useState<string>('');
+
+    // Danh sách tài khoản hiện tại của đơn hàng để chọn bảo hành
+    const currentOrderAccounts = useMemo(() => {
+        const assigned = order.assigned_accounts || [];
+        if (assigned.length > 0) {
+            return assigned.map((a) => ({
+                id: a.account_id || a.id,
+                name: a.account_name ? `${a.account_name} (${a.account_id})` : (a.account_id || 'Tài khoản'),
+            }));
+        }
+        const cfgAccs = order.config_account?.accounts || [];
+        return cfgAccs.map((a: any, idx: number) => {
+            const bm = Array.isArray(a.bm_ids) && a.bm_ids.length > 0 ? a.bm_ids[0] : '';
+            const id = a.account_id || bm || `acc_${idx}`;
+            const name = a.display_name ? `${a.display_name} (${id})` : (id || `Tài khoản #${idx + 1}`);
+            return { id, name };
+        });
+    }, [order]);
+
     // Danh sách account IDs đã gán trong đơn hiện tại để đánh dấu/loại trừ
     const existingOrderAccountIds = useMemo(() => {
         const set = new Set<string>();
@@ -92,8 +115,18 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                 set.add(`act_${clean}`);
             }
         }
+        const cfgAccs = order.config_account?.accounts || [];
+        for (const a of cfgAccs) {
+            const rawId = (a as any).account_id;
+            if (rawId) {
+                const clean = String(rawId).replace(/^act_/, '');
+                set.add(clean);
+                set.add(rawId);
+                set.add(`act_${clean}`);
+            }
+        }
         return set;
-    }, [order.assigned_accounts]);
+    }, [order.assigned_accounts, order.config_account]);
 
     // Reset state khi mở dialog
     useEffect(() => {
@@ -101,6 +134,8 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
             setManualInput('');
             setSelectedBmAccountIds([]);
             setSearchAccountQuery('');
+            setIsWarranty(false);
+            setReplaceAccountId(currentOrderAccounts[0]?.id || '');
             if (orderBmId) {
                 setActiveTab('bm');
                 fetchBmAccounts(orderBmId);
@@ -108,7 +143,7 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                 setActiveTab('manual');
             }
         }
-    }, [open, orderBmId]);
+    }, [open, orderBmId, currentOrderAccounts]);
 
     const fetchBmAccounts = async (bmId: string) => {
         setLoadingBmAccounts(true);
@@ -167,12 +202,18 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
         });
     };
 
+    // Chọn tất cả: CHỈ CHỌN CÁC TÀI KHOẢN CHƯA GÁN (không bị gán cho khách khác và chưa có trong đơn)
     const handleSelectAllFilteredBm = () => {
         const selectableIds = filteredBmAccounts
-            .filter((a) => !existingOrderAccountIds.has(a.account_id?.replace(/^act_/, '') || ''))
+            .filter((a) => {
+                const clean = (a.account_id || a.id || '').replace(/^act_/, '');
+                const isAlreadyInOrder = existingOrderAccountIds.has(clean);
+                const isAssignedToOther = (a.is_assigned || !!a.service_user_id) && String(a.service_user_id) !== String(order.id);
+                return !isAlreadyInOrder && !isAssignedToOther;
+            })
             .map((a) => a.account_id || a.id);
         
-        const allSelected = selectableIds.every((id) => selectedBmAccountIds.includes(id));
+        const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedBmAccountIds.includes(id));
         if (allSelected) {
             setSelectedBmAccountIds((prev) => prev.filter((id) => !selectableIds.includes(id)));
         } else {
@@ -188,11 +229,18 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
             return;
         }
 
+        if (isWarranty && !replaceAccountId) {
+            toast.error('Vui lòng chọn tài khoản cũ cần bảo hành / thay thế.');
+            return;
+        }
+
         setSubmitting(true);
         try {
             const response = await axios.post(`/service-orders/${order.id}/assign-accounts`, {
                 account_ids: targetIds,
                 bm_id: orderBmId || undefined,
+                is_warranty: isWarranty,
+                replace_account_id: isWarranty ? replaceAccountId : undefined,
             });
 
             if (response.data?.success) {
@@ -217,8 +265,8 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl sm:max-w-2xl">
-                <DialogHeader>
+            <DialogContent className="max-w-2xl sm:max-w-2xl max-h-[90vh] flex flex-col p-6">
+                <DialogHeader className="shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
                         <Plus className="h-5 w-5 text-primary" />
                         <span>Gán thêm tài khoản quảng cáo</span>
@@ -231,12 +279,60 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                     </DialogDescription>
                 </DialogHeader>
 
+                {/* BẢO HÀNH TOGGLE & SELECTION */}
+                <div className="rounded-lg border bg-amber-50/60 dark:bg-amber-950/20 p-3 space-y-2 border-amber-200 dark:border-amber-900/50">
+                    <div className="flex items-center justify-between">
+                        <label
+                            htmlFor="warranty-toggle"
+                            className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200 cursor-pointer"
+                        >
+                            <Checkbox
+                                id="warranty-toggle"
+                                checked={isWarranty}
+                                onCheckedChange={(val) => setIsWarranty(!!val)}
+                            />
+                            <span>🛡️ Gán bảo hành (Đổi tài khoản die cho khách)</span>
+                        </label>
+                        {isWarranty && (
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-900 text-[10px] px-2 py-0.5 border-amber-300">
+                                Phí mở tài khoản: 0$
+                            </Badge>
+                        )}
+                    </div>
+
+                    {isWarranty && (
+                        <div className="space-y-1.5 pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
+                            <Label className="text-[11px] text-amber-800 dark:text-amber-300">
+                                Chọn tài khoản cũ bị die cần thay thế trong đơn này:
+                            </Label>
+                            <select
+                                value={replaceAccountId}
+                                onChange={(e) => setReplaceAccountId(e.target.value)}
+                                className="w-full text-xs rounded-md border border-amber-300 bg-background px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            >
+                                {currentOrderAccounts.length === 0 ? (
+                                    <option value="">(Đơn chưa có tài khoản nào)</option>
+                                ) : (
+                                    currentOrderAccounts.map((acc) => (
+                                        <option key={acc.id} value={acc.id}>
+                                            {acc.name}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
+                            <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                                💡 Hệ thống cam kết <strong>không tính phí mở tài khoản (0$)</strong>, bảo toàn lịch sử mốc chi tiêu đã thu của tài khoản cũ và tiếp tục tính phí chi tiêu phát sinh mới cho tài khoản thay thế bình thường.
+                            </p>
+                        </div>
+                    )}
+                </div>
+
                 <Tabs
                     value={activeTab}
                     onValueChange={(val) => setActiveTab(val as 'manual' | 'bm')}
-                    className="w-full"
+                    className="w-full flex-1 flex flex-col min-h-0"
                 >
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-2 shrink-0">
                         <TabsTrigger value="bm" disabled={!orderBmId}>
                             Chọn từ BM ({orderBmId || 'Chưa có BM'})
                         </TabsTrigger>
@@ -246,15 +342,15 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                     </TabsList>
 
                     {/* TAB 1: CHỌN TỪ BM */}
-                    <TabsContent value="bm" className="mt-4 space-y-3">
-                        <div className="flex items-center gap-2">
+                    <TabsContent value="bm" className="mt-3 space-y-3 flex-1 flex flex-col min-h-0">
+                        <div className="flex items-center gap-2 shrink-0">
                             <div className="relative flex-1">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Tìm theo tên hoặc Account ID..."
                                     value={searchAccountQuery}
                                     onChange={(e) => setSearchAccountQuery(e.target.value)}
-                                    className="pl-8 text-xs"
+                                    className="pl-8 text-xs h-9"
                                 />
                             </div>
                             <Button
@@ -265,11 +361,11 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                                 disabled={filteredBmAccounts.length === 0}
                                 className="h-9 shrink-0 text-xs"
                             >
-                                Chọn tất cả ({filteredBmAccounts.length})
+                                Chọn tất cả khả dụng
                             </Button>
                         </div>
 
-                        <ScrollArea className="h-[280px] rounded-md border p-2">
+                        <ScrollArea className="h-[260px] rounded-md border p-2">
                             {loadingBmAccounts ? (
                                 <div className="flex h-40 flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
                                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -285,33 +381,37 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                                     {filteredBmAccounts.map((account) => {
                                         const cleanId = (account.account_id || account.id || '').replace(/^act_/, '');
                                         const isAlreadyAssignedInOrder = existingOrderAccountIds.has(cleanId);
+                                        const isAssignedToOther = (account.is_assigned || !!account.service_user_id) && String(account.service_user_id) !== String(order.id);
+                                        const isDisabled = isAlreadyAssignedInOrder || isAssignedToOther;
                                         const isChecked = selectedBmAccountIds.includes(account.account_id || account.id);
-                                        const hasOtherCustomer = account.owner_name && !isAlreadyAssignedInOrder;
 
                                         return (
                                             <div
                                                 key={account.id || account.account_id}
                                                 onClick={() => {
-                                                    if (!isAlreadyAssignedInOrder) {
+                                                    if (!isDisabled) {
                                                         handleToggleBmAccount(account.account_id || account.id);
                                                     }
                                                 }}
                                                 className={cn(
-                                                    'flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-2.5 transition-colors text-xs',
+                                                    'flex items-center justify-between gap-3 rounded-lg border p-2.5 transition-colors text-xs',
                                                     isChecked
                                                         ? 'border-primary/50 bg-primary/5'
                                                         : 'hover:bg-accent/40',
-                                                    isAlreadyAssignedInOrder &&
-                                                        'cursor-not-allowed opacity-50 bg-muted/30',
+                                                    isDisabled
+                                                        ? 'cursor-not-allowed opacity-60 bg-muted/40'
+                                                        : 'cursor-pointer',
                                                 )}
                                             >
                                                 <div className="flex items-center gap-2.5 overflow-hidden">
                                                     <Checkbox
                                                         checked={isChecked || isAlreadyAssignedInOrder}
-                                                        disabled={isAlreadyAssignedInOrder}
-                                                        onCheckedChange={() =>
-                                                            handleToggleBmAccount(account.account_id || account.id)
-                                                        }
+                                                        disabled={isDisabled}
+                                                        onCheckedChange={() => {
+                                                            if (!isDisabled) {
+                                                                handleToggleBmAccount(account.account_id || account.id);
+                                                            }
+                                                        }}
                                                     />
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2">
@@ -326,12 +426,12 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                                                                     Đã có trong đơn
                                                                 </Badge>
                                                             )}
-                                                            {hasOtherCustomer && (
+                                                            {isAssignedToOther && (
                                                                 <Badge
                                                                     variant="destructive"
-                                                                    className="text-[10px] py-0 px-1.5"
+                                                                    className="text-[10px] py-0 px-1.5 font-normal"
                                                                 >
-                                                                    Gán cho {account.owner_name}
+                                                                    Đã gán{account.owner_name ? ` (${account.owner_name})` : ''}
                                                                 </Badge>
                                                             )}
                                                         </div>
