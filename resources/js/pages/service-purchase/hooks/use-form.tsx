@@ -73,7 +73,9 @@ export const useServicePurchaseForm = () => {
                     (acc) =>
                         acc.meta_email ||
                         acc.display_name ||
-                        (acc.bm_ids && acc.bm_ids.length > 0),
+                        (acc.bm_ids && acc.bm_ids.length > 0) ||
+                        acc.timezone_bm ||
+                        acc.asset_access,
                 )
                 .map((acc) => ({
                     ...acc,
