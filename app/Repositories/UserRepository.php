@@ -103,7 +103,10 @@ class UserRepository extends BaseRepository
     {
         return $this->model()
             ->isActive()
-            ->where('username', $username)
+            ->where(function ($query) use ($username) {
+                $query->where('username', $username)
+                    ->orWhere('email', $username);
+            })
             ->first();
     }
 
