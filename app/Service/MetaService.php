@@ -1137,7 +1137,7 @@ class MetaService
     /**
      * Đồng bộ đầy đủ: BM con + Accounts của BM con (+ Insights + Campaigns nếu syncInsights = true)
      */
-    public function syncFromAccessibleBusinessManagers(?string $settingId = null, bool $syncInsights = true): ServiceReturn
+    public function syncFromAccessibleBusinessManagers(?string $settingId = null, bool $syncInsights = true, int $days = 2): ServiceReturn
     {
         try {
             if ($settingId) {
@@ -1150,7 +1150,7 @@ class MetaService
             $this->syncMetaAccountsForManagers($bmIdsToSync);
 
             if ($syncInsights) {
-                $this->syncInsightsAndCampaignsForBusinessManagers($bmIdsToSync);
+                $this->syncInsightsAndCampaignsForBusinessManagers($bmIdsToSync, $days);
             }
 
             return ServiceReturn::success();
@@ -1164,7 +1164,7 @@ class MetaService
         }
     }
 
-    public function syncInsightsAndCampaignsForBusinessManager(string $bmId): ServiceReturn
+    public function syncInsightsAndCampaignsForBusinessManager(string $bmId, int $days = 2): ServiceReturn
     {
         try {
             // Đồng bộ BM con (owned + client + agency)
@@ -1194,7 +1194,7 @@ class MetaService
             $this->syncMetaAccountsForManagers($bmIdsToSyncAccounts);
 
             // Đồng bộ campaign & insights cho các tài khoản này (Đã dùng Batch)
-            $this->syncInsightsAndCampaignsForBusinessManagers($bmIdsToSyncAccounts);
+            $this->syncInsightsAndCampaignsForBusinessManagers($bmIdsToSyncAccounts, $days);
 
             return ServiceReturn::success();
         } catch (\Throwable $e) {
@@ -1210,7 +1210,7 @@ class MetaService
     /**
      * Đồng bộ đầy đủ: BM + Accounts (+ Insights + Campaigns nếu syncInsights = true)
      */
-    public function syncFromBusinessManagerId(string $bmId, ?string $settingId = null, bool $syncInsights = true): ServiceReturn
+    public function syncFromBusinessManagerId(string $bmId, ?string $settingId = null, bool $syncInsights = true, int $days = 2): ServiceReturn
     {
         try {
             $basicSync = $this->syncFromBusinessManagerIdBasic($bmId, $settingId);
@@ -1222,7 +1222,7 @@ class MetaService
 
             // Sync insights/campaigns nếu được bật
             if ($syncInsights) {
-                return $this->syncInsightsAndCampaignsForBusinessManager($bmId);
+                return $this->syncInsightsAndCampaignsForBusinessManager($bmId, $days);
             }
 
             return ServiceReturn::success();
@@ -1285,12 +1285,17 @@ class MetaService
         );
     }
 
-    private function syncInsightsAndCampaignsForBusinessManagers(array $bmIds): void
+    private function syncInsightsAndCampaignsForBusinessManagers(array $bmIds, int $days = 2): void
     {
         $uniqueBmIds = array_values(array_unique(array_filter($bmIds)));
         if (empty($uniqueBmIds)) {
             return;
         }
+
+        $sinceDate = $days <= 2
+            ? Carbon::yesterday()->toDateString()
+            : Carbon::today()->subDays($days)->toDateString();
+        $untilDate = Carbon::today()->toDateString();
 
         $accountsWithPermissionIssues = [];
         $accessibleAccountIds = $this->metaAccountBusinessManagerAccessRepository->query()
@@ -1309,18 +1314,19 @@ class MetaService
                     $query->orWhereIn('account_id', $accessibleAccountIds);
                 }
             })
-            ->chunk(25, function (Collection $metaAccounts) use (&$accountsWithPermissionIssues) {
+            ->whereNull('deleted_at')
+            ->chunk(25, function (Collection $metaAccounts) use (&$accountsWithPermissionIssues, $sinceDate, $untilDate) {
                 $batchRequests = [];
                 $accountMap = [];
 
                 foreach ($metaAccounts as $metaAccount) {
-                    // 1. Request lấy Insights
+                    // 1. Request lấy Insights (Mặc định 2 ngày: yesterday & today cho Delta Sync, hoặc 30 ngày cho Deep Sync)
                     $insightsUrl = "{$metaAccount->account_id}/insights?".http_build_query([
                         'level' => 'account',
                         'time_increment' => 1,
                         'time_range' => [
-                            'since' => Carbon::today()->subDays(30)->toDateString(),
-                            'until' => Carbon::today()->toDateString(),
+                            'since' => $sinceDate,
+                            'until' => $untilDate,
                         ],
                         'fields' => 'date_start,date_stop,spend,impressions,reach,frequency,clicks,inline_link_clicks,ctr,cpc,cpm,actions,purchase_roas',
                     ]);
@@ -1347,7 +1353,13 @@ class MetaService
                 // Gửi Batch Request (Tối đa 50 requests/lần: 25 acc * 2)
                 $batchResponse = $this->metaBusinessService->callBatch($batchRequests);
                 if ($batchResponse->isError()) {
-                    Logging::error('Batch Insights Sync failed: '.$batchResponse->getMessage());
+                    $errorMsg = $batchResponse->getMessage();
+                    Logging::error('Batch Insights Sync failed: '.$errorMsg);
+
+                    if (\App\Jobs\MetaApi\SyncMetaJob::isRateLimitMessage($errorMsg)) {
+                        \Illuminate\Support\Facades\Cache::put('meta_api_rate_limited_cooldown', true, now()->addMinutes(30));
+                        Logging::web("Meta Rate Limit detected in batch request. Activated 30-minute cooldown.");
+                    }
 
                     return;
                 }
@@ -1361,6 +1373,11 @@ class MetaService
                     if (($res['code'] ?? 0) !== 200) {
                         $errorBody = json_decode($res['body'] ?? '{}', true);
                         $errorMessage = $errorBody['error']['message'] ?? 'Unknown error';
+
+                        if (\App\Jobs\MetaApi\SyncMetaJob::isRateLimitMessage($errorMessage)) {
+                            \Illuminate\Support\Facades\Cache::put('meta_api_rate_limited_cooldown', true, now()->addMinutes(30));
+                            Logging::web("Meta Rate Limit detected in response item. Activated 30-minute cooldown.");
+                        }
 
                         if ($this->isPermissionError($errorMessage)) {
                             $this->logAccountPermissionIssue($metaAccount, $type, $errorMessage);
@@ -1386,6 +1403,9 @@ class MetaService
                         $this->syncCampaignsFromData($metaAccount, $body);
                     }
                 }
+
+                // Nghỉ 200ms giữa các chunk để tránh chạm Meta burst rate limit
+                usleep(200000);
             });
 
         if (! empty($accountsWithPermissionIssues)) {

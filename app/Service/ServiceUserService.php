@@ -618,10 +618,11 @@ class ServiceUserService
         ?string $bmId = null,
         bool $isWarranty = false,
         ?string $replaceAccountId = null,
+        int $syncDays = 2,
     ): ServiceReturn
     {
         try {
-            return DB::transaction(function () use ($serviceUserId, $accountIds, $bmId, $isWarranty, $replaceAccountId) {
+            return DB::transaction(function () use ($serviceUserId, $accountIds, $bmId, $isWarranty, $replaceAccountId, $syncDays) {
                 $serviceUser = $this->serviceUserRepository->query()->find($serviceUserId);
                 if (!$serviceUser) {
                     return ServiceReturn::error(message: __('common_error.not_found'));
@@ -799,15 +800,15 @@ class ServiceUserService
                     }
                 }
 
-                // Nếu là chế độ gán bảo hành (Warranty replacement)
+                // Bảo vệ mốc chi tiêu ban đầu: không thu phí trên chi tiêu cũ đã chạy trước khi gán
+                $savedBilled = $config['spending_fee_accounts_billed_spend'] ?? [];
+                if (!is_array($savedBilled)) {
+                    $savedBilled = [];
+                }
+
+                // Nếu là chế độ gán bảo hành (Warranty replacement) có chọn tài khoản cũ
                 if ($isWarranty && !empty($replaceAccountId)) {
                     $cleanReplaceId = preg_replace('/^act_/', '', trim((string) $replaceAccountId));
-                    
-                    // Bảo vệ mốc chi tiêu của tài khoản cũ trong spending_fee_accounts_billed_spend
-                    $savedBilled = $config['spending_fee_accounts_billed_spend'] ?? [];
-                    if (!is_array($savedBilled)) {
-                        $savedBilled = [];
-                    }
 
                     // Tìm số tiền đã tiêu của tài khoản cũ để bảo lưu mốc đã thu
                     $oldMeta = $this->metaAccountRepository->query()
@@ -827,21 +828,6 @@ class ServiceUserService
                         }
                     }
 
-                    // Đối với tài khoản mới: nếu đã có amount_spent từ trước thì đặt mốc khởi điểm để chỉ tính chi tiêu phát sinh mới
-                    foreach ($newAccountIds as $nid) {
-                        $newMeta = $this->metaAccountRepository->query()
-                            ->where('service_user_id', $serviceUser->id)
-                            ->where('account_id', $nid)
-                            ->first();
-                        if ($newMeta && (float) ($newMeta->amount_spent ?? 0) > 0) {
-                            $initSpentUsd = ((float) $newMeta->amount_spent) / 100;
-                            $savedBilled[$nid] = $initSpentUsd;
-                            $savedBilled[preg_replace('/^act_/', '', $nid)] = $initSpentUsd;
-                        }
-                    }
-
-                    $config['spending_fee_accounts_billed_spend'] = $savedBilled;
-
                     // Đánh dấu tài khoản cũ là đã bảo hành thay thế trong config['accounts']
                     if (!empty($config['accounts']) && is_array($config['accounts'])) {
                         foreach ($config['accounts'] as &$accItem) {
@@ -858,11 +844,51 @@ class ServiceUserService
                     }
                 }
 
+                // Đối với TẤT CẢ các tài khoản mới được gán (cả gán thường và gán bảo hành):
+                // Nếu tài khoản đã có amount_spent từ trước (đã từng chạy) -> Đặt mốc khởi điểm từ hôm nay để chỉ tính chi tiêu phát sinh mới
+                foreach ($newAccountIds as $nid) {
+                    $newMeta = $this->metaAccountRepository->query()
+                        ->where('service_user_id', $serviceUser->id)
+                        ->where('account_id', $nid)
+                        ->first();
+                    if ($newMeta && (float) ($newMeta->amount_spent ?? 0) > 0) {
+                        $initSpentUsd = ((float) $newMeta->amount_spent) / 100;
+                        $savedBilled[$nid] = max($initSpentUsd, (float) ($savedBilled[$nid] ?? 0));
+                        $savedBilled[preg_replace('/^act_/', '', $nid)] = max($initSpentUsd, (float) ($savedBilled[preg_replace('/^act_/', '', $nid)] ?? 0));
+                    }
+                }
+
+                $config['spending_fee_accounts_billed_spend'] = $savedBilled;
+
                 $serviceUser->config_account = $config;
                 $serviceUser->save();
 
+                // Kích hoạt đồng bộ dữ liệu ngay lập tức theo tùy chọn quét của admin
+                if ((int) $platform === PlatformType::META->value) {
+                    $targetBmId = $bmId ?: ($config['bm_id'] ?? null);
+                    try {
+                        if ($targetBmId) {
+                            \App\Jobs\MetaApi\SyncMetaPlatformJob::dispatch(
+                                (string) $targetBmId,
+                                settingId: null,
+                                syncInsights: true,
+                                days: $syncDays
+                            );
+                        } else {
+                            \App\Jobs\MetaApi\SyncMetaJob::dispatch($serviceUser);
+                        }
+                    } catch (\Throwable $dispatchError) {
+                        Logging::error('ServiceUserService@assignAccounts: Failed to dispatch Meta sync job', [
+                            'service_user_id' => $serviceUser->id,
+                            'error' => $dispatchError->getMessage(),
+                        ]);
+                    }
+                }
+
                 $successMsg = $isWarranty
-                    ? "Đã gán bảo hành thành công {$assignedCount} tài khoản thay thế cho tài khoản {$replaceAccountId} (Miễn phí mở tài khoản 0$). Không ảnh hưởng đến luồng tính tiền."
+                    ? (!empty($replaceAccountId)
+                        ? "Đã gán bảo hành thành công {$assignedCount} tài khoản thay thế cho tài khoản {$replaceAccountId} (Miễn phí mở tài khoản 0$). Không ảnh hưởng đến luồng tính tiền."
+                        : "Đã gán bảo hành thành công {$assignedCount} tài khoản (Miễn phí mở tài khoản 0$). Không ảnh hưởng đến luồng tính tiền.")
                     : "Đã gán thành công {$assignedCount} tài khoản vào đơn hàng.";
 
                 return ServiceReturn::success(

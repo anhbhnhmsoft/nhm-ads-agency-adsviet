@@ -21,7 +21,10 @@ class SyncAllPlatformsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public bool $syncInsights = true)
+    public function __construct(
+        public bool $syncInsights = true,
+        public int $days = 2,
+    )
     {
         $this->onQueue(QueueKey::META_API);
     }
@@ -32,7 +35,7 @@ class SyncAllPlatformsJob implements ShouldQueue
     public function handle(PlatformSettingService $platformSettingService): void
     {
         try {
-            $typeStr = $this->syncInsights ? 'Full (Accounts + Insights)' : 'Accounts Only (Fast)';
+            $typeStr = $this->syncInsights ? "Full (Accounts + Insights {$this->days}d)" : 'Accounts Only (Fast)';
             Logging::web("SyncAllPlatformsJob: Starting global synchronization [{$typeStr}]");
 
             // 1. Đồng bộ Meta
@@ -44,7 +47,7 @@ class SyncAllPlatformsJob implements ShouldQueue
                     foreach ($metaSettings->getData() as $setting) {
                         $config = $setting->config ?? [];
                         $bmId = $platformSettingService->getMetaScopedBusinessManagerId($config);
-                        SyncMetaPlatformJob::dispatch($bmId ? (string)$bmId : null, (string)$setting->id, $this->syncInsights);
+                        SyncMetaPlatformJob::dispatch($bmId ? (string)$bmId : null, (string)$setting->id, $this->syncInsights, $this->days);
                         Logging::web("SyncAllPlatformsJob: Dispatched Meta sync ({$typeStr}) for setting ID {$setting->id}");
                     }
                 }

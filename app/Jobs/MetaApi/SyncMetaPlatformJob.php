@@ -28,6 +28,7 @@ class SyncMetaPlatformJob implements ShouldQueue
         protected ?string $bmId = null,
         protected ?string $settingId = null,
         protected bool $syncInsights = true,
+        protected int $days = 2,
     ) {
         $this->onQueue(QueueKey::META_API);
     }
@@ -40,11 +41,11 @@ class SyncMetaPlatformJob implements ShouldQueue
         }
 
         if ($this->bmId) {
-            $metaService->syncFromBusinessManagerId($this->bmId, $this->settingId, $this->syncInsights);
+            $metaService->syncFromBusinessManagerId($this->bmId, $this->settingId, $this->syncInsights, $this->days);
             return;
         }
 
-        $metaService->syncFromAccessibleBusinessManagers($this->settingId, $this->syncInsights);
+        $metaService->syncFromAccessibleBusinessManagers($this->settingId, $this->syncInsights, $this->days);
     }
 }
 

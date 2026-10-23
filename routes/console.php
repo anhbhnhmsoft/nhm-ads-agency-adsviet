@@ -30,8 +30,11 @@ Schedule::command('services:enforce-creditline-limits')
 // 1. Quét toàn bộ 332 BM & cập nhật tài khoản mới share toàn hệ thống (mỗi 15 phút, siêu nhẹ ~15s)
 Schedule::job(new SyncAllPlatformsJob(syncInsights: false))->everyFifteenMinutes();
 
-// 2. Cào số liệu Insights 30 ngày (Reach, Click, ROAS) & Campaigns phục vụ báo cáo BM (mỗi 1 tiếng)
-Schedule::job(new SyncAllPlatformsJob(syncInsights: true))->hourly();
+// 2. Cơ chế Delta Sync định kỳ: CHỈ cào 2 ngày (Hôm nay & Hôm qua) mỗi 30 phút, giảm 93% tải Meta API
+Schedule::job(new SyncAllPlatformsJob(syncInsights: true, days: 2))->everyThirtyMinutes();
+
+// 3. Cơ chế Deep Sync 30 ngày: Cào sâu toàn bộ lịch sử 1 lần duy nhất vào lúc 02:00 sáng khi không có người dùng
+Schedule::job(new SyncAllPlatformsJob(syncInsights: true, days: 30))->dailyAt('02:00');
 
 // routes/console.php
 Schedule::command('app:calculate-spending-commission')->monthlyOn(1, '01:00');

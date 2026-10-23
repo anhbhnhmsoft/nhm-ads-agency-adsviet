@@ -85,6 +85,9 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
     const [isWarranty, setIsWarranty] = useState<boolean>(false);
     const [replaceAccountId, setReplaceAccountId] = useState<string>('');
 
+    // Tùy chọn Quét toàn bộ (30 ngày) hoặc Bắt đầu quét từ hôm nay (2 ngày)
+    const [isDeepSync, setIsDeepSync] = useState<boolean>(false);
+
     // Danh sách tài khoản hiện tại của đơn hàng để chọn bảo hành
     const currentOrderAccounts = useMemo(() => {
         const assigned = order.assigned_accounts || [];
@@ -135,7 +138,8 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
             setSelectedBmAccountIds([]);
             setSearchAccountQuery('');
             setIsWarranty(false);
-            setReplaceAccountId(currentOrderAccounts[0]?.id || '');
+            setReplaceAccountId('');
+            setIsDeepSync(false);
             if (orderBmId) {
                 setActiveTab('bm');
                 fetchBmAccounts(orderBmId);
@@ -143,7 +147,7 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                 setActiveTab('manual');
             }
         }
-    }, [open, orderBmId, currentOrderAccounts]);
+    }, [open, orderBmId]);
 
     const fetchBmAccounts = async (bmId: string) => {
         setLoadingBmAccounts(true);
@@ -229,18 +233,15 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
             return;
         }
 
-        if (isWarranty && !replaceAccountId) {
-            toast.error('Vui lòng chọn tài khoản cũ cần bảo hành / thay thế.');
-            return;
-        }
-
         setSubmitting(true);
         try {
             const response = await axios.post(`/service-orders/${order.id}/assign-accounts`, {
                 account_ids: targetIds,
                 bm_id: orderBmId || undefined,
                 is_warranty: isWarranty,
-                replace_account_id: isWarranty ? replaceAccountId : undefined,
+                replace_account_id: isWarranty && replaceAccountId ? replaceAccountId : undefined,
+                sync_all: isDeepSync,
+                sync_days: isDeepSync ? 30 : 2,
             });
 
             if (response.data?.success) {
@@ -291,11 +292,11 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                                 checked={isWarranty}
                                 onCheckedChange={(val) => setIsWarranty(!!val)}
                             />
-                            <span>🛡️ Gán bảo hành (Đổi tài khoản die cho khách)</span>
+                            <span>🛡️ Gán bảo hành (Không tính phí mở tài khoản 0$)</span>
                         </label>
                         {isWarranty && (
                             <Badge variant="secondary" className="bg-amber-100 text-amber-900 text-[10px] px-2 py-0.5 border-amber-300">
-                                Phí mở tài khoản: 0$
+                                Miễn phí mở tài khoản 0$
                             </Badge>
                         )}
                     </div>
@@ -303,28 +304,50 @@ export const AssignAccountsDialog: React.FC<AssignAccountsDialogProps> = ({
                     {isWarranty && (
                         <div className="space-y-1.5 pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
                             <Label className="text-[11px] text-amber-800 dark:text-amber-300">
-                                Chọn tài khoản cũ bị die cần thay thế trong đơn này:
+                                Thay thế tài khoản cũ bị die (Tùy chọn):
                             </Label>
                             <select
                                 value={replaceAccountId}
                                 onChange={(e) => setReplaceAccountId(e.target.value)}
                                 className="w-full text-xs rounded-md border border-amber-300 bg-background px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
                             >
-                                {currentOrderAccounts.length === 0 ? (
-                                    <option value="">(Đơn chưa có tài khoản nào)</option>
-                                ) : (
-                                    currentOrderAccounts.map((acc) => (
-                                        <option key={acc.id} value={acc.id}>
-                                            {acc.name}
-                                        </option>
-                                    ))
-                                )}
+                                <option value="">-- Không thay thế tài khoản cụ thể (Chỉ gán thêm bảo hành) --</option>
+                                {currentOrderAccounts.map((acc) => (
+                                    <option key={acc.id} value={acc.id}>
+                                        {acc.name}
+                                    </option>
+                                ))}
                             </select>
                             <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                                💡 Hệ thống cam kết <strong>không tính phí mở tài khoản (0$)</strong>, bảo toàn lịch sử mốc chi tiêu đã thu của tài khoản cũ và tiếp tục tính phí chi tiêu phát sinh mới cho tài khoản thay thế bình thường.
+                                💡 Hệ thống cam kết <strong>không tính phí mở tài khoản (0$)</strong>, bảo toàn lịch sử mốc chi tiêu đã thu của tài khoản cũ và chỉ tính phí chi tiêu phát sinh mới.
                             </p>
                         </div>
                     )}
+                </div>
+
+                {/* TÙY CHỌN QUÉT DỮ LIỆU KHI GÁN */}
+                <div className="rounded-lg border bg-slate-50/70 dark:bg-slate-900/40 p-3 space-y-1.5 border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                        <label
+                            htmlFor="sync-deep-toggle"
+                            className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                        >
+                            <Checkbox
+                                id="sync-deep-toggle"
+                                checked={isDeepSync}
+                                onCheckedChange={(val) => setIsDeepSync(!!val)}
+                            />
+                            <span>🔄 Quét toàn bộ lịch sử 30 ngày ngay lập tức (Deep Sync)</span>
+                        </label>
+                        <Badge variant="outline" className="text-[10px] bg-background">
+                            {isDeepSync ? 'Deep Sync (30 ngày)' : 'Bắt đầu quét từ hôm nay (Delta)'}
+                        </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground pl-6">
+                        {isDeepSync
+                            ? '⚡ Kích hoạt cào sâu toàn bộ 30 ngày chiến dịch & số liệu của tài khoản/BM này để lên báo cáo ngay.'
+                            : '💡 Mặc định: Bắt đầu quét từ hôm nay (chỉ quét hôm nay & hôm qua): nhanh, nhẹ và chống rate limit. Lịch sử cũ sẽ được tự động cào bù vào lúc 02:00 sáng.'}
+                    </p>
                 </div>
 
                 <Tabs

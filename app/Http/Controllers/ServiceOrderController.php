@@ -207,12 +207,16 @@ class ServiceOrderController extends Controller
             return redirect()->back();
         }
 
+        $syncAll = (bool) $request->input('sync_all', false);
+        $syncDays = $syncAll ? 30 : (int) $request->input('sync_days', 2);
+
         $result = $this->serviceUserService->assignAccounts(
             serviceUserId: $id,
             accountIds: (array) $accountIds,
             bmId: $request->input('bm_id'),
             isWarranty: (bool) $request->input('is_warranty', false),
             replaceAccountId: $request->input('replace_account_id'),
+            syncDays: $syncDays,
         );
 
         if ($request->wantsJson() || $request->ajax()) {

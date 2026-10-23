@@ -313,7 +313,8 @@ class ServiceManagementController extends Controller
             ], 429);
         }
 
-        SyncMetaPlatformJob::dispatch($bmId !== '' ? $bmId : null, $settingId ? (string) $settingId : null);
+        $days = (int) $request->input('days', 30);
+        SyncMetaPlatformJob::dispatch($bmId !== '' ? $bmId : null, $settingId ? (string) $settingId : null, true, $days);
 
         return response()->json([
             'message' => __('common.processing'),
